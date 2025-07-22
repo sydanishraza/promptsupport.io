@@ -7,7 +7,7 @@ import ContentLibraryEnhanced from './ContentLibraryEnhanced';
 import SystemsModule from './SystemsModule';
 import AIAgents from './AIAgents';
 import Analytics from './Analytics';
-import AdminConsole from './AdminConsole';
+import KnowledgeBaseBuilder from './KnowledgeBaseBuilder';
 
 const MainLayout = () => {
   const [activeRoute, setActiveRoute] = useState('dashboard');

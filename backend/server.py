@@ -495,14 +495,14 @@ Context:
 If the context doesn't contain relevant information, provide general assistance."""
 
         # Initialize chat based on provider
-        if model_provider == "openai" and OPENAI_API_KEY:
+        if model_provider == "openai" and OPENAI_API_KEY and EMERGENT_AVAILABLE:
             chat = LlmChat(
                 api_key=OPENAI_API_KEY,
                 session_id=session_id,
                 system_message=system_message
             ).with_model("openai", model_name)
             
-        elif model_provider == "anthropic" and ANTHROPIC_API_KEY:
+        elif model_provider == "anthropic" and ANTHROPIC_API_KEY and EMERGENT_AVAILABLE:
             chat = LlmChat(
                 api_key=ANTHROPIC_API_KEY,
                 session_id=session_id,
@@ -510,7 +510,7 @@ If the context doesn't contain relevant information, provide general assistance.
             ).with_model("anthropic", "claude-3-5-sonnet-20241022")
             
         else:
-            raise HTTPException(status_code=400, detail="AI provider not configured or invalid")
+            raise HTTPException(status_code=400, detail="AI provider not configured, not available, or emergentintegrations missing")
         
         # Send message
         user_message = UserMessage(text=message)

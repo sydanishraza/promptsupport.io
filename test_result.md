@@ -138,28 +138,28 @@
         -comment: "Knowledge Base Builder component with drag-and-drop TOC, theming, preview, and deploy views created"
   
   - task: "Systems Module Integration"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/SystemsModule.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Systems module shows Knowledge Base card and Configure button properly navigates to builder"
+  
+  - task: "MainLayout Routing"
+    implemented: true
+    working: false
+    file: "frontend/src/components/MainLayout.js"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
         -working: false
         -agent: "main"
-        -comment: "Systems module shows Knowledge Base card but Configure button doesn't navigate to builder"
-  
-  - task: "MainLayout Routing"
-    implemented: true
-    working: true
-    file: "frontend/src/components/MainLayout.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        -working: true
-        -agent: "main"
-        -comment: "KnowledgeBaseBuilder imported but needs proper routing integration"
+        -comment: "Navigation from sidebar Knowledge Base link not properly triggering knowledge-base-builder route"
 
 ## metadata:
   created_by: "main_agent"

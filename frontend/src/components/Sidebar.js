@@ -154,9 +154,9 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
                 {item.subitems.map((subitem) => (
                   <button
                     key={subitem.id}
-                    onClick={() => setActiveRoute(subitem.id)}
+                    onClick={() => handleItemClick(subitem.id)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      activeRoute === subitem.id
+                      activeRoute === (subitem.id === 'knowledge-base' ? 'knowledge-base-builder' : subitem.id)
                         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}

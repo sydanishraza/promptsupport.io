@@ -95,7 +95,8 @@ async def startup_event():
     try:
         mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
         db = mongo_client[DATABASE_NAME]
-        await db.admin.command('ping')
+        # Test the connection
+        await mongo_client.server_info()
         print("✅ MongoDB connected successfully")
     except Exception as e:
         print(f"❌ MongoDB connection failed: {e}")

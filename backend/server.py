@@ -247,7 +247,7 @@ def search_similar_chunks(query: str, limit: int = 5) -> List[Dict[str, Any]]:
 
 @app.post("/api/chat")
 async def chat_with_documents(chat_request: ChatMessage):
-    """Chat with AI using document context"""
+    """Chat with AI using document context - MVP version returns search results"""
     try:
         session_id = chat_request.session_id
         user_query = chat_request.message
@@ -262,28 +262,11 @@ async def chat_with_documents(chat_request: ChatMessage):
             context_chunks.append(result["payload"]["text"])
             sources.append(result["payload"]["filename"])
         
-        # Create context for LLM
-        context = "\n\n---\n\n".join(context_chunks)
-        
-        # Initialize LLM chat with context
-        if context:
-            system_message = f"""You are an intelligent support assistant for PromptSupport. You have access to the following knowledge base:
-
-{context}
-
-Please answer questions based on this context. If you don't have relevant information, let the user know. Be helpful, accurate, and concise."""
+        # For MVP, return a simple response with found context
+        if context_chunks:
+            ai_response = f"I found {len(context_chunks)} relevant document sections related to your query:\n\n" + "\n\n---\n\n".join(context_chunks[:2])  # Limit to first 2 chunks
         else:
-            system_message = "You are an intelligent support assistant for PromptSupport. I don't have any relevant documents to help answer this question, but I'll do my best to provide a helpful response."
-
-        chat = LlmChat(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            session_id=session_id,
-            system_message=system_message
-        ).with_model("openai", "gpt-4o")
-        
-        # Send message and get response
-        user_message = UserMessage(text=user_query)
-        ai_response = await chat.send_message(user_message)
+            ai_response = "I couldn't find any relevant documents for your query. Please try uploading some documents first or rephrase your question."
         
         # Store chat history in MongoDB
         chat_record = {

@@ -165,11 +165,13 @@
   run_ui: false
 
 ## test_plan:
-  current_focus: []
+  current_focus:
+    - "Systems Module Integration"
+    - "MainLayout Routing"
   stuck_tasks: []
   test_all: false
-  test_priority: "fresh_start"
+  test_priority: "current_focus"
 
 ## agent_communication:
     -agent: "main"
-    -message: "Complete cleanup performed. All previous PromptSupport code removed. Backend running minimal FastAPI. Frontend showing clean slate message. Database reset. Ready for new development plan and UI blueprint."
+    -message: "Continuing from previous session. Need to complete integration of KnowledgeBaseBuilder into Systems module so Configure button works properly."

@@ -139,14 +139,6 @@ const ContentLibraryEnhanced = () => {
 
   const displayItems = contentItems.length > 0 ? contentItems : defaultArticles;
 
-  const [newArticle, setNewArticle] = useState({
-    title: '',
-    content: '',
-    tags: [],
-    status: 'draft',
-    source: 'User Created'
-  });
-
   const getTypeIcon = (type) => {
     switch (type) {
       case 'article': return FileText;

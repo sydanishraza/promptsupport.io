@@ -33,6 +33,12 @@ const ContentLibraryEnhanced = () => {
   const [selectedContent, setSelectedContent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showNewArticleModal, setShowNewArticleModal] = useState(false);
+  const [newArticle, setNewArticle] = useState({
+    title: '',
+    content: '',
+    status: 'draft',
+    tags: []
+  });
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState([

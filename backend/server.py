@@ -870,6 +870,10 @@ async def process_recording(
                 {"$set": {"status": "failed", "error_message": str(e)}}
             )
         raise HTTPException(status_code=500, detail=str(e))
+
+# Document listing endpoint
+@app.get("/api/documents")
+async def get_documents():
     """List all processed documents and chunks"""
     try:
         documents = []

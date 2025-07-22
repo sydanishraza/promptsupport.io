@@ -24,6 +24,7 @@ import {
 
 const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
   const [systemsExpanded, setSystemsExpanded] = useState(false);
+  const [knowledgeEngineExpanded, setKnowledgeEngineExpanded] = useState(false);
 
   const navigationItems = [
     {

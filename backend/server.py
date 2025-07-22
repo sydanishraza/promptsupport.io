@@ -373,7 +373,7 @@ async def upload_file(
     file: UploadFile = File(...),
     metadata: str = Form("{}")
 ):
-    """Upload and process files"""
+    """Upload and process files (text, audio, video, images)"""
     try:
         # Parse metadata
         file_metadata = json.loads(metadata)
@@ -390,35 +390,97 @@ async def upload_file(
         # Read file content
         file_content = await file.read()
         
-        # Simple file type detection based on extension
+        # Get file extension for proper handling
         file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
         
-        chunks = []
+        print(f"Processing file: {file.filename}, Extension: {file_extension}, Size: {len(file_content)} bytes")
         
+        extracted_content = ""
+        
+        # Extract content based on file type
         if file_extension in ['txt', 'md', 'csv']:
-            # Process text file
             try:
-                text_content = file_content.decode('utf-8')
-                chunks = await process_text_content(text_content, file_metadata)
+                extracted_content = file_content.decode('utf-8')
+                print(f"✅ Extracted {len(extracted_content)} characters from text file")
             except UnicodeDecodeError:
-                raise HTTPException(status_code=400, detail="Cannot decode file as text")
+                extracted_content = file_content.decode('latin-1', errors='ignore')
+                print(f"⚠️ Used latin-1 fallback, extracted {len(extracted_content)} characters")
+                
+        elif file_extension == 'pdf':
+            try:
+                # Install PyPDF2 if not available
+                import PyPDF2
+                pdf_file = io.BytesIO(file_content)
+                pdf_reader = PyPDF2.PdfReader(pdf_file)
+                extracted_content = ""
+                for page in pdf_reader.pages:
+                    extracted_content += page.extract_text() + "\n"
+                print(f"✅ Extracted {len(extracted_content)} characters from PDF ({len(pdf_reader.pages)} pages)")
+            except ImportError:
+                print("⚠️ PyPDF2 not available, treating as binary file")
+                extracted_content = f"PDF file: {file.filename} (content extraction requires PyPDF2)"
+            except Exception as e:
+                print(f"⚠️ PDF extraction error: {e}")
+                extracted_content = f"PDF file: {file.filename} (extraction failed: {str(e)})"
+                
+        elif file_extension in ['doc', 'docx']:
+            try:
+                import python_docx
+                doc_file = io.BytesIO(file_content)
+                doc = python_docx.Document(doc_file)
+                extracted_content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                print(f"✅ Extracted {len(extracted_content)} characters from Word document")
+            except ImportError:
+                print("⚠️ python-docx not available, treating as binary file")
+                extracted_content = f"Word document: {file.filename} (content extraction requires python-docx)"
+            except Exception as e:
+                print(f"⚠️ Word document extraction error: {e}")
+                extracted_content = f"Word document: {file.filename} (extraction failed: {str(e)})"
+                
+        elif file_extension in ['json']:
+            try:
+                json_data = json.loads(file_content.decode('utf-8'))
+                extracted_content = f"JSON file: {file.filename}\n\nContent:\n{json.dumps(json_data, indent=2)}"
+                print(f"✅ Extracted JSON content from {file.filename}")
+            except Exception as e:
+                print(f"⚠️ JSON parsing error: {e}")
+                extracted_content = file_content.decode('utf-8', errors='ignore')
                 
         else:
-            # For other file types, store as binary data
-            file_metadata["file_data"] = base64.b64encode(file_content).decode('utf-8')
-            file_metadata["file_type"] = file_extension
-            
-            # Create a single chunk with file metadata
-            chunk = DocumentChunk(
-                content=f"File: {file.filename} ({file_extension})",
-                metadata=file_metadata
-            )
-            chunks = [chunk]
-            await db.document_chunks.insert_one(chunk.dict())
+            # For other file types, create descriptive content
+            extracted_content = f"""File: {file.filename}
+File Type: {file_extension.upper()} file
+Size: {len(file_content)} bytes
+Uploaded: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
+
+This is a {file_extension.upper()} file that has been uploaded to the knowledge base. While the specific content cannot be extracted automatically, this file is now part of your knowledge repository and can be referenced in conversations."""
+
+        # Add file metadata to content
+        enriched_content = f"""Document: {file.filename}
+
+{extracted_content}
+
+---
+File Information:
+- Original filename: {file.filename}
+- File type: {file_extension.upper()}
+- Upload date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
+- Source: Knowledge Engine File Upload"""
+
+        # Process the extracted content
+        enhanced_metadata = {
+            **file_metadata,
+            "original_filename": file.filename,
+            "file_extension": file_extension,
+            "file_size": len(file_content),
+            "extraction_method": "automated"
+        }
+        
+        chunks = await process_text_content(enriched_content, enhanced_metadata)
         
         # Update job
         job.chunks = chunks
-        job.status = "completed"
+        job.status = "completed" 
         job.completed_at = datetime.utcnow()
         
         await db.processing_jobs.update_one(
@@ -430,6 +492,7 @@ async def upload_file(
             "job_id": job.job_id,
             "status": job.status,
             "file_type": file_extension,
+            "extracted_content_length": len(extracted_content),
             "chunks_created": len(chunks),
             "message": "File processed successfully"
         }

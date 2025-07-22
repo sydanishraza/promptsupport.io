@@ -310,6 +310,11 @@ async def get_chat_history(session_id: str):
             {"session_id": session_id}
         ).sort("timestamp", 1).to_list(length=50)
         
+        # Convert ObjectId to string for JSON serialization
+        for record in history:
+            if "_id" in record:
+                record["_id"] = str(record["_id"])
+        
         return history
     except Exception as e:
         return {"error": str(e)}

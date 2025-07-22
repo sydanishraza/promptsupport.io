@@ -177,7 +177,14 @@ const SystemsModule = ({ onNavigate }) => {
               <div className="flex items-center justify-between">
                 {system.status === 'active' ? (
                   <div className="flex items-center space-x-2">
-                    <button className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
+                    <button 
+                      onClick={() => {
+                        if (system.id === 'knowledge-base' && onNavigate) {
+                          onNavigate('knowledge-base-builder');
+                        }
+                      }}
+                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
+                    >
                       <Settings size={14} />
                       <span>Configure</span>
                     </button>

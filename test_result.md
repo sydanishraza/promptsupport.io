@@ -102,10 +102,14 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-## user_problem_statement: "Create a fully autonomous AI-native support platform (PromptSupport) that builds and runs a complete support stack using user's knowledge resources. Core flow: Document upload → AI processing → intelligent chat with semantic search"
+#====================================================================================================
+# Testing Data - Clean slate for fresh development
+#====================================================================================================
+
+## user_problem_statement: "Clean slate - ready for new dev plan and UI blueprint"
 
 ## backend:
-  - task: "LLM Integration Setup"
+  - task: "Clean Backend Setup"
     implemented: true
     working: true
     file: "backend/server.py"
@@ -115,119 +119,33 @@
     status_history:
         -working: true
         -agent: "main"
-        -comment: "Implemented MVP version using in-memory text store instead of full LLM integration due to dependency conflicts. Chat functionality working with keyword-based search."
-
-  - task: "Qdrant Vector Database Integration"
-    implemented: true
-    working: true 
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        -working: true
-        -agent: "main"
-        -comment: "Replaced Qdrant with simple in-memory text store for MVP. Keyword-based search implemented for semantic similarity."
-
-  - task: "Document Processing Pipeline"
-    implemented: true
-    working: true
-    file: "backend/server.py" 
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        -working: "NA"
-        -agent: "main"
-        -comment: "Created document upload, text chunking, and keyword extraction pipeline. Ready for testing."
-        -working: true
-        -agent: "testing"
-        -comment: "✅ TESTED: Document processing pipeline working correctly. Text documents are uploaded, processed, chunked, and stored successfully. Document status updates from 'processing' to 'completed'. Keyword extraction and text chunking functioning as expected."
-
-  - task: "AssemblyAI Integration"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-        -working: "NA"
-        -agent: "main"
-        -comment: "AssemblyAI transcription integration implemented for audio/video files. Ready for testing."
-        -working: true
-        -agent: "testing"
-        -comment: "✅ TESTED: AssemblyAI integration implemented correctly in code. Audio/video file upload endpoint accepts media files and processes them through AssemblyAI transcription pipeline. Error handling in place for transcription failures."
-
-  - task: "AI Chat API with RAG"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "high" 
-    needs_retesting: false
-    status_history:
-        -working: "NA"
-        -agent: "main"
-        -comment: "Chat API implemented with document search and context retrieval. MVP version returns search results with relevant document chunks."
-        -working: true
-        -agent: "testing"
-        -comment: "✅ TESTED: Chat API with RAG working correctly. Keyword-based search finds relevant document chunks and returns contextual responses. Chat history storage and retrieval working. Session-based conversations implemented. Fixed ObjectId serialization issue in chat history endpoint."
+        -comment: "Backend cleaned and reset to minimal FastAPI setup with health endpoints"
 
 ## frontend:
-  - task: "Document Upload Interface"
-    implemented: false
-    working: "NA"
+  - task: "Clean Frontend Setup"
+    implemented: true
+    working: true
     file: "frontend/src/App.js"
     stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
-        -working: "NA"
+        -working: true
         -agent: "main"
-        -comment: "Building file upload component with support for text, audio, and video files"
-
-  - task: "AI Chat Interface" 
-    implemented: false
-    working: "NA"
-    file: "frontend/src/App.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        -working: "NA"
-        -agent: "main"
-        -comment: "Creating chat interface with session management and response display"
-
-  - task: "Onboarding Wizard"
-    implemented: false
-    working: "NA"
-    file: "frontend/src/App.js"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-        -working: "NA"
-        -agent: "main"
-        -comment: "Building guided onboarding flow for document upload and setup"
+        -comment: "Frontend reset to clean React component showing ready status"
 
 ## metadata:
   created_by: "main_agent"
-  version: "1.0"
+  version: "2.0"
   test_sequence: 0
   run_ui: false
 
 ## test_plan:
-  current_focus:
-    - "LLM Integration Setup"
-    - "Document Processing Pipeline" 
-    - "AI Chat API with RAG"
+  current_focus: []
   stuck_tasks: []
   test_all: false
-  test_priority: "high_first"
+  test_priority: "fresh_start"
 
 ## agent_communication:
     -agent: "main"
-    -message: "Completed MVP backend implementation. All core endpoints implemented: /api/health, /api/upload, /api/chat, /api/documents, /api/chat/history/{session_id}. Document processing with text chunking and keyword extraction working. Chat API returns search results based on uploaded documents. Ready for comprehensive testing."
-    -agent: "testing"
-    -message: "✅ BACKEND TESTING COMPLETE: All backend APIs tested successfully. Created comprehensive backend_test.py covering all endpoints. Fixed minor ObjectId serialization issue in chat history endpoint. All core functionality working: health check, document upload/processing, document listing, chat with RAG, chat history retrieval, and error handling. Document processing pipeline processes text files correctly with chunking and keyword extraction. Chat search works with keyword-based matching. Ready for frontend integration."
+    -message: "Complete cleanup performed. All previous PromptSupport code removed. Backend running minimal FastAPI. Frontend showing clean slate message. Database reset. Ready for new development plan and UI blueprint."

@@ -16,7 +16,10 @@ import {
   BookText,
   Bot,
   Users,
-  Ticket
+  Ticket,
+  Upload,
+  MessageSquare,
+  Clock
 } from 'lucide-react';
 
 const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {

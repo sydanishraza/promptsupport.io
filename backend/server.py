@@ -2,22 +2,21 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime
 import asyncio
 import tempfile
 import aiofiles
+import json
 
 # MongoDB
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import MongoClient
 import pymongo
 
-# Vector embeddings and search  
-from qdrant_client import QdrantClient
-from qdrant_client.http import models
-import openai
+# Vector embeddings and search - Simple in-memory implementation for MVP
+import numpy as np
 from sentence_transformers import SentenceTransformer
 
 # LLM Chat Integration
@@ -46,35 +45,14 @@ MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/')
 client = AsyncIOMotorClient(MONGO_URL)
 db = client.promptsupport
 
-# OpenAI for embeddings
-openai.api_key = os.getenv("OPENAI_API_KEY", "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")
-
-# Qdrant Vector DB
-qdrant_client = QdrantClient(
-    host="localhost",
-    port=6333,
-    timeout=60
-)
-
-try:
-    # Try cloud connection if API key is provided
-    if os.getenv("QDRANT_API_KEY"):
-        qdrant_client = QdrantClient(
-            url="https://localhost:6333",  # This will be replaced with actual cloud URL when provided
-            api_key=os.getenv("QDRANT_API_KEY"),
-            timeout=60
-        )
-except Exception as e:
-    print(f"Failed to connect to Qdrant cloud, using local: {e}")
-    qdrant_client = QdrantClient(host="localhost", port=6333, timeout=60)
+# Simple in-memory vector store for MVP
+vector_store: Dict[str, Dict[str, Any]] = {}
 
 # AssemblyAI
 aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY", "be9ebbc1c2fb4b9e9a011549ec0e75a0")
 
 # Embedding model for local processing
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-COLLECTION_NAME = "document_embeddings"
 
 # Pydantic models
 class ChatMessage(BaseModel):
@@ -92,27 +70,6 @@ class DocumentInfo(BaseModel):
     type: str
     status: str
     processed_at: Optional[datetime]
-
-# Initialize Qdrant collection if it doesn't exist
-async def init_qdrant():
-    try:
-        collections = qdrant_client.get_collections()
-        collection_names = [c.name for c in collections.collections]
-        
-        if COLLECTION_NAME not in collection_names:
-            qdrant_client.create_collection(
-                collection_name=COLLECTION_NAME,
-                vectors_config=models.VectorParams(
-                    size=384,  # all-MiniLM-L6-v2 embedding size
-                    distance=models.Distance.COSINE
-                )
-            )
-    except Exception as e:
-        print(f"Qdrant initialization error: {e}")
-
-@app.on_event("startup")
-async def startup_event():
-    await init_qdrant()
 
 # API Routes
 
@@ -174,27 +131,18 @@ async def process_text_document(doc_id: str, text_content: str, filename: str):
         # Generate embeddings for each chunk
         embeddings = embedding_model.encode(chunks)
         
-        # Store in Qdrant
-        points = []
+        # Store in simple in-memory vector store
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             point_id = f"{doc_id}_{i}"
-            points.append(
-                models.PointStruct(
-                    id=point_id,
-                    vector=embedding.tolist(),
-                    payload={
-                        "document_id": doc_id,
-                        "chunk_index": i,
-                        "text": chunk,
-                        "filename": filename
-                    }
-                )
-            )
-        
-        qdrant_client.upsert(
-            collection_name=COLLECTION_NAME,
-            points=points
-        )
+            vector_store[point_id] = {
+                "vector": embedding,
+                "payload": {
+                    "document_id": doc_id,
+                    "chunk_index": i,
+                    "text": chunk,
+                    "filename": filename
+                }
+            }
         
         # Update document status
         await db.documents.update_one(
@@ -261,6 +209,27 @@ def split_text_into_chunks(text: str, chunk_size: int = 1000, overlap: int = 100
         
     return chunks
 
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    """Calculate cosine similarity between two vectors"""
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+def search_similar_chunks(query_embedding: np.ndarray, limit: int = 5, score_threshold: float = 0.7):
+    """Search for similar chunks in the vector store"""
+    results = []
+    
+    for point_id, data in vector_store.items():
+        similarity = cosine_similarity(query_embedding, data["vector"])
+        if similarity >= score_threshold:
+            results.append({
+                "id": point_id,
+                "score": similarity,
+                "payload": data["payload"]
+            })
+    
+    # Sort by similarity score (descending) and limit results
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results[:limit]
+
 @app.post("/api/chat")
 async def chat_with_documents(chat_request: ChatMessage):
     """Chat with AI using document context"""
@@ -269,22 +238,17 @@ async def chat_with_documents(chat_request: ChatMessage):
         user_query = chat_request.message
         
         # Generate embedding for user query
-        query_embedding = embedding_model.encode([user_query])
+        query_embedding = embedding_model.encode([user_query])[0]
         
-        # Search similar content in Qdrant
-        search_results = qdrant_client.search(
-            collection_name=COLLECTION_NAME,
-            query_vector=query_embedding[0].tolist(),
-            limit=5,
-            score_threshold=0.7
-        )
+        # Search similar content in vector store
+        search_results = search_similar_chunks(query_embedding, limit=5, score_threshold=0.7)
         
         # Extract context and sources
         context_chunks = []
         sources = []
         for result in search_results:
-            context_chunks.append(result.payload["text"])
-            sources.append(result.payload["filename"])
+            context_chunks.append(result["payload"]["text"])
+            sources.append(result["payload"]["filename"])
         
         # Create context for LLM
         context = "\n\n---\n\n".join(context_chunks)

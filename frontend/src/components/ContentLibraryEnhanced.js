@@ -33,13 +33,58 @@ const ContentLibraryEnhanced = () => {
   const [selectedContent, setSelectedContent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showNewArticleModal, setShowNewArticleModal] = useState(false);
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState([
+    { id: 'all', label: 'All Content', count: 0 },
+    { id: 'articles', label: 'Articles', count: 0 },
+    { id: 'assets', label: 'Assets', count: 0 },
+    { id: 'recordings', label: 'Recordings', count: 0 }
+  ]);
 
-  const filters = [
-    { id: 'all', label: 'All Content', count: 47 },
-    { id: 'articles', label: 'Articles', count: 23 },
-    { id: 'assets', label: 'Assets', count: 18 },
-    { id: 'recordings', label: 'Recordings', count: 6 }
-  ];
+  // Get backend URL from environment
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
+  // Fetch real articles from Content Library
+  useEffect(() => {
+    const fetchContentLibrary = async () => {
+      try {
+        setLoading(true);
+        
+        const response = await fetch(`${backendUrl}/api/content-library`);
+        if (response.ok) {
+          const data = await response.json();
+          const realArticles = data.articles || [];
+          setArticles(realArticles);
+          
+          // Update filters with real counts
+          const totalCount = realArticles.length;
+          const articlesCount = realArticles.filter(a => a.source_type === 'text_processing' || a.source_type === 'file_upload').length;
+          const assetsCount = realArticles.filter(a => a.source_type === 'recording_processing').length;
+          const recordingsCount = realArticles.filter(a => a.metadata?.recording_type).length;
+          
+          setFilters([
+            { id: 'all', label: 'All Content', count: totalCount },
+            { id: 'articles', label: 'Articles', count: articlesCount },
+            { id: 'assets', label: 'Assets', count: assetsCount },
+            { id: 'recordings', label: 'Recordings', count: recordingsCount }
+          ]);
+        } else {
+          console.error('Failed to fetch Content Library:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching Content Library:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContentLibrary();
+    
+    // Refresh every 10 seconds to catch new articles from Knowledge Engine
+    const interval = setInterval(fetchContentLibrary, 10000);
+    return () => clearInterval(interval);
+  }, [backendUrl]);
 
   const statusFilters = [
     { id: 'all', label: 'All Status' },

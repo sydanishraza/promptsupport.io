@@ -232,11 +232,140 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             chunks.append(chunk)
             await db.document_chunks.insert_one(chunk.dict())
         
+        # After processing chunks, create Content Library article
+        try:
+            await create_content_library_article_from_chunks(chunks, metadata)
+        except Exception as e:
+            print(f"Warning: Could not create Content Library article: {e}")
+        
         return chunks
         
     except Exception as e:
         print(f"Error processing text content: {e}")
         raise
+
+async def create_content_library_article_from_chunks(chunks: List[DocumentChunk], metadata: Dict[str, Any]):
+    """Create a structured article in Content Library from processed chunks"""
+    if not chunks:
+        return
+    
+    # Combine chunk content
+    full_content = "\n".join([chunk.content for chunk in chunks])
+    
+    # Generate title from content or metadata
+    title = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
+    if title.startswith('Website:'):
+        title = title.replace('Website: ', '')
+    
+    source_type = metadata.get('type', 'text_processing')
+    
+    # Use AI to create structured article
+    if OPENAI_API_KEY:
+        try:
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            prompt = f"""
+            Create a well-structured article from this content. Make it professional and informative.
+            
+            Content to process:
+            {full_content[:1500]}
+            
+            Please create a JSON response with:
+            - title: A clear, descriptive title
+            - summary: A 2-3 sentence summary of the main points
+            - content: Well-organized content with markdown formatting and headings
+            - tags: 3-5 relevant tags/categories
+            - takeaways: 3-5 key takeaways or important points
+            
+            Return only valid JSON.
+            """
+            
+            data = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are an expert content curator. Create structured, professional articles. Respond only with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 1500,
+                "temperature": 0.3
+            }
+            
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                
+                try:
+                    # Clean up AI response to extract JSON
+                    import re
+                    json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL)
+                    if json_match:
+                        article_data = json.loads(json_match.group(1))
+                    else:
+                        # Try to parse as direct JSON
+                        article_data = json.loads(ai_response)
+                    
+                    # Create article record
+                    article_record = {
+                        "id": str(uuid.uuid4()),
+                        "title": article_data.get("title", title),
+                        "content": article_data.get("content", full_content),
+                        "summary": article_data.get("summary", ""),
+                        "tags": article_data.get("tags", [source_type]),
+                        "takeaways": article_data.get("takeaways", []),
+                        "source_type": source_type,
+                        "status": "draft",
+                        "metadata": {
+                            **metadata,
+                            "ai_processed": True,
+                            "chunks_count": len(chunks)
+                        },
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                    
+                    # Store in Content Library
+                    await db.content_library.insert_one(article_record)
+                    print(f"✅ Created Content Library article: {article_record['title']}")
+                    return article_record
+                    
+                except json.JSONDecodeError as e:
+                    print(f"JSON parsing error: {e}, AI response: {ai_response[:200]}")
+                    # Fallback to basic article
+                    pass
+        except Exception as e:
+            print(f"AI article generation error: {e}")
+    
+    # Fallback: Create basic article without AI enhancement
+    article_record = {
+        "id": str(uuid.uuid4()),
+        "title": title,
+        "content": full_content,
+        "summary": f"Content processed from {source_type}",
+        "tags": [source_type],
+        "takeaways": [],
+        "source_type": source_type,
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "chunks_count": len(chunks)
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    await db.content_library.insert_one(article_record)
+    print(f"✅ Created basic Content Library article: {article_record['title']}")
+    return article_record
 
 # File upload endpoint
 @app.post("/api/content/upload")

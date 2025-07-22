@@ -93,6 +93,8 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
   const handleItemClick = (itemId) => {
     if (itemId === 'systems') {
       setSystemsExpanded(!systemsExpanded);
+    } else if (itemId === 'knowledge-engine') {
+      setKnowledgeEngineExpanded(!knowledgeEngineExpanded);
     } else if (itemId === 'knowledge-base') {
       setActiveRoute('knowledge-base-builder');
     } else {

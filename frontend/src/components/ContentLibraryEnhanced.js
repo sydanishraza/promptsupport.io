@@ -93,87 +93,45 @@ const ContentLibraryEnhanced = () => {
     { id: 'review', label: 'Under Review' }
   ];
 
-  const mockContent = [
+  // Transform real articles into display format
+  const contentItems = articles.map((article, index) => ({
+    id: article.id || index,
+    title: article.title || 'Untitled',
+    type: article.metadata?.recording_type ? 'video' : 'article',
+    status: article.status || 'draft',
+    source: article.source_type === 'file_upload' ? 'File Upload' : 
+            article.source_type === 'text_processing' ? 'Text Processing' :
+            article.source_type === 'url_processing' ? 'URL Processing' :
+            article.source_type === 'recording_processing' ? 'Recording' : 'AI Generated',
+    tags: Array.isArray(article.tags) ? article.tags : [],
+    wordCount: article.content ? article.content.length / 5 : 0, // Rough estimate
+    lastModified: article.updated_at || article.created_at,
+    author: 'Knowledge Engine',
+    views: Math.floor(Math.random() * 100), // Placeholder for now
+    preview: article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No preview available'),
+    content: article.content || '<p>Content not available</p>',
+    metadata: article.metadata
+  }));
+
+  // Add some default articles if no real articles exist (for demo purposes)
+  const defaultArticles = contentItems.length === 0 ? [
     {
-      id: 1,
-      title: 'Getting Started with PromptSupport',
+      id: 'default-1',
+      title: 'Welcome to PromptSupport',
       type: 'article',
       status: 'published',
-      source: 'AI Generated',
-      tags: ['onboarding', 'setup', 'guide'],
-      wordCount: 1250,
-      lastModified: '2024-01-15T10:30:00Z',
-      author: 'ContentAgent',
-      views: 89,
-      preview: 'Learn how to set up and configure PromptSupport for your organization...',
-      content: `
-        <h1>Getting Started with PromptSupport</h1>
-        <p>Welcome to PromptSupport, the first fully autonomous, AI-native support platform. This guide will walk you through the setup process and core features.</p>
-        <h2>Quick Setup</h2>
-        <p>Follow these steps to get started:</p>
-        <ol>
-          <li><strong>Organization Setup:</strong> Configure your organization name, logo, and subdomain</li>
-          <li><strong>Knowledge Upload:</strong> Add your documentation, videos, and other content</li>
-          <li><strong>Agent Configuration:</strong> Let our AI agents process and organize your content</li>
-        </ol>
-        <h2>Key Features</h2>
-        <ul>
-          <li>AI-powered content processing</li>
-          <li>Automated knowledge base generation</li>
-          <li>Intelligent chatbot training</li>
-          <li>Seamless integrations</li>
-        </ul>
-      `
-    },
-    {
-      id: 2,
-      title: 'API Authentication Guide',
-      type: 'article',
-      status: 'draft',
-      source: 'User Edited',
-      tags: ['api', 'authentication', 'security'],
-      wordCount: 850,
-      lastModified: '2024-01-14T16:45:00Z',
-      author: 'John Doe',
-      views: 12,
-      preview: 'Complete guide to implementing secure API authentication...',
-      content: `
-        <h1>API Authentication Guide</h1>
-        <p>This guide covers the authentication methods available in PromptSupport's API.</p>
-        <h2>API Keys</h2>
-        <p>Use API keys for server-to-server authentication:</p>
-        <pre><code>Authorization: Bearer your_api_key_here</code></pre>
-        <h2>OAuth 2.0</h2>
-        <p>For user-based authentication, implement OAuth 2.0 flow.</p>
-      `
-    },
-    {
-      id: 3,
-      title: 'Product Demo Video',
-      type: 'video',
-      status: 'published',
-      source: 'Uploaded',
-      tags: ['demo', 'product', 'walkthrough'],
-      duration: '5:42',
-      lastModified: '2024-01-13T09:15:00Z',
-      author: 'Marketing Team',
-      views: 156,
-      preview: 'Comprehensive product walkthrough and feature demonstration'
-    },
-    {
-      id: 4,
-      title: 'Architecture Overview Diagram',
-      type: 'image',
-      status: 'published',
-      source: 'Uploaded',
-      tags: ['architecture', 'technical', 'diagram'],
-      dimensions: '1920x1080',
-      lastModified: '2024-01-11T11:00:00Z',
-      author: 'Tech Team',
-      views: 34,
-      preview: 'System architecture overview and component relationships'
+      source: 'System',
+      tags: ['welcome', 'getting-started'],
+      wordCount: 250,
+      lastModified: new Date().toISOString(),
+      author: 'System',
+      views: 0,
+      preview: 'Welcome to PromptSupport! Start by uploading content to the Knowledge Engine.',
+      content: '<h1>Welcome to PromptSupport</h1><p>Upload content to the Knowledge Engine to create your first articles!</p>'
     }
-  ];
+  ] : [];
+
+  const displayItems = contentItems.length > 0 ? contentItems : defaultArticles;
 
   const [newArticle, setNewArticle] = useState({
     title: '',

@@ -13,7 +13,7 @@ import {
   Zap
 } from 'lucide-react';
 
-const SystemsModule = () => {
+const SystemsModule = ({ onNavigate }) => {
   const systems = [
     {
       id: 'knowledge-base',

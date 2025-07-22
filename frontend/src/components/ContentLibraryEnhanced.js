@@ -155,8 +155,12 @@ const ContentLibraryEnhanced = () => {
     switch (source) {
       case 'AI Generated': return 'bg-blue-100 text-blue-700';
       case 'User Edited': case 'User Created': return 'bg-green-100 text-green-700';
-      case 'Uploaded': return 'bg-purple-100 text-purple-700';
+      case 'File Upload': return 'bg-purple-100 text-purple-700';
+      case 'Text Processing': return 'bg-indigo-100 text-indigo-700';
+      case 'URL Processing': return 'bg-cyan-100 text-cyan-700';
       case 'Recording': return 'bg-orange-100 text-orange-700';
+      case 'System': return 'bg-gray-100 text-gray-700';
+      case 'Uploaded': return 'bg-purple-100 text-purple-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };

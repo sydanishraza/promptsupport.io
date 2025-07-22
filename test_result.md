@@ -151,15 +151,15 @@
   
   - task: "MainLayout Routing"
     implemented: true
-    working: false
+    working: true
     file: "frontend/src/components/MainLayout.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
-        -working: false
+        -working: true
         -agent: "main"
-        -comment: "Navigation from sidebar Knowledge Base link not properly triggering knowledge-base-builder route"
+        -comment: "Knowledge Base Builder navigation working perfectly from sidebar and Systems module"
 
 ## metadata:
   created_by: "main_agent"

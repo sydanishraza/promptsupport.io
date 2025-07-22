@@ -51,10 +51,22 @@ openai.api_key = os.getenv("OPENAI_API_KEY", "sk-proj-19ZO-PS1IquHrTc0TtNYqT-vuD
 
 # Qdrant Vector DB
 qdrant_client = QdrantClient(
-    url="https://your-cluster-url.qdrant.io:6333",
-    api_key=os.getenv("QDRANT_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.j1RE8omgmARFy5kJ0Xa3yljcgPwC9YofIpGVYSZ2aJc"),
+    host="localhost",
+    port=6333,
     timeout=60
 )
+
+try:
+    # Try cloud connection if API key is provided
+    if os.getenv("QDRANT_API_KEY"):
+        qdrant_client = QdrantClient(
+            url="https://localhost:6333",  # This will be replaced with actual cloud URL when provided
+            api_key=os.getenv("QDRANT_API_KEY"),
+            timeout=60
+        )
+except Exception as e:
+    print(f"Failed to connect to Qdrant cloud, using local: {e}")
+    qdrant_client = QdrantClient(host="localhost", port=6333, timeout=60)
 
 # AssemblyAI
 aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY", "be9ebbc1c2fb4b9e9a011549ec0e75a0")

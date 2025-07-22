@@ -22,7 +22,9 @@ const MainLayout = () => {
       case 'content-library':
         return <ContentLibraryEnhanced />;
       case 'systems':
-        return <SystemsModule />;
+        return <SystemsModule onNavigate={setActiveRoute} />;
+      case 'knowledge-base-builder':
+        return <KnowledgeBaseBuilder />;
       case 'ai-agents':
         return <AIAgents />;
       case 'analytics':

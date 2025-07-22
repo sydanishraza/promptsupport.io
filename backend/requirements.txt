@@ -11,10 +11,10 @@ emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/sim
 qdrant-client==1.7.0
 python-jose[cryptography]==3.3.0
 assemblyai==0.17.0
-openai==1.6.1
+openai==1.12.0
 anthropic==0.8.1
 sentence-transformers==2.2.2
 requests==2.31.0
-aiofiles==23.2.0
+aiofiles==23.1.0
 pillow==10.1.0
 python-magic==0.4.27

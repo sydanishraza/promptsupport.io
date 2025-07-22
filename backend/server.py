@@ -23,14 +23,55 @@ import aiofiles
 from dotenv import load_dotenv
 
 # AI Integration imports
-from emergentintegrations.llm.chat import LlmChat, UserMessage
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, VectorParams
-from jose import jwt, JWTError
-import assemblyai as aai
-from sentence_transformers import SentenceTransformer
-import magic
-from PIL import Image
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    EMERGENT_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ emergentintegrations not available: {e}")
+    EMERGENT_AVAILABLE = False
+
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import PointStruct, VectorParams
+    QDRANT_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Qdrant client not available: {e}")
+    QDRANT_AVAILABLE = False
+
+try:
+    from jose import jwt, JWTError
+    JWT_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ JWT not available: {e}")
+    JWT_AVAILABLE = False
+
+try:
+    import assemblyai as aai
+    ASSEMBLYAI_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ AssemblyAI not available: {e}")
+    ASSEMBLYAI_AVAILABLE = False
+
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Sentence Transformers not available: {e}")
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ python-magic not available: {e}")
+    MAGIC_AVAILABLE = False
+
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ PIL not available: {e}")
+    PIL_AVAILABLE = False
 
 # Load environment variables
 load_dotenv()

@@ -155,28 +155,35 @@ async def startup_event():
         raise
     
     # Initialize Qdrant (will create client even if server not running for now)
-    try:
-        qdrant_client = QdrantClient(
-            host=QDRANT_HOST,
-            port=QDRANT_PORT,
-            api_key=QDRANT_API_KEY if QDRANT_API_KEY else None
-        )
-        print("✅ Qdrant client initialized")
-    except Exception as e:
-        print(f"⚠️ Qdrant client initialization warning: {e}")
+    if QDRANT_AVAILABLE:
+        try:
+            qdrant_client = QdrantClient(
+                host=QDRANT_HOST,
+                port=QDRANT_PORT,
+                api_key=QDRANT_API_KEY if QDRANT_API_KEY else None
+            )
+            print("✅ Qdrant client initialized")
+        except Exception as e:
+            print(f"⚠️ Qdrant client initialization warning: {e}")
+    else:
+        print("⚠️ Qdrant not available - skipping vector database features")
     
     # Initialize embedding model
-    try:
-        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        print("✅ Sentence transformer model loaded")
-    except Exception as e:
-        print(f"❌ Failed to load embedding model: {e}")
-        raise
+    if SENTENCE_TRANSFORMERS_AVAILABLE:
+        try:
+            embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+            print("✅ Sentence transformer model loaded")
+        except Exception as e:
+            print(f"⚠️ Failed to load embedding model: {e}")
+    else:
+        print("⚠️ Sentence Transformers not available - semantic search disabled")
     
     # Configure AssemblyAI
-    if ASSEMBLYAI_API_KEY:
+    if ASSEMBLYAI_API_KEY and ASSEMBLYAI_AVAILABLE:
         aai.settings.api_key = ASSEMBLYAI_API_KEY
         print("✅ AssemblyAI configured")
+    else:
+        print("⚠️ AssemblyAI not configured or not available")
     
     print("🎉 Enhanced Content Engine started successfully!")
 

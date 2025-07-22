@@ -11,3 +11,9 @@ sentence-transformers==2.2.2
 assemblyai==0.21.0
 emergentintegrations==0.1.0
 pydantic==2.5.0
+requests==2.32.3
+beautifulsoup4==4.12.2
+html5lib==1.1
+lxml==4.9.3
+youtube-dl==2021.12.17
+yt-dlp==2023.10.13

@@ -247,18 +247,25 @@ const ContentLibraryEnhanced = () => {
               />
             </div>
             
-            <TiptapEditor
-              content={selectedContent.content}
-              onChange={(content) => {
-                setSelectedContent(prev => ({...prev, content}));
-              }}
-              onSave={() => {
-                console.log('Saving content:', selectedContent);
-                setIsEditing(false);
-              }}
-              isReadOnly={!isEditing}
-              height="600px"
-            />
+            {/* Temporary placeholder for TiptapEditor */}
+            <div className="border border-gray-300 rounded-lg p-4 bg-gray-50 min-h-[600px]">
+              <div className="text-gray-500 text-center">
+                <p className="text-lg mb-2">Rich Text Editor</p>
+                <p className="text-sm">TiptapEditor temporarily disabled</p>
+                {isEditing ? (
+                  <textarea 
+                    className="w-full h-96 p-4 mt-4 border rounded"
+                    value={selectedContent.content || ''}
+                    onChange={(e) => setSelectedContent(prev => ({...prev, content: e.target.value}))}
+                    placeholder="Edit content here..."
+                  />
+                ) : (
+                  <div className="mt-4 p-4 bg-white rounded border text-left">
+                    {selectedContent.content || 'No content available'}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Sidebar */}

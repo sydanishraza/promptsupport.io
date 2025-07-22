@@ -8,13 +8,15 @@ function App() {
   const [showSetupWizard, setShowSetupWizard] = useState(false); // Disabled for testing
 
   useEffect(() => {
-    // Check if setup has been completed
-    const setupCompleted = localStorage.getItem('promptsupport_setup_completed');
-    if (!setupCompleted) {
-      setShowSetupWizard(true);
-    } else {
-      setIsFirstLogin(false);
-    }
+    // Check if setup has been completed - TEMPORARILY DISABLED FOR TESTING
+    // const setupCompleted = localStorage.getItem('promptsupport_setup_completed');
+    // if (!setupCompleted) {
+    //   setShowSetupWizard(true);
+    // } else {
+    //   setIsFirstLogin(false);
+    // }
+    setShowSetupWizard(false); // Force wizard off for testing
+    setIsFirstLogin(false);
   }, []);
 
   const handleSetupComplete = () => {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Dashboard from './Dashboard';
 import KnowledgeEngine from './KnowledgeEngine';
-import ContentLibrary from './ContentLibrary';
+import ContentLibraryEnhanced from './ContentLibraryEnhanced';
 import SystemsModule from './SystemsModule';
 import AIAgents from './AIAgents';
 import Analytics from './Analytics';

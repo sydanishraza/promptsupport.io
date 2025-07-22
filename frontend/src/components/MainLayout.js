@@ -19,6 +19,14 @@ const MainLayout = () => {
         return <Dashboard />;
       case 'knowledge-engine':
         return <KnowledgeEngine />;
+      case 'content-upload':
+        return <KnowledgeEngine activeModule="upload" />;
+      case 'uploaded-content':
+        return <KnowledgeEngine activeModule="content" />;
+      case 'chat-with-engine':
+        return <KnowledgeEngine activeModule="chat" />;
+      case 'processing-jobs':
+        return <KnowledgeEngine activeModule="jobs" />;
       case 'content-library':
         return <ContentLibraryEnhanced />;
       case 'systems':

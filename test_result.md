@@ -101,3 +101,122 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: "Create a fully autonomous AI-native support platform (PromptSupport) that builds and runs a complete support stack using user's knowledge resources. Core flow: Document upload → AI processing → intelligent chat with semantic search"
+
+## backend:
+  - task: "LLM Integration Setup"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Setting up emergentintegrations library for OpenAI GPT-4o and Anthropic Claude integration"
+
+  - task: "Qdrant Vector Database Integration"
+    implemented: false
+    working: "NA" 
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Setting up Qdrant for semantic search and document embeddings storage"
+
+  - task: "Document Processing Pipeline"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py" 
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Creating endpoints for document upload, processing, and embedding generation"
+
+  - task: "AssemblyAI Integration"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Setting up video/audio transcription processing"
+
+  - task: "AI Chat API with RAG"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high" 
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Creating chat endpoint with semantic search and LLM integration"
+
+## frontend:
+  - task: "Document Upload Interface"
+    implemented: false
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Building file upload component with support for text, audio, and video files"
+
+  - task: "AI Chat Interface" 
+    implemented: false
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Creating chat interface with session management and response display"
+
+  - task: "Onboarding Wizard"
+    implemented: false
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Building guided onboarding flow for document upload and setup"
+
+## metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: false
+
+## test_plan:
+  current_focus:
+    - "LLM Integration Setup"
+    - "Document Processing Pipeline" 
+    - "AI Chat API with RAG"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+## agent_communication:
+    -agent: "main"
+    -message: "Starting PromptSupport MVP development. Will implement core document upload → AI processing → chat flow first. Have all API keys: OpenAI, Anthropic, Qdrant, AssemblyAI. Using emergentintegrations library for LLM integration."

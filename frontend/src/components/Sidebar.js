@@ -37,7 +37,16 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       id: 'knowledge-engine',
       label: 'Knowledge Engine',
       icon: Brain,
-      description: 'Entry point for content ingestion and orchestration'
+      description: 'AI-powered content processing, search, and intelligent chat',
+      expandable: true,
+      expanded: knowledgeEngineExpanded,
+      setExpanded: setKnowledgeEngineExpanded,
+      subitems: [
+        { id: 'content-upload', label: 'Content Upload', icon: Upload },
+        { id: 'uploaded-content', label: 'Uploaded Content', icon: Database },
+        { id: 'chat-with-engine', label: 'Chat with Engine', icon: MessageSquare },
+        { id: 'processing-jobs', label: 'Processing Jobs', icon: Clock }
+      ]
     },
     {
       id: 'content-library',

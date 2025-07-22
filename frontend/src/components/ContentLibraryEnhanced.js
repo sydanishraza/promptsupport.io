@@ -170,7 +170,7 @@ const ContentLibraryEnhanced = () => {
     }
   };
 
-  const filteredContent = mockContent.filter(item => {
+  const filteredContent = displayItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesFilter = selectedFilter === 'all' || 

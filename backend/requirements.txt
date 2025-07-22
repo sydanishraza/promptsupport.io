@@ -18,3 +18,9 @@ requests==2.31.0
 aiofiles==23.1.0
 pillow==10.1.0
 python-magic==0.4.27
+
+# Content extraction libraries
+PyPDF2==3.0.1
+python-docx==1.1.0
+beautifulsoup4==4.12.2
+lxml==4.9.3

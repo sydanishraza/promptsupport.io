@@ -105,8 +105,8 @@ app.add_middleware(
 # Global clients
 mongo_client: motor.motor_asyncio.AsyncIOMotorClient = None
 db: motor.motor_asyncio.AsyncIOMotorDatabase = None
-qdrant_client: QdrantClient = None
-embedding_model: SentenceTransformer = None
+qdrant_client = None
+embedding_model = None
 
 # Pydantic Models
 class DocumentChunk(BaseModel):

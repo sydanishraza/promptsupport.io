@@ -267,59 +267,79 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
                 "Content-Type": "application/json"
             }
             
+            # Enhanced prompt for better article generation
             prompt = f"""
-            Create a well-structured article from this content. Make it professional and informative.
-            
-            Content to process:
-            {full_content[:1500]}
-            
-            Please create a JSON response with:
-            - title: A clear, descriptive title
-            - summary: A 2-3 sentence summary of the main points
-            - content: Well-organized content with markdown formatting and headings
-            - tags: 3-5 relevant tags/categories
-            - takeaways: 3-5 key takeaways or important points
-            
-            Return only valid JSON.
+            You are an expert content curator and technical writer. Create a comprehensive, well-structured article from the following content.
+
+            Original Content:
+            {full_content[:3000]}
+
+            Instructions:
+            1. Create a clear, descriptive title that captures the main topic
+            2. Write a compelling 2-3 sentence summary that highlights the key value
+            3. Structure the content with proper headings and organization
+            4. Use markdown formatting (## for headings, **bold**, etc.)
+            5. Extract 3-5 highly relevant tags/keywords
+            6. List 3-5 actionable key takeaways
+            7. Make the content informative and easy to read
+
+            Respond with valid JSON in this exact format:
+            {{
+                "title": "Clear, descriptive title here",
+                "summary": "Compelling 2-3 sentence summary of the content's main value and purpose",
+                "content": "# Main Title\\n\\n## Introduction\\n\\nWell-organized content here with proper markdown formatting...\\n\\n## Key Points\\n\\n- Point 1\\n- Point 2\\n\\n## Conclusion\\n\\nSummary and next steps...",
+                "tags": ["tag1", "tag2", "tag3", "tag4"],
+                "takeaways": ["First key takeaway", "Second key takeaway", "Third key takeaway"]
+            }}
             """
             
             data = {
                 "model": "gpt-4o",
                 "messages": [
-                    {"role": "system", "content": "You are an expert content curator. Create structured, professional articles. Respond only with valid JSON."},
+                    {"role": "system", "content": "You are an expert content curator and technical writer. Create professional, well-structured articles from raw content. Always respond with valid JSON only."},
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 1500,
-                "temperature": 0.3
+                "max_tokens": 2000,
+                "temperature": 0.2
             }
+            
+            print(f"🤖 Calling OpenAI GPT-4o for article generation...")
             
             response = requests.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=45
             )
             
             if response.status_code == 200:
                 result = response.json()
-                ai_response = result["choices"][0]["message"]["content"]
+                ai_response = result["choices"][0]["message"]["content"].strip()
+                
+                print(f"✅ OpenAI response received: {len(ai_response)} characters")
                 
                 try:
                     # Clean up AI response to extract JSON
                     import re
-                    json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL)
+                    
+                    # Remove any markdown code blocks
+                    json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
                     if json_match:
-                        article_data = json.loads(json_match.group(1))
+                        json_str = json_match.group(1)
                     else:
-                        # Try to parse as direct JSON
-                        article_data = json.loads(ai_response)
+                        json_str = ai_response
+                    
+                    # Parse JSON
+                    article_data = json.loads(json_str)
+                    
+                    print(f"✅ Parsed article data: title='{article_data.get('title', 'N/A')}', tags={article_data.get('tags', [])}")
                     
                     # Create article record
                     article_record = {
                         "id": str(uuid.uuid4()),
-                        "title": article_data.get("title", title),
+                        "title": article_data.get("title", title or "Processed Content"),
                         "content": article_data.get("content", full_content),
-                        "summary": article_data.get("summary", ""),
+                        "summary": article_data.get("summary", "Content processed by Knowledge Engine"),
                         "tags": article_data.get("tags", [source_type]),
                         "takeaways": article_data.get("takeaways", []),
                         "source_type": source_type,
@@ -327,7 +347,9 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
                         "metadata": {
                             **metadata,
                             "ai_processed": True,
-                            "chunks_count": len(chunks)
+                            "ai_model": "gpt-4o",
+                            "chunks_count": len(chunks),
+                            "processing_timestamp": datetime.utcnow().isoformat()
                         },
                         "created_at": datetime.utcnow(),
                         "updated_at": datetime.utcnow()
@@ -335,15 +357,20 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
                     
                     # Store in Content Library
                     await db.content_library.insert_one(article_record)
-                    print(f"✅ Created Content Library article: {article_record['title']}")
+                    print(f"✅ Created AI-enhanced Content Library article: '{article_record['title']}'")
                     return article_record
                     
                 except json.JSONDecodeError as e:
-                    print(f"JSON parsing error: {e}, AI response: {ai_response[:200]}")
+                    print(f"❌ JSON parsing error: {e}")
+                    print(f"Raw AI response: {ai_response[:500]}...")
                     # Fallback to basic article
                     pass
+            else:
+                print(f"❌ OpenAI API error: {response.status_code} - {response.text}")
         except Exception as e:
-            print(f"AI article generation error: {e}")
+            print(f"❌ AI article generation error: {e}")
+    else:
+        print("⚠️ OpenAI API key not available")
     
     # Fallback: Create basic article without AI enhancement
     article_record = {

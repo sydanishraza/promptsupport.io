@@ -21,57 +21,7 @@ import motor.motor_asyncio
 from pymongo import MongoClient
 import aiofiles
 from dotenv import load_dotenv
-
-# AI Integration imports
-try:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    EMERGENT_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ emergentintegrations not available: {e}")
-    EMERGENT_AVAILABLE = False
-
-try:
-    from qdrant_client import QdrantClient
-    from qdrant_client.models import PointStruct, VectorParams
-    QDRANT_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Qdrant client not available: {e}")
-    QDRANT_AVAILABLE = False
-
-try:
-    from jose import jwt, JWTError
-    JWT_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ JWT not available: {e}")
-    JWT_AVAILABLE = False
-
-try:
-    import assemblyai as aai
-    ASSEMBLYAI_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ AssemblyAI not available: {e}")
-    ASSEMBLYAI_AVAILABLE = False
-
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Sentence Transformers not available: {e}")
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
-
-try:
-    import magic
-    MAGIC_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ python-magic not available: {e}")
-    MAGIC_AVAILABLE = False
-
-try:
-    from PIL import Image
-    PIL_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ PIL not available: {e}")
-    PIL_AVAILABLE = False
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -103,17 +53,14 @@ app.add_middleware(
 )
 
 # Global clients
-mongo_client: motor.motor_asyncio.AsyncIOMotorClient = None
-db: motor.motor_asyncio.AsyncIOMotorDatabase = None
-qdrant_client = None
-embedding_model = None
+mongo_client = None
+db = None
 
 # Pydantic Models
 class DocumentChunk(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     content: str
     metadata: Dict[str, Any] = {}
-    embedding: Optional[List[float]] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ProcessingJob(BaseModel):
@@ -140,7 +87,7 @@ class SearchRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Initialize all services and connections"""
-    global mongo_client, db, qdrant_client, embedding_model
+    global mongo_client, db
     
     print("🚀 Starting PromptSupport Enhanced Content Engine...")
     
@@ -154,36 +101,15 @@ async def startup_event():
         print(f"❌ MongoDB connection failed: {e}")
         raise
     
-    # Initialize Qdrant (will create client even if server not running for now)
-    if QDRANT_AVAILABLE:
-        try:
-            qdrant_client = QdrantClient(
-                host=QDRANT_HOST,
-                port=QDRANT_PORT,
-                api_key=QDRANT_API_KEY if QDRANT_API_KEY else None
-            )
-            print("✅ Qdrant client initialized")
-        except Exception as e:
-            print(f"⚠️ Qdrant client initialization warning: {e}")
-    else:
-        print("⚠️ Qdrant not available - skipping vector database features")
-    
-    # Initialize embedding model
-    if SENTENCE_TRANSFORMERS_AVAILABLE:
-        try:
-            embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            print("✅ Sentence transformer model loaded")
-        except Exception as e:
-            print(f"⚠️ Failed to load embedding model: {e}")
-    else:
-        print("⚠️ Sentence Transformers not available - semantic search disabled")
-    
-    # Configure AssemblyAI
-    if ASSEMBLYAI_API_KEY and ASSEMBLYAI_AVAILABLE:
-        aai.settings.api_key = ASSEMBLYAI_API_KEY
-        print("✅ AssemblyAI configured")
-    else:
-        print("⚠️ AssemblyAI not configured or not available")
+    # Check API keys
+    if OPENAI_API_KEY:
+        print("✅ OpenAI API key configured")
+    if ANTHROPIC_API_KEY:
+        print("✅ Anthropic API key configured")
+    if ASSEMBLYAI_API_KEY:
+        print("✅ AssemblyAI API key configured")
+    if QDRANT_API_KEY:
+        print("✅ Qdrant API key configured")
     
     print("🎉 Enhanced Content Engine started successfully!")
 
@@ -196,9 +122,10 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "services": {
             "mongodb": "connected" if mongo_client else "disconnected",
-            "qdrant": "initialized" if qdrant_client else "not initialized",
-            "embedding_model": "loaded" if embedding_model else "not loaded",
-            "assemblyai": "configured" if ASSEMBLYAI_API_KEY else "not configured"
+            "openai": "configured" if OPENAI_API_KEY else "not configured",
+            "anthropic": "configured" if ANTHROPIC_API_KEY else "not configured",
+            "assemblyai": "configured" if ASSEMBLYAI_API_KEY else "not configured",
+            "qdrant": "configured" if QDRANT_API_KEY else "not configured"
         }
     }
 
@@ -217,7 +144,6 @@ async def get_status():
             "statistics": {
                 "total_documents": doc_count,
                 "processing_jobs": job_count,
-                "embedding_model": "all-MiniLM-L6-v2"
             },
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -262,14 +188,15 @@ async def process_content(request: ContentProcessRequest):
         
     except Exception as e:
         # Update job with error
-        await db.processing_jobs.update_one(
-            {"job_id": job.job_id},
-            {"$set": {"status": "failed", "error_message": str(e)}}
-        )
+        if 'job' in locals():
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {"status": "failed", "error_message": str(e)}}
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
-    """Process text content into chunks with embeddings"""
+    """Process text content into chunks"""
     try:
         # Simple chunking strategy (split by sentences, max 500 chars)
         sentences = content.split('.')
@@ -281,11 +208,9 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 # Create chunk
                 chunk_text = current_chunk.strip()
                 if chunk_text:
-                    embedding = embedding_model.encode(chunk_text).tolist()
                     chunk = DocumentChunk(
                         content=chunk_text,
-                        metadata=metadata,
-                        embedding=embedding
+                        metadata=metadata
                     )
                     chunks.append(chunk)
                     
@@ -299,11 +224,9 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         # Handle remaining content
         if current_chunk.strip():
             chunk_text = current_chunk.strip()
-            embedding = embedding_model.encode(chunk_text).tolist()
             chunk = DocumentChunk(
                 content=chunk_text,
-                metadata=metadata,
-                embedding=embedding
+                metadata=metadata
             )
             chunks.append(chunk)
             await db.document_chunks.insert_one(chunk.dict())
@@ -320,7 +243,7 @@ async def upload_file(
     file: UploadFile = File(...),
     metadata: str = Form("{}")
 ):
-    """Upload and process files (text, audio, video, images)"""
+    """Upload and process files"""
     try:
         # Parse metadata
         file_metadata = json.loads(metadata)
@@ -337,75 +260,31 @@ async def upload_file(
         # Read file content
         file_content = await file.read()
         
-        if MAGIC_AVAILABLE:
-            file_type = magic.from_buffer(file_content, mime=True)
-        else:
-            # Fallback to filename extension
-            file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
-            file_type_map = {
-                'txt': 'text/plain',
-                'pdf': 'application/pdf',
-                'mp3': 'audio/mpeg', 
-                'wav': 'audio/wav',
-                'mp4': 'video/mp4',
-                'jpg': 'image/jpeg',
-                'png': 'image/png'
-            }
-            file_type = file_type_map.get(file_extension, 'application/octet-stream')
-        
-        print(f"Processing file: {file.filename}, Type: {file_type}")
+        # Simple file type detection based on extension
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
         
         chunks = []
         
-        if file_type.startswith('text/'):
+        if file_extension in ['txt', 'md', 'csv']:
             # Process text file
-            text_content = file_content.decode('utf-8')
-            chunks = await process_text_content(text_content, file_metadata)
-            
-        elif file_type.startswith('audio/') or file_type.startswith('video/'):
-            # Process audio/video with AssemblyAI
-            if not ASSEMBLYAI_API_KEY or not ASSEMBLYAI_AVAILABLE:
-                raise HTTPException(status_code=400, detail="AssemblyAI not configured or available")
-            
-            # Save file temporarily
-            temp_filename = f"/tmp/{uuid.uuid4()}_{file.filename}"
-            async with aiofiles.open(temp_filename, "wb") as f:
-                await f.write(file_content)
-            
             try:
-                # Transcribe with AssemblyAI
-                transcriber = aai.Transcriber()
-                transcript = transcriber.transcribe(temp_filename)
+                text_content = file_content.decode('utf-8')
+                chunks = await process_text_content(text_content, file_metadata)
+            except UnicodeDecodeError:
+                raise HTTPException(status_code=400, detail="Cannot decode file as text")
                 
-                if transcript.status == aai.TranscriptStatus.error:
-                    raise Exception(f"Transcription failed: {transcript.error}")
-                
-                # Process transcribed text
-                file_metadata["transcription"] = True
-                file_metadata["original_type"] = file_type
-                chunks = await process_text_content(transcript.text, file_metadata)
-                
-            finally:
-                # Clean up temp file
-                import os
-                if os.path.exists(temp_filename):
-                    os.remove(temp_filename)
-                    
-        elif file_type.startswith('image/'):
-            # Process image (extract text if any, or just store metadata)
-            file_metadata["image_data"] = base64.b64encode(file_content).decode('utf-8')
-            file_metadata["original_type"] = file_type
+        else:
+            # For other file types, store as binary data
+            file_metadata["file_data"] = base64.b64encode(file_content).decode('utf-8')
+            file_metadata["file_type"] = file_extension
             
-            # Create a single chunk with image metadata
+            # Create a single chunk with file metadata
             chunk = DocumentChunk(
-                content=f"Image file: {file.filename}",
+                content=f"File: {file.filename} ({file_extension})",
                 metadata=file_metadata
             )
             chunks = [chunk]
             await db.document_chunks.insert_one(chunk.dict())
-            
-        else:
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_type}")
         
         # Update job
         job.chunks = chunks
@@ -420,7 +299,7 @@ async def upload_file(
         return {
             "job_id": job.job_id,
             "status": job.status,
-            "file_type": file_type,
+            "file_type": file_extension,
             "chunks_created": len(chunks),
             "message": "File processed successfully"
         }
@@ -434,22 +313,14 @@ async def upload_file(
             )
         raise HTTPException(status_code=500, detail=str(e))
 
-# Semantic search endpoint
+# Simple search endpoint
 @app.post("/api/search")
 async def search_content(request: SearchRequest):
-    """Perform semantic search across processed content"""
+    """Perform text search across processed content"""
     try:
-        if not embedding_model:
-            raise HTTPException(status_code=500, detail="Embedding model not available")
-        
-        # Generate query embedding
-        query_embedding = embedding_model.encode(request.query).tolist()
-        
-        # Search in MongoDB (simple implementation)
-        # In production, this would use Qdrant for vector similarity
         search_results = []
         
-        # For now, simple text search in chunks
+        # Simple text search in chunks
         async for chunk in db.document_chunks.find(
             {"content": {"$regex": request.query, "$options": "i"}}).limit(request.limit):
             search_results.append({
@@ -468,7 +339,7 @@ async def search_content(request: SearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# AI Chat endpoint
+# OpenAI Chat endpoint using direct API call
 @app.post("/api/chat")
 async def chat_with_ai(
     message: str = Form(...),
@@ -478,6 +349,9 @@ async def chat_with_ai(
 ):
     """Chat with AI using processed content as context"""
     try:
+        if not OPENAI_API_KEY and model_provider == "openai":
+            raise HTTPException(status_code=400, detail="OpenAI API key not configured")
+        
         # Get relevant chunks for context (simple implementation)
         context_chunks = []
         async for chunk in db.document_chunks.find(
@@ -494,33 +368,46 @@ Context:
 
 If the context doesn't contain relevant information, provide general assistance."""
 
-        # Initialize chat based on provider
-        if model_provider == "openai" and OPENAI_API_KEY and EMERGENT_AVAILABLE:
-            chat = LlmChat(
-                api_key=OPENAI_API_KEY,
-                session_id=session_id,
-                system_message=system_message
-            ).with_model("openai", model_name)
-            
-        elif model_provider == "anthropic" and ANTHROPIC_API_KEY and EMERGENT_AVAILABLE:
-            chat = LlmChat(
-                api_key=ANTHROPIC_API_KEY,
-                session_id=session_id,
-                system_message=system_message
-            ).with_model("anthropic", "claude-3-5-sonnet-20241022")
-            
-        else:
-            raise HTTPException(status_code=400, detail="AI provider not configured, not available, or emergentintegrations missing")
+        response_text = ""
         
-        # Send message
-        user_message = UserMessage(text=message)
-        response = await chat.send_message(user_message)
+        if model_provider == "openai" and OPENAI_API_KEY:
+            # Direct OpenAI API call
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": message}
+                ],
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                response_text = result["choices"][0]["message"]["content"]
+            else:
+                raise HTTPException(status_code=500, detail=f"OpenAI API error: {response.text}")
+                
+        else:
+            raise HTTPException(status_code=400, detail="AI provider not configured or invalid")
         
         # Store conversation in database
         conversation_record = {
             "session_id": session_id,
             "user_message": message,
-            "ai_response": response,
+            "ai_response": response_text,
             "model_provider": model_provider,
             "model_name": model_name,
             "context_used": len(context_chunks),
@@ -530,7 +417,7 @@ If the context doesn't contain relevant information, provide general assistance.
         await db.conversations.insert_one(conversation_record)
         
         return {
-            "response": response,
+            "response": response_text,
             "session_id": session_id,
             "context_chunks_used": len(context_chunks)
         }

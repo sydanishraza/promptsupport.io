@@ -202,73 +202,82 @@ class ContentEngine:
     
     async def enhance_content_with_ai(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Use GPT-4o to enhance content structure and extract insights"""
-        try:
-            if not self.openai_api_key or len(content.strip()) < 50:
-                return {
-                    "enhanced_content": content,
-                    "tags": [],
-                    "summary": metadata.get("description", ""),
-                    "key_points": []
-                }
-            
-            # Create AI chat for content enhancement
-            system_message = """You are a content analysis expert. Your job is to analyze and enhance content for a knowledge base.
-
-Given content, provide:
-1. A concise summary (2-3 sentences)
-2. 5-10 relevant tags/keywords
-3. Key points or takeaways (bullet format)
-4. Content category (documentation, tutorial, reference, etc.)
-
-Respond in valid JSON format:
-{
-  "summary": "Brief summary here",
-  "tags": ["tag1", "tag2", "tag3"],
-  "key_points": ["Point 1", "Point 2", "Point 3"],
-  "category": "category_name"
-}"""
-
-            chat = LlmChat(
-                api_key=self.openai_api_key,
-                session_id=f"content_analysis_{uuid.uuid4()}",
-                system_message=system_message
-            ).with_model("openai", "gpt-4o")
-            
-            # Truncate content if too long
-            analysis_content = content[:4000] if len(content) > 4000 else content
-            
-            user_message = UserMessage(
-                text=f"Please analyze this content:\n\nTitle: {metadata.get('title', 'Unknown')}\nContent:\n{analysis_content}"
-            )
-            
-            response = await chat.send_message(user_message)
-            
-            # Try to parse JSON response
-            try:
-                enhanced_data = json.loads(response)
-                return {
-                    "enhanced_content": content,
-                    "summary": enhanced_data.get("summary", ""),
-                    "tags": enhanced_data.get("tags", []),
-                    "key_points": enhanced_data.get("key_points", []),
-                    "category": enhanced_data.get("category", "general")
-                }
-            except json.JSONDecodeError:
-                # Fallback if JSON parsing fails
-                return {
-                    "enhanced_content": content,
-                    "tags": [],
-                    "summary": response[:200] + "..." if len(response) > 200 else response,
-                    "key_points": []
-                }
-                
-        except Exception as e:
-            return {
-                "enhanced_content": content,
-                "tags": [],
-                "summary": f"AI enhancement failed: {str(e)}",
-                "key_points": []
-            }
+        # LLM integration temporarily disabled
+        return {
+            "enhanced_content": content,
+            "tags": [],
+            "summary": metadata.get("description", "AI enhancement temporarily disabled"),
+            "key_points": []
+        }
+        
+        # TODO: Re-enable when LLM integration is available
+        # try:
+        #     if not self.openai_api_key or len(content.strip()) < 50:
+        #         return {
+        #             "enhanced_content": content,
+        #             "tags": [],
+        #             "summary": metadata.get("description", ""),
+        #             "key_points": []
+        #         }
+        #     
+        #     # Create AI chat for content enhancement
+        #     system_message = """You are a content analysis expert. Your job is to analyze and enhance content for a knowledge base.
+        # 
+        # Given content, provide:
+        # 1. A concise summary (2-3 sentences)
+        # 2. 5-10 relevant tags/keywords
+        # 3. Key points or takeaways (bullet format)
+        # 4. Content category (documentation, tutorial, reference, etc.)
+        # 
+        # Respond in valid JSON format:
+        # {
+        #   "summary": "Brief summary here",
+        #   "tags": ["tag1", "tag2", "tag3"],
+        #   "key_points": ["Point 1", "Point 2", "Point 3"],
+        #   "category": "category_name"
+        # }"""
+        # 
+        #     chat = LlmChat(
+        #         api_key=self.openai_api_key,
+        #         session_id=f"content_analysis_{uuid.uuid4()}",
+        #         system_message=system_message
+        #     ).with_model("openai", "gpt-4o")
+        #     
+        #     # Truncate content if too long
+        #     analysis_content = content[:4000] if len(content) > 4000 else content
+        #     
+        #     user_message = UserMessage(
+        #         text=f"Please analyze this content:\n\nTitle: {metadata.get('title', 'Unknown')}\nContent:\n{analysis_content}"
+        #     )
+        #     
+        #     response = await chat.send_message(user_message)
+        #     
+        #     # Try to parse JSON response
+        #     try:
+        #         enhanced_data = json.loads(response)
+        #         return {
+        #             "enhanced_content": content,
+        #             "summary": enhanced_data.get("summary", ""),
+        #             "tags": enhanced_data.get("tags", []),
+        #             "key_points": enhanced_data.get("key_points", []),
+        #             "category": enhanced_data.get("category", "general")
+        #         }
+        #     except json.JSONDecodeError:
+        #         # Fallback if JSON parsing fails
+        #         return {
+        #             "enhanced_content": content,
+        #             "tags": [],
+        #             "summary": response[:200] + "..." if len(response) > 200 else response,
+        #             "key_points": []
+        #         }
+        #         
+        # except Exception as e:
+        #     return {
+        #         "enhanced_content": content,
+        #         "tags": [],
+        #         "summary": f"AI enhancement failed: {str(e)}",
+        #         "key_points": []
+        #     }
     
     def create_content_chunks(self, content: str, chunk_size: int = 1000, overlap: int = 100) -> List[Dict[str, Any]]:
         """Enhanced content chunking with semantic awareness"""

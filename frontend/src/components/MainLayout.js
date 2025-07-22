@@ -20,7 +20,7 @@ const MainLayout = () => {
       case 'knowledge-engine':
         return <KnowledgeEngine />;
       case 'content-library':
-        return <ContentLibrary />;
+        return <ContentLibraryEnhanced />;
       case 'systems':
         return <SystemsModule />;
       case 'ai-agents':

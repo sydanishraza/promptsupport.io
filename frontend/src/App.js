@@ -4,8 +4,8 @@ import MainLayout from './components/MainLayout';
 import QuickSetupWizard from './components/QuickSetupWizard';
 
 function App() {
-  const [isFirstLogin, setIsFirstLogin] = useState(false); // Changed to false to show dashboard
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [isFirstLogin, setIsFirstLogin] = useState(false); // Changed to false to bypass wizard for testing
+  const [showSetupWizard, setShowSetupWizard] = useState(false); // Disabled for testing
 
   useEffect(() => {
     // Check if setup has been completed

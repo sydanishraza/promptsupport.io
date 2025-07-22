@@ -4,7 +4,7 @@ import MainLayout from './components/MainLayout';
 import QuickSetupWizard from './components/QuickSetupWizard';
 
 function App() {
-  const [isFirstLogin, setIsFirstLogin] = useState(true);
+  const [isFirstLogin, setIsFirstLogin] = useState(false); // Changed to false to show dashboard
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   useEffect(() => {

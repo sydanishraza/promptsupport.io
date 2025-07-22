@@ -364,8 +364,8 @@ async def upload_file(
             
         elif file_type.startswith('audio/') or file_type.startswith('video/'):
             # Process audio/video with AssemblyAI
-            if not ASSEMBLYAI_API_KEY:
-                raise HTTPException(status_code=400, detail="AssemblyAI not configured")
+            if not ASSEMBLYAI_API_KEY or not ASSEMBLYAI_AVAILABLE:
+                raise HTTPException(status_code=400, detail="AssemblyAI not configured or available")
             
             # Save file temporarily
             temp_filename = f"/tmp/{uuid.uuid4()}_{file.filename}"

@@ -189,9 +189,24 @@
     priority: "high"
     needs_retesting: false
     status_history:
-        -working: true
+        -working: false
         -agent: "testing"
         -comment: "Document listing endpoint (/api/documents) working perfectly. Successfully lists all processed documents with content previews, metadata, and creation timestamps. Document management system is fully operational."
+        -working: true
+        -agent: "testing"
+        -comment: "FIXED: Document listing endpoint was missing proper function definition. Fixed the missing @app.get decorator and function definition. Now working perfectly with 17 document chunks found. Document management system is fully operational."
+
+  - task: "Content Library Integration and Article Creation"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "testing"
+        -comment: "COMPREHENSIVE VERIFICATION COMPLETED: Content Library integration is working perfectly! Both text processing (/api/content/process) and file uploads (/api/content/upload) successfully create document chunks AND structured Content Library articles. Verified real-time creation: processed content increased document chunks from 16→17 and Content Library articles from 7→8. Articles have proper structure with titles, summaries, tags, metadata, and timestamps. The create_content_library_article_from_chunks function is working correctly. Numbers are NOT hardcoded - confirmed actual database operations. /api/content-library endpoint returns real articles with proper data structure."
 
   - task: "AI Chat Integration"
     implemented: true

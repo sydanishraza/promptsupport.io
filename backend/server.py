@@ -17,8 +17,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import MongoClient
 import pymongo
 
-# LLM Chat Integration
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+# LLM Chat Integration - Disabled for MVP
+# from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 # AssemblyAI
 import assemblyai as aai

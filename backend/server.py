@@ -336,7 +336,22 @@ async def upload_file(
         
         # Read file content
         file_content = await file.read()
-        file_type = magic.from_buffer(file_content, mime=True)
+        
+        if MAGIC_AVAILABLE:
+            file_type = magic.from_buffer(file_content, mime=True)
+        else:
+            # Fallback to filename extension
+            file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+            file_type_map = {
+                'txt': 'text/plain',
+                'pdf': 'application/pdf',
+                'mp3': 'audio/mpeg', 
+                'wav': 'audio/wav',
+                'mp4': 'video/mp4',
+                'jpg': 'image/jpeg',
+                'png': 'image/png'
+            }
+            file_type = file_type_map.get(file_extension, 'application/octet-stream')
         
         print(f"Processing file: {file.filename}, Type: {file_type}")
         

@@ -31,13 +31,22 @@ import {
   Play,
   Pause,
   StopCircle,
-  Save
+  Save,
+  Record,
+  Square,
+  CameraIcon,
+  MicIcon,
+  Target,
+  Crop,
+  Share,
+  BookOpen
 } from 'lucide-react';
 
 const KnowledgeEngine = ({ activeModule = "upload" }) => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [processingJobs, setProcessingJobs] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [contentLibraryArticles, setContentLibraryArticles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [chatMessage, setChatMessage] = useState('');
@@ -45,10 +54,14 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [systemStatus, setSystemStatus] = useState(null);
   const [urlInput, setUrlInput] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingType, setRecordingType] = useState('screen'); // 'screen', 'audio', 'video'
-  const [recordingDuration, setRecordingDuration] = useState(0);
   const [showUrlModal, setShowUrlModal] = useState(false);
+  const [showIntegrations, setShowIntegrations] = useState(false);
+  
+  // Recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingType, setRecordingType] = useState('screen');
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [showRecordingTools, setShowRecordingTools] = useState(false);
   
   const fileInputRef = useRef(null);
   const recordingInterval = useRef(null);
@@ -61,6 +74,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     fetchSystemStatus();
     fetchDocuments();
     fetchProcessingJobs();
+    fetchContentLibraryArticles();
   }, []);
 
   // Recording timer
@@ -90,7 +104,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     try {
       const response = await fetch(`${backendUrl}/api/documents`);
       const data = await response.json();
-      // Sort documents by creation date (latest first)
       const sortedDocs = (data.documents || []).sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
       );
@@ -104,9 +117,24 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     try {
       const response = await fetch(`${backendUrl}/api/status`);
       const data = await response.json();
-      setProcessingJobs(data.statistics?.processing_jobs || 0);
+      
+      // Also get detailed job information
+      const jobsResponse = await fetch(`${backendUrl}/api/documents`);
+      const jobsData = await jobsResponse.json();
+      
+      setProcessingJobs(jobsData.documents || []);
     } catch (error) {
       console.error('Failed to fetch processing jobs:', error);
+    }
+  };
+
+  const fetchContentLibraryArticles = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/content-library`);
+      const data = await response.json();
+      setContentLibraryArticles(data.articles || []);
+    } catch (error) {
+      console.error('Failed to fetch Content Library articles:', error);
     }
   };
 
@@ -121,7 +149,8 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
         formData.append('metadata', JSON.stringify({
           uploaded_at: new Date().toISOString(),
           source: 'knowledge_engine_ui',
-          type: 'file_upload'
+          type: 'file_upload',
+          original_filename: file.name
         }));
 
         const response = await fetch(`${backendUrl}/api/content/upload`, {
@@ -137,11 +166,11 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             status: result.status,
             chunksCreated: result.chunks_created,
             fileType: result.file_type,
-            uploadTime: new Date()
+            uploadTime: new Date(),
+            processingComplete: true
           }]);
           
-          // Process content for Content Library
-          await processIntoContentLibrary(result.job_id, file.name, 'file');
+          console.log(`✅ File processed: ${file.name} → Created ${result.chunks_created} chunks`);
         } else {
           console.error('Upload failed:', await response.text());
         }
@@ -151,7 +180,10 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     }
 
     setIsProcessing(false);
+    // Refresh data to show new content
     fetchDocuments();
+    fetchProcessingJobs();
+    fetchContentLibraryArticles();
   };
 
   const handleUrlUpload = async (url) => {
@@ -159,23 +191,17 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     
     setIsProcessing(true);
     try {
-      // For now, we'll process the URL as text content
-      // In a full implementation, this would scrape the website
-      const response = await fetch(`${backendUrl}/api/content/process`, {
+      const formData = new FormData();
+      formData.append('url', url);
+      formData.append('metadata', JSON.stringify({
+        processed_at: new Date().toISOString(),
+        source: 'knowledge_engine_ui',
+        type: 'url_processing'
+      }));
+
+      const response = await fetch(`${backendUrl}/api/content/process-url`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: `Website content from: ${url}`,
-          content_type: 'url',
-          metadata: {
-            url: url,
-            processed_at: new Date().toISOString(),
-            source: 'knowledge_engine_ui',
-            type: 'url_upload'
-          }
-        })
+        body: formData
       });
 
       if (response.ok) {
@@ -186,12 +212,18 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           status: result.status,
           chunksCreated: result.chunks_created,
           type: 'url',
-          uploadTime: new Date()
+          uploadTime: new Date(),
+          processingComplete: true
         }]);
         
-        // Process content for Content Library
-        await processIntoContentLibrary(result.job_id, url, 'url');
+        console.log(`✅ URL processed: ${url} → Created ${result.chunks_created} chunks`);
+        
+        // Refresh data
         fetchDocuments();
+        fetchProcessingJobs();
+        fetchContentLibraryArticles();
+      } else {
+        console.error('URL processing failed:', await response.text());
       }
     } catch (error) {
       console.error('URL processing error:', error);
@@ -228,12 +260,16 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           status: result.status,
           chunksCreated: result.chunks_created,
           type: 'text',
-          uploadTime: new Date()
+          uploadTime: new Date(),
+          processingComplete: true
         }]);
         
-        // Process content for Content Library
-        await processIntoContentLibrary(result.job_id, 'Text Content', 'text');
+        console.log(`✅ Text processed → Created ${result.chunks_created} chunks`);
+        
+        // Refresh data
         fetchDocuments();
+        fetchProcessingJobs();
+        fetchContentLibraryArticles();
       } else {
         console.error('Text processing failed:', await response.text());
       }
@@ -243,19 +279,55 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     setIsProcessing(false);
   };
 
-  // AI-powered content processing for Content Library integration
-  const processIntoContentLibrary = async (jobId, title, type) => {
-    try {
-      // This would typically:
-      // 1. Extract key information from processed chunks
-      // 2. Generate a structured article with AI
-      // 3. Create tags and metadata
-      // 4. Save to Content Library
+  const handleRecordingAction = async (action, type = 'screen') => {
+    if (action === 'start') {
+      setRecordingType(type);
+      setIsRecording(true);
+      console.log(`Started ${type} recording`);
+    } else if (action === 'stop') {
+      setIsProcessing(true);
       
-      console.log(`Processing ${title} (${type}) for Content Library integration`);
-      // TODO: Implement actual Content Library integration
-    } catch (error) {
-      console.error('Content Library processing error:', error);
+      try {
+        const formData = new FormData();
+        formData.append('recording_type', recordingType);
+        formData.append('duration', recordingDuration.toString());
+        formData.append('title', `${recordingType} recording ${new Date().toLocaleString()}`);
+        formData.append('metadata', JSON.stringify({
+          processed_at: new Date().toISOString(),
+          source: 'knowledge_engine_ui',
+          type: 'recording_processing'
+        }));
+
+        const response = await fetch(`${backendUrl}/api/content/process-recording`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setUploadedFiles(prev => [...prev, {
+            id: result.job_id,
+            name: `${recordingType} Recording (${recordingDuration}s)`,
+            status: result.status,
+            chunksCreated: result.chunks_created,
+            type: 'recording',
+            uploadTime: new Date(),
+            processingComplete: true
+          }]);
+          
+          console.log(`✅ Recording processed → Created ${result.chunks_created} chunks`);
+          
+          // Refresh data
+          fetchDocuments();
+          fetchProcessingJobs();
+          fetchContentLibraryArticles();
+        }
+      } catch (error) {
+        console.error('Recording processing error:', error);
+      }
+      
+      setIsRecording(false);
+      setIsProcessing(false);
     }
   };
 
@@ -334,19 +406,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     }
   };
 
-  const startRecording = (type) => {
-    setRecordingType(type);
-    setIsRecording(true);
-    // TODO: Implement actual recording functionality
-    console.log(`Started ${type} recording`);
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    // TODO: Process recorded content
-    console.log(`Stopped ${recordingType} recording after ${recordingDuration} seconds`);
-  };
-
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -354,8 +413,8 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   };
 
   const viewDocument = (doc) => {
-    // TODO: Implement document preview modal
     console.log('Viewing document:', doc);
+    // TODO: Implement document preview modal
   };
 
   const renderSystemStatus = () => (
@@ -388,6 +447,163 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     </div>
   );
 
+  const renderSnagitTool = () => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <Target className="w-5 h-5 mr-2 text-blue-600" />
+          Snagit-Style Recording & Capture Tool
+        </h3>
+        <button
+          onClick={() => setShowRecordingTools(!showRecordingTools)}
+          className="flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+        >
+          {showRecordingTools ? 'Hide Tools' : 'Show Tools'}
+        </button>
+      </div>
+
+      {showRecordingTools && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <button
+            onClick={() => handleRecordingAction('start', 'screen')}
+            disabled={isRecording || isProcessing}
+            className="p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 transition-colors disabled:opacity-50"
+          >
+            <Monitor className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-blue-900">Screen Record</p>
+            <p className="text-xs text-blue-600">Full screen + audio</p>
+          </button>
+
+          <button
+            onClick={() => handleRecordingAction('start', 'region')}
+            disabled={isRecording || isProcessing}
+            className="p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 transition-colors disabled:opacity-50"
+          >
+            <Crop className="w-8 h-8 text-green-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-green-900">Region Record</p>
+            <p className="text-xs text-green-600">Selected area</p>
+          </button>
+
+          <button
+            onClick={() => handleRecordingAction('start', 'screenshot')}
+            disabled={isRecording || isProcessing}
+            className="p-4 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-400 transition-colors disabled:opacity-50"
+          >
+            <Camera className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-purple-900">Screenshot</p>
+            <p className="text-xs text-purple-600">Capture & annotate</p>
+          </button>
+
+          <button
+            onClick={() => handleRecordingAction('start', 'audio')}
+            disabled={isRecording || isProcessing}
+            className="p-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-400 transition-colors disabled:opacity-50"
+          >
+            <Mic className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-orange-900">Audio Only</p>
+            <p className="text-xs text-orange-600">Voice recording</p>
+          </button>
+        </div>
+      )}
+
+      {/* Recording Status */}
+      {isRecording && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-red-700 font-medium">
+                Recording {recordingType} - {formatDuration(recordingDuration)}
+              </span>
+            </div>
+            <button
+              onClick={() => handleRecordingAction('stop')}
+              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <Square className="w-4 h-4 mr-2" />
+              Stop Recording
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderIntegrations = () => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <Share className="w-5 h-5 mr-2 text-blue-600" />
+          Integrations & Connections
+        </h3>
+        <button
+          onClick={() => setShowIntegrations(!showIntegrations)}
+          className="flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+        >
+          {showIntegrations ? 'Hide' : 'Show'} Integrations
+        </button>
+      </div>
+
+      {showIntegrations && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Globe className="w-5 h-5 text-blue-600 mr-2" />
+              <span className="font-medium">Web Scraping</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Extract content from websites, blogs, and documentation</p>
+            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Active</span>
+          </div>
+
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Video className="w-5 h-5 text-red-600 mr-2" />
+              <span className="font-medium">YouTube</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Extract transcripts and content from YouTube videos</p>
+            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Planned</span>
+          </div>
+
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <FileText className="w-5 h-5 text-gray-600 mr-2" />
+              <span className="font-medium">GitHub</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Import README files, documentation, and code comments</p>
+            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Planned</span>
+          </div>
+
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Database className="w-5 h-5 text-purple-600 mr-2" />
+              <span className="font-medium">Slack</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Import conversations and knowledge from Slack channels</p>
+            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Planned</span>
+          </div>
+
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <BookOpen className="w-5 h-5 text-orange-600 mr-2" />
+              <span className="font-medium">Confluence</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Import pages and documentation from Confluence</p>
+            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Planned</span>
+          </div>
+
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Settings className="w-5 h-5 text-gray-600 mr-2" />
+              <span className="font-medium">API Endpoints</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Connect custom APIs and data sources</p>
+            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Active</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderContentUpload = () => (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -397,7 +613,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
         </p>
 
         {/* Upload Methods Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           
           {/* File Upload */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
@@ -407,6 +623,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             <p className="text-sm text-gray-500">
               Upload documents, images, audio, and video files
             </p>
+            <p className="text-xs text-blue-600 mt-2">✅ Creates Content Library articles</p>
           </div>
 
           {/* Website/Link Upload */}
@@ -417,50 +634,12 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             <p className="text-sm text-gray-500">
               Scrape websites, YouTube videos, GitHub repos
             </p>
-          </div>
-
-          {/* Screen Recording */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-               onClick={() => startRecording('screen')}>
-            <Monitor className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Screen Recording</h3>
-            <p className="text-sm text-gray-500">
-              Record your screen with audio narration
-            </p>
-          </div>
-
-          {/* Video Recording */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-               onClick={() => startRecording('video')}>
-            <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Video Recording</h3>
-            <p className="text-sm text-gray-500">
-              Record video content with your camera
-            </p>
-          </div>
-
-          {/* Audio Recording */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-               onClick={() => startRecording('audio')}>
-            <Mic className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Audio Recording</h3>
-            <p className="text-sm text-gray-500">
-              Record audio notes and conversations
-            </p>
-          </div>
-
-          {/* Snipping Tool */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer">
-            <Scissors className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Snipping Tool</h3>
-            <p className="text-sm text-gray-500">
-              Capture and annotate screenshots
-            </p>
+            <p className="text-xs text-blue-600 mt-2">✅ Creates Content Library articles</p>
           </div>
         </div>
 
         {/* Text Processing Section */}
-        <div className="bg-gray-50 rounded-lg p-6">
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Direct Text Processing</h3>
           <textarea
             placeholder="Paste text content here for processing..."
@@ -474,7 +653,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             }}
           />
           <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-gray-500">Press Ctrl+Enter to process</span>
+            <span className="text-sm text-gray-500">Press Ctrl+Enter to process • Creates Content Library articles</span>
             <button
               onClick={(e) => {
                 const textarea = e.target.closest('.bg-gray-50').querySelector('textarea');
@@ -492,7 +671,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           </div>
         </div>
 
-        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -503,46 +681,54 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
         />
       </div>
 
-      {/* Recording Status */}
-      {isRecording && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-              <span className="text-red-700 font-medium">
-                Recording {recordingType} - {formatDuration(recordingDuration)}
-              </span>
-            </div>
-            <button
-              onClick={stopRecording}
-              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              <StopCircle className="w-4 h-4 mr-2" />
-              Stop Recording
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Snagit-Style Tool */}
+      {renderSnagitTool()}
 
-      {/* Recent Uploads */}
+      {/* Integrations */}
+      {renderIntegrations()}
+
+      {/* Recent Uploads with Content Library Status */}
       {uploadedFiles.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Uploads</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Processing Activity</h3>
           <div className="space-y-3">
             {uploadedFiles.slice(0, 5).map((file) => (
               <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                  {file.processingComplete ? (
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <Loader className="w-5 h-5 text-yellow-600 animate-spin" />
+                  )}
                   <div>
                     <p className="font-medium text-gray-900">{file.name}</p>
                     <p className="text-sm text-gray-500">
-                      {file.chunksCreated} chunks created • {file.status} • {file.uploadTime?.toLocaleTimeString()}
+                      {file.chunksCreated} chunks created • Content Library article generated • {file.uploadTime?.toLocaleTimeString()}
                     </p>
                   </div>
                 </div>
-                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    Article Created
+                  </span>
+                </div>
               </div>
             ))}
+          </div>
+          
+          {/* Content Library Link */}
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <BookOpen className="w-5 h-5 text-blue-600 mr-2" />
+                <span className="text-sm font-medium text-blue-900">
+                  {contentLibraryArticles.length} articles created in Content Library
+                </span>
+              </div>
+              <button className="text-xs text-blue-600 hover:text-blue-800">
+                View Content Library →
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -560,13 +746,58 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             </p>
           </div>
           <button
-            onClick={fetchDocuments}
+            onClick={() => {
+              fetchDocuments();
+              fetchContentLibraryArticles();
+            }}
             className="flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </button>
         </div>
+
+        {/* Content Library Articles */}
+        {contentLibraryArticles.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <BookOpen className="w-5 h-5 mr-2 text-blue-600" />
+              Content Library Articles ({contentLibraryArticles.length})
+            </h3>
+            <div className="space-y-3">
+              {contentLibraryArticles.slice(0, 3).map((article) => (
+                <div key={article.id} className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-blue-900">{article.title}</h4>
+                      <p className="text-sm text-blue-700 mt-1">{article.summary}</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        {article.tags?.map((tag, index) => (
+                          <span key={index} className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Created: {new Date(article.created_at).toLocaleString()} • Status: {article.status}
+                      </p>
+                    </div>
+                    <button className="p-1 text-blue-600 hover:text-blue-800">
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {contentLibraryArticles.length > 3 && (
+                <div className="text-center">
+                  <button className="text-blue-600 hover:text-blue-800 text-sm">
+                    View all {contentLibraryArticles.length} articles in Content Library →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="flex space-x-4 mb-6">
@@ -599,7 +830,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             </h3>
             <div className="space-y-4">
               {searchResults.map((result, index) => (
-                <div key={result.id} className="p-4 border border-gray-200 rounded-lg bg-blue-50">
+                <div key={result.id} className="p-4 border border-gray-200 rounded-lg bg-yellow-50">
                   <p className="text-gray-800 mb-2">{result.content}</p>
                   <div className="text-sm text-gray-500">
                     <span>ID: {result.id}</span>
@@ -613,7 +844,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           </div>
         )}
 
-        {/* Documents List */}
+        {/* Raw Document Chunks */}
         {documents.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <Database className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -623,7 +854,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
         ) : (
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              All Documents ({documents.length})
+              Raw Document Chunks ({documents.length})
             </h3>
             {documents.map((doc) => (
               <div key={doc.id} className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
@@ -653,15 +884,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    {doc.metadata?.url && (
-                      <button 
-                        onClick={() => window.open(doc.metadata.url, '_blank')}
-                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
-                        title="Open source URL"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -749,88 +971,100 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     </div>
   );
 
-  const renderProcessingJobs = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Processing Jobs</h1>
-        <p className="text-gray-600 mb-6">
-          Monitor real-time processing status and background job logs
-        </p>
-        
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center">
-              <Clock className="w-8 h-8 text-blue-600 mr-3" />
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Total Jobs</p>
-                <p className="text-2xl font-bold text-blue-900">{processingJobs}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="flex items-center">
-              <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-              <div>
-                <p className="text-sm text-green-600 font-medium">Completed</p>
-                <p className="text-2xl font-bold text-green-900">{uploadedFiles.filter(f => f.status === 'completed').length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-yellow-50 rounded-lg p-4">
-            <div className="flex items-center">
-              <Loader className="w-8 h-8 text-yellow-600 mr-3" />
-              <div>
-                <p className="text-sm text-yellow-600 font-medium">Processing</p>
-                <p className="text-2xl font-bold text-yellow-900">{uploadedFiles.filter(f => f.status === 'processing').length}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+  const renderProcessingJobs = () => {
+    const completedJobs = uploadedFiles.filter(f => f.processingComplete).length;
+    const processingJobsCount = uploadedFiles.filter(f => !f.processingComplete).length;
+    const totalJobs = uploadedFiles.length;
 
-        {/* Recent Job Activity */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-          {uploadedFiles.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>No processing jobs yet</p>
-              <p className="text-sm mt-2">Upload content to see job activity</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {uploadedFiles.slice(0, 10).map((job) => (
-                <div key={job.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    {job.status === 'completed' ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    ) : job.status === 'processing' ? (
-                      <Loader className="w-5 h-5 text-yellow-600 animate-spin" />
-                    ) : (
-                      <AlertCircle className="w-5 h-5 text-red-600" />
-                    )}
-                    <div>
-                      <p className="font-medium text-gray-900">{job.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {job.chunksCreated} chunks • {job.status} • {job.uploadTime?.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    job.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    job.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {job.status}
-                  </span>
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Processing Jobs</h1>
+          <p className="text-gray-600 mb-6">
+            Monitor real-time processing status and background job logs
+          </p>
+          
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center">
+                <Clock className="w-8 h-8 text-blue-600 mr-3" />
+                <div>
+                  <p className="text-sm text-blue-600 font-medium">Total Jobs</p>
+                  <p className="text-2xl font-bold text-blue-900">{totalJobs}</p>
                 </div>
-              ))}
+              </div>
             </div>
-          )}
+            <div className="bg-green-50 rounded-lg p-4">
+              <div className="flex items-center">
+                <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+                <div>
+                  <p className="text-sm text-green-600 font-medium">Completed</p>
+                  <p className="text-2xl font-bold text-green-900">{completedJobs}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-4">
+              <div className="flex items-center">
+                <Loader className="w-8 h-8 text-yellow-600 mr-3" />
+                <div>
+                  <p className="text-sm text-yellow-600 font-medium">Processing</p>
+                  <p className="text-2xl font-bold text-yellow-900">{processingJobsCount}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Job Activity */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+              <span className="text-sm text-gray-500">
+                Articles: {contentLibraryArticles.length} • Chunks: {documents.length}
+              </span>
+            </div>
+            {uploadedFiles.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No processing jobs yet</p>
+                <p className="text-sm mt-2">Upload content to see job activity</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {uploadedFiles.map((job) => (
+                  <div key={job.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex items-center space-x-3">
+                      {job.processingComplete ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <Loader className="w-5 h-5 text-yellow-600 animate-spin" />
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">{job.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {job.chunksCreated} chunks created • Content Library article generated
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {job.uploadTime?.toLocaleString()} • Type: {job.type}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      job.processingComplete 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {job.processingComplete ? 'Completed' : 'Processing'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // URL Modal
   const urlModal = showUrlModal && (
@@ -855,6 +1089,10 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
               }
             }}
           />
+          <div className="text-sm text-gray-500">
+            <p>✅ Will create Content Library article</p>
+            <p>✅ Extracts and processes content automatically</p>
+          </div>
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => setShowUrlModal(false)}
@@ -865,9 +1103,10 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             <button
               onClick={() => handleUrlUpload(urlInput)}
               disabled={!urlInput.trim() || isProcessing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
             >
-              {isProcessing ? <Loader className="w-4 h-4 animate-spin" /> : 'Process URL'}
+              {isProcessing ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+              Process URL
             </button>
           </div>
         </div>

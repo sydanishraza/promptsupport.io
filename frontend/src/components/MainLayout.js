@@ -14,6 +14,7 @@ import AdminConsole from './AdminConsole';
 const MainLayout = () => {
   const [activeRoute, setActiveRoute] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const renderMainContent = () => {
     switch (activeRoute) {

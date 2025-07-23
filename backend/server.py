@@ -698,30 +698,115 @@ async def upload_file(
         elif file_extension in ['doc', 'docx']:
             try:
                 import docx
+                from docx.document import Document as DocxDocument
+                from docx.oxml.text.paragraph import CT_P
+                from docx.oxml.table import CT_Tbl
+                from docx.text.paragraph import Paragraph
+                from docx.table import _Cell, Table
+                
                 doc_file = io.BytesIO(file_content)
                 doc = docx.Document(doc_file)
                 
-                # Extract paragraphs with formatting info
-                extracted_content = f"Document: {file.filename}\n\n"
-                for para in doc.paragraphs:
-                    if para.text.strip():
-                        # Check if paragraph might be a heading
-                        if para.style.name.startswith('Heading'):
-                            extracted_content += f"## {para.text}\n\n"
-                        else:
-                            extracted_content += f"{para.text}\n\n"
+                # Initialize comprehensive content extraction
+                extracted_content = f"# Document: {file.filename}\n\n"
                 
-                # Extract tables if present
-                if doc.tables:
-                    extracted_content += "\n=== TABLES ===\n"
-                    for i, table in enumerate(doc.tables):
-                        extracted_content += f"\nTable {i+1}:\n"
-                        for row in table.rows:
-                            row_data = [cell.text.strip() for cell in row.cells]
-                            extracted_content += " | ".join(row_data) + "\n"
-                        extracted_content += "\n"
+                # Extract document properties if available
+                if hasattr(doc.core_properties, 'title') and doc.core_properties.title:
+                    extracted_content += f"**Document Title:** {doc.core_properties.title}\n\n"
+                if hasattr(doc.core_properties, 'author') and doc.core_properties.author:
+                    extracted_content += f"**Author:** {doc.core_properties.author}\n\n"
+                if hasattr(doc.core_properties, 'subject') and doc.core_properties.subject:
+                    extracted_content += f"**Subject:** {doc.core_properties.subject}\n\n"
+                
+                # Process document elements in order
+                def iter_block_items(parent):
+                    """Generate a reference to each paragraph and table child within parent, in document order."""
+                    if isinstance(parent, DocxDocument):
+                        parent_elm = parent.element.body
+                    elif isinstance(parent, _Cell):
+                        parent_elm = parent._tc
+                    else:
+                        raise ValueError("Unknown parent type")
+                    
+                    for child in parent_elm:
+                        if isinstance(child, CT_P):
+                            yield Paragraph(child, parent)
+                        elif isinstance(child, CT_Tbl):
+                            yield Table(child, parent)
+                
+                table_count = 0
+                image_count = 0
+                
+                for block in iter_block_items(doc):
+                    if isinstance(block, Paragraph):
+                        if block.text.strip():
+                            # Enhanced paragraph processing with style detection
+                            style_name = block.style.name
+                            text = block.text.strip()
+                            
+                            # Handle different paragraph styles
+                            if style_name.startswith('Heading 1') or style_name == 'Title':
+                                extracted_content += f"# {text}\n\n"
+                            elif style_name.startswith('Heading 2'):
+                                extracted_content += f"## {text}\n\n"
+                            elif style_name.startswith('Heading 3'):
+                                extracted_content += f"### {text}\n\n"
+                            elif style_name.startswith('Heading 4'):
+                                extracted_content += f"#### {text}\n\n"
+                            elif style_name.startswith('Heading'):
+                                extracted_content += f"##### {text}\n\n"
+                            elif 'List' in style_name or text.startswith(('•', '-', '*')):
+                                extracted_content += f"- {text}\n"
+                            elif text.startswith(tuple(f"{i}." for i in range(1, 20))):
+                                extracted_content += f"{text}\n"
+                            else:
+                                extracted_content += f"{text}\n\n"
+                            
+                            # Check for images in paragraph
+                            for run in block.runs:
+                                if run._element.xpath('.//a:blip'):
+                                    image_count += 1
+                                    extracted_content += f"[IMAGE {image_count}: Referenced in paragraph]\n\n"
+                    
+                    elif isinstance(block, Table):
+                        table_count += 1
+                        extracted_content += f"\n## Table {table_count}\n\n"
                         
-                print(f"✅ Extracted {len(extracted_content)} characters from Word document")
+                        # Extract table headers if first row looks like headers
+                        rows = [[cell.text.strip() for cell in row.cells] for row in block.rows]
+                        if rows:
+                            headers = rows[0]
+                            data_rows = rows[1:]
+                            
+                            # Check if first row are likely headers (short, title-case)
+                            if all(len(cell) < 50 and any(c.isupper() for c in cell) for cell in headers if cell):
+                                # Create markdown table with headers
+                                extracted_content += "| " + " | ".join(headers) + " |\n"
+                                extracted_content += "|" + "|".join([" --- " for _ in headers]) + "|\n"
+                                for row in data_rows:
+                                    extracted_content += "| " + " | ".join(row) + " |\n"
+                            else:
+                                # Regular table without headers
+                                for row in rows:
+                                    extracted_content += "| " + " | ".join(row) + " |\n"
+                        
+                        extracted_content += "\n"
+                
+                # Add media summary
+                if image_count > 0:
+                    extracted_content += f"\n---\n\n**Media Assets Found:** {image_count} images/diagrams referenced in document\n\n"
+                if table_count > 0:
+                    extracted_content += f"**Structured Data:** {table_count} tables with detailed information\n\n"
+                
+                # Add document statistics
+                total_paragraphs = len([p for p in doc.paragraphs if p.text.strip()])
+                extracted_content += f"**Document Statistics:**\n"
+                extracted_content += f"- Total paragraphs: {total_paragraphs}\n"
+                extracted_content += f"- Tables: {table_count}\n"
+                extracted_content += f"- Images/Diagrams: {image_count}\n"
+                extracted_content += f"- Character count: {len(extracted_content)}\n\n"
+                        
+                print(f"✅ Enhanced extraction: {len(extracted_content)} characters, {table_count} tables, {image_count} images from Word document")
             except ImportError:
                 print("⚠️ python-docx not available, treating as binary file")
                 extracted_content = f"Word document: {file.filename} (content extraction requires python-docx)"

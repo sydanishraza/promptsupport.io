@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import TiptapEditor from './TiptapEditor';
+import TiptapEditor from './AdvancedEditor';
 import SnipAndRecord from './SnipAndRecord';
 import { 
   Search, 

@@ -210,6 +210,34 @@ const ContentLibraryEnhanced = () => {
     setShowNewArticleModal(true);
   };
 
+  const handleCaptureMedia = async (formData) => {
+    try {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL;
+      
+      // Upload captured media to Knowledge Engine for processing
+      const response = await fetch(`${backendUrl}/api/content/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Media capture processed:', result);
+        
+        // Refresh content library to show new articles
+        fetchContentLibrary();
+        
+        // Show success message
+        alert(`Media captured and processed! Created ${result.chunks_created} content chunks.`);
+      } else {
+        throw new Error('Failed to process captured media');
+      }
+    } catch (error) {
+      console.error('Error processing captured media:', error);
+      alert('Failed to process captured media. Please try again.');
+    }
+  };
+
   const handleSaveNewArticle = () => {
     console.log('Saving new article:', newArticle);
     setShowNewArticleModal(false);

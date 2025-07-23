@@ -112,8 +112,8 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
     >
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          {!collapsed && (
+        {!collapsed ? (
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <img
                 src="/ps-logo.png"
@@ -124,23 +124,28 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
                 PromptSupport
               </span>
             </div>
-          )}
-          {collapsed && (
-            <div className="flex justify-center w-full">
-              <img
-                src="/ps-logo.png"
-                alt="PromptSupport Logo"
-                className="w-7 h-7 object-contain"
-              />
-            </div>
-          )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-          >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
-        </div>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center space-y-2">
+            <img
+              src="/ps-logo.png"
+              alt="PromptSupport Logo"
+              className="w-8 h-8 object-contain"
+            />
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Navigation Items */}

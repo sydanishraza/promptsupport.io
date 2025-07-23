@@ -553,15 +553,40 @@ const ContentLibraryEnhanced = () => {
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="font-medium text-gray-900 mb-3">Tags</h3>
               <div className="flex flex-wrap gap-1">
-                {selectedContent.tags.map(tag => (
-                  <span key={tag} className="px-2 py-1 bg-white text-gray-700 text-xs rounded-full border">
+                {selectedContent.tags.map((tag, index) => (
+                  <span key={tag} className="px-2 py-1 bg-white text-gray-700 text-xs rounded-full border flex items-center">
                     {tag}
+                    {isEditing && (
+                      <button
+                        onClick={() => {
+                          const newTags = selectedContent.tags.filter((_, i) => i !== index);
+                          setSelectedContent(prev => ({...prev, tags: newTags}));
+                        }}
+                        className="ml-1 text-red-500 hover:text-red-700"
+                      >
+                        <X size={10} />
+                      </button>
+                    )}
                   </span>
                 ))}
                 {isEditing && (
-                  <button className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full border border-blue-200">
-                    + Add Tag
-                  </button>
+                  <input
+                    type="text"
+                    placeholder="Add tag..."
+                    className="px-2 py-1 bg-white text-gray-700 text-xs rounded-full border"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && e.target.value.trim()) {
+                        const newTag = e.target.value.trim();
+                        if (!selectedContent.tags.includes(newTag)) {
+                          setSelectedContent(prev => ({
+                            ...prev, 
+                            tags: [...prev.tags, newTag]
+                          }));
+                        }
+                        e.target.value = '';
+                      }
+                    }}
+                  />
                 )}
               </div>
             </div>

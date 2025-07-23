@@ -833,7 +833,77 @@ async def upload_file(
                 
                 table_count = 0
                 image_count = 0
+                media_index = 0  # Track which embedded media to use next
                 
+                for block in iter_block_items(doc):
+                    if isinstance(block, Paragraph):
+                        if block.text.strip():
+                            # Enhanced paragraph processing with style detection
+                            style_name = block.style.name
+                            text = block.text.strip()
+                            
+                            # Handle different paragraph styles
+                            if style_name.startswith('Heading 1') or style_name == 'Title':
+                                extracted_content += f"# {text}\n\n"
+                            elif style_name.startswith('Heading 2'):
+                                extracted_content += f"## {text}\n\n"
+                            elif style_name.startswith('Heading 3'):
+                                extracted_content += f"### {text}\n\n"
+                            elif style_name.startswith('Heading 4'):
+                                extracted_content += f"#### {text}\n\n"
+                            elif style_name.startswith('Heading'):
+                                extracted_content += f"##### {text}\n\n"
+                            elif 'List' in style_name or text.startswith(('•', '-', '*')):
+                                extracted_content += f"- {text}\n"
+                            elif text.startswith(tuple(f"{i}." for i in range(1, 20))):
+                                extracted_content += f"{text}\n"
+                            else:
+                                extracted_content += f"{text}\n\n"
+                            
+                            # Check for images in paragraph using multiple methods
+                            has_image_in_paragraph = False
+                            
+                            # Method 1: Check for drawing objects (shapes/images)
+                            for run in block.runs:
+                                # Check for inline shapes (images)
+                                if hasattr(run, '_element') and run._element.xpath('.//a:blip'):
+                                    has_image_in_paragraph = True
+                                    break
+                                # Check for drawing elements
+                                if hasattr(run, '_element') and run._element.xpath('.//w:drawing'):
+                                    has_image_in_paragraph = True
+                                    break
+                            
+                            # Method 2: If paragraph is very short and we have unused embedded media, assume it contains an image
+                            if not has_image_in_paragraph and len(text.strip()) < 50 and media_index < len(embedded_media):
+                                # Check if this looks like an image caption or placeholder
+                                image_keywords = ['figure', 'image', 'diagram', 'chart', 'graph', 'screenshot', 'photo']
+                                if any(keyword in text.lower() for keyword in image_keywords) or text.strip() == '':
+                                    has_image_in_paragraph = True
+                            
+                            # If we found an image reference and have embedded media available
+                            if has_image_in_paragraph and media_index < len(embedded_media):
+                                media_item = embedded_media[media_index]
+                                media_index += 1
+                                image_count += 1
+                                
+                                # Embed image as base64 data URL
+                                data_url = f"data:{media_item['content_type']};base64,{media_item['data']}"
+                                extracted_content += f"\n![Image {image_count}]({data_url})\n\n"
+                                extracted_content += f"*Image {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes)*\n\n"
+                                print(f"🔍 DEBUG: Successfully embedded image {image_count} as base64 data URL (length: {len(data_url)})")
+                
+                # If we still have unused embedded media, add them at the end
+                while media_index < len(embedded_media):
+                    media_item = embedded_media[media_index]
+                    media_index += 1
+                    image_count += 1
+                    
+                    data_url = f"data:{media_item['content_type']};base64,{media_item['data']}"
+                    extracted_content += f"\n![Image {image_count}]({data_url})\n\n"
+                    extracted_content += f"*Image {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes) - Added from document assets*\n\n"
+                    print(f"🔍 DEBUG: Added remaining embedded image {image_count} at end of document")
+                    
                 for block in iter_block_items(doc):
                     if isinstance(block, Paragraph):
                         if block.text.strip():

@@ -183,124 +183,134 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
 
   const renderToolbar = () => (
     <div className="border-b border-gray-300 p-2 flex flex-wrap gap-1">
-      {/* Text Formatting */}
-      <div className="flex border-r border-gray-200 pr-2 mr-2">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          active={editor.isActive('bold')}
-          title="Bold"
-        >
-          <Bold size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          active={editor.isActive('italic')}
-          title="Italic"
-        >
-          <Italic size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          active={editor.isActive('strike')}
-          title="Strikethrough"
-        >
-          <Strikethrough size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          active={editor.isActive('code')}
-          title="Inline Code"
-        >
-          <Code size={16} />
-        </ToolbarButton>
-      </div>
+      {/* Text Formatting - Only show when not read-only */}
+      {!isReadOnly && (
+        <div className="flex border-r border-gray-200 pr-2 mr-2">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            active={editor.isActive('bold')}
+            title="Bold"
+          >
+            <Bold size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            active={editor.isActive('italic')}
+            title="Italic"
+          >
+            <Italic size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            active={editor.isActive('strike')}
+            title="Strikethrough"
+          >
+            <Strikethrough size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            active={editor.isActive('code')}
+            title="Inline Code"
+          >
+            <Code size={16} />
+          </ToolbarButton>
+        </div>
+      )}
 
-      {/* Headings */}
-      <div className="flex border-r border-gray-200 pr-2 mr-2">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          active={editor.isActive('heading', { level: 1 })}
-          title="Heading 1"
-        >
-          <Heading1 size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          active={editor.isActive('heading', { level: 2 })}
-          title="Heading 2"
-        >
-          <Heading2 size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          active={editor.isActive('heading', { level: 3 })}
-          title="Heading 3"
-        >
-          <Heading3 size={16} />
-        </ToolbarButton>
-      </div>
+      {/* Headings - Only show when not read-only */}
+      {!isReadOnly && (
+        <div className="flex border-r border-gray-200 pr-2 mr-2">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            active={editor.isActive('heading', { level: 1 })}
+            title="Heading 1"
+          >
+            <Heading1 size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            active={editor.isActive('heading', { level: 2 })}
+            title="Heading 2"
+          >
+            <Heading2 size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            active={editor.isActive('heading', { level: 3 })}
+            title="Heading 3"
+          >
+            <Heading3 size={16} />
+          </ToolbarButton>
+        </div>
+      )}
 
-      {/* Lists */}
-      <div className="flex border-r border-gray-200 pr-2 mr-2">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          active={editor.isActive('bulletList')}
-          title="Bullet List"
-        >
-          <List size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          active={editor.isActive('orderedList')}
-          title="Numbered List"
-        >
-          <ListOrdered size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleTaskList().run()}
-          active={editor.isActive('taskList')}
-          title="Task List"
-        >
-          <FileText size={16} />
-        </ToolbarButton>
-      </div>
+      {/* Lists - Only show when not read-only */}
+      {!isReadOnly && (
+        <div className="flex border-r border-gray-200 pr-2 mr-2">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            active={editor.isActive('bulletList')}
+            title="Bullet List"
+          >
+            <List size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            active={editor.isActive('orderedList')}
+            title="Numbered List"
+          >
+            <ListOrdered size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleTaskList().run()}
+            active={editor.isActive('taskList')}
+            title="Task List"
+          >
+            <FileText size={16} />
+          </ToolbarButton>
+        </div>
+      )}
 
-      {/* Other */}
-      <div className="flex border-r border-gray-200 pr-2 mr-2">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          active={editor.isActive('blockquote')}
-          title="Quote"
-        >
-          <Quote size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          title="Horizontal Line"
-        >
-          <Minus size={16} />
-        </ToolbarButton>
-      </div>
+      {/* Other - Only show when not read-only */}
+      {!isReadOnly && (
+        <div className="flex border-r border-gray-200 pr-2 mr-2">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            active={editor.isActive('blockquote')}
+            title="Quote"
+          >
+            <Quote size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            title="Horizontal Line"
+          >
+            <Minus size={16} />
+          </ToolbarButton>
+        </div>
+      )}
 
-      {/* Undo/Redo */}
-      <div className="flex border-r border-gray-200 pr-2 mr-2">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-          title="Undo"
-        >
-          <Undo size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-          title="Redo"
-        >
-          <Redo size={16} />
-        </ToolbarButton>
-      </div>
+      {/* Undo/Redo - Only show when not read-only */}
+      {!isReadOnly && (
+        <div className="flex border-r border-gray-200 pr-2 mr-2">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            title="Undo"
+          >
+            <Undo size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            title="Redo"
+          >
+            <Redo size={16} />
+          </ToolbarButton>
+        </div>
+      )}
 
-      {/* Mode Toggle Buttons */}
+      {/* Mode Toggle Buttons - Always visible */}
       <div className="flex border-r border-gray-200 pr-2 mr-2">
         <ToolbarButton
           onClick={() => handleModeSwitch('wysiwyg')}
@@ -325,8 +335,8 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
         </ToolbarButton>
       </div>
 
-      {/* Save Button */}
-      {onSave && (
+      {/* Save Button - Only show when not read-only and onSave is provided */}
+      {!isReadOnly && onSave && (
         <div className="flex ml-auto">
           <button
             type="button"
@@ -336,6 +346,14 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
             <Save size={14} />
             Save
           </button>
+        </div>
+      )}
+
+      {/* View Mode Indicator - Show when read-only */}
+      {isReadOnly && (
+        <div className="flex items-center ml-auto text-sm text-gray-500">
+          <Eye size={14} className="mr-1" />
+          Read Only
         </div>
       )}
     </div>

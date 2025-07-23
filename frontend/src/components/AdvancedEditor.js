@@ -54,6 +54,9 @@ const AdvancedEditor = ({ content, onChange, onSave, isReadOnly = false, height 
   const [mode, setMode] = useState('wysiwyg'); // wysiwyg, markdown, html
   const [markdownContent, setMarkdownContent] = useState('');
 
+  // Initialize lowlight
+  const lowlight = createLowlight();
+
   // Initialize markdown parser
   const turndownService = new TurndownService({
     headingStyle: 'atx',

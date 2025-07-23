@@ -23,12 +23,14 @@
     "framer-motion": "^12.23.6",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.525.0",
+    "marked": "^16.1.1",
     "react": "^19.0.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.1",
     "react-scripts": "5.0.1",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "turndown": "^7.2.0"
   },
   "scripts": {
     "start": "craco start",

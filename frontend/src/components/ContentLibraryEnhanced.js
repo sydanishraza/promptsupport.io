@@ -96,11 +96,15 @@ const ContentLibraryEnhanced = () => {
           { id: 'assets', label: 'Assets', count: assetsCount },
           { id: 'recordings', label: 'Recordings', count: recordingsCount }
         ]);
+        
+        return realArticles; // Return articles for use in other functions
       } else {
         console.error('Failed to fetch Content Library:', response.status);
+        return [];
       }
     } catch (error) {
       console.error('Error fetching Content Library:', error);
+      return [];
     } finally {
       setLoading(false);
     }

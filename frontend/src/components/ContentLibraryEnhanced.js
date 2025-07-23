@@ -71,6 +71,42 @@ const ContentLibraryEnhanced = () => {
     { id: 'recordings', label: 'Recordings', count: 0 }
   ]);
 
+  // Configure marked for better rendering
+  marked.setOptions({
+    gfm: true,
+    breaks: false,
+    sanitize: false,
+    smartLists: true,
+    smartypants: true,
+  });
+
+  // Convert markdown to HTML with better parsing for images
+  const markdownToHtml = (markdown) => {
+    try {
+      return marked(markdown);
+    } catch (error) {
+      console.error('Error converting markdown to HTML:', error);
+      return `<p>${markdown}</p>`;
+    }
+  };
+
+  // Check if content contains markdown syntax
+  const isMarkdownContent = (content) => {
+    if (!content) return false;
+    
+    const hasMarkdownSyntax = content.includes('#') || 
+                              content.includes('**') || 
+                              content.includes('- ') || 
+                              content.includes('1. ') ||
+                              content.includes('```') ||
+                              content.includes('> ') ||
+                              content.includes('!['); // Image syntax
+    
+    const hasHtmlTags = content.includes('<') && content.includes('>');
+    
+    return hasMarkdownSyntax && !hasHtmlTags;
+  };
+
   // Get backend URL from environment
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 

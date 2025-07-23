@@ -50,7 +50,7 @@ const ContentLibraryEnhanced = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const [selectedContent, setSelectedContent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showNewArticleModal, setShowNewArticleModal] = useState(false);

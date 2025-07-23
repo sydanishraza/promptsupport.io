@@ -276,7 +276,14 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   const handleUrlUpload = async (url) => {
     if (!url.trim()) return;
     
-    setIsProcessing(true);
+    const urlId = `url-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Initialize upload progress
+    setUploadProgress(prev => ({
+      ...prev,
+      [urlId]: { stage: 'fetching', progress: 0, file: url }
+    }));
+    
     try {
       const formData = new FormData();
       formData.append('url', url);
@@ -286,6 +293,12 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
         type: 'url_processing'
       }));
 
+      // Update status to processing
+      setUploadProgress(prev => ({
+        ...prev,
+        [urlId]: { stage: 'processing', progress: 50, file: url }
+      }));
+
       const response = await fetch(`${backendUrl}/api/content/process-url`, {
         method: 'POST',
         body: formData
@@ -293,29 +306,101 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
 
       if (response.ok) {
         const result = await response.json();
+        
+        // Update to generating articles
+        setUploadProgress(prev => ({
+          ...prev,
+          [urlId]: { stage: 'generating', progress: 75, file: url }
+        }));
+        
+        // Fetch updated data
+        await fetchDocuments();
+        await fetchProcessingJobs();
+        await fetchContentLibraryArticles();
+        
+        // Complete
+        setUploadProgress(prev => ({
+          ...prev,
+          [urlId]: { 
+            stage: 'completed', 
+            progress: 100, 
+            file: url,
+            chunksCreated: result.chunks_created,
+            jobId: result.job_id,
+            pageTitle: result.page_title
+          }
+        }));
+        
         setUploadedFiles(prev => [...prev, {
           id: result.job_id,
-          name: `Website: ${url}`,
+          name: result.page_title || `Website: ${url}`,
           status: result.status,
           chunksCreated: result.chunks_created,
           type: 'url',
+          url: url,
           uploadTime: new Date(),
           processingComplete: true
         }]);
         
         console.log(`✅ URL processed: ${url} → Created ${result.chunks_created} chunks`);
         
-        // Refresh data
-        fetchDocuments();
-        fetchProcessingJobs();
-        fetchContentLibraryArticles();
+        // Remove from progress after delay
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[urlId];
+            return newProgress;
+          });
+        }, 3000);
+        
       } else {
-        console.error('URL processing failed:', await response.text());
+        const errorText = await response.text();
+        console.error('URL processing failed:', errorText);
+        
+        // Update to error state
+        setUploadProgress(prev => ({
+          ...prev,
+          [urlId]: { 
+            stage: 'error', 
+            progress: 0, 
+            file: url, 
+            error: errorText 
+          }
+        }));
+        
+        // Remove from progress after delay
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[urlId];
+            return newProgress;
+          });
+        }, 5000);
       }
     } catch (error) {
       console.error('URL processing error:', error);
+      
+      // Update to error state
+      setUploadProgress(prev => ({
+        ...prev,
+        [urlId]: { 
+          stage: 'error', 
+          progress: 0, 
+          file: url, 
+          error: error.message 
+        }
+      }));
+      
+      // Remove from progress after delay
+      setTimeout(() => {
+        setUploadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[urlId];
+          return newProgress;
+        });
+      }, 5000);
     }
-    setIsProcessing(false);
+    
     setUrlInput('');
     setShowUrlModal(false);
   };

@@ -113,6 +113,12 @@ const MainLayout = () => {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Settings Modal */}
+      <Settings 
+        isOpen={settingsOpen} 
+        onClose={() => setSettingsOpen(false)} 
+      />
     </div>
   );
 };

@@ -19,7 +19,8 @@ import {
   Ticket,
   Upload,
   MessageSquare,
-  Clock
+  Clock,
+  Link
 } from 'lucide-react';
 
 const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {

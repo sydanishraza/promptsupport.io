@@ -349,6 +349,8 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         prompt = f"""
         You are an expert technical writer and content strategist creating a comprehensive knowledge base from this document. Your goal is to transform the raw content into multiple, well-structured, production-ready articles that feel like they were written by a professional technical writer.
 
+        IMPORTANT: This content contains embedded media (images, diagrams, charts) that MUST be preserved and included in the generated articles.
+
         Original Content:
         {content[:8000]}
 
@@ -360,14 +362,21 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
            - Each article should cover ONE specific topic/process in depth
            - Split logically by function, process, or conceptual area
 
-        2. **Content Enhancement & Rewriting**:
+        2. **Media Preservation & Integration**:
+           - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
+           - Include ALL data URLs (data:image/jpeg;base64,... or data:image/png;base64,...)
+           - Maintain image captions and context
+           - Place images strategically within article content for maximum relevance
+           - Reference images in the text when appropriate (e.g., "As shown in the diagram below...")
+
+        3. **Content Enhancement & Rewriting**:
            - Completely rewrite content for clarity, flow, and technical accuracy
            - Add context, explanations, and helpful details where needed
            - Improve technical language while maintaining original intent
            - Add transitions and logical connections between concepts
            - Include troubleshooting tips, best practices, and common scenarios
 
-        3. **Professional Structure & Formatting**:
+        4. **Professional Structure & Formatting**:
            - Use comprehensive markdown formatting with proper headings hierarchy
            - Create detailed outlines with multiple heading levels (H1, H2, H3, H4)
            - Add bullet points, numbered lists, and checklists where appropriate
@@ -376,14 +385,14 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
            - Create step-by-step procedures with clear numbering
            - Add code blocks or configuration examples where applicable
 
-        4. **Production-Ready Features**:
+        5. **Production-Ready Features**:
            - Write compelling introductions that explain purpose and scope
            - Add comprehensive conclusions with next steps and related topics
            - Include "Prerequisites", "What You'll Learn", and "Key Takeaways" sections
            - Add cross-references to related articles/topics
            - Create actionable content that users can immediately implement
 
-        5. **Metadata & SEO**:
+        6. **Metadata & SEO**:
            - Generate descriptive, SEO-friendly titles
            - Write detailed summaries (3-4 sentences) explaining value proposition
            - Create comprehensive tag lists including technical terms, processes, and categories
@@ -395,7 +404,7 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
                 {{
                     "title": "Comprehensive, descriptive title that clearly indicates the specific topic",
                     "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides to the reader",
-                    "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance of this topic...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context...\\n\\n#### Subsection 1.1\\n\\nSpecific details and examples...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Add helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a\\n   - Sub-step b\\n\\n2. **Step 2**: More details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations\\n\\n- Issue 1 and solution\\n- Issue 2 and solution\\n\\n## Key Takeaways\\n\\n- Takeaway 1\\n- Takeaway 2\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Related Articles\\n\\n- Link to related article 1\\n- Link to related article 2",
+                    "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance of this topic...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context...\\n\\n![Image Description](data:image/jpeg;base64,...)\\n\\n*Figure 1: Caption describing the image and its relevance*\\n\\n#### Subsection 1.1\\n\\nSpecific details and examples...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Add helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a\\n   - Sub-step b\\n\\n2. **Step 2**: More details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations\\n\\n- Issue 1 and solution\\n- Issue 2 and solution\\n\\n## Key Takeaways\\n\\n- Takeaway 1\\n- Takeaway 2\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Related Articles\\n\\n- Link to related article 1\\n- Link to related article 2",
                     "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name", "user-type"],
                     "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
                 }}
@@ -408,6 +417,7 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         - Include practical examples and real-world applications
         - Maintain consistency in tone and style across all articles
         - Ensure content is immediately actionable and valuable
+        - MUST preserve all embedded media and data URLs exactly as provided
         """
         
         data = {

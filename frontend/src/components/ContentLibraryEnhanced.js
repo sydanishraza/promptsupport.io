@@ -1329,6 +1329,20 @@ const ContentLibraryEnhanced = () => {
         {showMetadataEditor && renderMetadataEditor()}
       </AnimatePresence>
 
+      {/* Media Statistics Panel */}
+      <AnimatePresence>
+        {showMediaStats && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-6"
+          >
+            <MediaStatsPanel backendUrl={backendUrl} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Snip and Record Modal */}
       <SnipAndRecord
         isOpen={showSnipAndRecord}

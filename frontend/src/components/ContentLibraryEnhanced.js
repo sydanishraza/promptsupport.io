@@ -75,15 +75,26 @@ const ContentLibraryEnhanced = () => {
   marked.setOptions({
     gfm: true,
     breaks: false,
-    sanitize: false,
+    sanitize: false, // Important: Don't sanitize to preserve base64 images
     smartLists: true,
     smartypants: true,
   });
 
+  // Override the image renderer to ensure base64 images are preserved
+  const renderer = new marked.Renderer();
+  renderer.image = function(href, title, text) {
+    let out = '<img src="' + href + '" alt="' + text + '"';
+    if (title) {
+      out += ' title="' + title + '"';
+    }
+    out += ' class="rounded-lg max-w-full h-auto">';
+    return out;
+  };
+
   // Convert markdown to HTML with better parsing for images
   const markdownToHtml = (markdown) => {
     try {
-      return marked(markdown);
+      return marked(markdown, { renderer });
     } catch (error) {
       console.error('Error converting markdown to HTML:', error);
       return `<p>${markdown}</p>`;

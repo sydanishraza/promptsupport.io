@@ -23,6 +23,7 @@ import aiofiles
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
+from media_intelligence import media_intelligence
 
 # Load environment variables
 load_dotenv()

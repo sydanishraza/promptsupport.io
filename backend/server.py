@@ -508,6 +508,9 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
                     article_data = json.loads(json_str)
                     
                     print(f"✅ Parsed article data: title='{article_data.get('title', 'N/A')}', tags={article_data.get('tags', [])}")
+                    print(f"🔍 DEBUG: Article data keys: {list(article_data.keys())}")
+                    print(f"🔍 DEBUG: Content field present: {'content' in article_data}")
+                    print(f"🔍 DEBUG: Content preview: {article_data.get('content', 'NO CONTENT')[:100]}...")
                     
                     # Create article record
                     article_record = {
@@ -528,6 +531,8 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
                         "created_at": datetime.utcnow(),
                         "updated_at": datetime.utcnow()
                     }
+                    
+                    print(f"🔍 DEBUG: Article record content field: {article_record.get('content', 'NO CONTENT')[:100]}...")
                     
                     return article_record
                     

@@ -223,7 +223,26 @@ const ContentLibraryEnhanced = () => {
   };
 
   const handleViewContent = (content) => {
-    setSelectedContent(content);
+    // Convert markdown content to HTML if it contains images
+    let processedContent = content.content;
+    if (processedContent && processedContent.includes('![') && processedContent.includes('data:image/')) {
+      // Import marked for markdown conversion
+      import('marked').then(({ marked }) => {
+        marked.setOptions({
+          gfm: true,
+          breaks: false,
+          sanitize: false,
+          smartLists: true,
+          smartypants: true,
+        });
+        processedContent = marked(processedContent);
+      });
+    }
+    
+    setSelectedContent({
+      ...content,
+      content: processedContent
+    });
     setIsEditing(false);
   };
 

@@ -500,30 +500,58 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
                 "Content-Type": "application/json"
             }
             
-            # Enhanced prompt for better article generation
+            # Enhanced prompt for comprehensive single article generation
             prompt = f"""
-            You are an expert content curator and technical writer. Create a comprehensive, well-structured article from the following content.
+            You are an expert technical writer and content strategist. Transform the following raw content into a comprehensive, production-ready knowledge base article that feels professionally written and immediately actionable.
 
             Original Content:
-            {content[:4000]}
+            {content[:6000]}
 
-            Instructions:
-            1. Create a clear, descriptive title that captures the main topic
-            2. Write a compelling 2-3 sentence summary that highlights the key value
-            3. Structure the content with proper headings and organization
-            4. Use markdown formatting (## for headings, **bold**, etc.)
-            5. Extract 3-5 highly relevant tags/keywords
-            6. List 3-5 actionable key takeaways
-            7. Make the content informative and easy to read
+            TRANSFORMATION REQUIREMENTS:
 
-            Respond with valid JSON in this exact format:
+            1. **Content Enhancement & Rewriting**:
+               - Completely rewrite for clarity, flow, and technical accuracy
+               - Add context, explanations, and helpful details
+               - Improve technical language while maintaining original intent
+               - Add transitions and logical connections between concepts
+               - Include troubleshooting tips, best practices, and common scenarios
+
+            2. **Professional Structure & Formatting**:
+               - Use comprehensive markdown formatting with proper heading hierarchy
+               - Create detailed outline with multiple heading levels (H1, H2, H3, H4)
+               - Add bullet points, numbered lists, and checklists
+               - Include tables for data presentation when relevant
+               - Add callouts, notes, warnings, and tips using blockquotes
+               - Create step-by-step procedures with clear numbering
+
+            3. **Production-Ready Features**:
+               - Write compelling introduction explaining purpose and scope
+               - Add comprehensive conclusion with next steps
+               - Include "Prerequisites", "What You'll Learn", and "Key Takeaways" sections
+               - Add practical examples and real-world applications
+               - Create actionable content users can immediately implement
+
+            4. **Metadata & SEO**:
+               - Generate descriptive, SEO-friendly title
+               - Write detailed summary (3-4 sentences) explaining value proposition
+               - Create comprehensive tag list including technical terms and processes
+               - Generate practical takeaways highlighting key learning points
+
+            RESPONSE FORMAT - Return valid JSON:
             {{
-                "title": "Clear, descriptive title here",
-                "summary": "Compelling 2-3 sentence summary of the content's main value and purpose",
-                "content": "# Main Title\\n\\n## Introduction\\n\\nWell-organized content here with proper markdown formatting...\\n\\n## Key Points\\n\\n- Point 1\\n- Point 2\\n\\n## Conclusion\\n\\nSummary and next steps...",
-                "tags": ["tag1", "tag2", "tag3", "tag4"],
-                "takeaways": ["First key takeaway", "Second key takeaway", "Third key takeaway"]
+                "title": "Comprehensive, descriptive title that clearly indicates the specific topic and value",
+                "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides to the reader",
+                "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context and examples...\\n\\n#### Subsection 1.1\\n\\nSpecific implementation details...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Include helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a with specifics\\n   - Sub-step b with examples\\n\\n2. **Step 2**: More comprehensive details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations and limitations\\n\\n- Common issue 1 and detailed solution\\n- Common issue 2 and prevention tips\\n\\n## Key Takeaways\\n\\n- Specific, actionable takeaway 1\\n- Practical insight 2\\n- Best practice 3\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Additional Resources\\n\\n- Relevant documentation links\\n- Related processes or tools",
+                "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name", "user-type", "difficulty-level"],
+                "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4", "Implementation tip 5"]
             }}
+
+            QUALITY STANDARDS:
+            - Article should be 800-2500 words when rendered
+            - Content should feel authoritative and professionally written
+            - Include practical examples and real-world applications
+            - Ensure content is immediately actionable and valuable
+            - Maintain consistent professional tone throughout
             """
             
             data = {

@@ -1124,6 +1124,8 @@ const ContentLibraryEnhanced = () => {
 
       <AnimatePresence>
         {showNewArticleModal && renderNewArticleModal()}
+        {showVersionHistory && renderVersionHistoryModal()}
+        {showMetadataEditor && renderMetadataEditor()}
       </AnimatePresence>
 
       {/* Snip and Record Modal */}

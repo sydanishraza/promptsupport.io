@@ -5,6 +5,8 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
+import { marked } from 'marked';
+import TurndownService from 'turndown';
 import { 
   Bold, 
   Italic, 
@@ -24,11 +26,14 @@ import {
   Eye,
   Edit,
   FileText,
-  Save
+  Save,
+  Type,
+  Code2
 } from 'lucide-react';
 
 const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = '400px' }) => {
-  const [mode, setMode] = useState('wysiwyg'); // wysiwyg, html
+  const [mode, setMode] = useState('wysiwyg'); // wysiwyg, markdown, html
+  const [markdownContent, setMarkdownContent] = useState('');
 
   const editor = useEditor({
     extensions: [

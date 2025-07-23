@@ -119,7 +119,11 @@ const AdvancedEditor = ({ content, onChange, onSave, isReadOnly = false, height 
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[200px] p-4',
+        style: 'line-height: 1.6;'
       },
+    },
+    parseOptions: {
+      preserveWhitespace: 'full',
     },
   });
 

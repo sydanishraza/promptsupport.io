@@ -510,23 +510,31 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
                 "Content-Type": "application/json"
             }
             
-            # Enhanced prompt for comprehensive single article generation
             prompt = f"""
             You are an expert technical writer and content strategist. Transform the following raw content into a comprehensive, production-ready knowledge base article that feels professionally written and immediately actionable.
+
+            IMPORTANT: This content may contain embedded media (images, diagrams, charts) that MUST be preserved and included in the generated article.
 
             Original Content:
             {content[:6000]}
 
             TRANSFORMATION REQUIREMENTS:
 
-            1. **Content Enhancement & Rewriting**:
+            1. **Media Preservation & Integration**:
+               - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
+               - Include ALL data URLs (data:image/jpeg;base64,... or data:image/png;base64,...)
+               - Maintain image captions and context
+               - Place images strategically within article content for maximum relevance
+               - Reference images in the text when appropriate (e.g., "As illustrated in the figure below...")
+
+            2. **Content Enhancement & Rewriting**:
                - Completely rewrite for clarity, flow, and technical accuracy
                - Add context, explanations, and helpful details
                - Improve technical language while maintaining original intent
                - Add transitions and logical connections between concepts
                - Include troubleshooting tips, best practices, and common scenarios
 
-            2. **Professional Structure & Formatting**:
+            3. **Professional Structure & Formatting**:
                - Use comprehensive markdown formatting with proper heading hierarchy
                - Create detailed outline with multiple heading levels (H1, H2, H3, H4)
                - Add bullet points, numbered lists, and checklists
@@ -534,14 +542,14 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
                - Add callouts, notes, warnings, and tips using blockquotes
                - Create step-by-step procedures with clear numbering
 
-            3. **Production-Ready Features**:
+            4. **Production-Ready Features**:
                - Write compelling introduction explaining purpose and scope
                - Add comprehensive conclusion with next steps
                - Include "Prerequisites", "What You'll Learn", and "Key Takeaways" sections
                - Add practical examples and real-world applications
                - Create actionable content users can immediately implement
 
-            4. **Metadata & SEO**:
+            5. **Metadata & SEO**:
                - Generate descriptive, SEO-friendly title
                - Write detailed summary (3-4 sentences) explaining value proposition
                - Create comprehensive tag list including technical terms and processes
@@ -551,7 +559,7 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
             {{
                 "title": "Comprehensive, descriptive title that clearly indicates the specific topic and value",
                 "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides to the reader",
-                "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context and examples...\\n\\n#### Subsection 1.1\\n\\nSpecific implementation details...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Include helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a with specifics\\n   - Sub-step b with examples\\n\\n2. **Step 2**: More comprehensive details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations and limitations\\n\\n- Common issue 1 and detailed solution\\n- Common issue 2 and prevention tips\\n\\n## Key Takeaways\\n\\n- Specific, actionable takeaway 1\\n- Practical insight 2\\n- Best practice 3\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Additional Resources\\n\\n- Relevant documentation links\\n- Related processes or tools",
+                "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context and examples...\\n\\n![Image Description](data:image/jpeg;base64,...)\\n\\n*Figure 1: Caption describing the image and its relevance*\\n\\n#### Subsection 1.1\\n\\nSpecific implementation details...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Include helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a with specifics\\n   - Sub-step b with examples\\n\\n2. **Step 2**: More comprehensive details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations and limitations\\n\\n- Common issue 1 and detailed solution\\n- Common issue 2 and prevention tips\\n\\n## Key Takeaways\\n\\n- Specific, actionable takeaway 1\\n- Practical insight 2\\n- Best practice 3\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Additional Resources\\n\\n- Relevant documentation links\\n- Related processes or tools",
                 "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name", "user-type", "difficulty-level"],
                 "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4", "Implementation tip 5"]
             }}
@@ -562,6 +570,7 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
             - Include practical examples and real-world applications
             - Ensure content is immediately actionable and valuable
             - Maintain consistent professional tone throughout
+            - MUST preserve all embedded media and data URLs exactly as provided
             """
             
             data = {

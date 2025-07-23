@@ -834,11 +834,19 @@ async def upload_file(
                             else:
                                 extracted_content += f"{text}\n\n"
                             
-                            # Check for images in paragraph
+                            # Check for images in paragraph and embed them
                             for run in block.runs:
                                 if run._element.xpath('.//a:blip'):
                                     image_count += 1
-                                    extracted_content += f"[IMAGE {image_count}: Referenced in paragraph]\n\n"
+                                    # Try to find matching embedded media
+                                    if image_count <= len(embedded_media):
+                                        media_item = embedded_media[image_count - 1]
+                                        # Embed image as base64 data URL
+                                        data_url = f"data:{media_item['content_type']};base64,{media_item['data']}"
+                                        extracted_content += f"\n![Image {image_count}]({data_url})\n\n"
+                                        extracted_content += f"*Image {image_count}: Embedded {media_item['format'].upper()} image ({media_item['size']} bytes)*\n\n"
+                                    else:
+                                        extracted_content += f"[IMAGE {image_count}: Referenced in paragraph - extraction pending]\n\n"
                     
                     elif isinstance(block, Table):
                         table_count += 1

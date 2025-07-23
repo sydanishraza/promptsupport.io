@@ -285,7 +285,7 @@ class MediaIntelligenceService:
         <div class="{container_class}" style="margin: 2rem 0; text-align: center;">
             <figure style="margin: 0; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
                 <img 
-                    src="data:image/{format_type};base64,{base64_data}" 
+                    src="{base64_data}" 
                     alt="{alt_text}"
                     style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);"
                 />
@@ -312,7 +312,7 @@ class MediaIntelligenceService:
                     style="max-width: 100%; height: auto; border-radius: 6px;"
                     aria-label="{alt_text}"
                 >
-                    <source src="data:video/{format_type};base64,{base64_data}" type="video/{format_type}">
+                    <source src="{base64_data}" type="video/{format_type}">
                     Your browser does not support the video tag.
                 </video>
                 <figcaption style="margin-top: 1rem; font-size: 0.875rem; color: #6b7280;">
@@ -324,6 +324,116 @@ class MediaIntelligenceService:
         '''
         
         return html
+    
+    def _create_intelligent_fallback_analysis(self, alt_text: str, media_type: str, 
+                                             format_type: str, context: str) -> Dict[str, Any]:
+        """Create intelligent fallback analysis when vision analysis fails"""
+        
+        # Analyze context for better classification
+        context_lower = context.lower()
+        
+        # Determine primary type based on alt text and context
+        primary_type = 'other'
+        content_category = 'general'
+        complexity_level = 'moderate'
+        
+        if any(word in alt_text.lower() for word in ['diagram', 'architecture', 'flow', 'structure']):
+            primary_type = 'diagram'
+            content_category = 'technical'
+            complexity_level = 'complex'
+        elif any(word in alt_text.lower() for word in ['screenshot', 'interface', 'ui', 'screen']):
+            primary_type = 'screenshot'
+            content_category = 'interface'
+        elif any(word in alt_text.lower() for word in ['chart', 'graph', 'data', 'statistics']):
+            primary_type = 'chart'
+            content_category = 'data_visualization'
+        elif any(word in alt_text.lower() for word in ['photo', 'image', 'picture']):
+            primary_type = 'photo'
+            content_category = 'educational'
+        
+        # Generate contextual captions
+        descriptive_caption = alt_text or f'{media_type.title()} content'
+        contextual_caption = f'Supporting visual for {context[:50]}...' if context else f'Supporting {media_type} content'
+        technical_caption = f'{format_type.upper()} {media_type} file'
+        
+        # Determine optimal placement
+        optimal_position = 'after_section'
+        reasoning = 'Default placement for media content'
+        
+        if 'introduction' in context_lower or 'overview' in context_lower:
+            optimal_position = 'introduction'
+            reasoning = 'Supports introductory content'
+        elif 'conclusion' in context_lower or 'summary' in context_lower:
+            optimal_position = 'conclusion'
+            reasoning = 'Reinforces concluding points'
+        
+        return {
+            'media_type': media_type,
+            'format': format_type,
+            'classification': {
+                'primary_type': primary_type,
+                'content_category': content_category,
+                'complexity_level': complexity_level,
+                'visual_elements': self._extract_visual_elements(alt_text, context)
+            },
+            'caption': {
+                'descriptive': descriptive_caption,
+                'contextual': contextual_caption,
+                'technical': technical_caption
+            },
+            'placement': {
+                'optimal_position': optimal_position,
+                'reasoning': reasoning,
+                'section_affinity': 'main_content'
+            },
+            'accessibility': {
+                'alt_text': alt_text or f'{media_type.title()} content',
+                'description': f'Detailed {media_type} element supporting the article content'
+            },
+            'metadata': {
+                'topics': self._extract_topics_from_context(context),
+                'keywords': [media_type, format_type] + self._extract_keywords_from_text(alt_text + ' ' + context),
+                'educational_value': 'medium',
+                'complexity_score': 5
+            },
+            'analysis_timestamp': self._get_timestamp(),
+            'processing_status': 'intelligent_fallback'
+        }
+    
+    def _extract_visual_elements(self, alt_text: str, context: str) -> List[str]:
+        """Extract visual elements from alt text and context"""
+        elements = []
+        text = (alt_text + ' ' + context).lower()
+        
+        element_keywords = {
+            'diagram': ['diagram', 'flowchart', 'schema'],
+            'text': ['text', 'label', 'title'],
+            'shapes': ['rectangle', 'circle', 'arrow', 'box'],
+            'data': ['chart', 'graph', 'table', 'data'],
+            'interface': ['button', 'menu', 'window', 'screen']
+        }
+        
+        for element, keywords in element_keywords.items():
+            if any(keyword in text for keyword in keywords):
+                elements.append(element)
+        
+        return elements[:5]  # Max 5 elements
+    
+    def _extract_keywords_from_text(self, text: str) -> List[str]:
+        """Extract relevant keywords from text"""
+        if not text:
+            return []
+        
+        # Simple keyword extraction
+        words = re.findall(r'\b\w{4,}\b', text.lower())  # Words with 4+ characters
+        
+        # Filter out common words
+        stop_words = {'this', 'that', 'with', 'from', 'they', 'been', 'have', 'were', 'said', 'each', 'which', 'their', 'time', 'will', 'about', 'would', 'there', 'could', 'other', 'more', 'very', 'what', 'know', 'just', 'first', 'into', 'over', 'think', 'also', 'your', 'work', 'life', 'only', 'can', 'still', 'should', 'after', 'being', 'now', 'made', 'before', 'here', 'through', 'when', 'where', 'much', 'some', 'these', 'many', 'then', 'them', 'well', 'were'}
+        
+        keywords = [word for word in words if word not in stop_words]
+        
+        # Return unique keywords, limited to 10
+        return list(dict.fromkeys(keywords))[:10]
     
     # Helper methods
     def _extract_media_type(self, base64_data: str) -> Tuple[str, str]:
@@ -560,7 +670,6 @@ class MediaIntelligenceService:
     
     def _get_timestamp(self) -> str:
         """Get current timestamp"""
-        from datetime import datetime
         return datetime.now().isoformat()
 
 

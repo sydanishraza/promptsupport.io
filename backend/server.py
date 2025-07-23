@@ -245,7 +245,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         raise
 
 async def create_content_library_article_from_chunks(chunks: List[DocumentChunk], metadata: Dict[str, Any]):
-    """Create a structured article in Content Library from processed chunks"""
+    """Create structured articles in Content Library from processed chunks"""
     if not chunks:
         return
     
@@ -258,7 +258,181 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
         title = title.replace('Website: ', '')
     
     source_type = metadata.get('type', 'text_processing')
+    file_extension = metadata.get('file_extension', '')
     
+    # Determine if we should create multiple articles based on content structure
+    should_create_multiple = await should_split_into_multiple_articles(full_content, file_extension)
+    
+    if should_create_multiple:
+        articles = await create_multiple_articles_from_content(full_content, metadata)
+        for article in articles:
+            await db.content_library.insert_one(article)
+            print(f"✅ Created AI-enhanced Content Library article: '{article['title']}'")
+        return articles
+    else:
+        # Create single comprehensive article
+        article = await create_single_article_from_content(full_content, metadata)
+        if article:
+            await db.content_library.insert_one(article)
+            print(f"✅ Created AI-enhanced Content Library article: '{article['title']}'")
+            return [article]
+        else:
+            # Fallback: Create basic article without AI enhancement
+            return await create_basic_fallback_article(full_content, metadata)
+
+async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
+    """Determine if content should be split into multiple articles"""
+    # Rules for splitting:
+    # 1. Long documents (>5000 chars) with clear sections
+    # 2. Documents with multiple headings
+    # 3. Presentations (each slide becomes an article)
+    # 4. Large spreadsheets with multiple sheets
+    
+    if len(content) < 2000:
+        return False
+    
+    if file_extension in ['ppt', 'pptx']:
+        return True  # Each slide should be an article
+    
+    if file_extension in ['xls', 'xlsx'] and 'Sheet:' in content:
+        return True  # Multiple sheets
+    
+    # Check for multiple headings/sections
+    heading_patterns = ['===', '##', '# ', 'Chapter', 'Section']
+    heading_count = sum(content.count(pattern) for pattern in heading_patterns)
+    
+    return heading_count >= 3 and len(content) > 5000
+
+async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:
+    """Create multiple structured articles from content"""
+    if not OPENAI_API_KEY:
+        return await create_basic_fallback_article(content, metadata)
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        # Enhanced prompt for multiple article generation
+        prompt = f"""
+        You are an expert content curator creating a knowledge base from this content. Analyze the content and create multiple focused articles that would be useful in a help center or knowledge base.
+
+        Original Content:
+        {content[:6000]}
+
+        Instructions:
+        1. Break this content into 2-5 logical, focused articles
+        2. Each article should cover a specific topic or section
+        3. Create clear, descriptive titles for each article
+        4. Write compelling summaries for each
+        5. Structure each article with proper markdown formatting
+        6. Include relevant tags for each article
+        7. Ensure articles are comprehensive but focused
+
+        Respond with valid JSON containing an array of articles:
+        {{
+            "articles": [
+                {{
+                    "title": "Specific, descriptive title for article 1",
+                    "summary": "Clear 2-3 sentence summary of this article's content and value",
+                    "content": "# Article Title\\n\\n## Introduction\\n\\nWell-structured content with proper markdown...\\n\\n## Main Points\\n\\n- Key point 1\\n- Key point 2\\n\\n## Conclusion\\n\\nSummary and next steps...",
+                    "tags": ["tag1", "tag2", "tag3"],
+                    "takeaways": ["Key takeaway 1", "Key takeaway 2", "Key takeaway 3"]
+                }},
+                {{
+                    "title": "Specific, descriptive title for article 2",
+                    "summary": "Clear summary of this article's focus",
+                    "content": "# Second Article\\n\\n## Overview\\n\\nContent here...",
+                    "tags": ["tag1", "tag4", "tag5"],
+                    "takeaways": ["Different takeaway 1", "Different takeaway 2"]
+                }}
+            ]
+        }}
+        """
+        
+        data = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": "You are an expert content curator creating knowledge base articles. Always respond with valid JSON containing multiple focused articles."},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 4000,
+            "temperature": 0.3
+        }
+        
+        print(f"🤖 Calling OpenAI GPT-4o for multiple article generation...")
+        
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result["choices"][0]["message"]["content"].strip()
+            
+            print(f"✅ OpenAI response received: {len(ai_response)} characters")
+            
+            try:
+                # Clean up AI response to extract JSON
+                import re
+                
+                # Remove any markdown code blocks
+                json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
+                if json_match:
+                    json_str = json_match.group(1)
+                else:
+                    json_str = ai_response
+                
+                # Parse JSON
+                articles_data = json.loads(json_str)
+                
+                # Create article records
+                articles = []
+                for i, article_info in enumerate(articles_data.get('articles', [])):
+                    article_record = {
+                        "id": str(uuid.uuid4()),
+                        "title": article_info.get("title", f"Article {i+1} from {metadata.get('original_filename', 'Upload')}"),
+                        "content": article_info.get("content", "Content not available"),
+                        "summary": article_info.get("summary", "Generated from uploaded content"),
+                        "tags": article_info.get("tags", [metadata.get('type', 'upload')]),
+                        "takeaways": article_info.get("takeaways", []),
+                        "source_type": metadata.get('type', 'text_processing'),
+                        "status": "draft",
+                        "metadata": {
+                            **metadata,
+                            "ai_processed": True,
+                            "ai_model": "gpt-4o",
+                            "article_index": i + 1,
+                            "total_articles": len(articles_data.get('articles', [])),
+                            "processing_timestamp": datetime.utcnow().isoformat()
+                        },
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                    articles.append(article_record)
+                
+                print(f"✅ Generated {len(articles)} articles from content")
+                return articles
+                
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON parsing error: {e}")
+                print(f"Raw AI response: {ai_response[:500]}...")
+                # Fallback to single article
+                return await create_single_article_from_content(content, metadata)
+        else:
+            print(f"❌ OpenAI API error: {response.status_code} - {response.text}")
+            return await create_single_article_from_content(content, metadata)
+            
+    except Exception as e:
+        print(f"❌ Multiple articles generation error: {e}")
+        return await create_single_article_from_content(content, metadata)
+
+async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
+    """Create a single comprehensive article from content"""
     # Use AI to create structured article
     if OPENAI_API_KEY:
         try:
@@ -272,7 +446,7 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
             You are an expert content curator and technical writer. Create a comprehensive, well-structured article from the following content.
 
             Original Content:
-            {full_content[:3000]}
+            {content[:4000]}
 
             Instructions:
             1. Create a clear, descriptive title that captures the main topic
@@ -299,11 +473,11 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
                     {"role": "system", "content": "You are an expert content curator and technical writer. Create professional, well-structured articles from raw content. Always respond with valid JSON only."},
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 2000,
+                "max_tokens": 2500,
                 "temperature": 0.2
             }
             
-            print(f"🤖 Calling OpenAI GPT-4o for article generation...")
+            print(f"🤖 Calling OpenAI GPT-4o for single article generation...")
             
             response = requests.post(
                 "https://api.openai.com/v1/chat/completions",
@@ -337,27 +511,23 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
                     # Create article record
                     article_record = {
                         "id": str(uuid.uuid4()),
-                        "title": article_data.get("title", title or "Processed Content"),
-                        "content": article_data.get("content", full_content),
+                        "title": article_data.get("title", metadata.get('original_filename', 'Processed Content')),
+                        "content": article_data.get("content", content),
                         "summary": article_data.get("summary", "Content processed by Knowledge Engine"),
-                        "tags": article_data.get("tags", [source_type]),
+                        "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
                         "takeaways": article_data.get("takeaways", []),
-                        "source_type": source_type,
+                        "source_type": metadata.get('type', 'text_processing'),
                         "status": "draft",
                         "metadata": {
                             **metadata,
                             "ai_processed": True,
                             "ai_model": "gpt-4o",
-                            "chunks_count": len(chunks),
                             "processing_timestamp": datetime.utcnow().isoformat()
                         },
                         "created_at": datetime.utcnow(),
                         "updated_at": datetime.utcnow()
                     }
                     
-                    # Store in Content Library
-                    await db.content_library.insert_one(article_record)
-                    print(f"✅ Created AI-enhanced Content Library article: '{article_record['title']}'")
                     return article_record
                     
                 except json.JSONDecodeError as e:
@@ -372,11 +542,21 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     else:
         print("⚠️ OpenAI API key not available")
     
-    # Fallback: Create basic article without AI enhancement
+    # Fallback to basic article
+    return await create_basic_fallback_article(content, metadata)
+
+async def create_basic_fallback_article(content: str, metadata: Dict[str, Any]) -> List[Dict]:
+    """Create basic article without AI enhancement"""
+    title = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
+    if title.startswith('Website:'):
+        title = title.replace('Website: ', '')
+    
+    source_type = metadata.get('type', 'text_processing')
+    
     article_record = {
         "id": str(uuid.uuid4()),
         "title": title,
-        "content": full_content,
+        "content": content,
         "summary": f"Content processed from {source_type}",
         "tags": [source_type],
         "takeaways": [],
@@ -384,7 +564,8 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
         "status": "draft",
         "metadata": {
             **metadata,
-            "chunks_count": len(chunks)
+            "ai_processed": False,
+            "processing_timestamp": datetime.utcnow().isoformat()
         },
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
@@ -392,7 +573,7 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     
     await db.content_library.insert_one(article_record)
     print(f"✅ Created basic Content Library article: {article_record['title']}")
-    return article_record
+    return [article_record]
 
 # File upload endpoint
 @app.post("/api/content/upload")

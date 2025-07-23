@@ -90,7 +90,7 @@ class SearchRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Initialize all services and connections"""
-    global mongo_client, db
+    global mongo_client, db, content_library_collection
     
     print("🚀 Starting PromptSupport Enhanced Content Engine...")
     

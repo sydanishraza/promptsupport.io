@@ -53,6 +53,7 @@ const ContentLibraryEnhanced = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showNewArticleModal, setShowNewArticleModal] = useState(false);
   const [showSnipAndRecord, setShowSnipAndRecord] = useState(false);
+  const [showMediaStats, setShowMediaStats] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [versionHistory, setVersionHistory] = useState([]);
   const [showMetadataEditor, setShowMetadataEditor] = useState(false);

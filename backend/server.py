@@ -1373,6 +1373,206 @@ async def list_documents():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Update Content Library article
+@app.put("/api/content-library/{article_id}")
+async def update_content_library_article(
+    article_id: str,
+    title: str = Form(...),
+    content: str = Form(...),
+    status: str = Form("draft"),
+    tags: str = Form("[]"),
+    metadata: str = Form("{}")
+):
+    """Update an existing Content Library article with version history"""
+    try:
+        # Parse JSON fields
+        tags_list = json.loads(tags) if tags else []
+        metadata_dict = json.loads(metadata) if metadata else {}
+        
+        # Get existing article for version history
+        existing_article = await db.content_library.find_one({"id": article_id})
+        if not existing_article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        # Create version history entry
+        version_entry = {
+            "version": existing_article.get("version", 1) + 1,
+            "title": existing_article.get("title", ""),
+            "content": existing_article.get("content", ""),
+            "status": existing_article.get("status", "draft"),
+            "tags": existing_article.get("tags", []),
+            "updated_at": existing_article.get("updated_at", datetime.utcnow().isoformat()),
+            "updated_by": "user"
+        }
+        
+        # Add to version history
+        version_history = existing_article.get("version_history", [])
+        version_history.append(version_entry)
+        
+        # Update article
+        updated_article = {
+            "title": title,
+            "content": content,
+            "status": status,
+            "tags": tags_list,
+            "metadata": {**existing_article.get("metadata", {}), **metadata_dict},
+            "version": version_entry["version"],
+            "version_history": version_history,
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": "user"
+        }
+        
+        await db.content_library.update_one(
+            {"id": article_id},
+            {"$set": updated_article}
+        )
+        
+        return {
+            "success": True,
+            "article_id": article_id,
+            "version": updated_article["version"],
+            "message": "Article updated successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Create new Content Library article
+@app.post("/api/content-library")
+async def create_content_library_article(
+    title: str = Form(...),
+    content: str = Form(...),
+    status: str = Form("draft"),
+    tags: str = Form("[]"),
+    metadata: str = Form("{}")
+):
+    """Create a new Content Library article"""
+    try:
+        # Parse JSON fields
+        tags_list = json.loads(tags) if tags else []
+        metadata_dict = json.loads(metadata) if metadata else {}
+        
+        # Create new article
+        article_id = str(datetime.utcnow().timestamp()).replace('.', '')
+        new_article = {
+            "id": article_id,
+            "title": title,
+            "content": content,
+            "status": status,
+            "tags": tags_list,
+            "metadata": metadata_dict,
+            "source_type": "user_created",
+            "version": 1,
+            "version_history": [],
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "created_by": "user",
+            "updated_by": "user"
+        }
+        
+        await db.content_library.insert_one(new_article)
+        
+        return {
+            "success": True,
+            "article_id": article_id,
+            "message": "Article created successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Get article version history
+@app.get("/api/content-library/{article_id}/versions")
+async def get_article_version_history(article_id: str):
+    """Get version history for an article"""
+    try:
+        article = await db.content_library.find_one({"id": article_id})
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        version_history = article.get("version_history", [])
+        current_version = {
+            "version": article.get("version", 1),
+            "title": article.get("title", ""),
+            "content": article.get("content", ""),
+            "status": article.get("status", "draft"),
+            "tags": article.get("tags", []),
+            "updated_at": article.get("updated_at"),
+            "updated_by": article.get("updated_by", "system"),
+            "is_current": True
+        }
+        
+        return {
+            "current_version": current_version,
+            "version_history": version_history,
+            "total_versions": len(version_history) + 1
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Restore article version
+@app.post("/api/content-library/{article_id}/restore/{version}")
+async def restore_article_version(article_id: str, version: int):
+    """Restore an article to a specific version"""
+    try:
+        article = await db.content_library.find_one({"id": article_id})
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        version_history = article.get("version_history", [])
+        target_version = None
+        
+        for v in version_history:
+            if v.get("version") == version:
+                target_version = v
+                break
+        
+        if not target_version:
+            raise HTTPException(status_code=404, detail="Version not found")
+        
+        # Save current version to history before restoring
+        current_version_entry = {
+            "version": article.get("version", 1),
+            "title": article.get("title", ""),
+            "content": article.get("content", ""),
+            "status": article.get("status", "draft"),
+            "tags": article.get("tags", []),
+            "updated_at": article.get("updated_at"),
+            "updated_by": article.get("updated_by", "system")
+        }
+        version_history.append(current_version_entry)
+        
+        # Restore to target version
+        new_version = article.get("version", 1) + 1
+        restored_article = {
+            "title": target_version.get("title", ""),
+            "content": target_version.get("content", ""),
+            "status": target_version.get("status", "draft"),
+            "tags": target_version.get("tags", []),
+            "version": new_version,
+            "version_history": version_history,
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": "user",
+            "restored_from_version": version
+        }
+        
+        await db.content_library.update_one(
+            {"id": article_id},
+            {"$set": restored_article}
+        )
+        
+        return {
+            "success": True,
+            "article_id": article_id,
+            "restored_from_version": version,
+            "new_version": new_version,
+            "message": f"Article restored to version {version}"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)

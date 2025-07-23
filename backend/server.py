@@ -811,6 +811,9 @@ async def upload_file(
                 
                 # Extract media from document
                 embedded_media = extract_media_from_docx(doc)
+                print(f"🔍 DEBUG: Extracted {len(embedded_media)} media items from DOCX")
+                for i, media in enumerate(embedded_media):
+                    print(f"🔍 DEBUG: Media {i+1}: {media['format']}, {media['size']} bytes, type: {media['content_type']}")
                 
                 # Process document elements in order
                 def iter_block_items(parent):

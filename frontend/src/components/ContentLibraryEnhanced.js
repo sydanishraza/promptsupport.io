@@ -41,7 +41,8 @@ import {
   Hash,
   FileEdit,
   Globe,
-  Users
+  Users,
+  BarChart3
 } from 'lucide-react';
 
 const ContentLibraryEnhanced = () => {

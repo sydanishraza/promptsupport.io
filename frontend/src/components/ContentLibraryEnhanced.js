@@ -634,29 +634,6 @@ const ContentLibraryEnhanced = () => {
     }
   };
 
-  const handleCreateArticle = async (articleData) => {
-    try {
-      const response = await fetch(`${backendUrl}/api/content-library`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(articleData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Refresh the articles list
-        await fetchContentLibrary();
-        console.log('Article created successfully');
-      } else {
-        console.error('Failed to create article');
-      }
-    } catch (error) {
-      console.error('Error creating article:', error);
-    }
-  };
-
   const handleCaptureMedia = async (formData) => {
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL;

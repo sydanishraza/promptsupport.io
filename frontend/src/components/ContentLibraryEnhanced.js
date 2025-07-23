@@ -910,6 +910,27 @@ const ContentLibraryEnhanced = () => {
           </div>
           <div className="flex items-center space-x-3">
             <button
+              onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
+              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-green-100 text-green-700 border border-green-200'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {viewMode === 'grid' ? (
+                <>
+                  <Table className="h-4 w-4 mr-2" />
+                  Table View
+                </>
+              ) : (
+                <>
+                  <Grid className="h-4 w-4 mr-2" />
+                  Grid View
+                </>
+              )}
+            </button>
+
+            <button
               onClick={() => setShowMediaStats(!showMediaStats)}
               className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 showMediaStats
@@ -923,13 +944,13 @@ const ContentLibraryEnhanced = () => {
             
             <button 
               onClick={() => setShowSnipAndRecord(true)}
-              className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
             >
               <Camera size={16} />
               <span>Snip & Record</span>
             </button>
             <button 
-              onClick={handleCreateArticle}
+              onClick={() => setShowNewArticleModal(true)}
               className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
             >
               <Plus size={16} />

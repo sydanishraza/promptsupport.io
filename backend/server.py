@@ -1111,10 +1111,13 @@ async def get_content_library_articles():
             articles.append({
                 "id": article["id"],
                 "title": article["title"],
+                "content": article.get("content", ""),  # Added content field!
                 "summary": article.get("summary", ""),
                 "tags": article.get("tags", []),
                 "status": article.get("status", "draft"),
                 "source_type": article.get("source_type", ""),
+                "takeaways": article.get("takeaways", []),  # Added takeaways too
+                "metadata": article.get("metadata", {}),    # Added metadata
                 "created_at": article.get("created_at"),
                 "updated_at": article.get("updated_at")
             })

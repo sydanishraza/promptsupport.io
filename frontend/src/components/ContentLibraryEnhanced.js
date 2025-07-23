@@ -505,15 +505,31 @@ const ContentLibraryEnhanced = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Status:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedContent.status)}`}>
-                    {selectedContent.status}
-                  </span>
+                  {isEditing ? (
+                    <select
+                      value={selectedContent.status}
+                      onChange={(e) => setSelectedContent(prev => ({...prev, status: e.target.value}))}
+                      className="px-2 py-1 text-xs rounded border"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="review">Under Review</option>
+                      <option value="published">Published</option>
+                    </select>
+                  ) : (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedContent.status)}`}>
+                      {selectedContent.status}
+                    </span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Source:</span>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSourceColor(selectedContent.source)}`}>
                     {selectedContent.source}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Version:</span>
+                  <span className="text-gray-900">v{selectedContent.version || 1}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Words:</span>

@@ -731,6 +731,7 @@ async def upload_file(
                 from docx.oxml.table import CT_Tbl
                 from docx.text.paragraph import Paragraph
                 from docx.table import _Cell, Table
+                import base64
                 
                 doc_file = io.BytesIO(file_content)
                 doc = docx.Document(doc_file)
@@ -745,6 +746,49 @@ async def upload_file(
                     extracted_content += f"**Author:** {doc.core_properties.author}\n\n"
                 if hasattr(doc.core_properties, 'subject') and doc.core_properties.subject:
                     extracted_content += f"**Subject:** {doc.core_properties.subject}\n\n"
+                
+                # Extract embedded images and media
+                def extract_media_from_docx(doc):
+                    """Extract embedded images from docx document"""
+                    media_files = []
+                    try:
+                        # Access the document's media files
+                        for rel in doc.part.rels.values():
+                            if "image" in rel.target_ref:
+                                # Get image data
+                                image_part = rel.target_part
+                                image_data = image_part.blob
+                                
+                                # Convert to base64 for embedding
+                                image_base64 = base64.b64encode(image_data).decode('utf-8')
+                                
+                                # Determine image format
+                                content_type = image_part.content_type
+                                if 'png' in content_type:
+                                    img_format = 'png'
+                                elif 'jpeg' in content_type or 'jpg' in content_type:
+                                    img_format = 'jpeg'
+                                elif 'gif' in content_type:
+                                    img_format = 'gif'
+                                else:
+                                    img_format = 'png'  # default
+                                
+                                media_files.append({
+                                    'type': 'image',
+                                    'format': img_format,
+                                    'data': image_base64,
+                                    'content_type': content_type,
+                                    'size': len(image_data)
+                                })
+                                
+                                print(f"✅ Extracted image: {img_format}, {len(image_data)} bytes")
+                    except Exception as e:
+                        print(f"⚠️ Media extraction error: {e}")
+                    
+                    return media_files
+                
+                # Extract media from document
+                embedded_media = extract_media_from_docx(doc)
                 
                 # Process document elements in order
                 def iter_block_items(parent):

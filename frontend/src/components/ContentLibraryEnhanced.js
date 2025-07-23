@@ -356,13 +356,13 @@ const ContentLibraryEnhanced = () => {
     return matchesSearch && matchesFilter && matchesStatus;
   });
 
-  const handleEditContent = (content) => {
-    // Convert markdown content to HTML if needed
+  const handleEditContent = async (content) => {
+    // Convert markdown content to HTML with AI intelligence if needed
     let processedContent = content.content;
     
     if (processedContent && isMarkdownContent(processedContent)) {
-      processedContent = markdownToHtml(processedContent);
-      console.log('Converted markdown to HTML for editing:', { 
+      processedContent = await markdownToHtml(processedContent, content.id);
+      console.log('AI-enhanced conversion for editing:', { 
         original: content.content.substring(0, 200) + '...',
         converted: processedContent.substring(0, 200) + '...'
       });

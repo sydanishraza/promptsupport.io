@@ -436,6 +436,38 @@ const ContentLibraryEnhanced = () => {
                 <span>Edit</span>
               </button>
             )}
+            {isEditing && (
+              <>
+                <button
+                  onClick={handleSaveArticle}
+                  className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg"
+                >
+                  <Save size={16} />
+                  <span>Save</span>
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="flex items-center space-x-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg"
+                >
+                  <X size={16} />
+                  <span>Cancel</span>
+                </button>
+              </>
+            )}
+            <button 
+              onClick={() => fetchVersionHistory(selectedContent.id)}
+              className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg"
+            >
+              <History size={16} />
+              <span>History</span>
+            </button>
+            <button 
+              onClick={() => setShowMetadataEditor(true)}
+              className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg"
+            >
+              <Database size={16} />
+              <span>Metadata</span>
+            </button>
             <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
               <MoreHorizontal size={20} />
             </button>

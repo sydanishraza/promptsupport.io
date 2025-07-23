@@ -8,6 +8,8 @@ import SystemsModule from './SystemsModule';
 import AIAgents from './AIAgents';
 import Analytics from './Analytics';
 import KnowledgeBaseBuilder from './KnowledgeBaseBuilder';
+import Settings from './Settings';
+import AdminConsole from './AdminConsole';
 
 const MainLayout = () => {
   const [activeRoute, setActiveRoute] = useState('dashboard');

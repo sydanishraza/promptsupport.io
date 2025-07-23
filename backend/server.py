@@ -1320,18 +1320,34 @@ async def process_recording(
             )
         raise HTTPException(status_code=500, detail=str(e))
 
-# Document listing endpoint
+# Enhanced document listing with article links
 @app.get("/api/documents")
-async def get_documents():
-    """List all processed documents and chunks"""
+async def list_documents():
+    """List all processed documents with article information"""
     try:
         documents = []
-        async for chunk in db.document_chunks.find().limit(50):
+        
+        async for chunk in db.document_chunks.find().sort("created_at", -1):
+            # Find related articles for this document
+            related_articles = []
+            if 'original_filename' in chunk.get('metadata', {}):
+                filename = chunk['metadata']['original_filename']
+                async for article in db.content_library.find({
+                    "metadata.original_filename": filename
+                }):
+                    related_articles.append({
+                        "id": article["id"],
+                        "title": article["title"],
+                        "summary": article["summary"]
+                    })
+            
             documents.append({
                 "id": chunk["id"],
-                "content_preview": chunk["content"][:100] + "..." if len(chunk["content"]) > 100 else chunk["content"],
+                "content": chunk["content"][:200] + "..." if len(chunk["content"]) > 200 else chunk["content"],
                 "metadata": chunk.get("metadata", {}),
-                "created_at": chunk.get("created_at")
+                "created_at": chunk.get("created_at"),
+                "related_articles": related_articles,
+                "articles_count": len(related_articles)
             })
         
         return {

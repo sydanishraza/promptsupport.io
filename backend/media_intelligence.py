@@ -8,13 +8,10 @@ import base64
 import io
 import re
 import json
+import requests
+import os
 from typing import Dict, List, Optional, Tuple, Any
-from PIL import Image
-import asyncio
-from emergentintegrations.llm.chat import (
-    ChatClient, UserMessage, ImageContent, 
-    FileContentWithMimeType, SystemMessage
-)
+from datetime import datetime
 
 
 class MediaIntelligenceService:
@@ -23,7 +20,7 @@ class MediaIntelligenceService:
     """
     
     def __init__(self):
-        self.chat_client = ChatClient()
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.supported_image_formats = ['png', 'jpeg', 'jpg', 'gif', 'webp', 'svg+xml']
         self.supported_video_formats = ['mp4', 'webm', 'avi']
         
@@ -59,8 +56,26 @@ class MediaIntelligenceService:
                            context: str, format_type: str) -> Dict[str, Any]:
         """Analyze image using vision models"""
         
-        # Create image content for vision model
-        image_content = ImageContent(image_base64=base64_data)
+        # If OpenAI API key is available, use vision analysis
+        if self.openai_api_key:
+            try:
+                return await self._analyze_with_openai_vision(base64_data, alt_text, context, format_type)
+            except Exception as e:
+                print(f"❌ OpenAI vision analysis failed: {str(e)}")
+                # Fall back to rule-based analysis
+        
+        # Rule-based analysis fallback
+        return self._create_intelligent_fallback_analysis(alt_text, 'image', format_type, context)
+    
+    async def _analyze_with_openai_vision(self, base64_data: str, alt_text: str, 
+                                        context: str, format_type: str) -> Dict[str, Any]:
+        """Analyze image using OpenAI Vision API"""
+        
+        # Extract base64 data without header
+        if base64_data.startswith('data:'):
+            base64_content = base64_data.split(',')[1]
+        else:
+            base64_content = base64_data
         
         # Construct comprehensive analysis prompt
         analysis_prompt = f"""
@@ -102,35 +117,66 @@ class MediaIntelligenceService:
         Focus on providing actionable insights for optimal content presentation.
         """
         
-        try:
-            # Send message to vision model
-            response = await self.chat_client.send_message(
-                UserMessage(
-                    text=analysis_prompt,
-                    file_contents=[image_content]
-                )
-            )
+        headers = {
+            "Authorization": f"Bearer {self.openai_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": analysis_prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/{format_type};base64,{base64_content}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 2000,
+            "temperature": 0.3
+        }
+        
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result["choices"][0]["message"]["content"]
             
-            # Parse JSON response
-            analysis_data = json.loads(response.content)
-            
-            # Add system-generated metadata
-            analysis_data.update({
-                'media_type': 'image',
-                'format': format_type,
-                'analysis_timestamp': self._get_timestamp(),
-                'processing_status': 'success',
-                'enhanced_alt_text': analysis_data.get('accessibility', {}).get('alt_text', alt_text)
-            })
-            
-            return analysis_data
-            
-        except json.JSONDecodeError:
-            # Fallback to structured parsing if JSON fails
-            return self._parse_text_response(response.content, 'image', format_type, alt_text)
-        except Exception as e:
-            print(f"❌ Vision analysis error: {str(e)}")
-            return self._create_fallback_analysis(alt_text, 'image', format_type)
+            try:
+                # Parse JSON response
+                analysis_data = json.loads(ai_response)
+                
+                # Add system-generated metadata
+                analysis_data.update({
+                    'media_type': 'image',
+                    'format': format_type,
+                    'analysis_timestamp': self._get_timestamp(),
+                    'processing_status': 'success',
+                    'enhanced_alt_text': analysis_data.get('accessibility', {}).get('alt_text', alt_text)
+                })
+                
+                return analysis_data
+                
+            except json.JSONDecodeError:
+                # Fallback to structured parsing if JSON fails
+                return self._parse_text_response(ai_response, 'image', format_type, alt_text)
+        else:
+            print(f"❌ OpenAI Vision API error: {response.status_code} - {response.text}")
+            return self._create_intelligent_fallback_analysis(alt_text, 'image', format_type, context)
     
     async def _analyze_video(self, base64_data: str, alt_text: str, 
                            context: str, format_type: str) -> Dict[str, Any]:

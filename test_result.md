@@ -106,7 +106,7 @@
 # Testing Data - Clean slate for fresh development
 #====================================================================================================
 
-## user_problem_statement: "Fix Knowledge Engine LLM processing - OpenAI API key was invalid causing fallback to placeholder articles instead of AI-generated content"
+## user_problem_statement: "Comprehensive Knowledge Engine overhaul based on detailed UX/UI feedback - fix content processing, improve workflows, implement modern CMS patterns, and add advanced recording capabilities"
 
 ## backend:
   - task: "Enhanced Health Check with AI Services"

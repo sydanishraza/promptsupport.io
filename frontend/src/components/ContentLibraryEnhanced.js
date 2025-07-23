@@ -43,7 +43,8 @@ import {
   FileEdit,
   Globe,
   Users,
-  BarChart3
+  BarChart3,
+  Table
 } from 'lucide-react';
 
 const ContentLibraryEnhanced = () => {

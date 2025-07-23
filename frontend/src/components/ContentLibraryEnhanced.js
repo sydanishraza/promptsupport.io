@@ -492,10 +492,7 @@ const ContentLibraryEnhanced = () => {
               onChange={(content) => {
                 setSelectedContent(prev => ({...prev, content}));
               }}
-              onSave={() => {
-                console.log('Saving content:', selectedContent);
-                setIsEditing(false);
-              }}
+              onSave={handleSaveArticle}
               isReadOnly={!isEditing}
               height="600px"
             />

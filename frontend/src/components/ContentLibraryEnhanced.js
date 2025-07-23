@@ -33,7 +33,13 @@ import {
   Star,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  History,
+  Database,
+  Hash,
+  FileEdit,
+  Globe,
+  Users
 } from 'lucide-react';
 
 const ContentLibraryEnhanced = () => {

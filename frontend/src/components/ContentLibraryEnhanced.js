@@ -598,7 +598,7 @@ const ContentLibraryEnhanced = () => {
   };
 
   const renderContentEditor = () => (
-    <MediaArticleViewer
+    <AdvancedMediaEditor
       article={selectedContent}
       isEditing={isEditing}
       onEdit={() => setIsEditing(true)}
@@ -607,6 +607,7 @@ const ContentLibraryEnhanced = () => {
         setIsEditing(false);
         setSelectedContent(null);
       }}
+      onBack={() => setSelectedContent(null)}
       backendUrl={backendUrl}
     />
   );

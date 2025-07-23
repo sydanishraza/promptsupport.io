@@ -318,10 +318,93 @@ const ContentLibraryEnhanced = () => {
     }
   };
 
-  const handleSaveNewArticle = () => {
-    console.log('Saving new article:', newArticle);
-    setShowNewArticleModal(false);
-    setNewArticle({ title: '', content: '', tags: [], status: 'draft', source: 'User Created' });
+  // Fetch version history for an article
+  const fetchVersionHistory = async (articleId) => {
+    try {
+      const response = await fetch(`${backendUrl}/api/content-library/${articleId}/versions`);
+      if (response.ok) {
+        const data = await response.json();
+        setVersionHistory([data.current_version, ...data.version_history]);
+        setShowVersionHistory(true);
+      } else {
+        console.error('Failed to fetch version history:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching version history:', error);
+    }
+  };
+
+  // Restore article to specific version
+  const restoreVersion = async (articleId, version) => {
+    try {
+      const response = await fetch(`${backendUrl}/api/content-library/${articleId}/restore/${version}`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Article restored to version ${version}`);
+        
+        // Refresh content and close version history
+        fetchContentLibrary();
+        setShowVersionHistory(false);
+        
+        // Refresh the selected content if it's the same article
+        if (selectedContent && selectedContent.id === articleId) {
+          const updatedArticles = await fetchContentLibrary();
+          const updatedArticle = updatedArticles.find(a => a.id === articleId);
+          if (updatedArticle) {
+            setSelectedContent(updatedArticle);
+          }
+        }
+      } else {
+        throw new Error('Failed to restore version');
+      }
+    } catch (error) {
+      console.error('Error restoring version:', error);
+      alert('Failed to restore version. Please try again.');
+    }
+  };
+
+  const handleSaveNewArticle = async () => {
+    try {
+      const formData = new FormData();
+      formData.append('title', newArticle.title);
+      formData.append('content', newArticle.content);
+      formData.append('status', newArticle.status);
+      formData.append('tags', JSON.stringify(newArticle.tags));
+      formData.append('metadata', JSON.stringify(newArticle.metadata || {}));
+
+      const response = await fetch(`${backendUrl}/api/content-library`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('New article created:', result);
+        
+        // Refresh content library
+        fetchContentLibrary();
+        
+        // Close modal and reset form
+        setShowNewArticleModal(false);
+        setNewArticle({ 
+          title: '', 
+          content: '<p>Start writing...</p>', 
+          tags: [], 
+          status: 'draft',
+          metadata: {}
+        });
+        
+        alert('Article created successfully!');
+      } else {
+        throw new Error('Failed to create article');
+      }
+    } catch (error) {
+      console.error('Error creating article:', error);
+      alert('Failed to create article. Please try again.');
+    }
   };
 
   const renderContentEditor = () => (

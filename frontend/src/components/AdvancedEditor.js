@@ -85,6 +85,26 @@ const AdvancedEditor = ({ content, onChange, onSave, isReadOnly = false, height 
         HTMLAttributes: {
           class: 'rounded-lg max-w-full h-auto',
         },
+        allowBase64: true,
+        inline: false,
+        parseHTML() {
+          return [
+            {
+              tag: 'img[src]',
+              getAttrs: (element) => {
+                const src = element.getAttribute('src');
+                // Allow all data URLs for images (base64)
+                if (src && (src.startsWith('data:image/') || src.startsWith('http'))) {
+                  return {};
+                }
+                return false;
+              },
+            },
+          ];
+        },
+        renderHTML({ HTMLAttributes }) {
+          return ['img', HTMLAttributes];
+        },
       }),
       TaskList,
       TaskItem.configure({

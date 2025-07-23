@@ -1933,7 +1933,7 @@ async def process_article_media(request: Request):
         # Update article in database if article_id provided
         if article_id and article_id != "":
             try:
-                await db.content_library.update_one(
+                await content_library_collection.update_one(
                     {"id": article_id},
                     {
                         "$set": {

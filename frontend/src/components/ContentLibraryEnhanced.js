@@ -44,6 +44,7 @@ const ContentLibraryEnhanced = () => {
   const [selectedContent, setSelectedContent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showNewArticleModal, setShowNewArticleModal] = useState(false);
+  const [showSnipAndRecord, setShowSnipAndRecord] = useState(false);
   const [newArticle, setNewArticle] = useState({
     title: '',
     content: '',

@@ -892,6 +892,30 @@ async def upload_file(
                                 extracted_content += f"\n![Image {image_count}]({data_url})\n\n"
                                 extracted_content += f"*Image {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes)*\n\n"
                                 print(f"🔍 DEBUG: Successfully embedded image {image_count} as base64 data URL (length: {len(data_url)})")
+                    
+                    elif isinstance(block, Table):
+                        table_count += 1
+                        extracted_content += f"\n## Table {table_count}\n\n"
+                        
+                        # Extract table headers if first row looks like headers
+                        rows = [[cell.text.strip() for cell in row.cells] for row in block.rows]
+                        if rows:
+                            headers = rows[0]
+                            data_rows = rows[1:]
+                            
+                            # Check if first row are likely headers (short, title-case)
+                            if all(len(cell) < 50 and any(c.isupper() for c in cell) for cell in headers if cell):
+                                # Create markdown table with headers
+                                extracted_content += "| " + " | ".join(headers) + " |\n"
+                                extracted_content += "|" + "|".join([" --- " for _ in headers]) + "|\n"
+                                for row in data_rows:
+                                    extracted_content += "| " + " | ".join(row) + " |\n"
+                            else:
+                                # Regular table without headers
+                                for row in rows:
+                                    extracted_content += "| " + " | ".join(row) + " |\n"
+                        
+                        extracted_content += "\n"
                 
                 # If we still have unused embedded media, add them at the end
                 while media_index < len(embedded_media):

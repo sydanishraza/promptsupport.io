@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import MediaArticleViewer from './MediaArticleViewer';
+import AdvancedMediaEditor from './AdvancedMediaEditor';
+import ContentLibraryTable from './ContentLibraryTable';
 import SnipAndRecord from './SnipAndRecord';
 import MediaStatsPanel from './MediaStatsPanel';
 import { marked } from 'marked';

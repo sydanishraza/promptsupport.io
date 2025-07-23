@@ -248,8 +248,20 @@ const ContentLibraryEnhanced = () => {
   });
 
   const handleEditContent = (content) => {
+    // Convert markdown content to HTML if needed
+    let processedContent = content.content;
+    
+    if (processedContent && isMarkdownContent(processedContent)) {
+      processedContent = markdownToHtml(processedContent);
+      console.log('Converted markdown to HTML for editing:', { 
+        original: content.content.substring(0, 200) + '...',
+        converted: processedContent.substring(0, 200) + '...'
+      });
+    }
+    
     setSelectedContent({
       ...content,
+      content: processedContent,
       // Initialize metadata if not present
       metadata: content.metadata || {},
       // Initialize version info

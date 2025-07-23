@@ -300,14 +300,28 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
         </ToolbarButton>
       </div>
 
-      {/* Mode Toggle */}
+      {/* Mode Toggle Buttons */}
       <div className="flex border-r border-gray-200 pr-2 mr-2">
         <ToolbarButton
-          onClick={() => setMode(mode === 'wysiwyg' ? 'html' : 'wysiwyg')}
-          active={mode === 'html'}
-          title="Toggle HTML/WYSIWYG"
+          onClick={() => handleModeSwitch('wysiwyg')}
+          active={mode === 'wysiwyg'}
+          title="WYSIWYG Editor"
         >
-          {mode === 'wysiwyg' ? <Code size={16} /> : <Eye size={16} />}
+          <Edit size={16} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => handleModeSwitch('markdown')}
+          active={mode === 'markdown'}
+          title="Markdown Editor"
+        >
+          <Type size={16} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => handleModeSwitch('html')}
+          active={mode === 'html'}
+          title="HTML Editor"
+        >
+          <Code2 size={16} />
         </ToolbarButton>
       </div>
 

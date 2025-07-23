@@ -94,7 +94,36 @@ const ContentLibraryEnhanced = () => {
   // Convert markdown to HTML with better parsing for images
   const markdownToHtml = (markdown) => {
     try {
-      return marked(markdown, { renderer });
+      // First, let's preserve base64 images by replacing them temporarily
+      let processedMarkdown = markdown;
+      const imageReplacements = new Map();
+      let replacementCounter = 0;
+      
+      // Find all markdown images with base64 data
+      const imagePattern = /!\[(.*?)\]\((data:image\/[^;]+;base64,[^)]+)\)/g;
+      let match;
+      
+      while ((match = imagePattern.exec(markdown)) !== null) {
+        const [fullMatch, altText, dataUrl] = match;
+        const placeholder = `__IMAGE_PLACEHOLDER_${replacementCounter}__`;
+        imageReplacements.set(placeholder, { altText, dataUrl });
+        processedMarkdown = processedMarkdown.replace(fullMatch, placeholder);
+        replacementCounter++;
+      }
+      
+      console.log(`🔍 Found ${imageReplacements.size} base64 images to preserve`);
+      
+      // Convert markdown to HTML with marked
+      let html = marked(processedMarkdown, { renderer });
+      
+      // Restore the base64 images as proper HTML img tags
+      imageReplacements.forEach(({ altText, dataUrl }, placeholder) => {
+        const imgTag = `<img src="${dataUrl}" alt="${altText}" class="rounded-lg max-w-full h-auto" />`;
+        html = html.replace(placeholder, imgTag);
+        console.log(`✅ Restored base64 image: ${altText} (${dataUrl.substring(0, 50)}...)`);
+      });
+      
+      return html;
     } catch (error) {
       console.error('Error converting markdown to HTML:', error);
       return `<p>${markdown}</p>`;

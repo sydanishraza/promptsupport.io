@@ -57,7 +57,12 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
   
-  // Recording states
+  // Enhanced upload states
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [processingStatus, setProcessingStatus] = useState({});
+  const [uploadQueue, setUploadQueue] = useState([]);
+  
+  // Recording states (moved to Content Library as per feedback)
   const [isRecording, setIsRecording] = useState(false);
   const [recordingType, setRecordingType] = useState('screen');
   const [recordingDuration, setRecordingDuration] = useState(0);

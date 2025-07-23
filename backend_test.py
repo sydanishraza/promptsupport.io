@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://6b6a3600-f3e8-4652-ae51-ec7567a4e940.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://6932dd27-38f2-4781-9b35-b6aac917fef1.preview.emergentagent.com') + '/api'
 
 class EnhancedContentEngineTest:
     def __init__(self):

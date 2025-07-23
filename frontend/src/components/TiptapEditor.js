@@ -342,18 +342,27 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
   );
 
   const renderEditor = () => {
+    if (mode === 'markdown') {
+      return (
+        <div className="p-4" style={{ height: `calc(${height} - 60px)` }}>
+          <textarea
+            className="w-full h-full font-mono text-sm border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={markdownContent}
+            onChange={(e) => handleContentChange(e.target.value)}
+            placeholder="Enter Markdown content..."
+            readOnly={isReadOnly}
+          />
+        </div>
+      );
+    }
+
     if (mode === 'html') {
       return (
         <div className="p-4" style={{ height: `calc(${height} - 60px)` }}>
           <textarea
             className="w-full h-full font-mono text-sm border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={editor.getHTML()}
-            onChange={(e) => {
-              editor.commands.setContent(e.target.value);
-              if (onChange) {
-                onChange(e.target.value);
-              }
-            }}
+            onChange={(e) => handleContentChange(e.target.value)}
             placeholder="Enter HTML content..."
             readOnly={isReadOnly}
           />

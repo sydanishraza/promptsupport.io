@@ -435,13 +435,13 @@ async def upload_file(
                 
         elif file_extension == 'pdf':
             try:
-                # Install PyPDF2 if not available
                 import PyPDF2
                 pdf_file = io.BytesIO(file_content)
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
                 extracted_content = ""
-                for page in pdf_reader.pages:
-                    extracted_content += page.extract_text() + "\n"
+                for page_num, page in enumerate(pdf_reader.pages):
+                    page_text = page.extract_text()
+                    extracted_content += f"=== Page {page_num + 1} ===\n{page_text}\n\n"
                 print(f"✅ Extracted {len(extracted_content)} characters from PDF ({len(pdf_reader.pages)} pages)")
             except ImportError:
                 print("⚠️ PyPDF2 not available, treating as binary file")
@@ -452,10 +452,30 @@ async def upload_file(
                 
         elif file_extension in ['doc', 'docx']:
             try:
-                import python_docx
+                import docx
                 doc_file = io.BytesIO(file_content)
-                doc = python_docx.Document(doc_file)
-                extracted_content = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                doc = docx.Document(doc_file)
+                
+                # Extract paragraphs with formatting info
+                extracted_content = f"Document: {file.filename}\n\n"
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        # Check if paragraph might be a heading
+                        if para.style.name.startswith('Heading'):
+                            extracted_content += f"## {para.text}\n\n"
+                        else:
+                            extracted_content += f"{para.text}\n\n"
+                
+                # Extract tables if present
+                if doc.tables:
+                    extracted_content += "\n=== TABLES ===\n"
+                    for i, table in enumerate(doc.tables):
+                        extracted_content += f"\nTable {i+1}:\n"
+                        for row in table.rows:
+                            row_data = [cell.text.strip() for cell in row.cells]
+                            extracted_content += " | ".join(row_data) + "\n"
+                        extracted_content += "\n"
+                        
                 print(f"✅ Extracted {len(extracted_content)} characters from Word document")
             except ImportError:
                 print("⚠️ python-docx not available, treating as binary file")
@@ -463,11 +483,86 @@ async def upload_file(
             except Exception as e:
                 print(f"⚠️ Word document extraction error: {e}")
                 extracted_content = f"Word document: {file.filename} (extraction failed: {str(e)})"
+
+        elif file_extension in ['xls', 'xlsx']:
+            try:
+                import openpyxl
+                import pandas as pd
+                
+                excel_file = io.BytesIO(file_content)
+                workbook = openpyxl.load_workbook(excel_file)
+                
+                extracted_content = f"Spreadsheet: {file.filename}\n\n"
+                
+                for sheet_name in workbook.sheetnames:
+                    sheet = workbook[sheet_name]
+                    extracted_content += f"=== Sheet: {sheet_name} ===\n"
+                    
+                    # Get sheet data
+                    data = []
+                    for row in sheet.iter_rows(values_only=True):
+                        if any(cell is not None for cell in row):
+                            data.append([str(cell) if cell is not None else "" for cell in row])
+                    
+                    # Convert to readable format
+                    if data:
+                        # First row might be headers
+                        headers = data[0] if data else []
+                        extracted_content += "Headers: " + " | ".join(headers[:10]) + "\n\n"  # Limit to first 10 columns
+                        
+                        # Sample data rows (first 10)
+                        for i, row in enumerate(data[1:11]):  # Skip header, limit to 10 rows
+                            extracted_content += f"Row {i+1}: " + " | ".join(row[:10]) + "\n"
+                        
+                        if len(data) > 11:
+                            extracted_content += f"... and {len(data)-11} more rows\n"
+                    
+                    extracted_content += "\n"
+                
+                print(f"✅ Extracted content from Excel file with {len(workbook.sheetnames)} sheets")
+            except ImportError:
+                print("⚠️ openpyxl not available, treating as binary file")
+                extracted_content = f"Excel file: {file.filename} (content extraction requires openpyxl)"
+            except Exception as e:
+                print(f"⚠️ Excel extraction error: {e}")
+                extracted_content = f"Excel file: {file.filename} (extraction failed: {str(e)})"
+
+        elif file_extension in ['ppt', 'pptx']:
+            try:
+                import pptx
+                
+                ppt_file = io.BytesIO(file_content)
+                presentation = pptx.Presentation(ppt_file)
+                
+                extracted_content = f"Presentation: {file.filename}\n\n"
+                
+                for i, slide in enumerate(presentation.slides):
+                    extracted_content += f"=== Slide {i+1} ===\n"
+                    
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text") and shape.text.strip():
+                            extracted_content += f"{shape.text}\n"
+                        elif shape.has_table:
+                            table = shape.table
+                            extracted_content += "\nTable:\n"
+                            for row in table.rows:
+                                row_data = [cell.text.strip() for cell in row.cells]
+                                extracted_content += " | ".join(row_data) + "\n"
+                    
+                    extracted_content += "\n"
+                
+                print(f"✅ Extracted content from PowerPoint with {len(presentation.slides)} slides")
+            except ImportError:
+                print("⚠️ python-pptx not available, treating as binary file")
+                extracted_content = f"PowerPoint file: {file.filename} (content extraction requires python-pptx)"
+            except Exception as e:
+                print(f"⚠️ PowerPoint extraction error: {e}")
+                extracted_content = f"PowerPoint file: {file.filename} (extraction failed: {str(e)})"
                 
         elif file_extension in ['json']:
             try:
                 json_data = json.loads(file_content.decode('utf-8'))
-                extracted_content = f"JSON file: {file.filename}\n\nContent:\n{json.dumps(json_data, indent=2)}"
+                extracted_content = f"JSON file: {file.filename}\n\nStructured Data:\n{json.dumps(json_data, indent=2)}"
                 print(f"✅ Extracted JSON content from {file.filename}")
             except Exception as e:
                 print(f"⚠️ JSON parsing error: {e}")

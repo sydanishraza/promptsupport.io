@@ -542,10 +542,439 @@ This test verifies that the file upload pipeline properly triggers the Content L
             print(f"❌ File upload Content Library integration test failed - {str(e)}")
             return False
     
+    def test_enhanced_content_library_create(self):
+        """Test POST /api/content-library - Create new articles"""
+        print("\n🔍 Testing Enhanced Content Library - Create New Article...")
+        try:
+            # Test data for creating a new article
+            article_data = {
+                'title': 'Test Article for Enhanced Content Library',
+                'content': '# Test Article\n\nThis is a test article created to verify the enhanced Content Library functionality.\n\n## Key Features\n\n- Article creation\n- Version management\n- Metadata handling\n\n## Conclusion\n\nThis article tests the POST /api/content-library endpoint.',
+                'status': 'draft',
+                'tags': json.dumps(['test', 'content-library', 'enhanced', 'backend-testing']),
+                'metadata': json.dumps({
+                    'author': 'testing_agent',
+                    'test_type': 'enhanced_content_library',
+                    'seo_description': 'Test article for enhanced Content Library functionality',
+                    'keywords': ['test', 'content', 'library'],
+                    'category': 'testing',
+                    'priority': 'high',
+                    'featured': True
+                })
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/content-library",
+                data=article_data,
+                timeout=15
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if (data.get("success") and "article_id" in data and 
+                    "message" in data):
+                    self.test_article_id = data["article_id"]
+                    print(f"✅ Article creation successful - ID: {self.test_article_id}")
+                    return True
+                else:
+                    print("❌ Article creation failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Article creation failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Article creation failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_update(self):
+        """Test PUT /api/content-library/{article_id} - Update existing articles with version history"""
+        print("\n🔍 Testing Enhanced Content Library - Update Article with Version History...")
+        try:
+            # First, create an article to update
+            if not hasattr(self, 'test_article_id') or not self.test_article_id:
+                print("Creating test article first...")
+                if not self.test_enhanced_content_library_create():
+                    print("❌ Could not create test article for update test")
+                    return False
+            
+            # Update the article
+            updated_data = {
+                'title': 'Updated Test Article for Enhanced Content Library',
+                'content': '# Updated Test Article\n\nThis article has been updated to test version history functionality.\n\n## Updated Features\n\n- Version history tracking\n- Metadata preservation\n- Status management\n\n## Version 2 Changes\n\n- Added new content\n- Updated metadata\n- Changed status to published\n\n## Conclusion\n\nThis tests the PUT /api/content-library/{article_id} endpoint with version history.',
+                'status': 'published',
+                'tags': json.dumps(['test', 'content-library', 'enhanced', 'updated', 'version-history']),
+                'metadata': json.dumps({
+                    'author': 'testing_agent',
+                    'test_type': 'enhanced_content_library_update',
+                    'seo_description': 'Updated test article with version history',
+                    'keywords': ['test', 'content', 'library', 'version'],
+                    'category': 'testing',
+                    'priority': 'medium',
+                    'featured': False,
+                    'last_updated_by': 'testing_agent'
+                })
+            }
+            
+            response = requests.put(
+                f"{self.base_url}/content-library/{self.test_article_id}",
+                data=updated_data,
+                timeout=15
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if (data.get("success") and "article_id" in data and 
+                    "version" in data and data["version"] > 1):
+                    print(f"✅ Article update successful - Version: {data['version']}")
+                    return True
+                else:
+                    print("❌ Article update failed - invalid response format or no version increment")
+                    return False
+            else:
+                print(f"❌ Article update failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Article update failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_version_history(self):
+        """Test GET /api/content-library/{article_id}/versions - Get version history"""
+        print("\n🔍 Testing Enhanced Content Library - Get Version History...")
+        try:
+            if not hasattr(self, 'test_article_id') or not self.test_article_id:
+                print("❌ No test article ID available - run update test first")
+                return False
+            
+            response = requests.get(
+                f"{self.base_url}/content-library/{self.test_article_id}/versions",
+                timeout=10
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if ("current_version" in data and "version_history" in data and 
+                    "total_versions" in data):
+                    
+                    current_version = data["current_version"]
+                    version_history = data["version_history"]
+                    total_versions = data["total_versions"]
+                    
+                    # Verify version history structure
+                    if (current_version.get("is_current") and 
+                        current_version.get("version") and
+                        isinstance(version_history, list) and
+                        total_versions >= 1):
+                        
+                        print(f"✅ Version history retrieved - Total versions: {total_versions}")
+                        print(f"Current version: {current_version.get('version')}")
+                        print(f"History entries: {len(version_history)}")
+                        
+                        # Verify version history entries have required fields
+                        if version_history:
+                            sample_entry = version_history[0]
+                            required_fields = ['version', 'title', 'content', 'status', 'tags', 'updated_at']
+                            missing_fields = [field for field in required_fields if field not in sample_entry]
+                            
+                            if not missing_fields:
+                                print("✅ Version history entries have proper structure")
+                                return True
+                            else:
+                                print(f"❌ Version history entries missing fields: {missing_fields}")
+                                return False
+                        else:
+                            print("✅ Version history structure correct (no history entries yet)")
+                            return True
+                    else:
+                        print("❌ Version history response has invalid structure")
+                        return False
+                else:
+                    print("❌ Version history failed - missing required fields")
+                    return False
+            else:
+                print(f"❌ Version history failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Version history test failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_restore_version(self):
+        """Test POST /api/content-library/{article_id}/restore/{version} - Restore specific versions"""
+        print("\n🔍 Testing Enhanced Content Library - Restore Version...")
+        try:
+            if not hasattr(self, 'test_article_id') or not self.test_article_id:
+                print("❌ No test article ID available - run previous tests first")
+                return False
+            
+            # First, get version history to find a version to restore
+            versions_response = requests.get(
+                f"{self.base_url}/content-library/{self.test_article_id}/versions",
+                timeout=10
+            )
+            
+            if versions_response.status_code != 200:
+                print("❌ Could not get version history for restore test")
+                return False
+            
+            versions_data = versions_response.json()
+            version_history = versions_data.get("version_history", [])
+            
+            if not version_history:
+                print("⚠️ No version history available - creating another update first...")
+                # Create another update to have version history
+                update_data = {
+                    'title': 'Third Version Test Article',
+                    'content': '# Third Version\n\nThis is the third version to test restoration.',
+                    'status': 'draft',
+                    'tags': json.dumps(['test', 'version-3']),
+                    'metadata': json.dumps({'version': 3})
+                }
+                
+                update_response = requests.put(
+                    f"{self.base_url}/content-library/{self.test_article_id}",
+                    data=update_data,
+                    timeout=15
+                )
+                
+                if update_response.status_code != 200:
+                    print("❌ Could not create additional version for restore test")
+                    return False
+                
+                # Get version history again
+                versions_response = requests.get(
+                    f"{self.base_url}/content-library/{self.test_article_id}/versions",
+                    timeout=10
+                )
+                
+                if versions_response.status_code != 200:
+                    print("❌ Could not get updated version history")
+                    return False
+                
+                versions_data = versions_response.json()
+                version_history = versions_data.get("version_history", [])
+            
+            if not version_history:
+                print("⚠️ Still no version history - skipping restore test")
+                return True  # Not a failure, just no history to restore
+            
+            # Try to restore to the first version in history
+            target_version = version_history[0].get("version")
+            if not target_version:
+                print("❌ No version number found in history entry")
+                return False
+            
+            print(f"Attempting to restore to version {target_version}")
+            
+            response = requests.post(
+                f"{self.base_url}/content-library/{self.test_article_id}/restore/{target_version}",
+                timeout=15
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if (data.get("success") and "restored_from_version" in data and 
+                    "new_version" in data and data["restored_from_version"] == target_version):
+                    print(f"✅ Version restore successful - Restored from version {target_version} to new version {data['new_version']}")
+                    return True
+                else:
+                    print("❌ Version restore failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Version restore failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Version restore test failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_metadata_management(self):
+        """Test enhanced metadata management (SEO description, keywords, category, priority, featured)"""
+        print("\n🔍 Testing Enhanced Content Library - Metadata Management...")
+        try:
+            # Create an article with comprehensive metadata
+            enhanced_metadata = {
+                'title': 'Metadata Management Test Article',
+                'content': '# Metadata Test\n\nThis article tests enhanced metadata management.',
+                'status': 'published',
+                'tags': json.dumps(['metadata', 'seo', 'enhanced']),
+                'metadata': json.dumps({
+                    'seo_description': 'Comprehensive test of enhanced metadata management in Content Library',
+                    'keywords': ['metadata', 'seo', 'content-library', 'enhanced', 'testing'],
+                    'category': 'technical-documentation',
+                    'priority': 'high',
+                    'featured': True,
+                    'author': 'testing_agent',
+                    'custom_field': 'custom_value',
+                    'last_reviewed': '2024-01-15',
+                    'target_audience': 'developers'
+                })
+            }
+            
+            # Create article
+            response = requests.post(
+                f"{self.base_url}/content-library",
+                data=enhanced_metadata,
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Could not create metadata test article - {response.status_code}")
+                return False
+            
+            article_data = response.json()
+            metadata_article_id = article_data.get("article_id")
+            
+            if not metadata_article_id:
+                print("❌ No article ID returned from metadata test creation")
+                return False
+            
+            # Retrieve the article and verify metadata
+            get_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+            
+            if get_response.status_code != 200:
+                print("❌ Could not retrieve articles to verify metadata")
+                return False
+            
+            articles_data = get_response.json()
+            articles = articles_data.get("articles", [])
+            
+            # Find our metadata test article
+            test_article = None
+            for article in articles:
+                if article.get("id") == metadata_article_id:
+                    test_article = article
+                    break
+            
+            if not test_article:
+                print("❌ Could not find metadata test article in results")
+                return False
+            
+            # Verify metadata preservation
+            article_metadata = test_article.get("metadata", {})
+            
+            expected_metadata_fields = [
+                'seo_description', 'keywords', 'category', 'priority', 
+                'featured', 'author', 'custom_field'
+            ]
+            
+            missing_fields = []
+            for field in expected_metadata_fields:
+                if field not in article_metadata:
+                    missing_fields.append(field)
+            
+            if missing_fields:
+                print(f"❌ Metadata fields missing: {missing_fields}")
+                print(f"Available metadata: {list(article_metadata.keys())}")
+                return False
+            
+            # Verify specific metadata values
+            if (article_metadata.get('seo_description') == 'Comprehensive test of enhanced metadata management in Content Library' and
+                article_metadata.get('category') == 'technical-documentation' and
+                article_metadata.get('priority') == 'high' and
+                article_metadata.get('featured') == True):
+                
+                print("✅ Enhanced metadata management working correctly")
+                print(f"SEO Description: {article_metadata.get('seo_description')}")
+                print(f"Category: {article_metadata.get('category')}")
+                print(f"Priority: {article_metadata.get('priority')}")
+                print(f"Featured: {article_metadata.get('featured')}")
+                return True
+            else:
+                print("❌ Metadata values not preserved correctly")
+                print(f"Actual metadata: {json.dumps(article_metadata, indent=2)}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Metadata management test failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_api_integration(self):
+        """Test that existing GET /api/content-library still works properly with enhanced features"""
+        print("\n🔍 Testing Enhanced Content Library - API Integration Compatibility...")
+        try:
+            response = requests.get(f"{self.base_url}/content-library", timeout=10)
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response structure: {list(data.keys())}")
+                
+                if "articles" in data and "total" in data:
+                    articles = data["articles"]
+                    total = data["total"]
+                    
+                    print(f"Total articles: {total}")
+                    print(f"Articles returned: {len(articles)}")
+                    
+                    if articles:
+                        # Check first article structure for enhanced fields
+                        sample_article = articles[0]
+                        print(f"Sample article fields: {list(sample_article.keys())}")
+                        
+                        # Verify enhanced fields are present
+                        enhanced_fields = ['content', 'summary', 'tags', 'takeaways', 'metadata']
+                        present_enhanced_fields = [field for field in enhanced_fields if field in sample_article]
+                        
+                        print(f"Enhanced fields present: {present_enhanced_fields}")
+                        
+                        # Verify basic required fields
+                        required_fields = ['id', 'title', 'status', 'created_at']
+                        missing_required = [field for field in required_fields if field not in sample_article]
+                        
+                        if missing_required:
+                            print(f"❌ Missing required fields: {missing_required}")
+                            return False
+                        
+                        # Check if content field is properly populated (this was mentioned as important)
+                        if 'content' in sample_article and sample_article['content']:
+                            print(f"✅ Content field present and populated: {len(sample_article['content'])} characters")
+                        else:
+                            print("⚠️ Content field missing or empty")
+                        
+                        print("✅ Enhanced Content Library API integration working")
+                        return True
+                    else:
+                        print("⚠️ No articles found, but API structure is correct")
+                        return True
+                else:
+                    print("❌ API response missing required fields (articles, total)")
+                    return False
+            else:
+                print(f"❌ API integration failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ API integration test failed - {str(e)}")
+            return False
+
     def run_all_tests(self):
-        """Run all Enhanced Content Engine tests with focus on Content Library integration"""
+        """Run all Enhanced Content Engine tests with focus on Enhanced Content Library functionality"""
         print("🚀 Starting Enhanced Content Engine Backend Testing")
-        print("🎯 FOCUS: Content Library Integration Testing")
+        print("🎯 FOCUS: Enhanced Content Library Backend Functionality")
         print(f"Backend URL: {self.base_url}")
         print("=" * 70)
         

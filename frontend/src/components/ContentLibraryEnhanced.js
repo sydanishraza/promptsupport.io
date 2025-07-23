@@ -280,15 +280,25 @@ const ContentLibraryEnhanced = () => {
   };
 
   const handleViewContent = (content) => {
+    console.log('🔍 handleViewContent called with:', {
+      title: content.title,
+      contentLength: content.content?.length,
+      contentPreview: content.content?.substring(0, 200),
+      hasMarkdownImages: content.content?.includes('![') && content.content?.includes('data:image')
+    });
+    
     // Convert markdown content to HTML if needed
     let processedContent = content.content;
     
     if (processedContent && isMarkdownContent(processedContent)) {
+      console.log('✅ Converting markdown to HTML for:', content.title);
       processedContent = markdownToHtml(processedContent);
-      console.log('Converted markdown to HTML for viewing:', { 
-        original: content.content.substring(0, 200) + '...',
-        converted: processedContent.substring(0, 200) + '...'
-      });
+      console.log('✅ Markdown converted. New length:', processedContent.length);
+      console.log('✅ Converted content preview:', processedContent.substring(0, 300));
+      console.log('✅ Contains HTML images:', processedContent.includes('<img'));
+    } else {
+      console.log('❌ No markdown conversion needed for:', content.title);
+      console.log('❌ isMarkdownContent result:', isMarkdownContent(processedContent));
     }
     
     setSelectedContent({

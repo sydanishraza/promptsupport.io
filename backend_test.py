@@ -971,6 +971,143 @@ This test verifies that the file upload pipeline properly triggers the Content L
             print(f"❌ API integration test failed - {str(e)}")
             return False
 
+    def test_urgent_image_verification(self):
+        """URGENT: Verify specific article content and base64 image data as requested in review"""
+        print("\n🚨 URGENT IMAGE VERIFICATION - Testing Specific Article Content...")
+        try:
+            # Get all Content Library articles
+            response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ Could not fetch Content Library articles - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            data = response.json()
+            articles = data.get("articles", [])
+            total = data.get("total", 0)
+            
+            print(f"📊 Total articles in Content Library: {total}")
+            print(f"📊 Articles returned: {len(articles)}")
+            
+            # 1. Look for the specific article mentioned in the review
+            target_article_id = "9b15125c-7ac4-49f2-9c24-c47ca77fda7b"
+            target_article_title = "Understanding System Architecture: A Visual Guide"
+            
+            target_article = None
+            for article in articles:
+                if (article.get("id") == target_article_id or 
+                    target_article_title.lower() in article.get("title", "").lower()):
+                    target_article = article
+                    break
+            
+            if target_article:
+                print(f"✅ Found target article: '{target_article.get('title')}'")
+                print(f"📋 Article ID: {target_article.get('id')}")
+                
+                # Check if article has content field
+                content = target_article.get("content", "")
+                if not content:
+                    print("❌ CRITICAL: Target article has no content field!")
+                    return False
+                
+                print(f"📄 Content length: {len(content)} characters")
+                
+                # 2. Verify it contains markdown image syntax with base64 data
+                import re
+                
+                # Look for markdown image syntax with data URLs
+                image_pattern = r'!\[([^\]]*)\]\(data:image/([^;]+);base64,([^)]+)\)'
+                image_matches = re.findall(image_pattern, content)
+                
+                print(f"🖼️ Found {len(image_matches)} embedded images in target article")
+                
+                if image_matches:
+                    for i, (alt_text, img_format, base64_data) in enumerate(image_matches, 1):
+                        print(f"  Image {i}: Alt='{alt_text}', Format={img_format}, Base64 length={len(base64_data)}")
+                        
+                        # 3. Verify base64 data is complete and not truncated
+                        if len(base64_data) < 100:
+                            print(f"    ⚠️ Base64 data seems too short (may be truncated)")
+                        else:
+                            print(f"    ✅ Base64 data appears complete")
+                        
+                        # Try to validate base64 format
+                        try:
+                            import base64
+                            decoded = base64.b64decode(base64_data[:100])  # Test first 100 chars
+                            print(f"    ✅ Base64 data is valid")
+                        except Exception as e:
+                            print(f"    ❌ Base64 data validation failed: {e}")
+                    
+                    print(f"✅ Target article contains {len(image_matches)} embedded images with base64 data")
+                else:
+                    print("❌ CRITICAL: Target article contains NO embedded images!")
+                    # Show a sample of the content to debug
+                    print(f"Content preview (first 500 chars): {content[:500]}...")
+                    return False
+            else:
+                print(f"❌ Could not find target article '{target_article_title}' or ID '{target_article_id}'")
+                print("Available articles:")
+                for article in articles[:5]:  # Show first 5 articles
+                    print(f"  - '{article.get('title')}' (ID: {article.get('id')})")
+            
+            # 4. Check how many articles actually contain "data:image" in their content
+            articles_with_images = 0
+            articles_with_data_image = 0
+            
+            for article in articles:
+                content = article.get("content", "")
+                if "data:image" in content:
+                    articles_with_data_image += 1
+                    
+                    # Count actual image tags
+                    image_count = len(re.findall(r'!\[([^\]]*)\]\(data:image/', content))
+                    if image_count > 0:
+                        articles_with_images += 1
+                        print(f"📷 Article '{article.get('title')}' has {image_count} embedded images")
+            
+            print(f"\n📊 IMAGE VERIFICATION SUMMARY:")
+            print(f"   Articles with 'data:image' text: {articles_with_data_image}")
+            print(f"   Articles with actual embedded images: {articles_with_images}")
+            print(f"   Total articles checked: {len(articles)}")
+            
+            # 5. Test specific markdown image syntax pattern
+            if target_article:
+                content = target_article.get("content", "")
+                
+                # Look for the exact pattern mentioned in review
+                system_arch_pattern = r'!\[System Architecture Diagram\]\(data:image/svg\+xml;base64,'
+                if re.search(system_arch_pattern, content):
+                    print("✅ Found exact 'System Architecture Diagram' image pattern!")
+                else:
+                    print("❌ Could not find exact 'System Architecture Diagram' pattern")
+                    
+                    # Look for any SVG images
+                    svg_pattern = r'!\[([^\]]*)\]\(data:image/svg\+xml;base64,'
+                    svg_matches = re.findall(svg_pattern, content)
+                    if svg_matches:
+                        print(f"Found {len(svg_matches)} SVG images with alt text: {svg_matches}")
+                    else:
+                        print("No SVG images found at all")
+            
+            # Overall assessment
+            if target_article and image_matches:
+                print("\n✅ URGENT VERIFICATION PASSED: Target article found with embedded base64 images")
+                return True
+            elif articles_with_images > 0:
+                print(f"\n⚠️ PARTIAL SUCCESS: {articles_with_images} articles have embedded images, but target article may have issues")
+                return True
+            else:
+                print("\n❌ URGENT VERIFICATION FAILED: No embedded images found in Content Library")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Urgent image verification failed - {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run all Enhanced Content Engine tests with focus on Enhanced Content Library functionality"""
         print("🚀 Starting Enhanced Content Engine Backend Testing")

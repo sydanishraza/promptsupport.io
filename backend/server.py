@@ -1824,7 +1824,71 @@ async def restore_article_version(article_id: str, version: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/media/analyze")
+@app.post("/api/content-library")
+async def create_content_library_article(request: Request):
+    """Create a new article in the Content Library"""
+    try:
+        data = await request.json()
+        
+        # Generate ID if not provided
+        if 'id' not in data:
+            data['id'] = f"article_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
+        # Set timestamps
+        data['created_at'] = datetime.now().isoformat()
+        data['updated_at'] = datetime.now().isoformat()
+        
+        # Set defaults
+        data.setdefault('version', 1)
+        data.setdefault('views', 0)
+        data.setdefault('status', 'draft')
+        data.setdefault('source', 'manual')
+        data.setdefault('tags', [])
+        data.setdefault('metadata', {})
+        
+        # Calculate word count
+        content = data.get('content', '')
+        if content:
+            # Remove HTML tags and count words
+            import re
+            text_content = re.sub(r'<[^>]+>', '', content)
+            data['wordCount'] = len(text_content.split())
+        else:
+            data['wordCount'] = 0
+        
+        # Insert into database
+        await content_library_collection.insert_one(data)
+        
+        return {
+            "success": True,
+            "message": "Article created successfully",
+            "article": data
+        }
+        
+    except Exception as e:
+        print(f"❌ Error creating article: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/content-library/{article_id}")
+async def delete_content_library_article(article_id: str):
+    """Delete an article from the Content Library"""
+    try:
+        result = await content_library_collection.delete_one({"id": article_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        return {
+            "success": True,
+            "message": "Article deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting article: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 async def analyze_media_intelligence(request: Request):
     """
     Comprehensive media analysis using LLM + Vision models

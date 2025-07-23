@@ -985,7 +985,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Uploaded Content</h1>
             <p className="text-gray-600">
-              Manage and search through all your processed content
+              Manage, download, and view articles generated from your processed content
             </p>
           </div>
           <button
@@ -999,48 +999,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             Refresh
           </button>
         </div>
-
-        {/* Content Library Articles */}
-        {contentLibraryArticles.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <BookOpen className="w-5 h-5 mr-2 text-blue-600" />
-              Content Library Articles ({contentLibraryArticles.length})
-            </h3>
-            <div className="space-y-3">
-              {contentLibraryArticles.slice(0, 3).map((article) => (
-                <div key={article.id} className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-blue-900">{article.title}</h4>
-                      <p className="text-sm text-blue-700 mt-1">{article.summary}</p>
-                      <div className="flex items-center space-x-2 mt-2">
-                        {article.tags?.map((tag, index) => (
-                          <span key={index} className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Created: {new Date(article.created_at).toLocaleString()} • Status: {article.status}
-                      </p>
-                    </div>
-                    <button className="p-1 text-blue-600 hover:text-blue-800">
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {contentLibraryArticles.length > 3 && (
-                <div className="text-center">
-                  <button className="text-blue-600 hover:text-blue-800 text-sm">
-                    View all {contentLibraryArticles.length} articles in Content Library →
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Search Bar */}
         <div className="flex space-x-4 mb-6">
@@ -1087,7 +1045,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           </div>
         )}
 
-        {/* Raw Document Chunks */}
+        {/* Processed Documents with Article Links */}
         {documents.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <Database className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -1097,42 +1055,146 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
         ) : (
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Raw Document Chunks ({documents.length})
+              Processed Documents ({documents.length})
             </h3>
             {documents.map((doc) => (
-              <div key={doc.id} className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+              <div key={doc.id} className="p-6 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900 mb-2">{doc.content_preview}</p>
-                    <div className="text-sm text-gray-500">
-                      <span>ID: {doc.id}</span>
-                      {doc.metadata?.source && (
-                        <span className="ml-4">Source: {doc.metadata.source}</span>
-                      )}
-                      {doc.metadata?.type && (
-                        <span className="ml-4">Type: {doc.metadata.type}</span>
-                      )}
-                      {doc.created_at && (
-                        <span className="ml-4">
-                          Created: {new Date(doc.created_at).toLocaleString()}
-                        </span>
-                      )}
+                    {/* Document Info */}
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        {doc.metadata?.original_filename || doc.metadata?.url || `Document ${doc.id.substring(0, 8)}`}
+                      </h4>
+                      <p className="text-gray-700 mb-2 line-clamp-3">{doc.content}</p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        {doc.metadata?.type && (
+                          <span className="flex items-center">
+                            <File className="w-3 h-3 mr-1" />
+                            {doc.metadata.type}
+                          </span>
+                        )}
+                        {doc.created_at && (
+                          <span className="flex items-center">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {new Date(doc.created_at).toLocaleString()}
+                          </span>
+                        )}
+                        {doc.metadata?.content_length && (
+                          <span>{doc.metadata.content_length} characters</span>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Generated Articles */}
+                    {doc.related_articles && doc.related_articles.length > 0 && (
+                      <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                        <h5 className="font-medium text-blue-900 mb-2 flex items-center">
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Generated Articles ({doc.articles_count})
+                        </h5>
+                        <div className="space-y-2">
+                          {doc.related_articles.slice(0, 3).map((article) => (
+                            <div key={article.id} className="flex items-center justify-between bg-white rounded p-2">
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900 text-sm">{article.title}</p>
+                                <p className="text-xs text-gray-600 truncate">{article.summary}</p>
+                              </div>
+                              <button 
+                                onClick={() => {/* TODO: Navigate to article */}}
+                                className="text-xs text-blue-600 hover:text-blue-800 ml-2 underline"
+                              >
+                                View →
+                              </button>
+                            </div>
+                          ))}
+                          {doc.related_articles.length > 3 && (
+                            <p className="text-xs text-blue-700 mt-2">
+                              +{doc.related_articles.length - 3} more articles
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No Articles Generated */}
+                    {(!doc.related_articles || doc.related_articles.length === 0) && (
+                      <div className="bg-yellow-50 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ No articles generated from this document. This may indicate processing issues.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex space-x-2 ml-4">
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col space-y-2 ml-6">
+                    <button 
+                      onClick={() => {/* TODO: Download original file */}}
+                      className="flex items-center px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                      title="Download original file"
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download
+                    </button>
+                    
                     <button 
                       onClick={() => viewDocument(doc)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                      title="View document"
+                      className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                      title="View full content"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
                     </button>
+
+                    {doc.related_articles && doc.related_articles.length > 0 && (
+                      <button 
+                        onClick={() => {/* TODO: View all articles */}}
+                        className="flex items-center px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                        title="View all generated articles"
+                      >
+                        <BookOpen className="w-4 h-4 mr-1" />
+                        Articles
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
+            
+            {/* Pagination/Load More */}
+            {documents.length >= 10 && (
+              <div className="text-center pt-4">
+                <button 
+                  onClick={() => {/* TODO: Load more documents */}}
+                  className="px-4 py-2 text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  Load more documents...
+                </button>
+              </div>
+            )}
           </div>
         )}
+
+        {/* Summary Stats */}
+        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{documents.length}</p>
+              <p className="text-sm text-gray-600">Documents Processed</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-600">{contentLibraryArticles.length}</p>
+              <p className="text-sm text-gray-600">Articles Generated</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-600">
+                {documents.reduce((sum, doc) => sum + (doc.articles_count || 0), 0)}
+              </p>
+              <p className="text-sm text-gray-600">Total Article Links</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

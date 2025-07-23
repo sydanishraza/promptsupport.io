@@ -94,13 +94,21 @@ const ContentLibraryEnhanced = () => {
   const isMarkdownContent = (content) => {
     if (!content) return false;
     
+    // Check for markdown image syntax specifically
+    const hasMarkdownImages = content.includes('![') && content.includes('data:image');
+    
     const hasMarkdownSyntax = content.includes('#') || 
                               content.includes('**') || 
                               content.includes('- ') || 
                               content.includes('1. ') ||
                               content.includes('```') ||
                               content.includes('> ') ||
-                              content.includes('!['); // Image syntax
+                              hasMarkdownImages;
+    
+    // For markdown images, always convert even if HTML tags are present
+    if (hasMarkdownImages) {
+      return true;
+    }
     
     const hasHtmlTags = content.includes('<') && content.includes('>');
     

@@ -57,6 +57,7 @@ app.add_middleware(
 # Global clients
 mongo_client = None
 db = None
+content_library_collection = None
 
 # Pydantic Models
 class DocumentChunk(BaseModel):

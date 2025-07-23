@@ -697,6 +697,205 @@ const ContentLibraryEnhanced = () => {
     </div>
   );
 
+  // Version History Modal
+  const renderVersionHistoryModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden"
+      >
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">Version History</h2>
+          <button
+            onClick={() => setShowVersionHistory(false)}
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 max-h-96 overflow-y-auto">
+          <div className="space-y-4">
+            {versionHistory.map((version, index) => (
+              <div key={version.version} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-3">
+                    <span className="font-medium text-gray-900">
+                      Version {version.version}
+                      {version.is_current && (
+                        <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                          Current
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {new Date(version.updated_at).toLocaleString()}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      by {version.updated_by}
+                    </span>
+                  </div>
+                  {!version.is_current && (
+                    <button
+                      onClick={() => restoreVersion(selectedContent.id, version.version)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+                    >
+                      Restore
+                    </button>
+                  )}
+                </div>
+                <h4 className="font-medium text-gray-800 mb-1">{version.title}</h4>
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  {version.content.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                </p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {version.tags.map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+
+  // Metadata Editor Modal
+  const renderMetadataEditor = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden"
+      >
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">Edit Metadata</h2>
+          <button
+            onClick={() => setShowMetadataEditor(false)}
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 max-h-96 overflow-y-auto">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                SEO Description
+              </label>
+              <textarea
+                value={selectedContent.metadata?.seo_description || ''}
+                onChange={(e) => setSelectedContent(prev => ({
+                  ...prev,
+                  metadata: { ...prev.metadata, seo_description: e.target.value }
+                }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+                placeholder="SEO description for this article..."
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Keywords
+              </label>
+              <input
+                type="text"
+                value={selectedContent.metadata?.keywords || ''}
+                onChange={(e) => setSelectedContent(prev => ({
+                  ...prev,
+                  metadata: { ...prev.metadata, keywords: e.target.value }
+                }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="keyword1, keyword2, keyword3"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category
+              </label>
+              <select
+                value={selectedContent.metadata?.category || ''}
+                onChange={(e) => setSelectedContent(prev => ({
+                  ...prev,
+                  metadata: { ...prev.metadata, category: e.target.value }
+                }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select category...</option>
+                <option value="getting-started">Getting Started</option>
+                <option value="tutorials">Tutorials</option>
+                <option value="troubleshooting">Troubleshooting</option>
+                <option value="advanced">Advanced</option>
+                <option value="api-docs">API Documentation</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Priority
+              </label>
+              <select
+                value={selectedContent.metadata?.priority || 'normal'}
+                onChange={(e) => setSelectedContent(prev => ({
+                  ...prev,
+                  metadata: { ...prev.metadata, priority: e.target.value }
+                }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="featured"
+                checked={selectedContent.metadata?.featured || false}
+                onChange={(e) => setSelectedContent(prev => ({
+                  ...prev,
+                  metadata: { ...prev.metadata, featured: e.target.checked }
+                }))}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="featured" className="ml-2 block text-sm text-gray-900">
+                Featured Article
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+          <button
+            onClick={() => setShowMetadataEditor(false)}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              setShowMetadataEditor(false);
+              handleSaveArticle();
+            }}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+          >
+            <Save size={16} />
+            <span>Save Metadata</span>
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+
   if (selectedContent) {
     return renderContentEditor();
   }

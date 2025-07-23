@@ -197,7 +197,14 @@ const ContentLibraryEnhanced = () => {
   });
 
   const handleEditContent = (content) => {
-    setSelectedContent(content);
+    setSelectedContent({
+      ...content,
+      // Initialize metadata if not present
+      metadata: content.metadata || {},
+      // Initialize version info
+      version: content.version || 1,
+      version_history: content.version_history || []
+    });
     setIsEditing(true);
   };
 

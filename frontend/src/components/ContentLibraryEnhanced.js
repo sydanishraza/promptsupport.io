@@ -213,7 +213,70 @@ const ContentLibraryEnhanced = () => {
     setIsEditing(false);
   };
 
+  const handleSaveArticle = async () => {
+    try {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL;
+      
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('title', selectedContent.title);
+      formData.append('content', selectedContent.content);
+      formData.append('status', selectedContent.status || 'draft');
+      formData.append('tags', JSON.stringify(selectedContent.tags || []));
+      formData.append('metadata', JSON.stringify(selectedContent.metadata || {}));
+
+      let response;
+      if (selectedContent.id && selectedContent.id !== 'default-1') {
+        // Update existing article
+        response = await fetch(`${backendUrl}/api/content-library/${selectedContent.id}`, {
+          method: 'PUT',
+          body: formData
+        });
+      } else {
+        // Create new article
+        response = await fetch(`${backendUrl}/api/content-library`, {
+          method: 'POST',
+          body: formData
+        });
+      }
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Article saved:', result);
+        
+        // Refresh content library
+        fetchContentLibrary();
+        
+        // Show success message
+        alert(`Article ${selectedContent.id ? 'updated' : 'created'} successfully!`);
+        
+        // Exit editing mode
+        setIsEditing(false);
+        
+        // Update local state with new version info
+        if (result.version) {
+          setSelectedContent(prev => ({
+            ...prev,
+            version: result.version
+          }));
+        }
+      } else {
+        throw new Error('Failed to save article');
+      }
+    } catch (error) {
+      console.error('Error saving article:', error);
+      alert('Failed to save article. Please try again.');
+    }
+  };
+
   const handleCreateArticle = () => {
+    setNewArticle({ 
+      title: '', 
+      content: '<p>Start writing your article...</p>', 
+      tags: [], 
+      status: 'draft',
+      metadata: {}
+    });
     setShowNewArticleModal(true);
   };
 

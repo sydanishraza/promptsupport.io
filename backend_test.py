@@ -1112,6 +1112,7 @@ This test verifies that the file upload pipeline properly triggers the Content L
         """Run all Enhanced Content Engine tests with focus on Enhanced Content Library functionality"""
         print("🚀 Starting Enhanced Content Engine Backend Testing")
         print("🎯 FOCUS: Enhanced Content Library Backend Functionality")
+        print("🚨 URGENT: Image Verification for Frontend Display Issues")
         print(f"Backend URL: {self.base_url}")
         print("=" * 70)
         
@@ -1120,7 +1121,12 @@ This test verifies that the file upload pipeline properly triggers the Content L
         # Initialize test article ID for enhanced tests
         self.test_article_id = None
         
-        # Run basic health checks first
+        # Run URGENT image verification test first
+        print("\n🚨 URGENT IMAGE VERIFICATION TEST")
+        print("=" * 50)
+        results['urgent_image_verification'] = self.test_urgent_image_verification()
+        
+        # Run basic health checks
         results['health_check'] = self.test_health_check()
         results['status_endpoint'] = self.test_status_endpoint()
         
@@ -1156,13 +1162,15 @@ This test verifies that the file upload pipeline properly triggers the Content L
         print("\n" + "=" * 70)
         print("📊 ENHANCED CONTENT ENGINE TEST RESULTS")
         print("🎯 ENHANCED CONTENT LIBRARY BACKEND FUNCTIONALITY")
+        print("🚨 URGENT IMAGE VERIFICATION RESULTS")
         print("=" * 70)
         
         passed = 0
         total = len(results)
         
-        # Prioritize Enhanced Content Library results in display
+        # Prioritize URGENT test and Enhanced Content Library results in display
         priority_tests = [
+            'urgent_image_verification',
             'enhanced_content_library_create',
             'enhanced_content_library_update', 
             'enhanced_content_library_version_history',
@@ -1185,12 +1193,24 @@ This test verifies that the file upload pipeline properly triggers the Content L
             if test_name in results:
                 result = results[test_name]
                 status = "✅ PASS" if result else "❌ FAIL"
-                priority_marker = "🎯 " if 'enhanced_content_library' in test_name else ""
+                if test_name == 'urgent_image_verification':
+                    priority_marker = "🚨 URGENT: "
+                elif 'enhanced_content_library' in test_name:
+                    priority_marker = "🎯 "
+                else:
+                    priority_marker = ""
                 print(f"{priority_marker}{test_name.replace('_', ' ').title()}: {status}")
                 if result:
                     passed += 1
         
         print(f"\nOverall: {passed}/{total} tests passed")
+        
+        # URGENT image verification assessment
+        urgent_passed = results.get('urgent_image_verification', False)
+        if urgent_passed:
+            print("🎉 URGENT IMAGE VERIFICATION: PASSED - Backend has embedded images")
+        else:
+            print("❌ URGENT IMAGE VERIFICATION: FAILED - Backend image data issues detected")
         
         # Enhanced Content Library specific assessment
         enhanced_tests = [
@@ -1217,17 +1237,24 @@ This test verifies that the file upload pipeline properly triggers the Content L
         
         print(f"🔧 CORE FUNCTIONALITY: {core_passed}/{len(core_tests)} tests passed")
         
-        # Overall assessment
-        if enhanced_passed >= 4:  # At least 4 out of 6 enhanced tests should pass
-            print("🎉 Enhanced Content Library backend functionality is working!")
-            if content_library_passed >= 1 and core_passed >= 4:
-                print("🎉 Complete system integration is working!")
-                return True
+        # Overall assessment with urgent priority
+        if urgent_passed:
+            print("🎉 URGENT ISSUE RESOLVED: Backend contains embedded images as expected!")
+            if enhanced_passed >= 4:  # At least 4 out of 6 enhanced tests should pass
+                print("🎉 Enhanced Content Library backend functionality is working!")
+                if content_library_passed >= 1 and core_passed >= 4:
+                    print("🎉 Complete system integration is working!")
+                    return True
+                else:
+                    print("⚠️ Enhanced features work, but some integration or core issues remain")
+                    return True
             else:
-                print("⚠️ Enhanced features work, but some integration or core issues remain")
+                print(f"⚠️ Images found but Enhanced Content Library has {len(enhanced_tests) - enhanced_passed} issues")
                 return True
         else:
-            print(f"❌ Enhanced Content Library backend tests failed - {len(enhanced_tests) - enhanced_passed} critical issues")
+            print("❌ URGENT ISSUE CONFIRMED: Backend image data problems detected!")
+            if enhanced_passed >= 4:
+                print("✅ Enhanced Content Library backend works (but image issue exists)")
             if content_library_passed >= 1:
                 print("✅ Original Content Library integration works")
             if core_passed >= 4:

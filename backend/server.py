@@ -1121,7 +1121,7 @@ async def get_content_library_articles():
 
 # URL processing endpoint  
 @app.post("/api/content/process-url")
-async def process_url(
+async def process_url_content(
     url: str = Form(...),
     metadata: str = Form("{}")
 ):

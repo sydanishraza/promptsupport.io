@@ -810,11 +810,17 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           </div>
         </div>
 
-        {/* Text Processing Section */}
+        {/* Manual Text Processing Section - Separate from File/URL Processing */}
         <div className="bg-gray-50 rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Direct Text Processing</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <FileText className="w-5 h-5 inline-block mr-2" />
+            Manual Text Processing
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Paste or type text content directly for immediate processing into structured articles.
+          </p>
           <textarea
-            placeholder="Paste text content here for processing..."
+            placeholder="Paste or type your text content here for processing..."
             rows="6"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             onKeyDown={(e) => {
@@ -825,7 +831,9 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             }}
           />
           <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-gray-500">Press Ctrl+Enter to process • Creates Content Library articles</span>
+            <span className="text-sm text-gray-500">
+              Press Ctrl+Enter to process • Creates Content Library articles
+            </span>
             <button
               onClick={(e) => {
                 const textarea = e.target.closest('.bg-gray-50').querySelector('textarea');

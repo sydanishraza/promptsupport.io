@@ -45,7 +45,9 @@ import {
   Globe,
   Users,
   BarChart3,
-  Table
+  Table,
+  Brain,
+  XCircle
 } from 'lucide-react';
 
 const ContentLibraryEnhanced = () => {

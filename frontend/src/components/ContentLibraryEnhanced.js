@@ -45,11 +45,15 @@ const ContentLibraryEnhanced = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showNewArticleModal, setShowNewArticleModal] = useState(false);
   const [showSnipAndRecord, setShowSnipAndRecord] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versionHistory, setVersionHistory] = useState([]);
+  const [showMetadataEditor, setShowMetadataEditor] = useState(false);
   const [newArticle, setNewArticle] = useState({
     title: '',
     content: '',
     status: 'draft',
-    tags: []
+    tags: [],
+    metadata: {}
   });
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);

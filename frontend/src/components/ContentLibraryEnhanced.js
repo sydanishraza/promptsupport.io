@@ -91,9 +91,52 @@ const ContentLibraryEnhanced = () => {
     return out;
   };
 
-  // Convert markdown to HTML with better parsing for all image formats
-  const markdownToHtml = (markdown) => {
+  // Convert markdown to HTML with comprehensive media intelligence
+  const markdownToHtml = async (markdown, articleId = null) => {
     try {
+      console.log(`🧠 Starting intelligent media processing for article...`);
+      
+      // Check if article has media that needs processing
+      const hasMedia = markdown.includes('![') && markdown.includes('data:image');
+      
+      if (hasMedia) {
+        console.log(`🔍 Found media content, processing with AI intelligence...`);
+        
+        // Use the comprehensive media processing endpoint
+        const formData = new FormData();
+        formData.append('content', markdown);
+        if (articleId) {
+          formData.append('article_id', articleId);
+        }
+        
+        try {
+          const response = await fetch(`${backendUrl}/api/media/process-article`, {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              console.log(`🎉 SUCCESS: Processed ${result.media_count} media items with AI intelligence`);
+              console.log(`📊 Media processing details:`, result.processed_media);
+              
+              // Return the enhanced content with intelligent captions and placement
+              return result.processed_content;
+            } else {
+              console.error('❌ Media processing failed:', result.error);
+            }
+          } else {
+            console.error('❌ Media processing request failed:', response.status);
+          }
+        } catch (mediaError) {
+          console.error('❌ Error calling media processing API:', mediaError);
+        }
+      }
+      
+      // Fallback to basic markdown processing if AI processing fails or no media
+      console.log(`📝 Using basic markdown processing...`);
+      
       // First, let's preserve base64 images by replacing them temporarily
       let processedMarkdown = markdown;
       const imageReplacements = new Map();
@@ -111,25 +154,39 @@ const ContentLibraryEnhanced = () => {
         replacementCounter++;
       }
       
-      console.log(`🔍 Found ${imageReplacements.size} base64 images to preserve (PNG, JPEG, SVG, GIF, etc.)`);
+      console.log(`🔍 Found ${imageReplacements.size} base64 images for basic processing`);
       
       // Convert markdown to HTML with marked
       let html = marked(processedMarkdown, { renderer });
       
-      // Restore the base64 images as proper HTML img tags
+      // Restore the base64 images as enhanced HTML img tags
       imageReplacements.forEach(({ altText, dataUrl }, placeholder) => {
-        const imgTag = `<img src="${dataUrl}" alt="${altText}" class="rounded-lg max-w-full h-auto" style="display: block; margin: 1rem 0;" />`;
-        html = html.replace(placeholder, imgTag);
-        
-        // Extract image format for logging
+        // Create enhanced HTML with better styling
         const formatMatch = dataUrl.match(/data:image\/([^;]+);base64/);
-        const format = formatMatch ? formatMatch[1].toUpperCase() : 'UNKNOWN';
-        console.log(`✅ Restored ${format} image: ${altText} (${dataUrl.substring(0, 50)}...)`);
+        const format = formatMatch ? formatMatch[1].toUpperCase() : 'IMAGE';
+        
+        const imgTag = `
+        <div class="media-container" style="margin: 2rem 0; text-align: center;">
+          <figure style="margin: 0; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <img 
+              src="${dataUrl}" 
+              alt="${altText}" 
+              class="rounded-lg max-w-full h-auto" 
+              style="display: block; margin: 0 auto; border-radius: 6px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);"
+            />
+            <figcaption style="margin-top: 1rem; font-size: 0.875rem; color: #6b7280;">
+              <div style="font-weight: 600;">${altText || `${format} Image`}</div>
+            </figcaption>
+          </figure>
+        </div>`;
+        
+        html = html.replace(placeholder, imgTag);
+        console.log(`✅ Restored ${format} image: ${altText} (basic processing)`);
       });
       
       return html;
     } catch (error) {
-      console.error('Error converting markdown to HTML:', error);
+      console.error('Error in intelligent markdown processing:', error);
       return `<p>${markdown}</p>`;
     }
   };

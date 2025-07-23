@@ -35,6 +35,13 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
   const [mode, setMode] = useState('wysiwyg'); // wysiwyg, markdown, html
   const [markdownContent, setMarkdownContent] = useState('');
 
+  // Initialize markdown parser
+  const turndownService = new TurndownService({
+    headingStyle: 'atx',
+    bulletListMarker: '-',
+    codeBlockStyle: 'fenced'
+  });
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -54,21 +61,101 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
         nested: true,
       }),
     ],
-    content: content || '<p>Start writing...</p>',
+    content: '',
     editable: !isReadOnly,
     onUpdate: ({ editor }) => {
-      if (onChange) {
+      if (onChange && mode === 'wysiwyg') {
         onChange(editor.getHTML());
       }
     },
   });
 
-  // Update editor content when prop changes
+  // Convert markdown to HTML
+  const markdownToHtml = (markdown) => {
+    try {
+      return marked(markdown);
+    } catch (error) {
+      console.error('Error converting markdown to HTML:', error);
+      return `<p>${markdown}</p>`;
+    }
+  };
+
+  // Convert HTML to markdown
+  const htmlToMarkdown = (html) => {
+    try {
+      return turndownService.turndown(html);
+    } catch (error) {
+      console.error('Error converting HTML to markdown:', error);
+      return html;
+    }
+  };
+
+  // Initialize content based on format
   useEffect(() => {
-    if (editor && content !== undefined && editor.getHTML() !== content) {
-      editor.commands.setContent(content);
+    if (editor && content !== undefined) {
+      let htmlContent = content;
+      
+      // Check if content is markdown (contains markdown syntax)
+      const isMarkdown = content.includes('#') || content.includes('*') || content.includes('- ') || content.includes('1. ');
+      
+      if (isMarkdown && !content.includes('<')) {
+        // Convert markdown to HTML for editor
+        htmlContent = markdownToHtml(content);
+        setMarkdownContent(content);
+      } else {
+        // Content is HTML, convert to markdown for storage
+        setMarkdownContent(htmlToMarkdown(content));
+      }
+      
+      if (editor.getHTML() !== htmlContent) {
+        editor.commands.setContent(htmlContent);
+      }
     }
   }, [editor, content]);
+
+  // Handle mode switching
+  const handleModeSwitch = (newMode) => {
+    if (mode === newMode || !editor) return;
+
+    const currentContent = getCurrentContent();
+    
+    setMode(newMode);
+    
+    // Convert content based on new mode
+    if (newMode === 'wysiwyg') {
+      const htmlContent = mode === 'markdown' ? markdownToHtml(currentContent) : currentContent;
+      editor.commands.setContent(htmlContent);
+    } else if (newMode === 'markdown') {
+      const markdownConvert = mode === 'html' ? htmlToMarkdown(currentContent) : htmlToMarkdown(editor.getHTML());
+      setMarkdownContent(markdownConvert);
+    }
+  };
+
+  // Get current content based on mode
+  const getCurrentContent = () => {
+    if (mode === 'wysiwyg') {
+      return editor.getHTML();
+    } else if (mode === 'markdown') {
+      return markdownContent;
+    } else {
+      return editor.getHTML();
+    }
+  };
+
+  // Handle content changes in different modes
+  const handleContentChange = (newContent) => {
+    if (mode === 'markdown') {
+      setMarkdownContent(newContent);
+      if (onChange) {
+        onChange(markdownToHtml(newContent));
+      }
+    } else if (mode === 'html') {
+      editor.commands.setContent(newContent);
+      if (onChange) {
+        onChange(newContent);
+      }
+    }
+  };
 
   if (!editor) {
     return (

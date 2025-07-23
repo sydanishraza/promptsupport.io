@@ -1125,7 +1125,7 @@ async def process_url_content(
     url: str = Form(...),
     metadata: str = Form("{}")
 ):
-    """Process URL content (scraping, YouTube, etc.)"""
+    """Process URL content by scraping and generating articles"""
     try:
         url_metadata = json.loads(metadata)
         

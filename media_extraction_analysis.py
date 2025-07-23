@@ -8,7 +8,7 @@ import requests
 import json
 import re
 
-BACKEND_URL = "https://6932dd27-38f2-4781-9b35-b6aac917fef1.preview.emergentagent.com/api"
+BACKEND_URL = "https://3f52be48-ab3d-4f40-b801-4ac8987f855e.preview.emergentagent.com/api"
 
 def analyze_media_extraction_results():
     """Analyze the current state of media extraction in Content Library"""

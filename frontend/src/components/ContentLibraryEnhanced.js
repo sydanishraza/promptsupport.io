@@ -479,13 +479,22 @@ const ContentLibraryEnhanced = () => {
               Manage AI-generated and user-edited articles, assets, and recordings with Tiptap editor
             </p>
           </div>
-          <button 
-            onClick={handleCreateArticle}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
-            <Plus size={16} />
-            <span>Create Article</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => setShowSnipAndRecord(true)}
+              className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+            >
+              <Camera size={16} />
+              <span>Snip & Record</span>
+            </button>
+            <button 
+              onClick={handleCreateArticle}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              <Plus size={16} />
+              <span>Create Article</span>
+            </button>
+          </div>
         </div>
       </div>
 

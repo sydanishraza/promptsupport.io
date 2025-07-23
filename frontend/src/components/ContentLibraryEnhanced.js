@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TiptapEditor from './TiptapEditor';
+import SnipAndRecord from './SnipAndRecord';
 import { 
   Search, 
   Filter, 
@@ -22,7 +23,17 @@ import {
   Settings,
   Trash2,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Monitor,
+  Download,
+  Upload2,
+  Grid,
+  List,
+  Star,
+  Clock,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 
 const ContentLibraryEnhanced = () => {

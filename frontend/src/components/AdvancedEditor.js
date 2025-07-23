@@ -482,29 +482,29 @@ const AdvancedEditor = ({ content, onChange, onSave, isReadOnly = false, height 
         }
         
         .ProseMirror h1 {
-          font-size: 2.25rem;
-          font-weight: 700;
-          line-height: 1.2;
-          margin: 2rem 0 1rem 0;
-          color: #1f2937;
-          border-bottom: 2px solid #e5e7eb;
-          padding-bottom: 0.5rem;
+          font-size: 2.25rem !important;
+          font-weight: 700 !important;
+          line-height: 1.2 !important;
+          margin: 2rem 0 1rem 0 !important;
+          color: #1f2937 !important;
+          border-bottom: 2px solid #e5e7eb !important;
+          padding-bottom: 0.5rem !important;
         }
         
         .ProseMirror h2 {
-          font-size: 1.875rem;
-          font-weight: 600;
-          line-height: 1.3;
-          margin: 1.75rem 0 0.75rem 0;
-          color: #374151;
+          font-size: 1.875rem !important;
+          font-weight: 600 !important;
+          line-height: 1.3 !important;
+          margin: 1.75rem 0 0.75rem 0 !important;
+          color: #374151 !important;
         }
         
         .ProseMirror h3 {
-          font-size: 1.5rem;
-          font-weight: 600;
-          line-height: 1.4;
-          margin: 1.5rem 0 0.5rem 0;
-          color: #4b5563;
+          font-size: 1.5rem !important;
+          font-weight: 600 !important;
+          line-height: 1.4 !important;
+          margin: 1.5rem 0 0.5rem 0 !important;
+          color: #4b5563 !important;
         }
         
         .ProseMirror h4 {

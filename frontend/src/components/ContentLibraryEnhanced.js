@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import TiptapEditor from './AdvancedEditor';
+import MediaArticleViewer from './MediaArticleViewer';
 import SnipAndRecord from './SnipAndRecord';
 import MediaStatsPanel from './MediaStatsPanel';
 import { marked } from 'marked';

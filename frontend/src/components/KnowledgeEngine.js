@@ -145,9 +145,16 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
 
   const handleFileUpload = async (files) => {
     const newFiles = Array.from(files);
-    setIsProcessing(true);
-
+    
     for (const file of newFiles) {
+      const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Initialize upload progress
+      setUploadProgress(prev => ({
+        ...prev,
+        [fileId]: { stage: 'uploading', progress: 0, file: file.name }
+      }));
+      
       try {
         const formData = new FormData();
         formData.append('file', file);
@@ -158,6 +165,12 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           original_filename: file.name
         }));
 
+        // Update status to processing
+        setUploadProgress(prev => ({
+          ...prev,
+          [fileId]: { stage: 'processing', progress: 50, file: file.name }
+        }));
+
         const response = await fetch(`${backendUrl}/api/content/upload`, {
           method: 'POST',
           body: formData
@@ -165,6 +178,30 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
 
         if (response.ok) {
           const result = await response.json();
+          
+          // Update to generating articles
+          setUploadProgress(prev => ({
+            ...prev,
+            [fileId]: { stage: 'generating', progress: 75, file: file.name }
+          }));
+          
+          // Fetch updated documents and articles
+          await fetchDocuments();
+          await fetchProcessingJobs();
+          await fetchContentLibraryArticles();
+          
+          // Complete
+          setUploadProgress(prev => ({
+            ...prev,
+            [fileId]: { 
+              stage: 'completed', 
+              progress: 100, 
+              file: file.name,
+              chunksCreated: result.chunks_created,
+              jobId: result.job_id
+            }
+          }));
+          
           setUploadedFiles(prev => [...prev, {
             id: result.job_id,
             name: file.name,
@@ -176,19 +213,64 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           }]);
           
           console.log(`✅ File processed: ${file.name} → Created ${result.chunks_created} chunks`);
+          
+          // Remove from progress after delay
+          setTimeout(() => {
+            setUploadProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[fileId];
+              return newProgress;
+            });
+          }, 3000);
+          
         } else {
-          console.error('Upload failed:', await response.text());
+          const errorText = await response.text();
+          console.error('Upload failed:', errorText);
+          
+          // Update to error state
+          setUploadProgress(prev => ({
+            ...prev,
+            [fileId]: { 
+              stage: 'error', 
+              progress: 0, 
+              file: file.name, 
+              error: errorText 
+            }
+          }));
+          
+          // Remove from progress after delay
+          setTimeout(() => {
+            setUploadProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[fileId];
+              return newProgress;
+            });
+          }, 5000);
         }
       } catch (error) {
         console.error('Upload error:', error);
+        
+        // Update to error state
+        setUploadProgress(prev => ({
+          ...prev,
+          [fileId]: { 
+            stage: 'error', 
+            progress: 0, 
+            file: file.name, 
+            error: error.message 
+          }
+        }));
+        
+        // Remove from progress after delay
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[fileId];
+            return newProgress;
+          });
+        }, 5000);
       }
     }
-
-    setIsProcessing(false);
-    // Refresh data to show new content
-    fetchDocuments();
-    fetchProcessingJobs();
-    fetchContentLibraryArticles();
   };
 
   const handleUrlUpload = async (url) => {

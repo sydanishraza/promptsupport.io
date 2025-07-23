@@ -980,15 +980,32 @@ This test verifies that the file upload pipeline properly triggers the Content L
         
         results = {}
         
-        # Run tests in sequence - prioritizing Content Library tests
+        # Initialize test article ID for enhanced tests
+        self.test_article_id = None
+        
+        # Run basic health checks first
         results['health_check'] = self.test_health_check()
         results['status_endpoint'] = self.test_status_endpoint()
         
-        # Core Content Library integration tests
+        # Enhanced Content Library functionality tests (main focus)
+        print("\n🎯 ENHANCED CONTENT LIBRARY FUNCTIONALITY TESTS")
+        print("=" * 50)
+        results['enhanced_content_library_create'] = self.test_enhanced_content_library_create()
+        results['enhanced_content_library_update'] = self.test_enhanced_content_library_update()
+        results['enhanced_content_library_version_history'] = self.test_enhanced_content_library_version_history()
+        results['enhanced_content_library_restore_version'] = self.test_enhanced_content_library_restore_version()
+        results['enhanced_content_library_metadata_management'] = self.test_enhanced_content_library_metadata_management()
+        results['enhanced_content_library_api_integration'] = self.test_enhanced_content_library_api_integration()
+        
+        # Original Content Library integration tests
+        print("\n📚 ORIGINAL CONTENT LIBRARY INTEGRATION TESTS")
+        print("=" * 50)
         results['content_library_integration'] = self.test_content_library_integration()
         results['file_upload_content_library_integration'] = self.test_file_upload_content_library_integration()
         
         # Supporting functionality tests
+        print("\n🔧 SUPPORTING FUNCTIONALITY TESTS")
+        print("=" * 50)
         results['content_processing'] = self.test_content_processing()
         results['file_upload'] = self.test_file_upload()
         results['search_functionality'] = self.test_search_functionality()
@@ -1001,14 +1018,20 @@ This test verifies that the file upload pipeline properly triggers the Content L
         # Summary
         print("\n" + "=" * 70)
         print("📊 ENHANCED CONTENT ENGINE TEST RESULTS")
-        print("🎯 CONTENT LIBRARY INTEGRATION FOCUS")
+        print("🎯 ENHANCED CONTENT LIBRARY BACKEND FUNCTIONALITY")
         print("=" * 70)
         
         passed = 0
         total = len(results)
         
-        # Prioritize Content Library results in display
+        # Prioritize Enhanced Content Library results in display
         priority_tests = [
+            'enhanced_content_library_create',
+            'enhanced_content_library_update', 
+            'enhanced_content_library_version_history',
+            'enhanced_content_library_restore_version',
+            'enhanced_content_library_metadata_management',
+            'enhanced_content_library_api_integration',
             'content_library_integration',
             'file_upload_content_library_integration',
             'content_processing',
@@ -1025,37 +1048,53 @@ This test verifies that the file upload pipeline properly triggers the Content L
             if test_name in results:
                 result = results[test_name]
                 status = "✅ PASS" if result else "❌ FAIL"
-                priority_marker = "🎯 " if 'content_library' in test_name else ""
+                priority_marker = "🎯 " if 'enhanced_content_library' in test_name else ""
                 print(f"{priority_marker}{test_name.replace('_', ' ').title()}: {status}")
                 if result:
                     passed += 1
         
         print(f"\nOverall: {passed}/{total} tests passed")
         
-        # Content Library specific assessment
+        # Enhanced Content Library specific assessment
+        enhanced_tests = [
+            'enhanced_content_library_create',
+            'enhanced_content_library_update', 
+            'enhanced_content_library_version_history',
+            'enhanced_content_library_restore_version',
+            'enhanced_content_library_metadata_management',
+            'enhanced_content_library_api_integration'
+        ]
+        enhanced_passed = sum(1 for test in enhanced_tests if results.get(test, False))
+        
+        print(f"\n🎯 ENHANCED CONTENT LIBRARY BACKEND: {enhanced_passed}/{len(enhanced_tests)} tests passed")
+        
+        # Original Content Library integration assessment
         content_library_tests = ['content_library_integration', 'file_upload_content_library_integration']
         content_library_passed = sum(1 for test in content_library_tests if results.get(test, False))
         
-        print(f"\n🎯 CONTENT LIBRARY INTEGRATION: {content_library_passed}/{len(content_library_tests)} tests passed")
+        print(f"📚 ORIGINAL CONTENT LIBRARY INTEGRATION: {content_library_passed}/{len(content_library_tests)} tests passed")
         
         # Core functionality assessment
         core_tests = ['health_check', 'status_endpoint', 'content_processing', 'search_functionality', 'document_listing']
         core_passed = sum(1 for test in core_tests if results.get(test, False))
         
-        if content_library_passed >= 1:  # At least one Content Library test should pass
-            print("🎉 Content Library integration is working!")
-            if core_passed >= 4:
-                print("🎉 Enhanced Content Engine core functionality is also working!")
+        print(f"🔧 CORE FUNCTIONALITY: {core_passed}/{len(core_tests)} tests passed")
+        
+        # Overall assessment
+        if enhanced_passed >= 4:  # At least 4 out of 6 enhanced tests should pass
+            print("🎉 Enhanced Content Library backend functionality is working!")
+            if content_library_passed >= 1 and core_passed >= 4:
+                print("🎉 Complete system integration is working!")
                 return True
             else:
-                print(f"⚠️ {len(core_tests) - core_passed} core tests failed, but Content Library works")
+                print("⚠️ Enhanced features work, but some integration or core issues remain")
                 return True
         else:
-            print("❌ Content Library integration tests failed - this is the main issue to address")
+            print(f"❌ Enhanced Content Library backend tests failed - {len(enhanced_tests) - enhanced_passed} critical issues")
+            if content_library_passed >= 1:
+                print("✅ Original Content Library integration works")
             if core_passed >= 4:
-                print("✅ Core functionality works, but Content Library integration needs fixing")
-            else:
-                print(f"❌ Both Content Library and {len(core_tests) - core_passed} core tests failed")
+                print("✅ Core functionality works")
             return False
 
 if __name__ == "__main__":

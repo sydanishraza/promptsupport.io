@@ -1967,7 +1967,7 @@ async def get_media_statistics():
     """
     try:
         # Query all articles
-        articles = await db.content_library.find({}).to_list(length=None)
+        articles = await content_library_collection.find({}).to_list(length=None)
         
         stats = {
             "total_articles": len(articles),

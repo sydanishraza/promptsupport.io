@@ -1822,6 +1822,248 @@ async def restore_article_version(article_id: str, version: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/media/analyze")
+async def analyze_media_intelligence(request: Request):
+    """
+    Comprehensive media analysis using LLM + Vision models
+    Provides intelligent classification, contextual placement, and auto-generated captions
+    """
+    try:
+        form = await request.form()
+        
+        # Get media data and context
+        base64_data = form.get("media_data", "")
+        alt_text = form.get("alt_text", "")
+        article_context = form.get("context", "")
+        
+        if not base64_data:
+            return {"success": False, "error": "No media data provided"}
+        
+        # Perform comprehensive analysis
+        analysis = await media_intelligence.analyze_media_comprehensive(
+            base64_data=base64_data,
+            alt_text=alt_text,
+            context=article_context
+        )
+        
+        return {
+            "success": True,
+            "analysis": analysis,
+            "enhanced_html": media_intelligence.create_enhanced_media_html(analysis, base64_data)
+        }
+        
+    except Exception as e:
+        print(f"❌ Media analysis error: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/media/process-article")
+async def process_article_media(request: Request):
+    """
+    Process all media in an article with intelligent placement and captions
+    """
+    try:
+        form = await request.form()
+        
+        article_content = form.get("content", "")
+        article_id = form.get("article_id", "")
+        
+        if not article_content:
+            return {"success": False, "error": "No article content provided"}
+        
+        # Extract all media from markdown content
+        media_items = extract_media_from_content(article_content)
+        
+        if not media_items:
+            return {
+                "success": True,
+                "message": "No media found in article",
+                "processed_content": article_content,
+                "media_count": 0
+            }
+        
+        # Process each media item with intelligence
+        processed_media = []
+        enhanced_content = article_content
+        
+        for i, media_item in enumerate(media_items):
+            try:
+                # Analyze media with context
+                analysis = await media_intelligence.analyze_media_comprehensive(
+                    base64_data=media_item['data_url'],
+                    alt_text=media_item['alt_text'],
+                    context=article_content
+                )
+                
+                # Generate contextual placement
+                placement = media_intelligence.generate_contextual_placement(
+                    analysis, article_content
+                )
+                
+                # Create enhanced HTML
+                enhanced_html = media_intelligence.create_enhanced_media_html(
+                    analysis, media_item['data_url']
+                )
+                
+                # Replace original markdown with enhanced HTML
+                enhanced_content = enhanced_content.replace(
+                    media_item['original_markdown'],
+                    enhanced_html
+                )
+                
+                processed_media.append({
+                    "index": i,
+                    "original_alt": media_item['alt_text'],
+                    "analysis": analysis,
+                    "placement": placement,
+                    "enhanced_html": enhanced_html
+                })
+                
+            except Exception as e:
+                print(f"❌ Error processing media item {i}: {str(e)}")
+                # Keep original media on error
+                processed_media.append({
+                    "index": i,
+                    "error": str(e),
+                    "original_alt": media_item['alt_text']
+                })
+        
+        # Update article in database if article_id provided
+        if article_id and article_id != "":
+            try:
+                await db.content_library.update_one(
+                    {"id": article_id},
+                    {
+                        "$set": {
+                            "content": enhanced_content,
+                            "media_processed": True,
+                            "media_count": len(processed_media),
+                            "updated_at": datetime.now().isoformat()
+                        }
+                    }
+                )
+            except Exception as e:
+                print(f"❌ Error updating article in database: {str(e)}")
+        
+        return {
+            "success": True,
+            "processed_content": enhanced_content,
+            "media_count": len(media_items),
+            "processed_media": processed_media,
+            "message": f"Successfully processed {len(processed_media)} media items with intelligence"
+        }
+        
+    except Exception as e:
+        print(f"❌ Article media processing error: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/media/stats")
+async def get_media_statistics():
+    """
+    Get comprehensive media statistics across all articles
+    """
+    try:
+        # Query all articles
+        articles = await db.content_library.find({}).to_list(length=None)
+        
+        stats = {
+            "total_articles": len(articles),
+            "articles_with_media": 0,
+            "total_media_items": 0,
+            "media_by_format": {},
+            "media_by_type": {},
+            "processed_articles": 0,
+            "intelligence_analysis": {
+                "vision_analyzed": 0,
+                "auto_captioned": 0,
+                "contextually_placed": 0
+            }
+        }
+        
+        for article in articles:
+            content = article.get("content", "")
+            
+            # Count media items
+            media_items = extract_media_from_content(content)
+            if media_items:
+                stats["articles_with_media"] += 1
+                stats["total_media_items"] += len(media_items)
+                
+                # Analyze media formats and types
+                for media in media_items:
+                    data_url = media['data_url']
+                    if 'image/png' in data_url:
+                        stats["media_by_format"]["PNG"] = stats["media_by_format"].get("PNG", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'image/jpeg' in data_url:
+                        stats["media_by_format"]["JPEG"] = stats["media_by_format"].get("JPEG", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'image/gif' in data_url:
+                        stats["media_by_format"]["GIF"] = stats["media_by_format"].get("GIF", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'image/svg' in data_url:
+                        stats["media_by_format"]["SVG"] = stats["media_by_format"].get("SVG", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'video/mp4' in data_url:
+                        stats["media_by_format"]["MP4"] = stats["media_by_format"].get("MP4", 0) + 1
+                        stats["media_by_type"]["Video"] = stats["media_by_type"].get("Video", 0) + 1
+            
+            # Check if article was processed with intelligence
+            if article.get("media_processed"):
+                stats["processed_articles"] += 1
+                stats["intelligence_analysis"]["vision_analyzed"] += article.get("media_count", 0)
+                stats["intelligence_analysis"]["auto_captioned"] += article.get("media_count", 0)
+                stats["intelligence_analysis"]["contextually_placed"] += article.get("media_count", 0)
+        
+        return {
+            "success": True,
+            "statistics": stats
+        }
+        
+    except Exception as e:
+        print(f"❌ Media statistics error: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+def extract_media_from_content(content: str) -> List[Dict[str, str]]:
+    """
+    Extract all media items from markdown content
+    
+    Returns:
+        List of dictionaries containing media information
+    """
+    import re
+    media_items = []
+    
+    # Pattern for markdown images with base64 data
+    image_pattern = r'!\[(.*?)\]\((data:image\/[^;]+;base64,[^)]+)\)'
+    
+    # Pattern for markdown videos with base64 data  
+    video_pattern = r'!\[(.*?)\]\((data:video\/[^;]+;base64,[^)]+)\)'
+    
+    # Find all image matches
+    for match in re.finditer(image_pattern, content):
+        alt_text, data_url = match.groups()
+        media_items.append({
+            'type': 'image',
+            'alt_text': alt_text,
+            'data_url': data_url,
+            'original_markdown': match.group(0)
+        })
+    
+    # Find all video matches
+    for match in re.finditer(video_pattern, content):
+        alt_text, data_url = match.groups()
+        media_items.append({
+            'type': 'video',
+            'alt_text': alt_text,
+            'data_url': data_url,
+            'original_markdown': match.group(0)
+        })
+    
+    return media_items
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)

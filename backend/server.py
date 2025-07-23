@@ -274,6 +274,9 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
         # Create single comprehensive article
         article = await create_single_article_from_content(full_content, metadata)
         if article:
+            print(f"🔍 DEBUG: Before DB insert - article keys: {list(article.keys())}")
+            print(f"🔍 DEBUG: Before DB insert - has content: {'content' in article}")
+            print(f"🔍 DEBUG: Before DB insert - content preview: {article.get('content', 'NO CONTENT')[:100]}...")
             await db.content_library.insert_one(article)
             print(f"✅ Created AI-enhanced Content Library article: '{article['title']}'")
             return [article]

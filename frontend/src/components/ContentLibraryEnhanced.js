@@ -91,7 +91,7 @@ const ContentLibraryEnhanced = () => {
     return out;
   };
 
-  // Convert markdown to HTML with better parsing for images
+  // Convert markdown to HTML with better parsing for all image formats
   const markdownToHtml = (markdown) => {
     try {
       // First, let's preserve base64 images by replacing them temporarily
@@ -99,8 +99,8 @@ const ContentLibraryEnhanced = () => {
       const imageReplacements = new Map();
       let replacementCounter = 0;
       
-      // Find all markdown images with base64 data
-      const imagePattern = /!\[(.*?)\]\((data:image\/[^;]+;base64,[^)]+)\)/g;
+      // Find all markdown images with base64 data - support all formats
+      const imagePattern = /!\[(.*?)\]\((data:image\/(?:png|jpeg|jpg|gif|svg\+xml|webp);base64,[^)]+)\)/g;
       let match;
       
       while ((match = imagePattern.exec(markdown)) !== null) {
@@ -111,16 +111,20 @@ const ContentLibraryEnhanced = () => {
         replacementCounter++;
       }
       
-      console.log(`🔍 Found ${imageReplacements.size} base64 images to preserve`);
+      console.log(`🔍 Found ${imageReplacements.size} base64 images to preserve (PNG, JPEG, SVG, GIF, etc.)`);
       
       // Convert markdown to HTML with marked
       let html = marked(processedMarkdown, { renderer });
       
       // Restore the base64 images as proper HTML img tags
       imageReplacements.forEach(({ altText, dataUrl }, placeholder) => {
-        const imgTag = `<img src="${dataUrl}" alt="${altText}" class="rounded-lg max-w-full h-auto" />`;
+        const imgTag = `<img src="${dataUrl}" alt="${altText}" class="rounded-lg max-w-full h-auto" style="display: block; margin: 1rem 0;" />`;
         html = html.replace(placeholder, imgTag);
-        console.log(`✅ Restored base64 image: ${altText} (${dataUrl.substring(0, 50)}...)`);
+        
+        // Extract image format for logging
+        const formatMatch = dataUrl.match(/data:image\/([^;]+);base64/);
+        const format = formatMatch ? formatMatch[1].toUpperCase() : 'UNKNOWN';
+        console.log(`✅ Restored ${format} image: ${altText} (${dataUrl.substring(0, 50)}...)`);
       });
       
       return html;

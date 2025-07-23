@@ -693,6 +693,13 @@ const ContentLibraryEnhanced = () => {
       <AnimatePresence>
         {showNewArticleModal && renderNewArticleModal()}
       </AnimatePresence>
+
+      {/* Snip and Record Modal */}
+      <SnipAndRecord
+        isOpen={showSnipAndRecord}
+        onClose={() => setShowSnipAndRecord(false)}
+        onCapture={handleCaptureMedia}
+      />
     </div>
   );
 };

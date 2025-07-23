@@ -1206,6 +1206,53 @@ const ContentLibraryEnhanced = () => {
         )}
       </AnimatePresence>
 
+      {/* Create Article Modal */}
+      <AnimatePresence>
+        {showNewArticleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto"
+            >
+              <CreateArticleForm
+                onSave={async (articleData) => {
+                  try {
+                    const response = await fetch(`${backendUrl}/api/content-library`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(articleData)
+                    });
+
+                    if (response.ok) {
+                      await fetchContentLibrary();
+                      setShowNewArticleModal(false);
+                      console.log('Article created successfully');
+                    } else {
+                      console.error('Failed to create article');
+                      alert('Failed to create article. Please try again.');
+                    }
+                  } catch (error) {
+                    console.error('Error creating article:', error);
+                    alert('Failed to create article. Please try again.');
+                  }
+                }}
+                onCancel={() => setShowNewArticleModal(false)}
+                backendUrl={backendUrl}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Snip and Record Modal */}
       <SnipAndRecord
         isOpen={showSnipAndRecord}

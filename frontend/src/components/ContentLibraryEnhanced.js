@@ -380,23 +380,22 @@ const ContentLibraryEnhanced = () => {
     setIsEditing(true);
   };
 
-  const handleViewContent = (content) => {
-    console.log('🔍 handleViewContent called with:', {
+  const handleViewContent = async (content) => {
+    console.log('🔍 handleViewContent called with intelligent media processing:', {
       title: content.title,
       contentLength: content.content?.length,
       contentPreview: content.content?.substring(0, 200),
       hasMarkdownImages: content.content?.includes('![') && content.content?.includes('data:image')
     });
     
-    // Convert markdown content to HTML if needed
+    // Convert markdown content to HTML with AI intelligence
     let processedContent = content.content;
     
     if (processedContent && isMarkdownContent(processedContent)) {
-      console.log('✅ Converting markdown to HTML for:', content.title);
-      processedContent = markdownToHtml(processedContent);
-      console.log('✅ Markdown converted. New length:', processedContent.length);
-      console.log('✅ Converted content preview:', processedContent.substring(0, 300));
-      console.log('✅ Contains HTML images:', processedContent.includes('<img'));
+      console.log('✅ Converting markdown with AI intelligence for:', content.title);
+      processedContent = await markdownToHtml(processedContent, content.id);
+      console.log('✅ AI-enhanced conversion complete. New length:', processedContent.length);
+      console.log('✅ Enhanced content preview:', processedContent.substring(0, 300));
     } else {
       console.log('❌ No markdown conversion needed for:', content.title);
       console.log('❌ isMarkdownContent result:', isMarkdownContent(processedContent));

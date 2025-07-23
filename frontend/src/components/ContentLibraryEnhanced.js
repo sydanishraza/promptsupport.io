@@ -481,6 +481,7 @@ const ContentLibraryEnhanced = () => {
               <input
                 type="text"
                 value={selectedContent.title}
+                onChange={(e) => setSelectedContent(prev => ({...prev, title: e.target.value}))}
                 className="w-full text-3xl font-bold border-none focus:outline-none bg-transparent"
                 placeholder="Article title..."
                 readOnly={!isEditing}

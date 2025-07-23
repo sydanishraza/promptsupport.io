@@ -474,6 +474,189 @@ const AdvancedEditor = ({ content, onChange, onSave, isReadOnly = false, height 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden bg-white" style={{ height }}>
       {renderToolbar()}
+      <style jsx>{`
+        .ProseMirror {
+          outline: none;
+          padding: 1rem;
+          line-height: 1.6;
+        }
+        
+        .ProseMirror h1 {
+          font-size: 2.25rem;
+          font-weight: 700;
+          line-height: 1.2;
+          margin: 2rem 0 1rem 0;
+          color: #1f2937;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 0.5rem;
+        }
+        
+        .ProseMirror h2 {
+          font-size: 1.875rem;
+          font-weight: 600;
+          line-height: 1.3;
+          margin: 1.75rem 0 0.75rem 0;
+          color: #374151;
+        }
+        
+        .ProseMirror h3 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          line-height: 1.4;
+          margin: 1.5rem 0 0.5rem 0;
+          color: #4b5563;
+        }
+        
+        .ProseMirror h4 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          line-height: 1.4;
+          margin: 1.25rem 0 0.5rem 0;
+          color: #6b7280;
+        }
+        
+        .ProseMirror p {
+          margin: 1rem 0;
+          line-height: 1.7;
+          color: #374151;
+        }
+        
+        .ProseMirror ul {
+          list-style-type: disc;
+          margin: 1rem 0;
+          padding-left: 2rem;
+        }
+        
+        .ProseMirror ol {
+          list-style-type: decimal;
+          margin: 1rem 0;
+          padding-left: 2rem;
+        }
+        
+        .ProseMirror li {
+          margin: 0.5rem 0;
+          line-height: 1.6;
+          color: #374151;
+        }
+        
+        .ProseMirror li p {
+          margin: 0.25rem 0;
+        }
+        
+        .ProseMirror blockquote {
+          border-left: 4px solid #3b82f6;
+          padding-left: 1rem;
+          margin: 1.5rem 0;
+          font-style: italic;
+          color: #6b7280;
+          background-color: #f8fafc;
+          padding: 1rem;
+          border-radius: 0.375rem;
+        }
+        
+        .ProseMirror code {
+          background-color: #f1f5f9;
+          padding: 0.125rem 0.25rem;
+          border-radius: 0.25rem;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 0.875rem;
+          color: #dc2626;
+        }
+        
+        .ProseMirror pre {
+          background-color: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 0.5rem;
+          padding: 1rem;
+          margin: 1.5rem 0;
+          overflow-x: auto;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 0.875rem;
+          line-height: 1.5;
+        }
+        
+        .ProseMirror table {
+          border-collapse: collapse;
+          margin: 1.5rem 0;
+          width: 100%;
+          border: 1px solid #d1d5db;
+        }
+        
+        .ProseMirror th,
+        .ProseMirror td {
+          border: 1px solid #d1d5db;
+          padding: 0.75rem;
+          text-align: left;
+          vertical-align: top;
+        }
+        
+        .ProseMirror th {
+          background-color: #f9fafb;
+          font-weight: 600;
+          color: #374151;
+        }
+        
+        .ProseMirror td {
+          color: #4b5563;
+        }
+        
+        .ProseMirror hr {
+          margin: 2rem 0;
+          border: none;
+          border-top: 2px solid #e5e7eb;
+        }
+        
+        .ProseMirror strong {
+          font-weight: 600;
+          color: #1f2937;
+        }
+        
+        .ProseMirror em {
+          font-style: italic;
+          color: #4b5563;
+        }
+        
+        .ProseMirror mark {
+          background-color: #fef3c7;
+          padding: 0.125rem 0.25rem;
+          border-radius: 0.25rem;
+        }
+        
+        .ProseMirror a {
+          color: #3b82f6;
+          text-decoration: underline;
+        }
+        
+        .ProseMirror a:hover {
+          color: #1d4ed8;
+        }
+        
+        .ProseMirror img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 0.5rem;
+          margin: 1rem 0;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] {
+          list-style: none;
+          padding-left: 0;
+        }
+        
+        .ProseMirror li[data-type="taskItem"] {
+          display: flex;
+          align-items: flex-start;
+        }
+        
+        .ProseMirror li[data-type="taskItem"] > label {
+          margin-right: 0.5rem;
+          margin-top: 0.125rem;
+        }
+        
+        .ProseMirror li[data-type="taskItem"] > div {
+          flex: 1;
+        }
+      `}</style>
       {renderEditor()}
     </div>
   );

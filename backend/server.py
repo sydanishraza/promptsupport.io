@@ -352,7 +352,7 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         IMPORTANT: This content contains embedded media (images, diagrams, charts) that MUST be preserved and included in the generated articles.
 
         Original Content:
-        {content[:8000]}
+        {content[:15000]}
 
         TRANSFORMATION REQUIREMENTS:
 

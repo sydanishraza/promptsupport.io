@@ -859,6 +859,69 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
       {/* Integrations */}
       {renderIntegrations()}
 
+      {/* Real-time Upload Progress */}
+      {Object.keys(uploadProgress).length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Processing Status</h3>
+          <div className="space-y-4">
+            {Object.entries(uploadProgress).map(([fileId, progress]) => (
+              <div key={fileId} className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-3">
+                    {progress.stage === 'error' ? (
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                    ) : progress.stage === 'completed' ? (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <Loader className="w-5 h-5 text-blue-600 animate-spin" />
+                    )}
+                    <div>
+                      <p className="font-medium text-gray-900 truncate max-w-xs" title={progress.file}>
+                        {progress.file}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {progress.stage === 'uploading' && 'Uploading file...'}
+                        {progress.stage === 'fetching' && 'Fetching content...'}
+                        {progress.stage === 'processing' && 'Processing with Knowledge Engine...'}
+                        {progress.stage === 'generating' && 'Generating articles...'}
+                        {progress.stage === 'completed' && `Completed! ${progress.chunksCreated} chunks created`}
+                        {progress.stage === 'error' && `Error: ${progress.error}`}
+                      </p>
+                    </div>
+                  </div>
+                  {progress.stage !== 'error' && (
+                    <span className="text-sm font-medium text-gray-700">
+                      {progress.progress}%
+                    </span>
+                  )}
+                </div>
+                {progress.stage !== 'error' && (
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        progress.stage === 'completed' ? 'bg-green-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${progress.progress}%` }}
+                    />
+                  </div>
+                )}
+                {progress.stage === 'completed' && (
+                  <div className="mt-2 flex items-center space-x-4 text-sm text-green-700">
+                    <span>✅ Articles generated</span>
+                    <button 
+                      onClick={() => {/* TODO: Navigate to Content Library */}}
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      View in Library →
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent Uploads with Content Library Status */}
       {uploadedFiles.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

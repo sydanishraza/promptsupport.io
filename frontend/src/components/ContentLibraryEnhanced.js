@@ -79,6 +79,9 @@ const ContentLibraryEnhanced = () => {
     { id: 'recordings', label: 'Recordings', count: 0 }
   ]);
 
+  // Get backend URL from environment
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
   // Configure marked for better rendering
   marked.setOptions({
     gfm: true,

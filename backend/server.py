@@ -286,26 +286,53 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
 
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
     """Determine if content should be split into multiple articles"""
-    # Rules for splitting:
-    # 1. Long documents (>5000 chars) with clear sections
+    # Enhanced rules for splitting - more permissive to enable better content generation
+    # 1. Documents with clear sections (even if shorter)
     # 2. Documents with multiple headings
     # 3. Presentations (each slide becomes an article)
-    # 4. Large spreadsheets with multiple sheets
+    # 4. Spreadsheets with multiple sheets
+    # 5. Documents with distinct topics or chapters
     
-    if len(content) < 2000:
+    if len(content) < 1000:  # Lowered threshold
         return False
     
+    # Always split presentations
     if file_extension in ['ppt', 'pptx']:
-        return True  # Each slide should be an article
+        return True
     
+    # Always split multi-sheet spreadsheets
     if file_extension in ['xls', 'xlsx'] and 'Sheet:' in content:
-        return True  # Multiple sheets
+        return True
     
-    # Check for multiple headings/sections
-    heading_patterns = ['===', '##', '# ', 'Chapter', 'Section']
-    heading_count = sum(content.count(pattern) for pattern in heading_patterns)
+    # Check for multiple headings/sections (more comprehensive patterns)
+    heading_patterns = [
+        '===', '##', '# ', 
+        'Chapter', 'Section', 'Part ', 'Module',
+        'Overview', 'Introduction', 'Conclusion',
+        'Getting Started', 'Configuration', 'Setup',
+        'Administration', 'Management', 'Process',
+        'Step ', 'Phase ', 'Stage '
+    ]
     
-    return heading_count >= 3 and len(content) > 5000
+    heading_count = 0
+    content_lower = content.lower()
+    
+    for pattern in heading_patterns:
+        heading_count += content_lower.count(pattern.lower())
+    
+    # Check for document structure indicators
+    has_table_of_contents = any(toc in content_lower for toc in ['table of contents', 'contents:', 'index:'])
+    has_multiple_sections = content.count('\n\n') > 10  # Multiple paragraph breaks
+    has_enumerated_sections = len([line for line in content.split('\n') if line.strip().startswith(('1.', '2.', '3.', '4.', '5.'))]) > 3
+    
+    # More permissive splitting logic
+    return (
+        heading_count >= 2 or  # Just 2 headings needed
+        has_table_of_contents or
+        (has_multiple_sections and len(content) > 2000) or
+        has_enumerated_sections or
+        len(content) > 8000  # Very long documents should always be split
+    )
 
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:
     """Create multiple structured articles from content"""

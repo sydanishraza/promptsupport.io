@@ -872,10 +872,19 @@ async def upload_file(
                         
                         extracted_content += "\n"
                 
-                # Add media summary
-                if image_count > 0:
-                    extracted_content += f"\n---\n\n**Media Assets Found:** {image_count} images/diagrams referenced in document\n\n"
+                # Add comprehensive media summary
+                if len(embedded_media) > 0:
+                    extracted_content += f"\n---\n\n**Media Assets Extracted and Embedded:**\n\n"
+                    for i, media in enumerate(embedded_media, 1):
+                        extracted_content += f"- **Image {i}**: {media['format'].upper()} format, {media['size']} bytes\n"
+                    extracted_content += f"\n**Total Images Embedded:** {len(embedded_media)}\n\n"
+                    
+                if image_count > len(embedded_media):
+                    missed_images = image_count - len(embedded_media)
+                    extracted_content += f"**Note:** {missed_images} additional image(s) referenced but not extracted\n\n"
+                    
                 if table_count > 0:
+                    extracted_content += f"**Structured Data:** {table_count} tables with detailed information\n\n"
                     extracted_content += f"**Structured Data:** {table_count} tables with detailed information\n\n"
                 
                 # Add document statistics

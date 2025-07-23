@@ -382,7 +382,7 @@ const TiptapEditor = ({ content, onChange, onSave, isReadOnly = false, height = 
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden bg-white" style={{ height }}>
-      {!isReadOnly && renderToolbar()}
+      {renderToolbar()}
       {renderEditor()}
     </div>
   );

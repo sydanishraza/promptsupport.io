@@ -1101,6 +1101,18 @@ const ContentLibraryEnhanced = () => {
             </p>
           </div>
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowMediaStats(!showMediaStats)}
+              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                showMediaStats
+                  ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Media Stats
+            </button>
+            
             <button 
               onClick={() => setShowSnipAndRecord(true)}
               className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"

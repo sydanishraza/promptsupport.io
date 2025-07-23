@@ -1215,16 +1215,16 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   );
 
   const renderProcessingJobs = () => {
-    const completedJobs = uploadedFiles.filter(f => f.processingComplete).length;
-    const processingJobsCount = uploadedFiles.filter(f => !f.processingComplete).length;
-    const totalJobs = uploadedFiles.length;
+    const completedJobs = processingJobs.filter(job => job.status === 'completed');
+    const activeJobs = processingJobs.filter(job => job.status === 'processing');
+    const totalJobs = processingJobs.length;
 
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Processing Jobs</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Jobs</h1>
           <p className="text-gray-600 mb-6">
-            Monitor real-time processing status and background job logs
+            Monitor real-time processing status and job history
           </p>
           
           {/* Stats Cards */}
@@ -1242,8 +1242,8 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
               <div className="flex items-center">
                 <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
                 <div>
-                  <p className="text-sm text-green-600 font-medium">Completed</p>
-                  <p className="text-2xl font-bold text-green-900">{completedJobs}</p>
+                  <p className="text-sm text-green-600 font-medium">Completed Jobs</p>
+                  <p className="text-2xl font-bold text-green-900">{completedJobs.length}</p>
                 </div>
               </div>
             </div>
@@ -1251,56 +1251,101 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
               <div className="flex items-center">
                 <Loader className="w-8 h-8 text-yellow-600 mr-3" />
                 <div>
-                  <p className="text-sm text-yellow-600 font-medium">Processing</p>
-                  <p className="text-2xl font-bold text-yellow-900">{processingJobsCount}</p>
+                  <p className="text-sm text-yellow-600 font-medium">Processing Jobs</p>
+                  <p className="text-2xl font-bold text-yellow-900">{activeJobs.length}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Recent Job Activity */}
-          <div className="bg-gray-50 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
-              <span className="text-sm text-gray-500">
-                Articles: {contentLibraryArticles.length} • Chunks: {documents.length}
-              </span>
+          {/* Processing Jobs Section */}
+          {activeJobs.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Currently Processing</h3>
+              <div className="space-y-3">
+                {activeJobs.map((job) => (
+                  <div key={job.job_id} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Loader className="w-5 h-5 text-yellow-600 animate-spin" />
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {job.original_filename || job.url || `Job ${job.job_id.substring(0, 8)}`}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Started: {new Date(job.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                          {job.input_type === 'file' ? 'File Processing' : 'URL Processing'}
+                        </span>
+                        <div className="w-16 h-2 bg-gray-200 rounded-full">
+                          <div className="w-1/2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            {uploadedFiles.length === 0 ? (
+          )}
+
+          {/* Completed Jobs Section */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Completed Jobs</h3>
+            {completedJobs.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>No processing jobs yet</p>
-                <p className="text-sm mt-2">Upload content to see job activity</p>
+                <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p>No completed jobs yet</p>
+                <p className="text-sm">Upload files or process URLs to see job history here</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {uploadedFiles.map((job) => (
-                  <div key={job.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                    <div className="flex items-center space-x-3">
-                      {job.processingComplete ? (
+                {completedJobs.slice(0, 10).map((job) => (
+                  <div key={job.job_id} className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
                         <CheckCircle className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <Loader className="w-5 h-5 text-yellow-600 animate-spin" />
-                      )}
-                      <div>
-                        <p className="font-medium text-gray-900">{job.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {job.chunksCreated} chunks created • Content Library article generated
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {job.uploadTime?.toLocaleString()} • Type: {job.type}
-                        </p>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {job.original_filename || job.url || `Job ${job.job_id.substring(0, 8)}`}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Completed: {new Date(job.completed_at || job.created_at).toLocaleString()}
+                          </p>
+                          {job.chunks && (
+                            <p className="text-xs text-green-700 mt-1">
+                              Generated {job.chunks.length} content chunks
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          {job.input_type === 'file' ? 'File' : 'URL'} • Completed
+                        </span>
+                        {job.chunks && job.chunks.length > 0 && (
+                          <button 
+                            onClick={() => {/* TODO: Navigate to related articles */}}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            View Articles →
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      job.processingComplete 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {job.processingComplete ? 'Completed' : 'Processing'}
-                    </span>
                   </div>
                 ))}
+                
+                {completedJobs.length > 10 && (
+                  <div className="text-center pt-4">
+                    <button className="text-sm text-blue-600 hover:text-blue-800">
+                      Show all {completedJobs.length} completed jobs →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

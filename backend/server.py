@@ -1127,11 +1127,13 @@ async def process_url_content(
 ):
     """Process URL content by scraping and generating articles"""
     try:
+        # Parse metadata
         url_metadata = json.loads(metadata)
         
+        # Create processing job
         job = ProcessingJob(
             input_type="url",
-            original_filename=url,
+            url=url,
             status="processing"
         )
         
@@ -1139,100 +1141,91 @@ async def process_url_content(
         
         print(f"🌐 Processing URL: {url}")
         
-        extracted_content = ""
-        
-        # Proper URL content extraction
-        try:
-            import requests
-            from bs4 import BeautifulSoup
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-            
-            response = requests.get(url, headers=headers, timeout=15)
-            response.raise_for_status()
-            
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.content, 'html.parser')
-                
-                # Remove script and style elements
-                for script in soup(["script", "style"]):
-                    script.decompose()
-                
-                # Get title
-                title = soup.title.string.strip() if soup.title else "No title found"
-                
-                # Get meta description
-                meta_desc = ""
-                meta_tag = soup.find("meta", attrs={"name": "description"})
-                if meta_tag:
-                    meta_desc = meta_tag.get("content", "")
-                
-                # Extract main content
-                # Try to find main content areas
-                main_content = ""
-                for selector in ['main', 'article', '.content', '#content', '.post-content', '.entry-content']:
-                    content_elem = soup.select_one(selector)
-                    if content_elem:
-                        main_content = content_elem.get_text()
-                        break
-                
-                # If no main content found, get all paragraphs
-                if not main_content:
-                    paragraphs = soup.find_all('p')
-                    main_content = '\n\n'.join([p.get_text().strip() for p in paragraphs if p.get_text().strip()])
-                
-                # If still no content, get body text
-                if not main_content:
-                    body = soup.find('body')
-                    if body:
-                        main_content = body.get_text()
-                
-                # Clean up the text
-                import re
-                main_content = re.sub(r'\n\s*\n', '\n\n', main_content)
-                main_content = re.sub(r' +', ' ', main_content)
-                
-                extracted_content = f"""Title: {title}
-
-URL: {url}
-
-{f"Description: {meta_desc}" if meta_desc else ""}
-
-Content:
-{main_content}
-
----
-Source: Web scraping from {url}
-Extracted: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"""
-
-                print(f"✅ Successfully extracted {len(extracted_content)} characters from {url}")
-                
-            else:
-                extracted_content = f"Failed to fetch content from URL: {url} (Status: {response.status_code})"
-                print(f"⚠️ HTTP {response.status_code} for {url}")
-                
-        except requests.exceptions.Timeout:
-            extracted_content = f"URL: {url}\n\nTimeout occurred while trying to fetch content from this URL."
-            print(f"⚠️ Timeout for {url}")
-        except requests.exceptions.RequestException as e:
-            extracted_content = f"URL: {url}\n\nError occurred while fetching content: {str(e)}"
-            print(f"⚠️ Request error for {url}: {e}")
-        except Exception as e:
-            extracted_content = f"URL: {url}\n\nUnexpected error during content extraction: {str(e)}"
-            print(f"❌ Extraction error for {url}: {e}")
-        
-        # Process the extracted content with enhanced metadata
-        enhanced_metadata = {
-            **url_metadata, 
-            "url": url, 
-            "type": "url_processing",
-            "extraction_method": "web_scraping",
-            "content_length": len(extracted_content)
+        # Scrape website content
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
-        chunks = await process_text_content(extracted_content, enhanced_metadata)
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        # Parse HTML content
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Extract title
+        page_title = soup.find('title')
+        title = page_title.get_text().strip() if page_title else url
+        
+        # Extract meta description
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        description = meta_desc.get('content', '').strip() if meta_desc else ""
+        
+        # Extract main content
+        main_content = ""
+        
+        # Try to find main content areas
+        content_selectors = [
+            'main', 'article', '.content', '#content', 
+            '.post', '.entry', '.article-body', '.main-content'
+        ]
+        
+        content_found = False
+        for selector in content_selectors:
+            content_area = soup.select_one(selector)
+            if content_area:
+                main_content = content_area.get_text(separator='\n', strip=True)
+                content_found = True
+                break
+        
+        # If no main content area found, extract from body
+        if not content_found:
+            body = soup.find('body')
+            if body:
+                # Remove navigation, footer, sidebar elements
+                for element in body.find_all(['nav', 'footer', 'aside', '.sidebar', '.navigation']):
+                    element.decompose()
+                main_content = body.get_text(separator='\n', strip=True)
+        
+        # Clean up content
+        lines = main_content.split('\n')
+        cleaned_lines = [line.strip() for line in lines if line.strip() and len(line.strip()) > 10]
+        extracted_content = '\n'.join(cleaned_lines)
+        
+        # Create enriched content
+        enriched_content = f"""Website: {title}
+URL: {url}
+
+{f"Description: {description}" if description else ""}
+
+=== Main Content ===
+
+{extracted_content}
+
+---
+Source Information:
+- Original URL: {url}
+- Page Title: {title}
+- Scraped Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
+- Content Length: {len(extracted_content)} characters
+- Source: Knowledge Engine URL Processing"""
+        
+        print(f"✅ Extracted {len(extracted_content)} characters from URL")
+        
+        # Process the extracted content
+        enhanced_metadata = {
+            **url_metadata,
+            "url": url,
+            "page_title": title,
+            "page_description": description,
+            "content_length": len(extracted_content),
+            "type": "url_processing"
+        }
+        
+        chunks = await process_text_content(enriched_content, enhanced_metadata)
         
         # Update job
         job.chunks = chunks
@@ -1248,12 +1241,22 @@ Extracted: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"""
             "job_id": job.job_id,
             "status": job.status,
             "url": url,
+            "page_title": title,
             "extracted_content_length": len(extracted_content),
             "chunks_created": len(chunks),
             "message": "URL processed successfully"
         }
         
+    except requests.RequestException as e:
+        # Update job with error
+        if 'job' in locals():
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {"status": "failed", "error_message": f"Failed to fetch URL: {str(e)}"}}
+            )
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
     except Exception as e:
+        # Update job with error
         if 'job' in locals():
             await db.processing_jobs.update_one(
                 {"job_id": job.job_id},

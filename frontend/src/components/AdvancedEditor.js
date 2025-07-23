@@ -522,21 +522,22 @@ const AdvancedEditor = ({ content, onChange, onSave, isReadOnly = false, height 
         }
         
         .ProseMirror ul {
-          list-style-type: disc;
-          margin: 1rem 0;
-          padding-left: 2rem;
+          list-style-type: disc !important;
+          margin: 1rem 0 !important;
+          padding-left: 2rem !important;
         }
         
         .ProseMirror ol {
-          list-style-type: decimal;
-          margin: 1rem 0;
-          padding-left: 2rem;
+          list-style-type: decimal !important;
+          margin: 1rem 0 !important;
+          padding-left: 2rem !important;
         }
         
         .ProseMirror li {
-          margin: 0.5rem 0;
-          line-height: 1.6;
-          color: #374151;
+          margin: 0.5rem 0 !important;
+          line-height: 1.6 !important;
+          color: #374151 !important;
+          display: list-item !important;
         }
         
         .ProseMirror li p {

@@ -345,41 +345,69 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
             "Content-Type": "application/json"
         }
         
-        # Enhanced prompt for multiple article generation
+        # Enhanced prompt for comprehensive article generation
         prompt = f"""
-        You are an expert content curator creating a knowledge base from this content. Analyze the content and create multiple focused articles that would be useful in a help center or knowledge base.
+        You are an expert technical writer and content strategist creating a comprehensive knowledge base from this document. Your goal is to transform the raw content into multiple, well-structured, production-ready articles that feel like they were written by a professional technical writer.
 
         Original Content:
-        {content[:6000]}
+        {content[:8000]}
 
-        Instructions:
-        1. Break this content into 2-5 logical, focused articles
-        2. Each article should cover a specific topic or section
-        3. Create clear, descriptive titles for each article
-        4. Write compelling summaries for each
-        5. Structure each article with proper markdown formatting
-        6. Include relevant tags for each article
-        7. Ensure articles are comprehensive but focused
+        TRANSFORMATION REQUIREMENTS:
 
-        Respond with valid JSON containing an array of articles:
+        1. **Content Analysis & Splitting**:
+           - Identify all distinct topics, chapters, sections, or processes
+           - Create 3-8 focused articles (depending on content richness)
+           - Each article should cover ONE specific topic/process in depth
+           - Split logically by function, process, or conceptual area
+
+        2. **Content Enhancement & Rewriting**:
+           - Completely rewrite content for clarity, flow, and technical accuracy
+           - Add context, explanations, and helpful details where needed
+           - Improve technical language while maintaining original intent
+           - Add transitions and logical connections between concepts
+           - Include troubleshooting tips, best practices, and common scenarios
+
+        3. **Professional Structure & Formatting**:
+           - Use comprehensive markdown formatting with proper headings hierarchy
+           - Create detailed outlines with multiple heading levels (H1, H2, H3, H4)
+           - Add bullet points, numbered lists, and checklists where appropriate
+           - Include tables for data presentation when relevant
+           - Add callouts, notes, warnings, and tips using markdown blockquotes
+           - Create step-by-step procedures with clear numbering
+           - Add code blocks or configuration examples where applicable
+
+        4. **Production-Ready Features**:
+           - Write compelling introductions that explain purpose and scope
+           - Add comprehensive conclusions with next steps and related topics
+           - Include "Prerequisites", "What You'll Learn", and "Key Takeaways" sections
+           - Add cross-references to related articles/topics
+           - Create actionable content that users can immediately implement
+
+        5. **Metadata & SEO**:
+           - Generate descriptive, SEO-friendly titles
+           - Write detailed summaries (3-4 sentences) explaining value proposition
+           - Create comprehensive tag lists including technical terms, processes, and categories
+           - Generate practical takeaways that highlight key learning points
+
+        RESPONSE FORMAT - Return valid JSON:
         {{
             "articles": [
                 {{
-                    "title": "Specific, descriptive title for article 1",
-                    "summary": "Clear 2-3 sentence summary of this article's content and value",
-                    "content": "# Article Title\\n\\n## Introduction\\n\\nWell-structured content with proper markdown...\\n\\n## Main Points\\n\\n- Key point 1\\n- Key point 2\\n\\n## Conclusion\\n\\nSummary and next steps...",
-                    "tags": ["tag1", "tag2", "tag3"],
-                    "takeaways": ["Key takeaway 1", "Key takeaway 2", "Key takeaway 3"]
-                }},
-                {{
-                    "title": "Specific, descriptive title for article 2",
-                    "summary": "Clear summary of this article's focus",
-                    "content": "# Second Article\\n\\n## Overview\\n\\nContent here...",
-                    "tags": ["tag1", "tag4", "tag5"],
-                    "takeaways": ["Different takeaway 1", "Different takeaway 2"]
+                    "title": "Comprehensive, descriptive title that clearly indicates the specific topic",
+                    "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides to the reader",
+                    "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance of this topic...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context...\\n\\n#### Subsection 1.1\\n\\nSpecific details and examples...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Add helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a\\n   - Sub-step b\\n\\n2. **Step 2**: More details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations\\n\\n- Issue 1 and solution\\n- Issue 2 and solution\\n\\n## Key Takeaways\\n\\n- Takeaway 1\\n- Takeaway 2\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Related Articles\\n\\n- Link to related article 1\\n- Link to related article 2",
+                    "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name", "user-type"],
+                    "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
                 }}
             ]
         }}
+
+        QUALITY STANDARDS:
+        - Each article should be 1000-3000 words when rendered
+        - Content should feel authoritative and professionally written
+        - Include practical examples and real-world applications
+        - Maintain consistency in tone and style across all articles
+        - Ensure content is immediately actionable and valuable
         """
         
         data = {

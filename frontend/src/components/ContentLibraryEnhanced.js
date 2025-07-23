@@ -260,19 +260,14 @@ const ContentLibraryEnhanced = () => {
   };
 
   const handleViewContent = (content) => {
-    // Convert markdown content to HTML if it contains images
+    // Convert markdown content to HTML if needed
     let processedContent = content.content;
-    if (processedContent && processedContent.includes('![') && processedContent.includes('data:image/')) {
-      // Import marked for markdown conversion
-      import('marked').then(({ marked }) => {
-        marked.setOptions({
-          gfm: true,
-          breaks: false,
-          sanitize: false,
-          smartLists: true,
-          smartypants: true,
-        });
-        processedContent = marked(processedContent);
+    
+    if (processedContent && isMarkdownContent(processedContent)) {
+      processedContent = markdownToHtml(processedContent);
+      console.log('Converted markdown to HTML for viewing:', { 
+        original: content.content.substring(0, 200) + '...',
+        converted: processedContent.substring(0, 200) + '...'
       });
     }
     

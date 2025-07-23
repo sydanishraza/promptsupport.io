@@ -114,13 +114,24 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           {!collapsed && (
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="font-semibold text-gray-900 dark:text-white">
+            <div className="flex items-center space-x-3">
+              <img
+                src="/ps-logo.png"
+                alt="PromptSupport Logo"
+                className="w-8 h-8 object-contain"
+              />
+              <span className="font-semibold text-gray-900 dark:text-white text-lg">
                 PromptSupport
               </span>
+            </div>
+          )}
+          {collapsed && (
+            <div className="flex justify-center w-full">
+              <img
+                src="/ps-logo.png"
+                alt="PromptSupport Logo"
+                className="w-7 h-7 object-contain"
+              />
             </div>
           )}
           <button

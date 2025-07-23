@@ -31,6 +31,8 @@ const MainLayout = () => {
         return <KnowledgeEngine activeModule="chat" />;
       case 'processing-jobs':
         return <KnowledgeEngine activeModule="jobs" />;
+      case 'connections':
+        return <Connections />;
       case 'content-library':
         return <ContentLibraryEnhanced />;
       case 'systems':

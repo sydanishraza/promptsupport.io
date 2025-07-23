@@ -516,7 +516,7 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
             IMPORTANT: This content may contain embedded media (images, diagrams, charts) that MUST be preserved and included in the generated article.
 
             Original Content:
-            {content[:6000]}
+            {content[:12000]}
 
             TRANSFORMATION REQUIREMENTS:
 

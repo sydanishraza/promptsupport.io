@@ -57,6 +57,8 @@ const MediaArticleViewer = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMetadata, setShowMetadata] = useState(false);
   const [metadata, setMetadata] = useState({});
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'unsaved'
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const editorRef = useRef(null);
   const htmlEditorRef = useRef(null);

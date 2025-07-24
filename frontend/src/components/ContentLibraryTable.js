@@ -24,7 +24,9 @@ const ContentLibraryTable = ({
   articles, 
   onViewArticle, 
   onEditArticle, 
-  onDeleteArticle 
+  onDeleteArticle,
+  onStatusChange,
+  onDuplicateArticle
 }) => {
   const [sortField, setSortField] = useState('updated_at');
   const [sortDirection, setSortDirection] = useState('desc');

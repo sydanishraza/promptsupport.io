@@ -325,11 +325,21 @@ const AssetManager = ({ articles, onArticleSelect }) => {
               {/* Asset Preview */}
               <div className="flex-shrink-0">
                 {asset.type === 'image' ? (
-                  <img
-                    src={asset.dataUrl}
-                    alt={asset.altText}
-                    className="w-12 h-12 object-cover rounded-lg"
-                  />
+                  <div className="relative">
+                    <img
+                      src={asset.dataUrl}
+                      alt={asset.altText || asset.name}
+                      className="w-12 h-12 object-cover rounded-lg"
+                      onError={(e) => {
+                        console.error('Image load error:', e);
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <Image className="h-6 w-6 text-gray-400" />
+                    </div>
+                  </div>
                 ) : (
                   <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                     {getAssetIcon(asset)}

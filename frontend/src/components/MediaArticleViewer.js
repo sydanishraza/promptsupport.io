@@ -1303,14 +1303,20 @@ const MediaArticleViewer = ({
           margin: 2rem 0;
         }
         
-        /* Content editable styles */
+        /* Enhanced content editable styles for stability */
         [contentEditable="true"] {
           outline: none;
+          background-color: #ffffff !important;
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+          transform: translateZ(0);
+          will-change: contents;
         }
         
         [contentEditable="true"]:focus {
           border-color: #3b82f6;
           ring: 2px solid #3b82f6;
+          background-color: #ffffff !important;
         }
         
         /* WYSIWYG Editor specific styles */
@@ -1322,10 +1328,18 @@ const MediaArticleViewer = ({
         
         [contentEditable="true"] {
           cursor: text;
+          position: relative;
+          z-index: 1;
+        }
+        
+        [contentEditable="true"] * {
+          background-color: transparent !important;
         }
         
         [contentEditable="true"] p {
           margin-bottom: 1rem;
+          background-color: transparent !important;
+          position: relative;
         }
         
         [contentEditable="true"] h1,
@@ -1334,6 +1348,8 @@ const MediaArticleViewer = ({
           margin-top: 1.5rem;
           margin-bottom: 1rem;
           font-weight: bold;
+          background-color: transparent !important;
+          position: relative;
         }
         
         [contentEditable="true"] h1 {
@@ -1352,19 +1368,42 @@ const MediaArticleViewer = ({
         [contentEditable="true"] ol {
           margin-left: 1.5rem;
           margin-bottom: 1rem;
+          background-color: transparent !important;
+          position: relative;
         }
         
         [contentEditable="true"] li {
           margin-bottom: 0.5rem;
+          background-color: transparent !important;
+          position: relative;
         }
         
         [contentEditable="true"] blockquote {
           border-left: 4px solid #3b82f6;
           padding-left: 1rem;
           margin: 1rem 0;
-          background: #f8fafc;
+          background: #f8fafc !important;
           padding: 1rem;
           border-radius: 0 8px 8px 0;
+          position: relative;
+        }
+        
+        /* Prevent background flickering during scroll */
+        [contentEditable="true"]::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        [contentEditable="true"]::-webkit-scrollbar-track {
+          background: #f1f1f1;
+        }
+        
+        [contentEditable="true"]::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 4px;
+        }
+        
+        [contentEditable="true"]::-webkit-scrollbar-thumb:hover {
+          background: #a1a1a1;
         }
       `}</style>
     </div>

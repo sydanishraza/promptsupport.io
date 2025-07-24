@@ -219,22 +219,38 @@ const MediaArticleViewer = ({
     }
   };
 
-  // Handle content changes with synchronization
-  const handleContentChange = (newContent, sourceMode) => {
-    if (sourceMode === 'markdown') {
-      setMarkdownContent(newContent);
-      setHtmlContent(markdownToHtml(newContent));
-      setContent(markdownToHtml(newContent));
-    } else if (sourceMode === 'html') {
-      setHtmlContent(newContent);
+  // Enhanced content change handler with save status tracking
+  const handleContentChange = (newContent, mode) => {
+    if (mode === 'wysiwyg') {
+      setContent(newContent);
       setMarkdownContent(htmlToMarkdown(newContent));
-      setContent(newContent);
-    } else if (sourceMode === 'wysiwyg') {
-      setContent(newContent);
       setHtmlContent(newContent);
+    } else if (mode === 'markdown') {
+      setMarkdownContent(newContent);
+      const htmlContent = markdownToHtml(newContent);
+      setContent(htmlContent);
+      setHtmlContent(htmlContent);
+    } else if (mode === 'html') {
+      setHtmlContent(newContent);
+      setContent(newContent);
       setMarkdownContent(htmlToMarkdown(newContent));
     }
+    
+    // Track unsaved changes
+    setHasUnsavedChanges(true);
+    setSaveStatus('unsaved');
+    
+    // Auto-save after 2 seconds of inactivity
+    clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      if (isEditing) {
+        handleSave(true); // true for auto-save
+      }
+    }, 2000);
   };
+  
+  // Auto-save timeout reference
+  const autoSaveTimeoutRef = useRef(null);
 
   // Handle save with current content
   const handleSave = async () => {

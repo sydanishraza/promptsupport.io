@@ -2564,6 +2564,8 @@ This test verifies that the file upload pipeline properly triggers the Content L
                 status = "✅ PASS" if result else "❌ FAIL"
                 if test_name == 'urgent_image_verification':
                     priority_marker = "🚨 URGENT: "
+                elif test_name in ['billing_management_docx_upload', 'image_extraction_verification', 'media_intelligence_endpoints']:
+                    priority_marker = "🔥 REVIEW: "
                 elif 'media_intelligence' in test_name:
                     priority_marker = "🎯 MEDIA AI: "
                 elif 'enhanced_content_library' in test_name:

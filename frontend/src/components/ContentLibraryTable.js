@@ -135,12 +135,16 @@ const ContentLibraryTable = ({
 
   const getSourceIcon = (source) => {
     switch (source) {
-      case 'ai_generated':
+      case 'AI Generated':
         return <Bot className="h-4 w-4 text-purple-600" />;
-      case 'manual':
+      case 'Manual':
         return <User className="h-4 w-4 text-blue-600" />;
-      case 'upload':
-        return <FileText className="h-4 w-4 text-green-600" />;
+      case 'File Upload':
+        return <Upload className="h-4 w-4 text-green-600" />;
+      case 'Integration':
+        return <ExternalLink className="h-4 w-4 text-cyan-600" />;
+      case 'Recording':
+        return <Workflow className="h-4 w-4 text-orange-600" />;
       default:
         return <FileText className="h-4 w-4 text-gray-600" />;
     }

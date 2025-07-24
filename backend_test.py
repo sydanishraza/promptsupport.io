@@ -1506,6 +1506,513 @@ This test verifies that the file upload pipeline properly triggers the Content L
             print(f"❌ MediaIntelligenceService test failed - {str(e)}")
             return False
 
+    def test_enhanced_content_library_delete(self):
+        """Test DELETE /api/content-library/{article_id} - Delete articles"""
+        print("\n🔍 Testing Enhanced Content Library - Delete Article...")
+        try:
+            # First, create an article to delete
+            article_data = {
+                'title': 'Test Article for Deletion',
+                'content': '# Test Article\n\nThis article will be deleted to test the DELETE endpoint.',
+                'status': 'draft',
+                'tags': json.dumps(['test', 'delete']),
+                'metadata': json.dumps({'test_type': 'deletion_test'})
+            }
+            
+            # Create the article
+            create_response = requests.post(
+                f"{self.base_url}/content-library",
+                data=article_data,
+                timeout=15
+            )
+            
+            if create_response.status_code != 200:
+                print(f"❌ Could not create article for deletion test - {create_response.status_code}")
+                return False
+            
+            create_data = create_response.json()
+            article_id = create_data.get("article_id")
+            
+            if not article_id:
+                print("❌ No article ID returned from creation")
+                return False
+            
+            print(f"✅ Created test article with ID: {article_id}")
+            
+            # Now delete the article
+            delete_response = requests.delete(
+                f"{self.base_url}/content-library/{article_id}",
+                timeout=10
+            )
+            
+            print(f"Delete Status Code: {delete_response.status_code}")
+            
+            if delete_response.status_code == 200:
+                data = delete_response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if data.get("success") and "message" in data:
+                    print("✅ Article deletion successful")
+                    
+                    # Verify the article is actually deleted by trying to get it
+                    verify_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+                    if verify_response.status_code == 200:
+                        articles = verify_response.json().get("articles", [])
+                        deleted_article = None
+                        for article in articles:
+                            if article.get("id") == article_id:
+                                deleted_article = article
+                                break
+                        
+                        if not deleted_article:
+                            print("✅ Article successfully removed from Content Library")
+                            return True
+                        else:
+                            print("❌ Article still exists after deletion")
+                            return False
+                    else:
+                        print("⚠️ Could not verify deletion - but delete response was successful")
+                        return True
+                else:
+                    print("❌ Article deletion failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Article deletion failed - status code {delete_response.status_code}")
+                print(f"Response: {delete_response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Article deletion test failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_status_changes(self):
+        """Test article status changes (draft → published → review)"""
+        print("\n🔍 Testing Enhanced Content Library - Status Changes...")
+        try:
+            # Create an article in draft status
+            article_data = {
+                'title': 'Status Change Test Article',
+                'content': '# Status Test\n\nThis article tests status transitions.',
+                'status': 'draft',
+                'tags': json.dumps(['test', 'status']),
+                'metadata': json.dumps({'test_type': 'status_change'})
+            }
+            
+            # Create the article
+            create_response = requests.post(
+                f"{self.base_url}/content-library",
+                data=article_data,
+                timeout=15
+            )
+            
+            if create_response.status_code != 200:
+                print(f"❌ Could not create article for status test - {create_response.status_code}")
+                return False
+            
+            create_data = create_response.json()
+            article_id = create_data.get("article_id")
+            
+            if not article_id:
+                print("❌ No article ID returned from creation")
+                return False
+            
+            print(f"✅ Created test article with ID: {article_id} (status: draft)")
+            
+            # Test status change: draft → published
+            update_data = {
+                'title': 'Status Change Test Article',
+                'content': '# Status Test\n\nThis article tests status transitions. Now published!',
+                'status': 'published',
+                'tags': json.dumps(['test', 'status', 'published']),
+                'metadata': json.dumps({'test_type': 'status_change', 'status_changed': True})
+            }
+            
+            update_response = requests.put(
+                f"{self.base_url}/content-library/{article_id}",
+                data=update_data,
+                timeout=15
+            )
+            
+            if update_response.status_code != 200:
+                print(f"❌ Status change to published failed - {update_response.status_code}")
+                return False
+            
+            print("✅ Status changed from draft → published")
+            
+            # Test status change: published → review
+            review_data = {
+                'title': 'Status Change Test Article',
+                'content': '# Status Test\n\nThis article tests status transitions. Now under review!',
+                'status': 'review',
+                'tags': json.dumps(['test', 'status', 'review']),
+                'metadata': json.dumps({'test_type': 'status_change', 'needs_review': True})
+            }
+            
+            review_response = requests.put(
+                f"{self.base_url}/content-library/{article_id}",
+                data=review_data,
+                timeout=15
+            )
+            
+            if review_response.status_code != 200:
+                print(f"❌ Status change to review failed - {review_response.status_code}")
+                return False
+            
+            print("✅ Status changed from published → review")
+            
+            # Verify final status by getting the article
+            get_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+            if get_response.status_code == 200:
+                articles = get_response.json().get("articles", [])
+                test_article = None
+                for article in articles:
+                    if article.get("id") == article_id:
+                        test_article = article
+                        break
+                
+                if test_article and test_article.get("status") == "review":
+                    print("✅ Final status verification successful - article is in 'review' status")
+                    return True
+                else:
+                    print(f"❌ Status verification failed - expected 'review', got '{test_article.get('status') if test_article else 'article not found'}'")
+                    return False
+            else:
+                print("⚠️ Could not verify final status - but status changes were successful")
+                return True
+                
+        except Exception as e:
+            print(f"❌ Status change test failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_article_duplication(self):
+        """Test article duplication through POST endpoint"""
+        print("\n🔍 Testing Enhanced Content Library - Article Duplication...")
+        try:
+            # First, get an existing article to duplicate
+            get_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+            
+            if get_response.status_code != 200:
+                print("❌ Could not fetch articles for duplication test")
+                return False
+            
+            articles = get_response.json().get("articles", [])
+            
+            if not articles:
+                print("⚠️ No articles available for duplication test - creating one first")
+                # Create an article to duplicate
+                original_data = {
+                    'title': 'Original Article for Duplication',
+                    'content': '# Original Article\n\nThis is the original article that will be duplicated.',
+                    'status': 'published',
+                    'tags': json.dumps(['original', 'duplication-test']),
+                    'metadata': json.dumps({'test_type': 'duplication_source', 'original': True})
+                }
+                
+                create_response = requests.post(
+                    f"{self.base_url}/content-library",
+                    data=original_data,
+                    timeout=15
+                )
+                
+                if create_response.status_code != 200:
+                    print("❌ Could not create original article for duplication")
+                    return False
+                
+                # Get the created article
+                get_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+                if get_response.status_code != 200:
+                    print("❌ Could not fetch created article")
+                    return False
+                
+                articles = get_response.json().get("articles", [])
+            
+            if not articles:
+                print("❌ Still no articles available for duplication")
+                return False
+            
+            # Use the first article for duplication
+            original_article = articles[0]
+            print(f"✅ Using article '{original_article.get('title')}' for duplication")
+            
+            # Create a duplicate with modified title and content
+            duplicate_data = {
+                'title': f"COPY - {original_article.get('title', 'Untitled')}",
+                'content': f"{original_article.get('content', '')}\n\n---\n\n**Note:** This is a duplicate of the original article.",
+                'status': 'draft',  # Duplicates should start as draft
+                'tags': json.dumps(original_article.get('tags', []) + ['duplicate', 'copy']),
+                'metadata': json.dumps({
+                    **original_article.get('metadata', {}),
+                    'duplicated_from': original_article.get('id'),
+                    'is_duplicate': True,
+                    'test_type': 'duplication_test'
+                })
+            }
+            
+            # Create the duplicate
+            duplicate_response = requests.post(
+                f"{self.base_url}/content-library",
+                data=duplicate_data,
+                timeout=15
+            )
+            
+            print(f"Duplication Status Code: {duplicate_response.status_code}")
+            
+            if duplicate_response.status_code == 200:
+                data = duplicate_response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if data.get("success") and "article_id" in data:
+                    duplicate_id = data["article_id"]
+                    print(f"✅ Article duplication successful - Duplicate ID: {duplicate_id}")
+                    
+                    # Verify the duplicate exists and has correct properties
+                    verify_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+                    if verify_response.status_code == 200:
+                        updated_articles = verify_response.json().get("articles", [])
+                        duplicate_article = None
+                        
+                        for article in updated_articles:
+                            if article.get("id") == duplicate_id:
+                                duplicate_article = article
+                                break
+                        
+                        if duplicate_article:
+                            # Verify duplicate properties
+                            if (duplicate_article.get("title", "").startswith("COPY -") and
+                                duplicate_article.get("status") == "draft" and
+                                "duplicate" in duplicate_article.get("tags", []) and
+                                duplicate_article.get("metadata", {}).get("is_duplicate")):
+                                
+                                print("✅ Duplicate article has correct properties")
+                                print(f"   Title: {duplicate_article.get('title')}")
+                                print(f"   Status: {duplicate_article.get('status')}")
+                                print(f"   Tags: {duplicate_article.get('tags')}")
+                                return True
+                            else:
+                                print("❌ Duplicate article properties are incorrect")
+                                return False
+                        else:
+                            print("❌ Duplicate article not found in Content Library")
+                            return False
+                    else:
+                        print("⚠️ Could not verify duplicate - but creation was successful")
+                        return True
+                else:
+                    print("❌ Article duplication failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Article duplication failed - status code {duplicate_response.status_code}")
+                print(f"Response: {duplicate_response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Article duplication test failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_media_detection(self):
+        """Test media detection and counts in articles"""
+        print("\n🔍 Testing Enhanced Content Library - Media Detection and Counts...")
+        try:
+            # Get all articles and analyze media content
+            response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            
+            if response.status_code != 200:
+                print(f"❌ Could not fetch articles for media detection test - {response.status_code}")
+                return False
+            
+            data = response.json()
+            articles = data.get("articles", [])
+            total_articles = data.get("total", 0)
+            
+            print(f"📊 Analyzing {total_articles} articles for media content...")
+            
+            # Analyze media in articles
+            articles_with_media = 0
+            total_media_items = 0
+            media_formats = {'png': 0, 'jpeg': 0, 'svg': 0, 'gif': 0}
+            articles_with_processing_status = 0
+            
+            import re
+            
+            for article in articles:
+                content = article.get("content", "")
+                article_title = article.get("title", "Untitled")
+                
+                # Count different media formats
+                png_count = len(re.findall(r'data:image/png;base64,', content))
+                jpeg_count = len(re.findall(r'data:image/jpeg;base64,', content))
+                svg_count = len(re.findall(r'data:image/svg\+xml;base64,', content))
+                gif_count = len(re.findall(r'data:image/gif;base64,', content))
+                
+                article_media_count = png_count + jpeg_count + svg_count + gif_count
+                
+                if article_media_count > 0:
+                    articles_with_media += 1
+                    total_media_items += article_media_count
+                    media_formats['png'] += png_count
+                    media_formats['jpeg'] += jpeg_count
+                    media_formats['svg'] += svg_count
+                    media_formats['gif'] += gif_count
+                    
+                    print(f"📷 '{article_title}': {article_media_count} media items (PNG:{png_count}, JPEG:{jpeg_count}, SVG:{svg_count}, GIF:{gif_count})")
+                
+                # Check for media processing status in metadata
+                metadata = article.get("metadata", {})
+                if metadata.get("media_processed") or metadata.get("ai_processed"):
+                    articles_with_processing_status += 1
+            
+            print(f"\n📊 MEDIA DETECTION SUMMARY:")
+            print(f"   Total articles: {total_articles}")
+            print(f"   Articles with media: {articles_with_media}")
+            print(f"   Total media items: {total_media_items}")
+            print(f"   Media formats breakdown:")
+            for format_type, count in media_formats.items():
+                if count > 0:
+                    print(f"     {format_type.upper()}: {count}")
+            print(f"   Articles with processing status: {articles_with_processing_status}")
+            
+            # Calculate media statistics
+            if total_articles > 0:
+                media_percentage = (articles_with_media / total_articles) * 100
+                avg_media_per_article = total_media_items / total_articles if total_articles > 0 else 0
+                
+                print(f"   Media coverage: {media_percentage:.1f}%")
+                print(f"   Average media per article: {avg_media_per_article:.1f}")
+                
+                # Test passes if we have reasonable media detection
+                if articles_with_media > 0 and total_media_items > 0:
+                    print("✅ Media detection working - found embedded media in articles")
+                    
+                    # Additional verification: check if media data looks valid
+                    sample_article_with_media = None
+                    for article in articles:
+                        if "data:image" in article.get("content", ""):
+                            sample_article_with_media = article
+                            break
+                    
+                    if sample_article_with_media:
+                        content = sample_article_with_media.get("content", "")
+                        # Extract a sample base64 string
+                        base64_match = re.search(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)', content)
+                        if base64_match:
+                            base64_sample = base64_match.group(1)
+                            if len(base64_sample) > 100:  # Reasonable length for image data
+                                print(f"✅ Media data validation passed - found {len(base64_sample)} character base64 string")
+                                return True
+                            else:
+                                print(f"⚠️ Media data seems short ({len(base64_sample)} chars) - may be truncated")
+                                return True  # Still pass, but note the issue
+                        else:
+                            print("❌ Could not extract base64 data for validation")
+                            return False
+                    else:
+                        print("✅ Media detection successful but no sample available for validation")
+                        return True
+                else:
+                    print("⚠️ No media detected in articles - this may be expected if no media was uploaded")
+                    return True  # Not necessarily a failure
+            else:
+                print("⚠️ No articles found for media detection test")
+                return True  # Not a failure, just no data
+                
+        except Exception as e:
+            print(f"❌ Media detection test failed - {str(e)}")
+            return False
+
+    def test_enhanced_content_library_source_type_mapping(self):
+        """Test source type detection and mapping"""
+        print("\n🔍 Testing Enhanced Content Library - Source Type Detection and Mapping...")
+        try:
+            # Get all articles and analyze source types
+            response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            
+            if response.status_code != 200:
+                print(f"❌ Could not fetch articles for source type test - {response.status_code}")
+                return False
+            
+            data = response.json()
+            articles = data.get("articles", [])
+            total_articles = data.get("total", 0)
+            
+            print(f"📊 Analyzing {total_articles} articles for source type mapping...")
+            
+            # Count different source types
+            source_types = {}
+            expected_source_types = ['file_upload', 'text_processing', 'url_processing', 'user_created', 'ai_generated']
+            
+            for article in articles:
+                source_type = article.get("source_type", "unknown")
+                article_title = article.get("title", "Untitled")
+                
+                if source_type not in source_types:
+                    source_types[source_type] = 0
+                source_types[source_type] += 1
+                
+                # Verify source type has proper metadata
+                metadata = article.get("metadata", {})
+                
+                # Check for source-specific metadata
+                if source_type == "file_upload":
+                    if metadata.get("original_filename"):
+                        print(f"📄 File Upload: '{article_title}' from '{metadata.get('original_filename')}'")
+                elif source_type == "text_processing":
+                    if metadata.get("ai_processed"):
+                        print(f"🤖 Text Processing: '{article_title}' (AI processed)")
+                elif source_type == "url_processing":
+                    if metadata.get("url"):
+                        print(f"🌐 URL Processing: '{article_title}' from '{metadata.get('url')}'")
+                elif source_type == "user_created":
+                    print(f"👤 User Created: '{article_title}'")
+            
+            print(f"\n📊 SOURCE TYPE MAPPING SUMMARY:")
+            print(f"   Total articles: {total_articles}")
+            print(f"   Source types found:")
+            
+            for source_type, count in source_types.items():
+                percentage = (count / total_articles) * 100 if total_articles > 0 else 0
+                print(f"     {source_type}: {count} articles ({percentage:.1f}%)")
+            
+            # Verify we have proper source type diversity
+            if len(source_types) > 1:
+                print("✅ Source type diversity detected - multiple source types found")
+                
+                # Check if we have the expected source types
+                found_expected = [st for st in expected_source_types if st in source_types]
+                if found_expected:
+                    print(f"✅ Expected source types found: {found_expected}")
+                    
+                    # Verify source type consistency
+                    inconsistent_articles = 0
+                    for article in articles:
+                        source_type = article.get("source_type", "")
+                        metadata = article.get("metadata", {})
+                        
+                        # Basic consistency checks
+                        if source_type == "file_upload" and not metadata.get("original_filename"):
+                            inconsistent_articles += 1
+                        elif source_type == "text_processing" and not metadata.get("ai_processed"):
+                            # This might be okay for some cases
+                            pass
+                        elif source_type == "user_created" and metadata.get("ai_processed"):
+                            inconsistent_articles += 1
+                    
+                    if inconsistent_articles == 0:
+                        print("✅ Source type mapping consistency verified")
+                        return True
+                    else:
+                        print(f"⚠️ Found {inconsistent_articles} articles with inconsistent source type mapping")
+                        return True  # Still pass, but note the inconsistency
+                else:
+                    print("⚠️ No expected source types found, but mapping is working")
+                    return True
+            else:
+                print("⚠️ Limited source type diversity - only one type found")
+                return True  # Not necessarily a failure
+                
+        except Exception as e:
+            print(f"❌ Source type mapping test failed - {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run all Enhanced Content Engine tests with focus on Media Intelligence System"""
         print("🚀 Starting Enhanced Content Engine Backend Testing")

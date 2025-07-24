@@ -388,78 +388,148 @@ const MediaArticleViewer = ({
     </motion.div>
   );
 
-  // Render toolbar for editing
-  const renderToolbar = () => (
-    <div className="border-b border-gray-200 p-2 bg-gray-50">
-      <div className="flex flex-wrap gap-1">
-        <button
-          onClick={() => insertFormatting('**', '**')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Bold"
-        >
-          <Bold className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => insertFormatting('*', '*')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Italic"
-        >
-          <Italic className="h-4 w-4" />
-        </button>
-        <div className="w-px h-6 bg-gray-300 mx-1"></div>
-        <button
-          onClick={() => insertFormatting('# ', '')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Heading 1"
-        >
-          <Heading1 className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => insertFormatting('## ', '')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Heading 2"
-        >
-          <Heading2 className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => insertFormatting('### ', '')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Heading 3"
-        >
-          <Heading3 className="h-4 w-4" />
-        </button>
-        <div className="w-px h-6 bg-gray-300 mx-1"></div>
-        <button
-          onClick={() => insertFormatting('- ', '')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="List"
-        >
-          <List className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => insertFormatting('> ', '')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Quote"
-        >
-          <Quote className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => insertFormatting('`', '`')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Code"
-        >
-          <Code2 className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => insertFormatting('[', '](url)')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-          title="Link"
-        >
-          <Link className="h-4 w-4" />
-        </button>
+  // Enhanced toolbar for editing
+  const renderEnhancedToolbar = () => {
+    const currentMode = viewMode;
+    
+    return (
+      <div className="border-b border-gray-200 p-3 bg-gray-50">
+        <div className="flex flex-wrap gap-2">
+          {/* Basic Formatting */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => insertFormatting('**', '**', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Bold"
+            >
+              <Bold className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertFormatting('*', '*', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Italic"
+            >
+              <Italic className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '~~' : '<del>', currentMode === 'markdown' ? '~~' : '</del>', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Strikethrough"
+            >
+              <Strikethrough className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Headings */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '# ' : '<h1>', currentMode === 'markdown' ? '\n' : '</h1>\n', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Heading 1"
+            >
+              <Heading1 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '## ' : '<h2>', currentMode === 'markdown' ? '\n' : '</h2>\n', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Heading 2"
+            >
+              <Heading2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '### ' : '<h3>', currentMode === 'markdown' ? '\n' : '</h3>\n', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Heading 3"
+            >
+              <Heading3 className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Lists and Quotes */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '- ' : '<ul>\n  <li>', currentMode === 'markdown' ? '\n' : '</li>\n</ul>\n', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Bullet List"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '> ' : '<blockquote>', currentMode === 'markdown' ? '\n' : '</blockquote>\n', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Quote"
+            >
+              <Quote className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '`' : '<code>', currentMode === 'markdown' ? '`' : '</code>', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Inline Code"
+            >
+              <Code2 className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Links and Images */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '[' : '<a href="url">', currentMode === 'markdown' ? '](url)' : '</a>', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Link"
+            >
+              <Link className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertFormatting(currentMode === 'markdown' ? '![alt text](' : '<img src="', currentMode === 'markdown' ? 'url)' : '" alt="alt text" />', currentMode)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Image"
+            >
+              <Image className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Components */}
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => insertComponent('tip', currentMode)}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              title="Insert Tip"
+            >
+              💡 Tip
+            </button>
+            <button
+              onClick={() => insertComponent('warning', currentMode)}
+              className="px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+              title="Insert Warning"
+            >
+              ⚠️ Warning
+            </button>
+            <button
+              onClick={() => insertComponent('note', currentMode)}
+              className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+              title="Insert Note"
+            >
+              📝 Note
+            </button>
+            <button
+              onClick={() => insertComponent('code_block', currentMode)}
+              className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+              title="Insert Code Block"
+            >
+              Code Block
+            </button>
+            <button
+              onClick={() => insertComponent('table', currentMode)}
+              className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
+              title="Insert Table"
+            >
+              Table
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full">

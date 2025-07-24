@@ -564,13 +564,7 @@
   run_ui: false
 
 ## test_plan:
-  current_focus:
-    - "Fix Content Library Navigation and Scrolling"
-    - "Fix Assets Tab Count Accuracy"
-    - "Fix WYSIWYG Editor Black Screen Issue"
-    - "Add WYSIWYG Toolbar Support"
-    - "Remove HTML View Toolbar"
-    - "Control View Toggles by Edit Mode"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

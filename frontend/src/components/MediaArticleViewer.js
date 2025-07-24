@@ -839,7 +839,7 @@ const MediaArticleViewer = ({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full">
-      {/* Header */}
+      {/* Header with save status */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
@@ -848,9 +848,50 @@ const MediaArticleViewer = ({
             ) : (
               <Eye className="h-5 w-5 text-green-600" />
             )}
-            <h2 className="text-lg font-semibold text-gray-900">
-              {isEditing ? 'Edit Article' : 'View Article'}
-            </h2>
+            <div className="flex items-center space-x-3">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {isEditing ? 'Edit Article' : 'View Article'}
+              </h2>
+              
+              {/* Edit/View Mode Indicator */}
+              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                isEditing 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-gray-100 text-gray-700'
+              }`}>
+                {isEditing ? '✏️ Editing' : '👁️ Viewing'}
+              </div>
+              
+              {/* Save Status Indicator */}
+              {isEditing && (
+                <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  saveStatus === 'saved' 
+                    ? 'bg-green-100 text-green-800'
+                    : saveStatus === 'saving'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {saveStatus === 'saved' && (
+                    <>
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      <span>Saved</span>
+                    </>
+                  )}
+                  {saveStatus === 'saving' && (
+                    <>
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                      <span>Saving...</span>
+                    </>
+                  )}
+                  {saveStatus === 'unsaved' && (
+                    <>
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                      <span>Unsaved</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           
           {/* View Mode Toggle - Only show when editing */}

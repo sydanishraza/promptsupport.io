@@ -431,16 +431,28 @@ const ContentLibraryEnhanced = () => {
     }
   };
 
+  // Enhanced filtering with more options
   const filteredContent = displayItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+                         item.preview.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         item.author.toLowerCase().includes(searchQuery.toLowerCase());
+    
     const matchesFilter = selectedFilter === 'all' || 
                          (selectedFilter === 'articles' && item.type === 'article') ||
                          (selectedFilter === 'assets' && ['image', 'video'].includes(item.type)) ||
                          (selectedFilter === 'recordings' && item.type === 'audio');
+    
     const matchesStatus = selectedStatus === 'all' || item.status === selectedStatus;
     
     return matchesSearch && matchesFilter && matchesStatus;
+  });
+
+  // Enhanced sorting - default by latest date
+  const sortedContent = [...filteredContent].sort((a, b) => {
+    const dateA = new Date(a.lastModified || a.dateAdded);
+    const dateB = new Date(b.lastModified || b.dateAdded);
+    return dateB - dateA; // Most recent first
   });
 
   const handleEditContent = async (content) => {

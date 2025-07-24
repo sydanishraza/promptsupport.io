@@ -388,7 +388,61 @@ const MediaArticleViewer = ({
     </motion.div>
   );
 
-  // WYSIWYG formatting functions
+  // Cursor position management for contentEditable
+  const [cursorPosition, setCursorPosition] = useState(null);
+  
+  // Save cursor position before content changes
+  const saveCursorPosition = () => {
+    if (editorRef.current) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        return {
+          startContainer: range.startContainer,
+          startOffset: range.startOffset,
+          endContainer: range.endContainer,
+          endOffset: range.endOffset
+        };
+      }
+    }
+    return null;
+  };
+
+  // Restore cursor position after content changes
+  const restoreCursorPosition = (position) => {
+    if (position && editorRef.current) {
+      try {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        
+        // Check if the containers still exist in the DOM
+        if (editorRef.current.contains(position.startContainer) && 
+            editorRef.current.contains(position.endContainer)) {
+          range.setStart(position.startContainer, Math.min(position.startOffset, position.startContainer.textContent?.length || 0));
+          range.setEnd(position.endContainer, Math.min(position.endOffset, position.endContainer.textContent?.length || 0));
+          
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      } catch (error) {
+        console.warn('Could not restore cursor position:', error);
+      }
+    }
+  };
+
+  // Enhanced content change handler with cursor preservation
+  const handleContentChangeWithCursor = (newContent, mode) => {
+    // Save cursor position before making changes
+    const savedPosition = saveCursorPosition();
+    
+    // Update content
+    handleContentChange(newContent, mode);
+    
+    // Restore cursor position after a brief delay to allow React to re-render
+    setTimeout(() => {
+      restoreCursorPosition(savedPosition);
+    }, 0);
+  };
   const formatWysiwyg = (command, value = null) => {
     document.execCommand(command, false, value);
     // Trigger content change

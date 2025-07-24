@@ -19,14 +19,24 @@ import {
   CheckCircle,
   AlertCircle,
   Copy,
-  ExternalLink
+  ExternalLink,
+  SortAsc,
+  SortDesc
 } from 'lucide-react';
+
+import AssetModal from './AssetModal';
 
 const AssetManager = ({ articles, onArticleSelect }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [sortBy, setSortBy] = useState('dateAdded');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [assets, setAssets] = useState([]);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [assetsPerPage] = useState(12);
 
   // Extract media assets from articles
   useEffect(() => {

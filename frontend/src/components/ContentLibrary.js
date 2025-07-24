@@ -347,7 +347,7 @@ const ContentLibrary = () => {
   }
 
   return (
-    <div className="h-full space-y-4 max-w-full overflow-hidden">
+    <div className="h-full space-y-4 max-w-full overflow-hidden pb-4">
       {/* Enhanced Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
@@ -500,7 +500,7 @@ const ContentLibrary = () => {
       </div>
 
       {/* Content Area */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 max-h-[calc(100vh-400px)] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 max-h-[calc(100vh-500px)] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -529,60 +529,63 @@ const ContentLibrary = () => {
         )}
       </div>
 
-      {/* Pagination */}
-      {currentView === 'articles' && totalPages > 1 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      {/* Pagination - Always show for articles when there are pages */}
+      {currentView === 'articles' && articles.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
             <div className="text-sm text-gray-500">
               Showing {startArticle}-{endArticle} of {totalArticles} articles
+              {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              
-              {/* Page numbers */}
-              <div className="flex items-center space-x-1">
-                {[...Array(Math.min(5, totalPages))].map((_, index) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = index + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = index + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + index;
-                  } else {
-                    pageNum = currentPage - 2 + index;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                        currentPage === pageNum
-                          ? 'bg-blue-600 text-white'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
+            {totalPages > 1 && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                <div className="flex items-center space-x-1">
+                  {[...Array(Math.min(5, totalPages))].map((_, index) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = index + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = index + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + index;
+                    } else {
+                      pageNum = currentPage - 2 + index;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
               </div>
-              
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}

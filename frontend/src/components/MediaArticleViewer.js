@@ -918,6 +918,13 @@ const MediaArticleViewer = ({
             </div>
           )}
         </div>
+        
+        {/* Status description */}
+        <div className="px-4 pb-2">
+          <p className="text-sm text-gray-600">
+            {isEditing ? 'Edit mode active - Your changes are being auto-saved' : 'Article view mode - Click Edit to modify content'}
+          </p>
+        </div>
 
         <div className="flex items-center space-x-2">
           <button

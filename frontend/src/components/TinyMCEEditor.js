@@ -493,7 +493,7 @@ const TinyMCEEditor = ({
         {viewMode === 'wysiwyg' ? (
           <Editor
             ref={editorRef}
-            apiKey="no-api-key"
+            apiKey="x09gf1395vrl61n0hbp843ynqsdo0kddcd3m58bjrilesxfl"
             value={content}
             init={editorConfig}
             onEditorChange={setContent}

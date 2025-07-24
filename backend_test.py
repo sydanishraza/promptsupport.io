@@ -2463,6 +2463,13 @@ This test verifies that the file upload pipeline properly triggers the Content L
         print("=" * 50)
         results['urgent_image_verification'] = self.test_urgent_image_verification()
         
+        # Run Enhanced Knowledge Engine tests with billing-management-test.docx
+        print("\n🔥 ENHANCED KNOWLEDGE ENGINE WITH BILLING MANAGEMENT DOCX")
+        print("=" * 50)
+        results['billing_management_docx_upload'] = self.test_billing_management_docx_upload()
+        results['image_extraction_verification'] = self.test_image_extraction_verification()
+        results['media_intelligence_endpoints'] = self.test_media_intelligence_endpoints()
+        
         # Run Media Intelligence System tests (main focus)
         print("\n🎯 COMPREHENSIVE MEDIA INTELLIGENCE SYSTEM TESTS")
         print("=" * 50)

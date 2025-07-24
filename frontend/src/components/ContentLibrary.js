@@ -47,6 +47,11 @@ const ContentLibrary = () => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterState, setFilterState] = useState(null); // For context preservation
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [articlesPerPage] = useState(20);
+  const [totalArticles, setTotalArticles] = useState(0);
 
   // Get backend URL
   const backendUrl = process.env.REACT_APP_BACKEND_URL;

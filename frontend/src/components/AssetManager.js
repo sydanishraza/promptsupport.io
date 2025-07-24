@@ -117,7 +117,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
     setAssets(extractedAssets);
   }, [articles]);
 
-  // Filter assets
+  // Filter and sort assets
   const filteredAssets = assets.filter(asset => {
     const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          asset.articleTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -133,6 +133,52 @@ const AssetManager = ({ articles, onArticleSelect }) => {
     
     return matchesSearch && matchesFilter;
   });
+
+  // Sort assets
+  const sortedAssets = [...filteredAssets].sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortBy) {
+      case 'name':
+        comparison = a.name.localeCompare(b.name);
+        break;
+      case 'size':
+        comparison = a.size - b.size;
+        break;
+      case 'format':
+        comparison = a.format.localeCompare(b.format);
+        break;
+      case 'articleTitle':
+        comparison = a.articleTitle.localeCompare(b.articleTitle);
+        break;
+      case 'dateAdded':
+      default:
+        comparison = new Date(a.dateAdded) - new Date(b.dateAdded);
+        break;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(sortedAssets.length / assetsPerPage);
+  const startIndex = (currentPage - 1) * assetsPerPage;
+  const paginatedAssets = sortedAssets.slice(startIndex, startIndex + assetsPerPage);
+
+  // Handle asset click
+  const handleAssetClick = (asset) => {
+    setSelectedAsset(asset);
+    setShowModal(true);
+  };
+
+  // Handle view in article
+  const handleViewInArticle = (asset) => {
+    const article = articles.find(a => a.id === asset.articleId);
+    if (article) {
+      onArticleSelect(article);
+    }
+    setShowModal(false);
+  };
 
   // Get asset icon
   const getAssetIcon = (asset) => {

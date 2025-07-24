@@ -1341,59 +1341,14 @@ const ContentLibraryEnhanced = () => {
             ))}
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredContent.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors cursor-pointer"
-                onClick={() => item.type === 'article' ? handleViewContent(item) : null}
-              >
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  {React.createElement(getTypeIcon(item.type), { size: 18, className: 'text-gray-600' })}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-3 mb-1">
-                    <h3 className="font-medium text-gray-900 truncate">{item.title}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>{item.author}</span>
-                    <span>{new Date(item.lastModified).toLocaleDateString()}</span>
-                    <span>{item.wordCount ? `${item.wordCount} words` : item.duration || item.dimensions}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-1">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewContent(item);
-                    }}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                  >
-                    <Eye size={16} />
-                  </button>
-                  {item.type === 'article' && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditContent(item);
-                      }}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                    >
-                      <Edit size={16} />
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <ContentLibraryTable
+            articles={sortedContent}
+            onViewArticle={handleViewContent}
+            onEditArticle={handleEditContent}
+            onDeleteArticle={handleDeleteArticle}
+            onStatusChange={handleStatusChange}
+            onDuplicateArticle={handleDuplicateArticle}
+          />
         )}
       </div>
 

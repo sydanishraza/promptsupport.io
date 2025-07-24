@@ -105,23 +105,59 @@ const MediaArticleViewer = ({
     }
   }, [article]);
 
-  // Convert markdown to HTML
+  // Convert markdown to HTML with beautification
   const markdownToHtml = (markdown) => {
     try {
-      return marked(markdown);
+      const html = marked(markdown);
+      // Add internal CSS styling
+      return `<div class="article-content">${html}</div>`;
     } catch (error) {
       console.error('Markdown conversion error:', error);
-      return markdown;
+      return `<div class="article-content">${markdown}</div>`;
     }
   };
 
-  // Convert HTML to markdown
+  // Convert HTML to markdown with beautification
   const htmlToMarkdown = (html) => {
     try {
-      return turndownService.turndown(html);
+      // Remove the wrapper div if present
+      const cleanHtml = html.replace(/<div class="article-content">(.*?)<\/div>/s, '$1');
+      return turndownService.turndown(cleanHtml);
     } catch (error) {
       console.error('HTML to markdown conversion error:', error);
       return html;
+    }
+  };
+
+  // Beautify HTML
+  const beautifyHtml = (html) => {
+    try {
+      // Simple HTML beautification
+      return html
+        .replace(/></g, '>\n<')
+        .replace(/^\s*\n/gm, '')
+        .split('\n')
+        .map((line, index) => {
+          const depth = (line.match(/^(\s*)/)[1].length || 0) / 2;
+          return '  '.repeat(depth) + line.trim();
+        })
+        .join('\n');
+    } catch (error) {
+      return html;
+    }
+  };
+
+  // Beautify Markdown
+  const beautifyMarkdown = (markdown) => {
+    try {
+      return markdown
+        .replace(/^\s+|\s+$/g, '') // Trim
+        .replace(/\n{3,}/g, '\n\n') // No more than 2 consecutive newlines
+        .replace(/^(#{1,6})\s+/gm, '$1 ') // Ensure space after headings
+        .replace(/^(\*|-|\+)\s+/gm, '- ') // Standardize list bullets
+        .replace(/^(\d+\.)\s+/gm, '$1 '); // Ensure space after numbered lists
+    } catch (error) {
+      return markdown;
     }
   };
 

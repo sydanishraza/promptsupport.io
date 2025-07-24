@@ -1182,6 +1182,60 @@ const MediaArticleViewer = ({
           border-color: #3b82f6;
           ring: 2px solid #3b82f6;
         }
+        
+        /* WYSIWYG Editor specific styles */
+        [contentEditable="true"]:empty:before {
+          content: attr(placeholder);
+          color: #9ca3af;
+          font-style: italic;
+        }
+        
+        [contentEditable="true"] {
+          cursor: text;
+        }
+        
+        [contentEditable="true"] p {
+          margin-bottom: 1rem;
+        }
+        
+        [contentEditable="true"] h1,
+        [contentEditable="true"] h2,
+        [contentEditable="true"] h3 {
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+          font-weight: bold;
+        }
+        
+        [contentEditable="true"] h1 {
+          font-size: 2rem;
+        }
+        
+        [contentEditable="true"] h2 {
+          font-size: 1.5rem;
+        }
+        
+        [contentEditable="true"] h3 {
+          font-size: 1.25rem;
+        }
+        
+        [contentEditable="true"] ul,
+        [contentEditable="true"] ol {
+          margin-left: 1.5rem;
+          margin-bottom: 1rem;
+        }
+        
+        [contentEditable="true"] li {
+          margin-bottom: 0.5rem;
+        }
+        
+        [contentEditable="true"] blockquote {
+          border-left: 4px solid #3b82f6;
+          padding-left: 1rem;
+          margin: 1rem 0;
+          background: #f8fafc;
+          padding: 1rem;
+          border-radius: 0 8px 8px 0;
+        }
       `}</style>
     </div>
   );

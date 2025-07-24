@@ -363,6 +363,8 @@ const ContentLibrary = () => {
               <span className="hidden sm:inline">•</span>
               <span>With Media: {articles.filter(a => a.content?.includes('data:image')).length}</span>
               <span className="hidden sm:inline">•</span>
+              <span>Total Assets: {actualAssetCount}</span>
+              <span className="hidden sm:inline">•</span>
               <span>Published: {articles.filter(a => a.status === 'published').length}</span>
             </div>
           </div>

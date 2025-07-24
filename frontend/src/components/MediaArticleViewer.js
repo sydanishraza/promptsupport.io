@@ -955,9 +955,42 @@ const MediaArticleViewer = ({
                   ref={editorRef}
                   contentEditable={true}
                   className="w-full min-h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  dangerouslySetInnerHTML={{ __html: content }}
-                  onInput={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
-                  onBlur={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
+                  onInput={(e) => {
+                    e.preventDefault();
+                    handleContentChangeWithCursor(e.target.innerHTML, 'wysiwyg');
+                  }}
+                  onKeyDown={(e) => {
+                    // Handle keyboard shortcuts
+                    if (e.ctrlKey || e.metaKey) {
+                      switch (e.key) {
+                        case 'z':
+                          e.preventDefault();
+                          document.execCommand('undo');
+                          break;
+                        case 'y':
+                          e.preventDefault();
+                          document.execCommand('redo');
+                          break;
+                        case 'b':
+                          e.preventDefault();
+                          formatWysiwyg('bold');
+                          break;
+                        case 'i':
+                          e.preventDefault();
+                          formatWysiwyg('italic');
+                          break;
+                        case 'u':
+                          e.preventDefault();
+                          formatWysiwyg('underline');
+                          break;
+                        case 'k':
+                          e.preventDefault();
+                          const url = prompt('Enter link URL:');
+                          if (url) formatWysiwyg('createLink', url);
+                          break;
+                      }
+                    }
+                  }}
                   style={{
                     color: '#333',
                     lineHeight: '1.6',
@@ -965,9 +998,12 @@ const MediaArticleViewer = ({
                     minHeight: '400px',
                     maxHeight: '600px',
                     overflow: 'auto',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    backgroundColor: '#fff',
+                    scrollBehavior: 'smooth'
                   }}
-                  placeholder="Start typing your content here..."
+                  suppressContentEditableWarning={true}
+                  dangerouslySetInnerHTML={{ __html: content }}
                 />
                 
                 {/* WYSIWYG Helper Text */}

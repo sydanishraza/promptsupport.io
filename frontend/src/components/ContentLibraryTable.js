@@ -219,9 +219,11 @@ const ContentLibraryTable = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Sources</option>
-              <option value="ai_generated">AI Generated</option>
-              <option value="manual">Manual</option>
-              <option value="upload">Upload</option>
+              <option value="AI Generated">AI Generated</option>
+              <option value="Manual">Manual</option>
+              <option value="File Upload">File Upload</option>
+              <option value="Integration">Integration</option>
+              <option value="Recording">Recording</option>
             </select>
           </div>
 

@@ -235,14 +235,30 @@ const AssetManager = ({ articles, onArticleSelect }) => {
               {/* Asset Preview */}
               <div className="mb-3">
                 {asset.type === 'image' ? (
-                  <img
-                    src={asset.dataUrl}
-                    alt={asset.altText}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
+                  <div className="relative">
+                    <img
+                      src={asset.dataUrl}
+                      alt={asset.altText || asset.name}
+                      className="w-full h-32 object-cover rounded-lg"
+                      onError={(e) => {
+                        console.error('Image load error:', e);
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <Image className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <span className="text-xs text-gray-500">Image Preview</span>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                    {getAssetIcon(asset)}
+                    <div className="text-center">
+                      {getAssetIcon(asset)}
+                      <span className="text-xs text-gray-500 mt-2 block">{asset.format.toUpperCase()}</span>
+                    </div>
                   </div>
                 )}
               </div>

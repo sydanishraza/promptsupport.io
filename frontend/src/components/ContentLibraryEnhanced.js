@@ -1176,71 +1176,166 @@ const ContentLibraryEnhanced = () => {
         </div>
 
         {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredContent.map((item, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {sortedContent.map((item, index) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer"
+                className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-md transition-all cursor-pointer"
                 onClick={() => item.type === 'article' ? handleViewContent(item) : null}
               >
+                {/* Header with title and actions */}
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                      {React.createElement(getTypeIcon(item.type), { size: 16, className: 'text-gray-600' })}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                      <span className="text-xs text-gray-500">v{item.version}</span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSourceColor(item.source)}`}>
-                      {item.source}
-                    </span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <button 
+                  <div className="flex items-center space-x-1 ml-2">
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleViewContent(item);
                       }}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                      className="p-1 text-gray-400 hover:text-blue-600 rounded"
+                      title="View Article"
                     >
                       <Eye size={14} />
                     </button>
-                    {item.type === 'article' && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditContent(item);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                      >
-                        <Edit size={14} />
-                      </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditContent(item);
+                      }}
+                      className="p-1 text-gray-400 hover:text-green-600 rounded"
+                      title="Edit Article"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteArticle(item.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-600 rounded"
+                      title="Delete Article"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Enhanced Metadata */}
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Type</span>
+                    <div className="flex items-center space-x-1">
+                      {React.createElement(getTypeIcon(item.type), { size: 12 })}
+                      <span className="capitalize">{item.type}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Source</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getSourceColor(item.source)}`}>
+                      {item.source}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Created by</span>
+                    <span>{item.createdBy}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Date added</span>
+                    <span>{new Date(item.dateAdded).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Last updated</span>
+                    <span>{new Date(item.lastModified).toLocaleDateString()}</span>
+                  </div>
+                  {item.hasMedia && (
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Media</span>
+                      <div className="flex items-center space-x-1">
+                        <Image size={12} />
+                        <span>{item.mediaCount}</span>
+                        {item.media_processed && (
+                          <Brain size={10} className="text-purple-600" title="AI Enhanced" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Words</span>
+                    <span>{Math.round(item.wordCount)}</span>
+                  </div>
+                </div>
+
+                {/* Preview */}
+                <div className="mb-3">
+                  <p className="text-xs text-gray-600 line-clamp-2">
+                    {item.preview}
+                  </p>
+                </div>
+
+                {/* Tags */}
+                {item.tags && item.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {item.tags.slice(0, 3).map(tag => (
+                      <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                    {item.tags.length > 3 && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                        +{item.tags.length - 3}
+                      </span>
                     )}
                   </div>
-                </div>
+                )}
 
-                <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                  {item.preview}
-                </p>
-
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {item.tags.slice(0, 3).map(tag => (
-                    <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                    {item.status}
-                  </span>
-                  <div className="text-xs text-gray-500">
-                    {item.wordCount ? `${item.wordCount} words` : item.duration || item.dimensions}
-                  </div>
+                {/* Action buttons */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewContent(item);
+                    }}
+                    className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-xs"
+                  >
+                    <Eye size={12} className="mr-1" />
+                    View
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditContent(item);
+                    }}
+                    className="flex-1 flex items-center justify-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 text-xs"
+                  >
+                    <Edit size={12} className="mr-1" />
+                    Edit
+                  </button>
+                  <select
+                    value={item.status}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleStatusChange(item.id, e.target.value);
+                    }}
+                    className="px-2 py-1 border border-gray-300 rounded text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="review">Review</option>
+                  </select>
                 </div>
               </motion.div>
             ))}

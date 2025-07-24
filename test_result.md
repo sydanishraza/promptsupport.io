@@ -481,6 +481,9 @@
         -working: true
         -agent: "main"
         -comment: "FIXED: Replaced 'overflow-hidden' with 'max-h-[calc(100vh-400px)] overflow-y-auto' in content area. Now users can properly scroll through all articles. Tested and confirmed scrolling works correctly, showing different articles when scrolled."
+        -working: true
+        -agent: "testing"
+        -comment: "BACKEND REGRESSION TESTING COMPLETED: Verified that frontend navigation and scrolling fixes did not affect backend API functionality. All Core Content Library APIs (GET, POST, PUT) working perfectly with no regressions detected. Asset processing continues to work correctly with 77 articles containing embedded images."
 
   - task: "Fix Assets Tab Count Accuracy" 
     implemented: true

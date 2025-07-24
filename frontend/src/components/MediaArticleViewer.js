@@ -895,20 +895,33 @@ const MediaArticleViewer = ({
         {viewMode === 'wysiwyg' ? (
           <div className="min-h-96">
             {isEditing ? (
-              <div
-                ref={editorRef}
-                contentEditable={true}
-                className="w-full min-h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 prose prose-lg max-w-none wysiwyg-editor"
-                dangerouslySetInnerHTML={{ __html: content }}
-                onInput={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
-                onBlur={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
-                style={{
-                  color: '#333',
-                  lineHeight: '1.6',
-                  fontSize: '16px',
-                  overflow: 'auto'
-                }}
-              />
+              <div className="space-y-4">
+                {/* WYSIWYG Editor Area */}
+                <div
+                  ref={editorRef}
+                  contentEditable={true}
+                  className="w-full min-h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  dangerouslySetInnerHTML={{ __html: content }}
+                  onInput={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
+                  onBlur={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
+                  style={{
+                    color: '#333',
+                    lineHeight: '1.6',
+                    fontSize: '16px',
+                    minHeight: '400px',
+                    maxHeight: '600px',
+                    overflow: 'auto',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                  }}
+                  placeholder="Start typing your content here..."
+                />
+                
+                {/* WYSIWYG Helper Text */}
+                <div className="text-xs text-gray-500 px-2">
+                  💡 Use the toolbar above to format your text, or type directly in the editor. 
+                  Images and rich content are fully supported.
+                </div>
+              </div>
             ) : (
               <div className="prose prose-lg max-w-none">
                 <div 

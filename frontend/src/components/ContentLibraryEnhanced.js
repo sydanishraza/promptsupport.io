@@ -250,65 +250,25 @@ const ContentLibraryEnhanced = () => {
     }
   };
 
-  // Enhanced status change functionality
-  const handleStatusChange = async (articleId, newStatus) => {
-    try {
-      const article = articles.find(a => a.id === articleId);
-      if (!article) return;
-
-      const formData = new FormData();
-      formData.append('title', article.title);
-      formData.append('content', article.content);
-      formData.append('status', newStatus);
-      formData.append('tags', JSON.stringify(article.tags || []));
-      formData.append('metadata', JSON.stringify(article.metadata || {}));
-
-      const response = await fetch(`${backendUrl}/api/content-library/${articleId}`, {
-        method: 'PUT',
-        body: formData
-      });
-
-      if (response.ok) {
-        await fetchContentLibrary();
-        console.log(`Article status changed to ${newStatus}`);
-      } else {
-        console.error('Failed to update article status');
-      }
-    } catch (error) {
-      console.error('Error updating article status:', error);
+  const handleDeleteArticle = async (articleId) => {
+    if (!confirm('Are you sure you want to delete this article? This action cannot be undone.')) {
+      return;
     }
-  };
 
-  // Enhanced duplicate article functionality
-  const handleDuplicateArticle = async (article) => {
     try {
-      const duplicatedArticle = {
-        ...article,
-        title: `${article.title} (Copy)`,
-        status: 'draft',
-        id: undefined // Let backend generate new ID
-      };
-
-      const formData = new FormData();
-      formData.append('title', duplicatedArticle.title);
-      formData.append('content', duplicatedArticle.content);
-      formData.append('status', duplicatedArticle.status);
-      formData.append('tags', JSON.stringify(duplicatedArticle.tags || []));
-      formData.append('metadata', JSON.stringify(duplicatedArticle.metadata || {}));
-
-      const response = await fetch(`${backendUrl}/api/content-library`, {
-        method: 'POST',
-        body: formData
+      const response = await fetch(`${backendUrl}/api/content-library/${articleId}`, {
+        method: 'DELETE'
       });
 
       if (response.ok) {
-        await fetchContentLibrary();
-        console.log('Article duplicated successfully');
+        // Remove from local state
+        setArticles(prev => prev.filter(article => article.id !== articleId));
+        console.log('Article deleted successfully');
       } else {
-        console.error('Failed to duplicate article');
+        console.error('Failed to delete article');
       }
     } catch (error) {
-      console.error('Error duplicating article:', error);
+      console.error('Error deleting article:', error);
     }
   };
 

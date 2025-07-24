@@ -2521,6 +2521,9 @@ This test verifies that the file upload pipeline properly triggers the Content L
         # Prioritize Media Intelligence tests and URGENT test in display
         priority_tests = [
             'urgent_image_verification',
+            'billing_management_docx_upload',
+            'image_extraction_verification', 
+            'media_intelligence_endpoints',
             'media_intelligence_analyze',
             'media_intelligence_process_article',
             'media_intelligence_stats',

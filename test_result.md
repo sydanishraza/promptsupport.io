@@ -467,6 +467,78 @@
         -agent: "testing"
         -comment: "🎉 COMPREHENSIVE MEDIA INTELLIGENCE SYSTEM TESTING COMPLETED SUCCESSFULLY: All 4/4 media intelligence tests passed (100% success rate). ✅ POST /api/media/analyze: Successfully analyzes media with base64 image data using LLM + Vision models, provides intelligent classification (diagram/screenshot/chart/photo), generates contextual captions (descriptive, contextual, technical), suggests optimal placement, and creates enhanced accessibility features. ✅ POST /api/media/process-article: Successfully processes articles with multiple media formats (PNG: 19, JPEG: 16, SVG: 17), generates enhanced HTML with figure/figcaption structure, applies AI-generated captions and contextual descriptions, and updates database with media_processed flag. ✅ GET /api/media/stats: Returns comprehensive media statistics including format breakdown, intelligence analysis metrics (vision_analyzed, auto_captioned, contextually_placed), and processing status tracking across 167 articles with 46 containing embedded media. ✅ MediaIntelligenceService Class: Fully functional with LLM + Vision model integration, contextual placement algorithms, intelligent classification system, enhanced accessibility features, and educational metadata generation. The system successfully transforms basic image display into intelligent media management exactly as requested in the review."
 
+  - task: "Fix Content Library Navigation and Scrolling"
+    implemented: false
+    working: false
+    file: "frontend/src/components/ContentLibrary.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: Users cannot scroll to browse the full list of articles or assets in the Content Library. Need to fix overflow and scrolling issues in the main content area."
+
+  - task: "Fix Assets Tab Count Accuracy" 
+    implemented: false
+    working: false
+    file: "frontend/src/components/ContentLibrary.js, frontend/src/components/AssetManager.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: Assets tab displays only 3 images, even though the tab header shows 67. Count is inconsistent - need to fix asset counting logic to show actual extracted assets count."
+
+  - task: "Fix WYSIWYG Editor Black Screen Issue"
+    implemented: false
+    working: false
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: When scrolling within the WYSIWYG editor, the entire editor turns black, rendering the interface unusable. Need to fix CSS and overflow issues in contentEditable div."
+
+  - task: "Add WYSIWYG Toolbar Support"
+    implemented: false
+    working: false
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: WYSIWYG editor lacks a proper toolbar with formatting controls (headings, lists, tables, code blocks, images, embeds, tip/warning callouts). Currently toolbar only shows for Markdown/HTML modes."
+
+  - task: "Remove HTML View Toolbar"
+    implemented: false
+    working: false
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: HTML tab currently shows a blank toolbar. Since HTML editing is for advanced users, the toolbar is not necessary in this view."
+
+  - task: "Control View Toggles by Edit Mode"
+    implemented: false
+    working: false  
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: WYSIWYG / Markdown / HTML toggle shows when the article is not in edit mode. Should only display the mode toggle when editing is active, and default to read-only view when not editing."
+
 ## metadata:
   created_by: "main_agent"
   version: "2.0"

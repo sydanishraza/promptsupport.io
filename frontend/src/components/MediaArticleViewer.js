@@ -161,29 +161,24 @@ const MediaArticleViewer = ({
     }
   };
 
-  // Handle view mode change
+  // Handle view mode change with proper synchronization
   const handleViewModeChange = (mode) => {
     try {
-      let currentContent = content;
-      
       if (mode === 'markdown') {
-        // Convert HTML to Markdown
-        if (viewMode === 'wysiwyg' || viewMode === 'html') {
-          const markdownContent = htmlToMarkdown(currentContent);
-          setContent(markdownContent);
-        }
+        // Convert current content to markdown
+        const newMarkdown = viewMode === 'html' ? htmlToMarkdown(htmlContent) : 
+                           viewMode === 'wysiwyg' ? htmlToMarkdown(content) : markdownContent;
+        setMarkdownContent(beautifyMarkdown(newMarkdown));
       } else if (mode === 'html') {
-        // Convert to HTML
-        if (viewMode === 'markdown') {
-          const htmlContent = markdownToHtml(currentContent);
-          setContent(htmlContent);
-        }
+        // Convert current content to HTML
+        const newHtml = viewMode === 'markdown' ? markdownToHtml(markdownContent) : 
+                       viewMode === 'wysiwyg' ? content : htmlContent;
+        setHtmlContent(beautifyHtml(newHtml));
       } else if (mode === 'wysiwyg') {
-        // Convert to WYSIWYG (HTML for display)
-        if (viewMode === 'markdown') {
-          const htmlContent = markdownToHtml(currentContent);
-          setContent(htmlContent);
-        }
+        // Convert current content to WYSIWYG HTML
+        const newContent = viewMode === 'markdown' ? markdownToHtml(markdownContent) : 
+                          viewMode === 'html' ? htmlContent : content;
+        setContent(newContent);
       }
       
       setViewMode(mode);

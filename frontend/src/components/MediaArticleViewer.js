@@ -217,13 +217,41 @@ const MediaArticleViewer = ({
     }
   };
 
-  // Handle save
+  // Handle content changes with synchronization
+  const handleContentChange = (newContent, sourceMode) => {
+    if (sourceMode === 'markdown') {
+      setMarkdownContent(newContent);
+      setHtmlContent(markdownToHtml(newContent));
+      setContent(markdownToHtml(newContent));
+    } else if (sourceMode === 'html') {
+      setHtmlContent(newContent);
+      setMarkdownContent(htmlToMarkdown(newContent));
+      setContent(newContent);
+    } else if (sourceMode === 'wysiwyg') {
+      setContent(newContent);
+      setHtmlContent(newContent);
+      setMarkdownContent(htmlToMarkdown(newContent));
+    }
+  };
+
+  // Handle save with current content
   const handleSave = async () => {
     try {
+      let finalContent = content;
+      
+      // Use the content from the current view mode
+      if (viewMode === 'markdown') {
+        finalContent = markdownToHtml(markdownContent);
+      } else if (viewMode === 'html') {
+        finalContent = htmlContent;
+      } else {
+        finalContent = content;
+      }
+
       const articleData = {
         id: article.id,
         title: title,
-        content: content,
+        content: finalContent,
         status: status,
         tags: tags,
         metadata: metadata

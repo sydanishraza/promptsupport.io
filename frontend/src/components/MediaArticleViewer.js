@@ -252,9 +252,11 @@ const MediaArticleViewer = ({
   // Auto-save timeout reference
   const autoSaveTimeoutRef = useRef(null);
 
-  // Handle save with current content
-  const handleSave = async () => {
+  // Handle save with current content and status tracking
+  const handleSave = async (isAutoSave = false) => {
     try {
+      setSaveStatus('saving');
+      
       let finalContent = content;
       
       // Use the content from the current view mode
@@ -278,9 +280,23 @@ const MediaArticleViewer = ({
       const success = await onSave(articleData);
       if (success) {
         console.log('Article saved successfully');
+        
+        // Update save status
+        setSaveStatus('saved');
+        setHasUnsavedChanges(false);
+        
+        // Show success message
+        if (!isAutoSave) {
+          // You can add a toast notification here
+          console.log('Manual save completed successfully');
+        }
+      } else {
+        throw new Error('Failed to save article');
       }
     } catch (error) {
       console.error('Save error:', error);
+      setSaveStatus('unsaved');
+      // You can add error notification here
     }
   };
 

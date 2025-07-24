@@ -34,7 +34,37 @@ import AssetManager from './AssetManager';
 import SnipAndRecord from './SnipAndRecord';
 
 const ContentLibrary = () => {
-  // State management
+  // State for actual asset count  
+  const [actualAssetCount, setActualAssetCount] = useState(0);
+
+  // Calculate actual asset count from articles
+  useEffect(() => {
+    let totalAssets = 0;
+    
+    articles.forEach(article => {
+      if (article.content && article.content.includes('data:image')) {
+        // Count markdown format images
+        const markdownImages = (article.content.match(/!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g) || []);
+        // Count HTML format images  
+        const htmlImages = (article.content.match(/<img[^>]*src="data:image\/([^;]+);base64,([^"]+)"[^>]*>/g) || []);
+        
+        // Filter out truncated images (less than 50 chars)
+        const validMarkdownImages = markdownImages.filter(img => {
+          const match = img.match(/base64,([^)]+)/);
+          return match && match[1].length >= 50;
+        });
+        
+        const validHtmlImages = htmlImages.filter(img => {
+          const match = img.match(/base64,([^"]+)/);
+          return match && match[1].length >= 50;
+        });
+        
+        totalAssets += validMarkdownImages.length + validHtmlImages.length;
+      }
+    });
+    
+    setActualAssetCount(totalAssets);
+  }, [articles]);
   const [currentView, setCurrentView] = useState('articles'); // 'articles' or 'assets'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const [searchQuery, setSearchQuery] = useState('');

@@ -2050,6 +2050,11 @@ This test verifies that the file upload pipeline properly triggers the Content L
         results['enhanced_content_library_update'] = self.test_enhanced_content_library_update()
         results['enhanced_content_library_version_history'] = self.test_enhanced_content_library_version_history()
         results['enhanced_content_library_restore_version'] = self.test_enhanced_content_library_restore_version()
+        results['enhanced_content_library_delete'] = self.test_enhanced_content_library_delete()
+        results['enhanced_content_library_status_changes'] = self.test_enhanced_content_library_status_changes()
+        results['enhanced_content_library_article_duplication'] = self.test_enhanced_content_library_article_duplication()
+        results['enhanced_content_library_media_detection'] = self.test_enhanced_content_library_media_detection()
+        results['enhanced_content_library_source_type_mapping'] = self.test_enhanced_content_library_source_type_mapping()
         results['enhanced_content_library_metadata_management'] = self.test_enhanced_content_library_metadata_management()
         results['enhanced_content_library_api_integration'] = self.test_enhanced_content_library_api_integration()
         

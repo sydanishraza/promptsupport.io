@@ -250,7 +250,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
 
   return (
     <div className="p-4 lg:p-6 space-y-4">
-      {/* Asset Controls */}
+      {/* Enhanced Asset Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
           {/* Search */}
@@ -258,7 +258,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search assets..."
+              placeholder="Search assets, articles, or descriptions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
@@ -279,6 +279,28 @@ const AssetManager = ({ articles, onArticleSelect }) => {
             <option value="svg">SVG</option>
             <option value="processed">AI Processed</option>
           </select>
+
+          {/* Sort */}
+          <div className="flex items-center space-x-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="dateAdded">Date Added</option>
+              <option value="name">Name</option>
+              <option value="size">File Size</option>
+              <option value="format">Format</option>
+              <option value="articleTitle">Source Article</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+            >
+              {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
 
         {/* View Mode */}

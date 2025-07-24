@@ -898,13 +898,15 @@ const MediaArticleViewer = ({
               <div
                 ref={editorRef}
                 contentEditable={true}
-                className="w-full min-h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 prose prose-lg max-w-none"
+                className="w-full min-h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 prose prose-lg max-w-none wysiwyg-editor"
                 dangerouslySetInnerHTML={{ __html: content }}
+                onInput={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
                 onBlur={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
                 style={{
                   color: '#333',
                   lineHeight: '1.6',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  overflow: 'auto'
                 }}
               />
             ) : (

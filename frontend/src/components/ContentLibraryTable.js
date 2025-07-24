@@ -378,7 +378,7 @@ const ContentLibraryTable = ({
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       <button
                         onClick={() => onViewArticle(article)}
                         className="p-1 text-gray-400 hover:text-blue-600 rounded"
@@ -393,13 +393,39 @@ const ContentLibraryTable = ({
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => onDeleteArticle && onDeleteArticle(article)}
-                        className="p-1 text-gray-400 hover:text-red-600 rounded"
-                        title="Delete Article"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {onDuplicateArticle && (
+                        <button
+                          onClick={() => onDuplicateArticle(article)}
+                          className="p-1 text-gray-400 hover:text-purple-600 rounded"
+                          title="Duplicate Article"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      )}
+                      {onDeleteArticle && (
+                        <button
+                          onClick={() => onDeleteArticle(article)}
+                          className="p-1 text-gray-400 hover:text-red-600 rounded"
+                          title="Delete Article"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                      
+                      {/* Status Change Dropdown */}
+                      {onStatusChange && (
+                        <div className="relative">
+                          <select
+                            value={article.status}
+                            onChange={(e) => onStatusChange(article.id, e.target.value)}
+                            className="text-xs border border-gray-300 rounded px-2 py-1 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="review">Review</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

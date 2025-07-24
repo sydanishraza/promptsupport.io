@@ -712,36 +712,63 @@ const MediaArticleViewer = ({
       {/* Content Area */}
       <div className="p-4 flex-1 overflow-y-auto">
         {viewMode === 'wysiwyg' ? (
-          <div className="prose prose-lg max-w-none">
-            <div 
-              dangerouslySetInnerHTML={{ 
-                __html: content.includes('<') ? content : markdownToHtml(content)
-              }}
-              className="wysiwyg-content"
-              style={{
-                color: '#333',
-                lineHeight: '1.6',
-                fontSize: '16px'
-              }}
-            />
+          <div className="min-h-96">
+            {isEditing ? (
+              <div
+                ref={editorRef}
+                contentEditable={true}
+                className="w-full min-h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 prose prose-lg max-w-none"
+                dangerouslySetInnerHTML={{ __html: content }}
+                onBlur={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
+                style={{
+                  color: '#333',
+                  lineHeight: '1.6',
+                  fontSize: '16px'
+                }}
+              />
+            ) : (
+              <div className="prose prose-lg max-w-none">
+                <div 
+                  dangerouslySetInnerHTML={{ __html: content }}
+                  className="wysiwyg-content"
+                  style={{
+                    color: '#333',
+                    lineHeight: '1.6',
+                    fontSize: '16px'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        ) : viewMode === 'markdown' ? (
+          <div className="space-y-4">
+            {isEditing ? (
+              <textarea
+                ref={markdownEditorRef}
+                value={markdownContent}
+                onChange={(e) => handleContentChange(e.target.value, 'markdown')}
+                className="w-full h-96 p-4 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
+                placeholder="Enter your content in Markdown format..."
+              />
+            ) : (
+              <div className="prose prose-lg max-w-none">
+                <div dangerouslySetInnerHTML={{ __html: markdownToHtml(markdownContent) }} />
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
             {isEditing ? (
               <textarea
-                ref={editorRef}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
+                ref={htmlEditorRef}
+                value={htmlContent}
+                onChange={(e) => handleContentChange(e.target.value, 'html')}
                 className="w-full h-96 p-4 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
-                placeholder={`Enter your content in ${viewMode.toUpperCase()} format...`}
+                placeholder="Enter your content in HTML format..."
               />
             ) : (
               <div className="prose prose-lg max-w-none">
-                <div 
-                  dangerouslySetInnerHTML={{ 
-                    __html: viewMode === 'markdown' ? markdownToHtml(content) : content 
-                  }}
-                />
+                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
               </div>
             )}
           </div>

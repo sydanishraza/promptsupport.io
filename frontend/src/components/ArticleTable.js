@@ -290,9 +290,15 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                     <FileText className="h-5 w-5 text-gray-400" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-gray-900 truncate">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onArticleSelect(article);
+                      }}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block w-full text-left"
+                    >
                       {article.title || 'Untitled'}
-                    </div>
+                    </button>
                     <div className="text-xs text-gray-500 truncate">
                       {article.summary || 
                        (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 60) + '...' : 'No content')}

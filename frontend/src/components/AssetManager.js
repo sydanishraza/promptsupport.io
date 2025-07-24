@@ -171,8 +171,8 @@ const AssetManager = ({ articles, onArticleSelect }) => {
     setShowModal(true);
   };
 
-  // Handle view in article
-  const handleViewInArticle = (asset) => {
+  // Handle view in article from modal
+  const handleViewInArticleFromModal = (asset) => {
     const article = articles.find(a => a.id === asset.articleId);
     if (article) {
       onArticleSelect(article);

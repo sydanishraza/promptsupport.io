@@ -708,8 +708,8 @@ const MediaArticleViewer = ({
         </div>
       </div>
 
-      {/* Enhanced Toolbar for editing */}
-      {isEditing && (viewMode === 'markdown' || viewMode === 'html') && renderEnhancedToolbar()}
+      {/* Enhanced Toolbar for editing - WYSIWYG and Markdown only */}
+      {isEditing && (viewMode === 'wysiwyg' || viewMode === 'markdown') && renderEnhancedToolbar()}
 
       {/* Content Area */}
       <div className="p-4 flex-1 overflow-y-auto">

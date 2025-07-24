@@ -34,19 +34,61 @@ const AssetManager = ({ articles, onArticleSelect }) => {
     
     articles.forEach(article => {
       if (article.content && article.content.includes('data:image')) {
-        // Extract base64 images
+        // Extract base64 images with more flexible regex
         const imageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
-        let match;
         
+        // Also try to find images in HTML format
+        const htmlImageRegex = /<img[^>]*src="data:image\/([^;]+);base64,([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g;
+        
+        let match;
+        let assetCounter = 0;
+        
+        // Process markdown format images
         while ((match = imageRegex.exec(article.content)) !== null) {
           const [fullMatch, altText, format, base64Data] = match;
-          const assetId = `${article.id}-${extractedAssets.length}`;
+          
+          // Skip if base64 data is too short (likely truncated)
+          if (base64Data.length < 50) {
+            console.warn(`Skipping truncated image in article ${article.id}: ${base64Data.length} chars`);
+            continue;
+          }
+          
+          const assetId = `${article.id}-md-${assetCounter++}`;
           
           extractedAssets.push({
             id: assetId,
             type: 'image',
             format: format.toLowerCase(),
-            name: altText || `Image from ${article.title}`,
+            name: altText || `Image ${assetCounter} from ${article.title}`,
+            altText: altText,
+            dataUrl: `data:image/${format};base64,${base64Data}`,
+            size: Math.round(base64Data.length * 0.75), // Approximate size
+            articleId: article.id,
+            articleTitle: article.title,
+            dateAdded: article.created_at,
+            lastUpdated: article.updated_at,
+            source: article.source_type,
+            processed: article.media_processed || false
+          });
+        }
+        
+        // Process HTML format images
+        while ((match = htmlImageRegex.exec(article.content)) !== null) {
+          const [fullMatch, format, base64Data, altText] = match;
+          
+          // Skip if base64 data is too short (likely truncated)
+          if (base64Data.length < 50) {
+            console.warn(`Skipping truncated HTML image in article ${article.id}: ${base64Data.length} chars`);
+            continue;
+          }
+          
+          const assetId = `${article.id}-html-${assetCounter++}`;
+          
+          extractedAssets.push({
+            id: assetId,
+            type: 'image',
+            format: format.toLowerCase(),
+            name: altText || `HTML Image ${assetCounter} from ${article.title}`,
             altText: altText,
             dataUrl: `data:image/${format};base64,${base64Data}`,
             size: Math.round(base64Data.length * 0.75), // Approximate size
@@ -61,6 +103,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
       }
     });
 
+    console.log(`Extracted ${extractedAssets.length} assets from ${articles.length} articles`);
     setAssets(extractedAssets);
   }, [articles]);
 

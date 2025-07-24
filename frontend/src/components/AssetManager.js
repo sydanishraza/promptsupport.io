@@ -193,19 +193,19 @@ const AssetManager = ({ articles, onArticleSelect }) => {
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 lg:p-6 space-y-4">
       {/* Asset Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
           {/* Search */}
-          <div className="relative">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search assets..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
             />
           </div>
 
@@ -213,7 +213,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           >
             <option value="all">All Assets</option>
             <option value="image">Images</option>
@@ -226,7 +226,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
         </div>
 
         {/* View Mode */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">View:</span>
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
@@ -238,7 +238,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
               }`}
             >
               <Grid3X3 className="h-4 w-4" />
-              <span>Grid</span>
+              <span className="hidden sm:inline">Grid</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -249,7 +249,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
               }`}
             >
               <List className="h-4 w-4" />
-              <span>List</span>
+              <span className="hidden sm:inline">List</span>
             </button>
           </div>
         </div>

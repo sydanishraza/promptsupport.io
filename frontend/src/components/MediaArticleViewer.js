@@ -430,7 +430,30 @@ const MediaArticleViewer = ({
     }
   };
 
-  // Enhanced content change handler with cursor preservation
+  // Auto-scroll to cursor functionality
+  const scrollToCursor = () => {
+    if (editorRef.current) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const editorRect = editorRef.current.getBoundingClientRect();
+        
+        // Check if cursor is near the bottom of the visible area
+        if (rect.bottom > editorRect.bottom - 50) {
+          // Scroll to keep cursor visible
+          editorRef.current.scrollTop += rect.bottom - editorRect.bottom + 100;
+        }
+        
+        // Check if cursor is near the top of the visible area
+        if (rect.top < editorRect.top + 50) {
+          editorRef.current.scrollTop -= editorRect.top - rect.top + 100;
+        }
+      }
+    }
+  };
+
+  // Enhanced content change handler with cursor preservation and auto-scroll
   const handleContentChangeWithCursor = (newContent, mode) => {
     // Save cursor position before making changes
     const savedPosition = saveCursorPosition();
@@ -438,9 +461,10 @@ const MediaArticleViewer = ({
     // Update content
     handleContentChange(newContent, mode);
     
-    // Restore cursor position after a brief delay to allow React to re-render
+    // Restore cursor position and scroll after a brief delay
     setTimeout(() => {
       restoreCursorPosition(savedPosition);
+      scrollToCursor();
     }, 0);
   };
   const formatWysiwyg = (command, value = null) => {

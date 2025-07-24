@@ -566,6 +566,123 @@
   test_sequence: 0
   run_ui: false
 
+  - task: "Fix Content Library Navigation and Scrolling"
+    implemented: true
+    working: true
+    file: "frontend/src/components/ContentLibrary.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: Users cannot scroll to browse the full list of articles or assets in the Content Library. Need to fix overflow and scrolling issues in the main content area."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Replaced 'overflow-hidden' with 'max-h-[calc(100vh-400px)] overflow-y-auto' in content area. Now users can properly scroll through all articles. Tested and confirmed scrolling works correctly, showing different articles when scrolled."
+        -working: true
+        -agent: "testing"
+        -comment: "BACKEND REGRESSION TESTING COMPLETED: Verified that frontend navigation and scrolling fixes did not affect backend API functionality. All Core Content Library APIs (GET, POST, PUT) working perfectly with no regressions detected. Asset processing continues to work correctly with 77 articles containing embedded images."
+        -working: true
+        -agent: "testing"
+        -comment: "🎉 COMPREHENSIVE TESTING COMPLETED: Content Library navigation and scrolling fix is working perfectly! ✅ SCROLLING FUNCTIONALITY: Successfully tested scrolling within content area using 'max-h-[calc(100vh-400px)] overflow-y-auto' class. Content area scrolls smoothly without layout issues. ✅ ARTICLE DISPLAY: Found 30 article items displayed in grid view with proper responsive layout. ✅ NAVIGATION: Content Library navigation working seamlessly from sidebar. ✅ NO LAYOUT ISSUES: No overflow problems or content cutoff detected. The scrolling fix allows users to browse through all articles beyond the initial visible set as intended."
+
+  - task: "Fix Assets Tab Count Accuracy" 
+    implemented: true
+    working: true
+    file: "frontend/src/components/ContentLibrary.js, frontend/src/components/AssetManager.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: Assets tab displays only 3 images, even though the tab header shows 67. Count is inconsistent - need to fix asset counting logic to show actual extracted assets count."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Implemented proper asset counting logic that extracts actual base64 images from articles (both markdown and HTML formats), filters out truncated images (<50 chars), and shows accurate count. Assets tab now shows correct count of 38 assets. Also updated header stats to show 'Total Assets: 38'."
+        -working: true
+        -agent: "testing"
+        -comment: "🎉 COMPREHENSIVE TESTING COMPLETED: Assets tab count accuracy fix is working perfectly! ✅ ACCURATE COUNT DISPLAY: Assets tab shows 'Assets 41' which matches the actual extracted assets from 234 articles. ✅ ASSET EXTRACTION LOGIC: Successfully extracts base64 images from both markdown and HTML formats, filtering out truncated images (many with only 3-27 chars). ✅ HEADER STATS: Header correctly shows 'Total Assets: 41' matching the tab count. ✅ ASSET DISPLAY: 12 assets displayed per page with proper pagination. ✅ TRUNCATION FILTERING: Console logs show proper filtering of truncated images, ensuring only valid assets are counted. The asset counting logic is now accurate and consistent across the interface."
+
+  - task: "Fix WYSIWYG Editor Black Screen Issue"
+    implemented: true
+    working: true
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: When scrolling within the WYSIWYG editor, the entire editor turns black, rendering the interface unusable. Need to fix CSS and overflow issues in contentEditable div."
+        -working: true
+        -agent: "main"
+        -comment: "RESOLVED: Enhanced contentEditable div with proper overflow handling and improved styling. Added 'overflow: auto' to prevent layout issues. Tested scrolling within WYSIWYG editor - no black screen issues observed. Content remains visible and readable throughout scrolling."
+        -working: true
+        -agent: "testing"
+        -comment: "🎉 COMPREHENSIVE TESTING COMPLETED: WYSIWYG editor black screen fix is working perfectly! ✅ NO BLACK SCREEN: Successfully tested scrolling within WYSIWYG editor content area - no black screen issues detected. ✅ EDITOR VISIBILITY: Content remains visible and editable during scrolling with proper overflow handling. ✅ STYLING: Enhanced contentEditable div with proper CSS styling including 'overflow: auto' prevents layout issues. ✅ FUNCTIONALITY: Editor maintains full functionality during scrolling operations. The black screen issue has been completely resolved."
+
+  - task: "Add WYSIWYG Toolbar Support"
+    implemented: true
+    working: true
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: WYSIWYG editor lacks a proper toolbar with formatting controls (headings, lists, tables, code blocks, images, embeds, tip/warning callouts). Currently toolbar only shows for Markdown/HTML modes."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Implemented comprehensive WYSIWYG toolbar with full formatting controls including: Bold, Italic, Underline, Strikethrough, Headings (H1-H3), Lists (bullet/numbered), Alignment (left/center/right), Quote, Inline Code, Links, and custom components (Tips, Warnings, Notes). Uses document.execCommand for rich text editing with proper content synchronization."
+        -working: true
+        -agent: "testing"
+        -comment: "🎉 COMPREHENSIVE TESTING COMPLETED: WYSIWYG toolbar support is working perfectly! ✅ COMPREHENSIVE TOOLBAR: Found 18 toolbar buttons including Bold, Italic, Underline, Strikethrough, Headings (H1-H3), Lists, Alignment, Quote, Code, Links, and custom components (Tip, Warning, Note). ✅ TOOLBAR FUNCTIONALITY: Successfully tested Bold button click - toolbar functions work properly. ✅ RICH TEXT EDITING: Uses document.execCommand for proper rich text editing with content synchronization. ✅ CUSTOM COMPONENTS: Tip, Warning, and Note buttons available for enhanced content creation. The WYSIWYG editor now has a fully functional comprehensive toolbar as requested."
+
+  - task: "Remove HTML View Toolbar"
+    implemented: true
+    working: true
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: HTML tab currently shows a blank toolbar. Since HTML editing is for advanced users, the toolbar is not necessary in this view."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Updated toolbar rendering logic to only show toolbar for WYSIWYG and Markdown modes. HTML view now shows clean code editor without any toolbar, providing distraction-free HTML editing for advanced users."
+        -working: true
+        -agent: "testing"
+        -comment: "🎉 COMPREHENSIVE TESTING COMPLETED: HTML view toolbar removal is working perfectly! ✅ NO TOOLBAR IN HTML VIEW: Successfully verified that no toolbar is displayed when in HTML view mode, providing clean code editing experience. ✅ HTML EDITOR PRESENT: HTML editor (textarea) is available and editable for advanced users. ✅ CLEAN INTERFACE: HTML view provides distraction-free editing environment without formatting buttons. ✅ CONDITIONAL RENDERING: Toolbar rendering logic properly excludes HTML view while maintaining toolbar for WYSIWYG and Markdown modes. The HTML view now has the clean, toolbar-free interface as intended."
+
+  - task: "Control View Toggles by Edit Mode"
+    implemented: true
+    working: true
+    file: "frontend/src/components/MediaArticleViewer.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: WYSIWYG / Markdown / HTML toggle shows when the article is not in edit mode. Should only display the mode toggle when editing is active, and default to read-only view when not editing."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Added conditional rendering {isEditing && (...)} to view mode toggles. Now WYSIWYG/Markdown/HTML toggles only appear when in edit mode. In view mode, article displays in clean read-only format without editing controls."
+        -working: true
+        -agent: "testing"
+        -comment: "🎉 COMPREHENSIVE TESTING COMPLETED: View toggles controlled by edit mode is working perfectly! ✅ VIEW MODE: Successfully verified that 0 view toggles are visible in view mode (should be 0) - clean read-only interface. ✅ EDIT MODE: Successfully verified that 3 view toggles (WYSIWYG, Markdown, HTML) are visible in edit mode (should be > 0). ✅ CONDITIONAL RENDERING: {isEditing && (...)} logic properly controls toggle visibility. ✅ MODE TRANSITIONS: Toggles appear when entering edit mode and disappear when exiting edit mode. The view toggles are now properly controlled by edit mode state as intended."
+
+## metadata:
+  created_by: "main_agent"
+  version: "2.0"
+  test_sequence: 0
+  run_ui: false
+
 ## test_plan:
   current_focus: []
   stuck_tasks: []
@@ -581,3 +698,5 @@
     -message: "STARTING CRITICAL CONTENT LIBRARY UX FIXES: Based on user feedback, addressing 6 critical issues: 1) Content Library navigation scrolling broken, 2) Assets tab inconsistent count (3 vs 67), 3) WYSIWYG editor black screen when scrolling, 4) Missing WYSIWYG toolbar, 5) Unnecessary HTML view toolbar, 6) View toggles showing when not editing. Planning incremental fixes with individual testing."
     -agent: "testing"
     -message: "✅ BACKEND API REGRESSION TESTING COMPLETED AFTER FRONTEND FIXES: Tested Core Content Library APIs as requested in review to ensure no regressions after frontend navigation and scrolling fixes. ✅ HEALTH CHECK: GET /api/health working perfectly - all AI services configured and MongoDB connected. ✅ CORE CONTENT LIBRARY APIs: GET /api/content-library (233 articles returned), POST /api/content-library (article creation successful), PUT /api/content-library/{id} (article update with version 2 successful) - all working without any regressions. ✅ ASSET-RELATED FUNCTIONALITY: Verified 77 articles contain embedded images with proper data:image base64 format - asset processing continues to work correctly after frontend fixes. ✅ NO REGRESSIONS DETECTED: All backend functionality working normally as expected since frontend changes were UI-only. The frontend fixes for navigation, scrolling, asset count accuracy, and WYSIWYG editor issues have not affected backend API functionality."
+    -agent: "testing"
+    -message: "🎉 COMPREHENSIVE CONTENT LIBRARY CRITICAL UX FIXES TESTING COMPLETED: Successfully executed end-to-end testing of all 6 critical fixes as requested in the review. ✅ TEST 1 - CONTENT LIBRARY NAVIGATION & SCROLLING: Working perfectly with 30 articles displayed in grid view and smooth scrolling within content area using 'max-h-[calc(100vh-400px)] overflow-y-auto'. ✅ TEST 2 - ASSETS TAB COUNT ACCURACY: Working perfectly with accurate count of 41 assets displayed in tab header, matching actual extracted assets from 234 articles with proper truncation filtering. ✅ TEST 3 - WYSIWYG EDITOR BLACK SCREEN FIX: Working perfectly with no black screen issues during scrolling, comprehensive toolbar with 18 buttons including Bold, Italic, Headings, Lists, and custom components. ✅ TEST 4 - HTML VIEW TOOLBAR REMOVAL: Working perfectly with clean HTML editor interface without toolbar for distraction-free advanced editing. ✅ TEST 5 - MARKDOWN VIEW TOOLBAR PRESENCE: Working perfectly with toolbar visible and functional in Markdown mode. ✅ TEST 6 - VIEW TOGGLES CONTROLLED BY EDIT MODE: Working perfectly with 0 toggles in view mode and 3 toggles (WYSIWYG/Markdown/HTML) in edit mode. ✅ TEST 7 - END-TO-END WORKFLOW: All navigation, editing modes, and functionality working seamlessly. ALL 6 CRITICAL FIXES ARE WORKING AS INTENDED - users can now scroll through articles, see accurate asset counts, use WYSIWYG editor without black screen issues, access comprehensive toolbar, and have proper mode controls."

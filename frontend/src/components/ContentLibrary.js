@@ -202,7 +202,7 @@ const ContentLibrary = () => {
     }
   };
 
-  // Filter and sort articles
+  // Filter and sort articles with pagination
   const filteredAndSortedArticles = React.useMemo(() => {
     let filtered = articles.filter(article => {
       // Search filter
@@ -257,8 +257,29 @@ const ContentLibrary = () => {
       }
     });
 
-    return filtered;
-  }, [articles, searchQuery, selectedFilter, selectedSort]);
+    // Update total count
+    setTotalArticles(filtered.length);
+
+    // Apply pagination
+    const startIndex = (currentPage - 1) * articlesPerPage;
+    const endIndex = startIndex + articlesPerPage;
+    return filtered.slice(startIndex, endIndex);
+  }, [articles, searchQuery, selectedFilter, selectedSort, currentPage, articlesPerPage]);
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(totalArticles / articlesPerPage);
+  const startArticle = (currentPage - 1) * articlesPerPage + 1;
+  const endArticle = Math.min(startArticle + articlesPerPage - 1, totalArticles);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedFilter, selectedSort]);
 
   // If viewing/editing an article, show the editor
   if (selectedArticle) {

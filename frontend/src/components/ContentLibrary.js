@@ -34,8 +34,30 @@ import AssetManager from './AssetManager';
 import SnipAndRecord from './SnipAndRecord';
 
 const ContentLibrary = () => {
+  // State management
+  const [currentView, setCurrentView] = useState('articles'); // 'articles' or 'assets'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedSort, setSelectedSort] = useState('date_processed');
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSnipAndRecord, setShowSnipAndRecord] = useState(false);
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterState, setFilterState] = useState(null); // For context preservation
+  
   // State for actual asset count  
   const [actualAssetCount, setActualAssetCount] = useState(0);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [articlesPerPage] = useState(20);
+  const [totalArticles, setTotalArticles] = useState(0);
+
+  // Get backend URL
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   // Calculate actual asset count from articles
   useEffect(() => {
@@ -65,26 +87,6 @@ const ContentLibrary = () => {
     
     setActualAssetCount(totalAssets);
   }, [articles]);
-  const [currentView, setCurrentView] = useState('articles'); // 'articles' or 'assets'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [selectedSort, setSelectedSort] = useState('date_processed');
-  const [selectedArticle, setSelectedArticle] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSnipAndRecord, setShowSnipAndRecord] = useState(false);
-  const [articles, setArticles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterState, setFilterState] = useState(null); // For context preservation
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [articlesPerPage] = useState(20);
-  const [totalArticles, setTotalArticles] = useState(0);
-
-  // Get backend URL
-  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   // Filter options
   const filterOptions = [

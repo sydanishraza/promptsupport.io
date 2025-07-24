@@ -196,10 +196,10 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full">
+      <table className="w-full table-fixed">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-64">
               <button
                 onClick={() => handleSort('title')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -208,7 +208,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('title')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-32">
               <button
                 onClick={() => handleSort('source_type')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -217,7 +217,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('source_type')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-24">
               <button
                 onClick={() => handleSort('status')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -226,7 +226,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('status')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-32">
               <button
                 onClick={() => handleSort('created_by')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -235,7 +235,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('created_by')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-32">
               <button
                 onClick={() => handleSort('created_at')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -244,7 +244,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('created_at')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-32">
               <button
                 onClick={() => handleSort('updated_at')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -253,7 +253,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('updated_at')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-20">
               <button
                 onClick={() => handleSort('word_count')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -262,7 +262,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('word_count')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">
+            <th className="text-left p-4 font-medium text-gray-900 w-20">
               <button
                 onClick={() => handleSort('media_count')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -271,7 +271,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 {renderSortIcon('media_count')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900">Actions</th>
+            <th className="text-left p-4 font-medium text-gray-900 w-24">Actions</th>
           </tr>
         </thead>
         <tbody>

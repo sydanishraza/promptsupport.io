@@ -84,7 +84,21 @@ const MediaArticleViewer = ({
   useEffect(() => {
     if (article) {
       setTitle(article.title || '');
-      setContent(article.content || '');
+      const articleContent = article.content || '';
+      
+      // Detect if content is HTML or Markdown
+      if (articleContent.includes('<') && articleContent.includes('>')) {
+        // Content is HTML
+        setHtmlContent(articleContent);
+        setMarkdownContent(htmlToMarkdown(articleContent));
+        setContent(articleContent);
+      } else {
+        // Content is Markdown
+        setMarkdownContent(articleContent);
+        setHtmlContent(markdownToHtml(articleContent));
+        setContent(markdownToHtml(articleContent));
+      }
+      
       setTags(article.tags || []);
       setStatus(article.status || 'draft');
       setMetadata(article.metadata || {});

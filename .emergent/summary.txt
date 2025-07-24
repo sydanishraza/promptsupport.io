@@ -1,25 +1,21 @@
 <analysis>
-The AI engineer's work spanned two primary phases: initially, resolving frontend content rendering and backend media extraction, and subsequently, addressing critical usability issues and document-specific media extraction. The first phase focused on replacing the problematic Tiptap editor with  and fixing backend truncation for base64 images, though the frontend display remained an issue. The second, more extensive phase, involved iteratively debugging frontend image display across various formats, eventually replacing the editor with  for robust rendering, and comprehensively fixing DOCX image extraction in the backend. Significant UI/UX improvements to the Content Library were also undertaken, including adding a tabular view, article creation functionality, and navigation fixes. The final confirmed successes include fully functional media display for all formats in articles, comprehensive DOCX image extraction, and an improved Content Library interface.
+The previous AI engineer's work focused on iteratively enhancing the Content Library of the PromptSupport application. Initially, it involved addressing frontend content rendering and backend media extraction issues, transitioning from  to  for robust image display. A major turning point occurred when the user provided a detailed UX audit, prompting a complete redesign of the Content Library. The AI attempted to integrate TinyMCE, installing it and refactoring multiple components (, , , , ). However, due to persistent TinyMCE domain and functionality issues, the engineer reverted to the  approach, subsequently fixing editor functionality (WYSIWYG, Markdown, HTML sync), implementing pagination for articles, and enhancing the Asset Manager with real image thumbnails and modal previews. The work culminated in a fully functional, professional CMS-like Content Library with comprehensive media handling and responsive design.
 </analysis>
 
 <product_requirements>
-PromptSupport is an autonomous, AI-native web application designed as a comprehensive support stack. Its core principle is Knowledge In → Output Out, ingesting diverse content (documents, links, videos, images, spreadsheets, presentations, APIs) to form a structured Knowledge Base, AI Chatbot, Multichannel Ticketing, AI Community, and Self-Service Portal. It features a Quick Setup Wizard and a five-agent AI system within a two-column UI with a persistent left sidebar.
+PromptSupport is an AI-native web application serving as a comprehensive support stack, designed for Knowledge In → Output Out. It ingests diverse content to build a structured Knowledge Base, AI Chatbot, Multichannel Ticketing, AI Community, and Self-Service Portal. The application features a two-column UI with a persistent left sidebar and a Quick Setup Wizard.
 
-**Implementation Done So Far (as per trajectory):**
-1.  **Structured Frontend:** Functional Knowledge Base Builder and modular sidebar.
-2.  **Knowledge Engine:** Supports multi-modal content ingestion with backend integration for AI services (OpenAI, Anthropic, Qdrant, AssemblyAI). It aims for AI-powered content extraction, summarization, and structured article creation, moving past hardcoded data.
-3.  **Content Library:** Fetches and displays real articles. The editor (initially Tiptap, now ) has been enhanced to include WYSIWYG, Markdown, and HTML toggles, metadata management, save/publish toggles, and version history.
-4.  **Media Extraction:** The Knowledge Engine now extracts and embeds media (images, diagrams, GIFs) from source documents into generated articles, including a full comprehensive media intelligence system using LLM + Vision models for classification, captioning, and contextual placement.
-5.  **Content Splitting:** Intelligently splits multi-chapter/multi-section documents into multiple, contextually grouped articles.
-6.  **Writing Quality:** Generated articles are rewritten and enhanced by LLMs for clarity, structure, and technical accuracy.
+**Implementation Done So Far:**
+The application has a structured frontend with a functional Knowledge Base Builder and modular sidebar. The Knowledge Engine supports multi-modal content ingestion, integrating with AI services for extraction, summarization, and article creation. The Content Library now fetches and displays real articles, with the editor () enhanced for WYSIWYG, Markdown, and HTML toggles, metadata management, save/publish, and version history. Media extraction from source documents, including comprehensive media intelligence (classification, captioning, contextual placement) using LLM + Vision models, is functional. Content splitting for multi-section documents and LLM-based writing quality enhancement are also implemented.
+The Content Library UI was recently redesigned to a modern CMS-style interface, featuring a default grid view with extensive metadata, a toggle for table view, unified filter/sort/view dropdowns, and a Create Article button. The editor (now ) fully supports WYSIWYG, Markdown, and HTML views with synchronized editing, rich formatting controls (headings, lists, tables, code blocks, tips/warnings/notes), and proper CSS-based rendering. The Assets Library displays real image thumbnails with modal previews, search, filtering, and metadata. Pagination has been implemented for article browsing.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend:** React.js, TailwindCSS, ShadCN UI, Framer Motion, Tiptap,  (for Markdown-to-HTML), Styled-JSX,  (for HTML-to-Markdown).
--   **Backend:** FastAPI (Python), MongoDB (database), Qdrant (vector database).
--   **AI/LLM Integrations:** OpenAI GPT-4o, Anthropic Claude, AssemblyAI, and specifically OpenAI GPT-4 Vision API via  for media intelligence.
--   **Data Processing:** Web scraping, document parsing (PyPDF2, python-docx, openpyxl, python-pptx), content chunking/tagging/summarization, base64 media extraction and embedding.
--   **Deployment:** Kubernetes container environment, Supervisor.
+-   **Frontend:** React.js, TailwindCSS, Framer Motion,  (HTML-to-Markdown),  (Markdown-to-HTML), Styled-JSX, Tiptap (briefly, then abandoned), TinyMCE (attempted, then reverted), MediaArticleViewer (current editor).
+-   **Backend:** FastAPI (Python), MongoDB, Qdrant (vector database).
+-   **AI/LLM Integrations:** OpenAI GPT-4o, OpenAI GPT-4 Vision API via .
+-   **Data Processing:** Document parsing (), base64 media embedding, content chunking.
+-   **Deployment:** Kubernetes, Supervisor.
 </key_technical_concepts>
 
 <code_architecture>
@@ -28,37 +24,44 @@ The application uses a full-stack architecture with a React frontend and a FastA
 
 
 -   ****: Main FastAPI backend.
-    -   **Importance**: Handles all API endpoints for content processing, content library management, article versioning, and now comprehensive media intelligence. It's the core data and logic layer.
-    -   **Changes**: Refined  for LLM content. Updated  GET. Added new endpoints for , , . Relaxed . Enhanced LLM prompts to request media preservation. Increased content processing limits (e.g., 8000 to 15000 characters) to prevent base64 truncation. Integrated  module and added new media analysis endpoints (, , ). Significantly updated the  endpoint, specifically for DOCX, to robustly extract and embed images using improved detection logic and fallback embedding methods.
--   ****: Python dependencies.
-    -   **Importance**: Lists all necessary Python libraries for the backend.
-    -   **Changes**: Updated with various packages for content processing, including document parsing, image processing, and AI integrations (e.g., , , , , , , ).
--   ****: **NEWLY CREATED**.
-    -   **Importance**: Encapsulates the logic for intelligent media processing, classification, and captioning using LLM + Vision models (OpenAI GPT-4 Vision).
-    -   **Changes**: Contains functions for analyzing images, generating descriptive captions and alt text, and classifying media content.
+    -   **Importance**: Handles all API endpoints.
+    -   **Changes**: Initially refined for LLM content and updated content library GET. Recently, updated for pagination support in content library endpoints, and image extraction regex was fixed to correctly handle base64 images from documents, addressing previous truncation issues.
+-   ****: Encapsulates LLM+Vision logic.
+    -   **Importance**: Processes, classifies, and captions media.
+    -   **Changes**: Contains functions for analyzing images. Confirmed support for PNG, JPEG, GIF, WebP, SVG via base64.
 -   ****: Main React component.
-    -   **Importance**: Renders the primary layout of the application.
+    -   **Importance**: Renders the primary layout.
     -   **Changes**: Renders .
--   ****: Manages the content library UI.
-    -   **Importance**: The central component for interacting with articles, displaying them, and integrating various editor and management features.
-    -   **Changes**: Refactored to fetch and display real articles. Initially used , then , and finally replaced with  for reliable image display. Enhanced with Snip and Record button. Updated to correctly display full article content. Enhanced to use new backend endpoints for version history, metadata, and save/publish. Integrated , , and . Implemented view mode toggles (grid/table), back navigation from article view, and Create Article functionality.
--   ****: **MODIFIED**.
-    -   **Importance**: Initially created to provide comprehensive WYSIWYG, Markdown, and HTML editing.
-    -   **Changes**: Faced issues with base64 image rendering and was ultimately functionally replaced by  for content display due to Tiptap's inherent filtering. Attempts were made to configure  for images and  to allow data URLs.
+-   ****:
+    -   **Importance**: Top-level component for rendering routes.
+    -   **Changes**: Updated to render the new  instead of .
+-   ****: **MODIFIED/RECREATED**.
+    -   **Importance**: The central component managing the content library UI. It was completely redesigned.
+    -   **Changes**: Recreated to implement the new CMS-style interface. Handles article/asset tabs, search, filter/sort/view dropdowns, and integrates , , , and . Implemented pagination logic.
+-   ****: **RECREATED/MODIFIED**.
+    -   **Importance**: The primary editor/viewer component for articles, chosen for its robust base64 image rendering.
+    -   **Changes**: Recreated and significantly enhanced after the TinyMCE attempt failed. Now includes a fully functional WYSIWYG editor with a comprehensive toolbar, synchronized Markdown and HTML views, and improved CSS styling for rich content (lists, tables, headings, code blocks, tips/warnings/notes).
+-   ****: **NEWLY CREATED (then abandoned)**.
+    -   **Importance**: Was intended to be the new robust editor.
+    -   **Changes**: Created to integrate TinyMCE, but later removed from use in favor of  due to domain registration issues and functionality regressions.
 -   ****: **NEWLY CREATED**.
-    -   **Importance**: Replaced the problematic Tiptap-based editors for displaying articles in the Content Library, ensuring reliable rendering of HTML, Markdown, and particularly base64 images.
-    -   **Changes**: Created to handle content display with proper image rendering, live preview, and integration of AI enhancement buttons. This component is crucial for fixing the frontend image display issue.
+    -   **Importance**: Displays articles in a responsive grid view with comprehensive metadata.
+    -   **Changes**: Implemented to support detailed article cards, status indicators, and actions. Made responsive.
 -   ****: **NEWLY CREATED**.
-    -   **Importance**: Displays statistics related to media processing and articles with embedded media.
-    -   **Changes**: Provides a dashboard-like view of total articles, articles with media, and counts of different media types (PNG, JPEG, SVG).
+    -   **Importance**: Displays articles in a tabular list view.
+    -   **Changes**: Implemented with sortable and filterable columns, including fixed width for the title and making titles clickable.
 -   ****: **NEWLY CREATED**.
-    -   **Importance**: Provides a tabular/spreadsheet-style list view for articles in the Content Library.
-    -   **Changes**: Implements the basic table structure for displaying article details, though sorting and filtering might need further refinement.
+    -   **Importance**: Manages and displays media assets extracted by the knowledge engine.
+    -   **Changes**: Implemented to show real image thumbnails, support search and filtering, and integrate with  for detailed previews. Made responsive.
 -   ****: **NEWLY CREATED**.
-    -   **Importance**: Provides a form for users to create new articles within the Content Library.
-    -   **Changes**: Integrates with the backend for article creation.
--   ** & **: Test files.
-    -   **Importance**: Used for testing and debugging media extraction and embedding in the Knowledge Engine, especially  which contained real SVG images and helped identify truncation issues.
+    -   **Importance**: Provides a modal view for detailed asset information and preview.
+    -   **Changes**: Created to display full-size image previews and associated metadata (format, size, alt text, source article).
+-   ****: **NEWLY CREATED**.
+    -   **Importance**: Provides a comprehensive toolbar for the .
+    -   **Changes**: Implemented to include rich formatting options and custom buttons for advanced content components (tips, warnings, notes).
+-   ****:
+    -   **Importance**: Main CSS file.
+    -   **Changes**: Enhanced with styling rules for tips, warnings, notes, and other components to ensure well-formatted CSS-based content display in the editor.
 </code_architecture>
 
 <pending_tasks>
@@ -72,21 +75,18 @@ The application uses a full-stack architecture with a React frontend and a FastA
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was focused on resolving critical issues related to media display in the Content Library and media extraction from document uploads.
+Immediately prior to this summary, the AI engineer was focused on resolving critical issues related to media display in the Content Library and media extraction from document uploads. The AI engineer then proceeded to implement a complete redesign of the Content Library based on a detailed UX audit.
 
-Initially, despite backend fixes for media extraction, images were not displaying in the frontend Content Library. This led to extensive debugging of frontend markdown-to-HTML conversion logic, Tiptap editor's image sanitization, and ultimately a decision to replace the existing editor. The  component was effectively bypassed for display purposes, and a new  component was created to reliably render HTML content, including base64 images, directly within the article view. This also involved correcting a  misconfiguration in the frontend environment that caused CORS errors.
+Initially, the AI engineer improved the Content Library's main  to support enhanced grid and table views with more metadata, and added breadcrumb navigation. However, a comprehensive UX audit revealed deeper issues. The AI engineer then embarked on a full redesign:
+1.  **TinyMCE Integration (Attempt & Revert):** Installed TinyMCE and refactored the Content Library, creating new components like , , , , and . Backend image extraction regex was also fixed. However, persistent TinyMCE domain errors and editor functionality regressions led to a strategic decision to revert to the previously functional .
+2.  ** Enhancement:** The  was recreated and significantly enhanced to serve as a fully functional WYSIWYG editor. This included implementing a comprehensive toolbar (), ensuring synchronized editing across WYSIWYG, Markdown, and HTML views, and applying proper CSS-based styling for rich content (headings, lists, tables, code blocks, custom tips/warnings/notes).
+3.  **Content Library UX Fixes:** The table view's title column width was fixed to prevent overflow and made clickable to open articles. The Content Library page was made fully responsive, and the View option was converted into a dropdown to align with other filter/sort controls.
+4.  **Pagination:** Implemented pagination for the Content Library to enable smooth scrolling and navigation through large numbers of articles, along with backend API support.
+5.  **Asset Management:** The  was enhanced to display real image thumbnails extracted from articles, rather than broken icons. Clicking on these thumbnails now opens a detailed  component, showing full image previews, comprehensive metadata, and action buttons.
 
-Concurrently, the user reported that images from uploaded DOCX files (specifically Billing-Management.docx) were not being retained. The AI engineer debugged the  endpoint in , identifying that while images were extracted from the DOCX relationships, they were not correctly embedded into the processed content for LLM consumption. The fix involved enhancing the DOCX parsing logic to robustly detect and embed all extracted images (PNG, JPEG, etc.) into the markdown content as base64 data URLs, even if direct paragraph references were missed. This significantly increased the processed content length, confirming successful image inclusion.
-
-Finally, the AI engineer addressed several UI/UX issues in the Content Library, including:
-*   Implementing a functional back button from the article view to the library.
-*   Adding a toggle to switch between grid and a new tabular () view for articles.
-*   Fixing the Create Article button by integrating a new  component and backend endpoint.
-*   Ensuring the  provided a functional WYSIWYG editor experience with a visible toolbar, Markdown ↔ HTML toggles, and AI enhancement capabilities.
-
-As of the last reported successful actions (Chat 280), the document upload media extraction issue is completely resolved, allowing DOCX files with images to be processed and displayed correctly. The Content Library's article viewing and basic editing (via ) are fully functional, displaying images across all modes (view, WYSIWYG, Markdown, HTML), with AI enhancement and proper navigation. The comprehensive backend media intelligence system is also confirmed operational.
+As of the latest interaction (Chat 255), all reported critical issues have been successfully resolved. The Content Library now offers a professional CMS experience with robust editing, responsive design, efficient navigation via pagination, and comprehensive asset management.
 </current_work>
 
 <optional_next_step>
-Enhance the  component to include full sorting and filtering functionality for articles.
+The next step will be to implement the Developer Docs System, as outlined in the pending tasks.
 </optional_next_step>

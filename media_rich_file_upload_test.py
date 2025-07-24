@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://da863f0f-b41e-4a65-92bc-3266faeda238.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://c97b1c99-0ca1-4c2e-bb21-83dd79ddc554.preview.emergentagent.com') + '/api'
 
 def test_media_rich_file_upload():
     """Test uploading the media_rich_example.md file"""

@@ -439,25 +439,27 @@ const ContentLibrary = () => {
       </div>
 
       {/* Content Area */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : currentView === 'articles' ? (
-          viewMode === 'grid' ? (
-            <ArticleGrid
-              articles={filteredAndSortedArticles}
-              onArticleSelect={handleArticleSelect}
-              onDeleteArticle={handleDeleteArticle}
-            />
-          ) : (
-            <ArticleTable
-              articles={filteredAndSortedArticles}
-              onArticleSelect={handleArticleSelect}
-              onDeleteArticle={handleDeleteArticle}
-            />
-          )
+          <div className="overflow-x-auto">
+            {viewMode === 'grid' ? (
+              <ArticleGrid
+                articles={filteredAndSortedArticles}
+                onArticleSelect={handleArticleSelect}
+                onDeleteArticle={handleDeleteArticle}
+              />
+            ) : (
+              <ArticleTable
+                articles={filteredAndSortedArticles}
+                onArticleSelect={handleArticleSelect}
+                onDeleteArticle={handleDeleteArticle}
+              />
+            )}
+          </div>
         ) : (
           <AssetManager
             articles={filteredAndSortedArticles}

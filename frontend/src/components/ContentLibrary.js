@@ -274,8 +274,8 @@ const ContentLibrary = () => {
           <span>{selectedArticle.title || 'New Article'}</span>
         </div>
 
-        {/* TinyMCE Editor */}
-        <TinyMCEEditor
+        {/* MediaArticleViewer */}
+        <MediaArticleViewer
           article={selectedArticle}
           isEditing={isEditing}
           onEdit={() => setIsEditing(true)}

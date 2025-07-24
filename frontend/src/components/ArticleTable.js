@@ -368,7 +368,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                   </button>
                 </div>
               </td>
-            </tr>
+            </motion.tr>
           ))}
         </tbody>
       </table>

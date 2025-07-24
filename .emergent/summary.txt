@@ -1,27 +1,25 @@
 <analysis>
-The AI engineer's work primarily focused on two critical areas: enhancing the Content Library editor and fixing the Knowledge Engine's content processing capabilities. Initially, the Content Library editor was rudimentary, displaying raw markdown instead of formatted HTML and lacking essential features like versioning, metadata, and mode toggles. The AI engineer addressed this by attempting to replace Tiptap (failed), then enhancing Tiptap with new extensions, creating an  component, and meticulously fixing CSS styling to ensure proper WYSIWYG rendering, and also adding backend endpoints for rich content management.
-
-Concurrently, the Knowledge Engine faced limitations, generating only single articles and failing to extract and embed media (images, diagrams). The engineer iteratively refined LLM prompts, adjusted content splitting logic, and critically, debugged a truncation issue that prevented base64 image data from reaching the LLM, leading to invisible media despite backend success reports. The latest efforts successfully resolved the media extraction and display by increasing content limits for LLMs and ensuring full base64 data preservation, resulting in visually embedded media in generated articles based on backend tests.
+The AI engineer's work spanned two primary phases: initially, resolving frontend content rendering and backend media extraction, and subsequently, addressing critical usability issues and document-specific media extraction. The first phase focused on replacing the problematic Tiptap editor with  and fixing backend truncation for base64 images, though the frontend display remained an issue. The second, more extensive phase, involved iteratively debugging frontend image display across various formats, eventually replacing the editor with  for robust rendering, and comprehensively fixing DOCX image extraction in the backend. Significant UI/UX improvements to the Content Library were also undertaken, including adding a tabular view, article creation functionality, and navigation fixes. The final confirmed successes include fully functional media display for all formats in articles, comprehensive DOCX image extraction, and an improved Content Library interface.
 </analysis>
 
 <product_requirements>
-PromptSupport is an autonomous, AI-native web application designed as a comprehensive support stack. Its core principle is Knowledge In → Output Out, where diverse content (documents, links, videos, images, spreadsheets, presentations, APIs) is ingested, processed, and deployed as a structured Knowledge Base, AI Chatbot, Multichannel Ticketing, AI Community, and Self-Service Portal. Key features include a Quick Setup Wizard and a five-agent AI system. The UI utilizes a modern two-column layout with a persistent left sidebar.
+PromptSupport is an autonomous, AI-native web application designed as a comprehensive support stack. Its core principle is Knowledge In → Output Out, ingesting diverse content (documents, links, videos, images, spreadsheets, presentations, APIs) to form a structured Knowledge Base, AI Chatbot, Multichannel Ticketing, AI Community, and Self-Service Portal. It features a Quick Setup Wizard and a five-agent AI system within a two-column UI with a persistent left sidebar.
 
-**Implementation Done So Far:**
-1.  **Structured Frontend:** Layout with a functional Knowledge Base Builder and modular sidebar.
-2.  **Knowledge Engine:** Supports multi-modal content ingestion (file, URL, recording tools) with backend integration with AI services (OpenAI, Anthropic, Qdrant, AssemblyAI). The engine aims for true AI-powered content extraction, summarization, and structured article creation, addressing previous issues with hardcoded data.
-3.  **Content Library:** Now fetches and displays real articles. The editor (initially Tiptap, now ) has been enhanced to include WYSIWYG, Markdown, and HTML toggles, metadata management, save/publish toggles, and version history.
-4.  **Media Extraction:** The Knowledge Engine is now expected to extract and embed media (images, diagrams, GIFs) from source documents into generated articles.
-5.  **Content Splitting:** The Engine must intelligently split multi-chapter/multi-section documents into multiple, contextually grouped, well-formatted, production-ready articles.
-6.  **Writing Quality:** Generated articles must be rewritten and enhanced by LLMs for clarity, structure, and technical accuracy, using proper lists, tables, headings, and callouts, feeling production-ready.
+**Implementation Done So Far (as per trajectory):**
+1.  **Structured Frontend:** Functional Knowledge Base Builder and modular sidebar.
+2.  **Knowledge Engine:** Supports multi-modal content ingestion with backend integration for AI services (OpenAI, Anthropic, Qdrant, AssemblyAI). It aims for AI-powered content extraction, summarization, and structured article creation, moving past hardcoded data.
+3.  **Content Library:** Fetches and displays real articles. The editor (initially Tiptap, now ) has been enhanced to include WYSIWYG, Markdown, and HTML toggles, metadata management, save/publish toggles, and version history.
+4.  **Media Extraction:** The Knowledge Engine now extracts and embeds media (images, diagrams, GIFs) from source documents into generated articles, including a full comprehensive media intelligence system using LLM + Vision models for classification, captioning, and contextual placement.
+5.  **Content Splitting:** Intelligently splits multi-chapter/multi-section documents into multiple, contextually grouped articles.
+6.  **Writing Quality:** Generated articles are rewritten and enhanced by LLMs for clarity, structure, and technical accuracy.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend:** React.js, TailwindCSS, ShadCN UI, Framer Motion, Tiptap (initially), AdvancedEditor (based on Tiptap extensions), Styled-JSX.
+-   **Frontend:** React.js, TailwindCSS, ShadCN UI, Framer Motion, Tiptap,  (for Markdown-to-HTML), Styled-JSX,  (for HTML-to-Markdown).
 -   **Backend:** FastAPI (Python), MongoDB (database), Qdrant (vector database).
--   **AI/LLM Integrations:** OpenAI GPT-4o, Anthropic Claude, AssemblyAI for content processing.
--   **Data Processing:** Web scraping (BeautifulSoup4, requests), document parsing (PyPDF2, python-docx, openpyxl, python-pptx), content chunking/tagging/summarization, and media extraction (base64 embedding).
--   **Deployment:** Kubernetes container environment, Supervisor for process management.
+-   **AI/LLM Integrations:** OpenAI GPT-4o, Anthropic Claude, AssemblyAI, and specifically OpenAI GPT-4 Vision API via  for media intelligence.
+-   **Data Processing:** Web scraping, document parsing (PyPDF2, python-docx, openpyxl, python-pptx), content chunking/tagging/summarization, base64 media extraction and embedding.
+-   **Deployment:** Kubernetes container environment, Supervisor.
 </key_technical_concepts>
 
 <code_architecture>
@@ -29,51 +27,66 @@ The application uses a full-stack architecture with a React frontend and a FastA
 
 
 
--   ****: Main FastAPI backend, handling API endpoints for content processing, content library management, and now article versioning and metadata.
-    -   **Changes**: Refined  for LLM content, updated  GET to return full . Added new endpoints for , , . Crucially, logic for  was relaxed, LLM prompts for both single and multi-article generation were enhanced for better structure, quality, and to explicitly request media preservation. Content processing limits for LLMs were increased (e.g.,  to ) to prevent truncation of base64 image data.
+-   ****: Main FastAPI backend.
+    -   **Importance**: Handles all API endpoints for content processing, content library management, article versioning, and now comprehensive media intelligence. It's the core data and logic layer.
+    -   **Changes**: Refined  for LLM content. Updated  GET. Added new endpoints for , , . Relaxed . Enhanced LLM prompts to request media preservation. Increased content processing limits (e.g., 8000 to 15000 characters) to prevent base64 truncation. Integrated  module and added new media analysis endpoints (, , ). Significantly updated the  endpoint, specifically for DOCX, to robustly extract and embed images using improved detection logic and fallback embedding methods.
 -   ****: Python dependencies.
-    -   **Changes**: Updated with , , , , , , , , , , , , , , , , , , , , , , ,  for comprehensive content processing.
--   ****: Basic HTML structure.
-    -   **Changes**: Removed Made with Emergent branding, updated title and favicon.
+    -   **Importance**: Lists all necessary Python libraries for the backend.
+    -   **Changes**: Updated with various packages for content processing, including document parsing, image processing, and AI integrations (e.g., , , , , , , ).
+-   ****: **NEWLY CREATED**.
+    -   **Importance**: Encapsulates the logic for intelligent media processing, classification, and captioning using LLM + Vision models (OpenAI GPT-4 Vision).
+    -   **Changes**: Contains functions for analyzing images, generating descriptive captions and alt text, and classifying media content.
 -   ****: Main React component.
+    -   **Importance**: Renders the primary layout of the application.
     -   **Changes**: Renders .
--   ****: Two-column layout and routing.
-    -   **Changes**: Removed PromptSupport logo from header, updated routing for  and .
--   ****: Left navigation.
-    -   **Changes**: Added Knowledge Engine sub-items and . Renamed Processing Jobs to Jobs. PromptSupport logo added to sidebar.
--   ****: Rich text editor.
-    -   **Changes**: Simplified and fixed import/compatibility issues. Initially attempted for 3-mode toggle, but later replaced functionally by .
--   ****: Manages content library.
-    -   **Changes**: Refactored to fetch and display real articles. Now imports and utilizes . Enhanced with Snip and Record button. Crucially, updated to correctly display full article content in editor. Enhanced to use new backend endpoints for version history, metadata, and save/publish.
--   ****: Content ingestion/processing.
-    -   **Changes**: Enhanced for real-time feedback, restricted Process Text button, updated render functions to show generated article counts and links.
--   ****: **NEWLY CREATED**. Encapsulates an enhanced Tiptap editor configuration.
-    -   **Changes**: Created to provide comprehensive WYSIWYG, Markdown, and HTML editing modes with a rich toolbar (highlighting, code blocks, tables), proper HTML rendering, and custom CSS for visual formatting (headings, lists, etc.) to fix display issues. Also includes logic for mode switching and ensures the toolbar is always visible.
--   ** & **: **NEWLY CREATED**. Markdown test files containing embedded base64 images, used for testing media extraction.
-    -   **Summary**: Used by the AI engineer to test and debug the media extraction and embedding process in the Knowledge Engine.  was key in identifying and resolving the base64 truncation issue.
-
+-   ****: Manages the content library UI.
+    -   **Importance**: The central component for interacting with articles, displaying them, and integrating various editor and management features.
+    -   **Changes**: Refactored to fetch and display real articles. Initially used , then , and finally replaced with  for reliable image display. Enhanced with Snip and Record button. Updated to correctly display full article content. Enhanced to use new backend endpoints for version history, metadata, and save/publish. Integrated , , and . Implemented view mode toggles (grid/table), back navigation from article view, and Create Article functionality.
+-   ****: **MODIFIED**.
+    -   **Importance**: Initially created to provide comprehensive WYSIWYG, Markdown, and HTML editing.
+    -   **Changes**: Faced issues with base64 image rendering and was ultimately functionally replaced by  for content display due to Tiptap's inherent filtering. Attempts were made to configure  for images and  to allow data URLs.
+-   ****: **NEWLY CREATED**.
+    -   **Importance**: Replaced the problematic Tiptap-based editors for displaying articles in the Content Library, ensuring reliable rendering of HTML, Markdown, and particularly base64 images.
+    -   **Changes**: Created to handle content display with proper image rendering, live preview, and integration of AI enhancement buttons. This component is crucial for fixing the frontend image display issue.
+-   ****: **NEWLY CREATED**.
+    -   **Importance**: Displays statistics related to media processing and articles with embedded media.
+    -   **Changes**: Provides a dashboard-like view of total articles, articles with media, and counts of different media types (PNG, JPEG, SVG).
+-   ****: **NEWLY CREATED**.
+    -   **Importance**: Provides a tabular/spreadsheet-style list view for articles in the Content Library.
+    -   **Changes**: Implements the basic table structure for displaying article details, though sorting and filtering might need further refinement.
+-   ****: **NEWLY CREATED**.
+    -   **Importance**: Provides a form for users to create new articles within the Content Library.
+    -   **Changes**: Integrates with the backend for article creation.
+-   ** & **: Test files.
+    -   **Importance**: Used for testing and debugging media extraction and embedding in the Knowledge Engine, especially  which contained real SVG images and helped identify truncation issues.
 </code_architecture>
 
 <pending_tasks>
--   Full implementation of the Enhanced Content Engine (remaining UX/UI improvements for the editor, beyond basic rendering and toggles).
+-   Full implementation of the Enhanced Content Engine (remaining UX/UI improvements for the editor, beyond basic rendering and toggles already implemented).
 -   Implement the Developer Docs System.
 -   Develop the AI Agent System (all 5 agents).
 -   Full implementation of the Quick Setup Wizard's multi-step flow.
 -   Develop the AI Chatbot, Community, Ticketing, and Unified Portal modules.
 -   Build the Admin Console and Analytics dashboards.
+-   Enhance the tabular view in Content Library to include full sorting and filtering by key attributes (date created, date processed, source type, etc.).
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was focused on resolving two critical issues:
-1.  **WYSIWYG Editor Rendering Problems:** The editor was displaying formatted content (headings, lists, etc.) as plain text despite the underlying HTML structure being correct. This was identified as a CSS/styling issue. The AI engineer addressed this by creating a new  component (replacing ) and adding comprehensive  CSS rules with  to force proper visual rendering of HTML elements like headings, lists, and paragraphs. Frontend screenshots confirmed this fix, showing properly formatted content in WYSIWYG mode with an enhanced toolbar and working 3-mode toggle.
+Immediately prior to this summary, the AI engineer was focused on resolving critical issues related to media display in the Content Library and media extraction from document uploads.
 
-2.  **Knowledge Engine Not Extracting/Embedding Media:** Despite backend tests initially claiming success, the frontend consistently showed no images in generated articles. The AI engineer debugged this and discovered the root cause: the content being passed to the LLM for article generation was being truncated (e.g., from 15000 characters to 8000 characters), cutting off large base64 image data before it could be processed. The fix involved:
-    *   Increasing the content limits passed to the LLM (e.g., 8000 -> 15000 characters for multi-article, 6000 -> 12000 for single article generation).
-    *   Enhancing LLM prompts to explicitly instruct the model to Preserve ALL embedded media including full base64 data URLs exactly as provided.
-    *   Increasing token limits for LLM responses to accommodate media-rich content.
-After these backend fixes, a comprehensive backend test was performed using a  containing real SVG images, which the AI engineer claims successfully processed and preserved 16 base64 SVG data URLs, resulting in articles with embedded images. The frontend display for these newly generated articles has not yet been confirmed via a screenshot after the *latest* fix.
+Initially, despite backend fixes for media extraction, images were not displaying in the frontend Content Library. This led to extensive debugging of frontend markdown-to-HTML conversion logic, Tiptap editor's image sanitization, and ultimately a decision to replace the existing editor. The  component was effectively bypassed for display purposes, and a new  component was created to reliably render HTML content, including base64 images, directly within the article view. This also involved correcting a  misconfiguration in the frontend environment that caused CORS errors.
+
+Concurrently, the user reported that images from uploaded DOCX files (specifically Billing-Management.docx) were not being retained. The AI engineer debugged the  endpoint in , identifying that while images were extracted from the DOCX relationships, they were not correctly embedded into the processed content for LLM consumption. The fix involved enhancing the DOCX parsing logic to robustly detect and embed all extracted images (PNG, JPEG, etc.) into the markdown content as base64 data URLs, even if direct paragraph references were missed. This significantly increased the processed content length, confirming successful image inclusion.
+
+Finally, the AI engineer addressed several UI/UX issues in the Content Library, including:
+*   Implementing a functional back button from the article view to the library.
+*   Adding a toggle to switch between grid and a new tabular () view for articles.
+*   Fixing the Create Article button by integrating a new  component and backend endpoint.
+*   Ensuring the  provided a functional WYSIWYG editor experience with a visible toolbar, Markdown ↔ HTML toggles, and AI enhancement capabilities.
+
+As of the last reported successful actions (Chat 280), the document upload media extraction issue is completely resolved, allowing DOCX files with images to be processed and displayed correctly. The Content Library's article viewing and basic editing (via ) are fully functional, displaying images across all modes (view, WYSIWYG, Markdown, HTML), with AI enhancement and proper navigation. The comprehensive backend media intelligence system is also confirmed operational.
 </current_work>
 
 <optional_next_step>
-Test the frontend display of articles generated after the media extraction fix to visually confirm images are now embedded and visible.
+Enhance the  component to include full sorting and filtering functionality for articles.
 </optional_next_step>

@@ -288,48 +288,48 @@ const ContentLibrary = () => {
   }
 
   return (
-    <div className="h-full space-y-6">
+    <div className="h-full space-y-4 max-w-full overflow-hidden">
       {/* Enhanced Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+          <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900">Content Library</h1>
-              <span className="text-gray-400">•</span>
-              <span className="text-gray-600">CMS Dashboard</span>
+              <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Content Library</h1>
+              <span className="text-gray-400 hidden sm:inline">•</span>
+              <span className="text-gray-600 hidden sm:inline">CMS Dashboard</span>
             </div>
-            <p className="text-gray-600 mb-3">
+            <p className="text-sm lg:text-base text-gray-600 mb-3">
               Manage AI-generated and user-edited articles, assets, and recordings with professional CMS workflows
             </p>
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500">
               <span>Total Articles: {articles.length}</span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span>With Media: {articles.filter(a => a.content?.includes('data:image')).length}</span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span>Published: {articles.filter(a => a.status === 'published').length}</span>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
             <button
               onClick={() => fetchArticles()}
-              className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              <RefreshCw className="h-4 w-4 mr-1 lg:mr-2" />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
               onClick={() => setShowSnipAndRecord(true)}
-              className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              className="flex items-center px-3 lg:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
             >
-              <Camera className="h-4 w-4 mr-2" />
-              Snip & Record
+              <Camera className="h-4 w-4 mr-1 lg:mr-2" />
+              <span className="hidden sm:inline">Snip & Record</span>
             </button>
             <button
               onClick={handleCreateArticle}
-              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="flex items-center px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Article
+              <Plus className="h-4 w-4 mr-1 lg:mr-2" />
+              <span className="hidden sm:inline">Create Article</span>
             </button>
           </div>
         </div>

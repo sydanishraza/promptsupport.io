@@ -498,52 +498,64 @@
         -comment: "FIXED: Implemented proper asset counting logic that extracts actual base64 images from articles (both markdown and HTML formats), filters out truncated images (<50 chars), and shows accurate count. Assets tab now shows correct count of 38 assets. Also updated header stats to show 'Total Assets: 38'."
 
   - task: "Fix WYSIWYG Editor Black Screen Issue"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/MediaArticleViewer.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: When scrolling within the WYSIWYG editor, the entire editor turns black, rendering the interface unusable. Need to fix CSS and overflow issues in contentEditable div."
+        -working: true
+        -agent: "main"
+        -comment: "RESOLVED: Enhanced contentEditable div with proper overflow handling and improved styling. Added 'overflow: auto' to prevent layout issues. Tested scrolling within WYSIWYG editor - no black screen issues observed. Content remains visible and readable throughout scrolling."
 
   - task: "Add WYSIWYG Toolbar Support"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/MediaArticleViewer.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: WYSIWYG editor lacks a proper toolbar with formatting controls (headings, lists, tables, code blocks, images, embeds, tip/warning callouts). Currently toolbar only shows for Markdown/HTML modes."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Implemented comprehensive WYSIWYG toolbar with full formatting controls including: Bold, Italic, Underline, Strikethrough, Headings (H1-H3), Lists (bullet/numbered), Alignment (left/center/right), Quote, Inline Code, Links, and custom components (Tips, Warnings, Notes). Uses document.execCommand for rich text editing with proper content synchronization."
 
   - task: "Remove HTML View Toolbar"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/MediaArticleViewer.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: HTML tab currently shows a blank toolbar. Since HTML editing is for advanced users, the toolbar is not necessary in this view."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Updated toolbar rendering logic to only show toolbar for WYSIWYG and Markdown modes. HTML view now shows clean code editor without any toolbar, providing distraction-free HTML editing for advanced users."
 
   - task: "Control View Toggles by Edit Mode"
-    implemented: false
-    working: false  
+    implemented: true
+    working: true
     file: "frontend/src/components/MediaArticleViewer.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: WYSIWYG / Markdown / HTML toggle shows when the article is not in edit mode. Should only display the mode toggle when editing is active, and default to read-only view when not editing."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Added conditional rendering {isEditing && (...)} to view mode toggles. Now WYSIWYG/Markdown/HTML toggles only appear when in edit mode. In view mode, article displays in clean read-only format without editing controls."
 
 ## metadata:
   created_by: "main_agent"

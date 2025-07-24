@@ -17,7 +17,12 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Brain
+  Brain,
+  Copy,
+  MoreVertical,
+  Upload,
+  ExternalLink,
+  Workflow
 } from 'lucide-react';
 
 const ContentLibraryTable = ({ 

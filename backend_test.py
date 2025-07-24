@@ -2158,6 +2158,11 @@ This test verifies that the file upload pipeline properly triggers the Content L
             'enhanced_content_library_update', 
             'enhanced_content_library_version_history',
             'enhanced_content_library_restore_version',
+            'enhanced_content_library_delete',
+            'enhanced_content_library_status_changes',
+            'enhanced_content_library_article_duplication',
+            'enhanced_content_library_media_detection',
+            'enhanced_content_library_source_type_mapping',
             'enhanced_content_library_metadata_management',
             'enhanced_content_library_api_integration'
         ]

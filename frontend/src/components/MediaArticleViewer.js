@@ -775,8 +775,16 @@ const MediaArticleViewer = ({
         )}
       </div>
 
-      {/* CSS for enhanced styling */}
+      {/* Enhanced CSS for beautiful styling */}
       <style jsx>{`
+        .article-content,
+        .wysiwyg-content {
+          color: #333;
+          line-height: 1.6;
+          font-size: 16px;
+        }
+        
+        .article-content img,
         .wysiwyg-content img {
           max-width: 100%;
           height: auto;
@@ -784,6 +792,8 @@ const MediaArticleViewer = ({
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
           margin: 1rem 0;
         }
+        
+        .article-content blockquote,
         .wysiwyg-content blockquote {
           border-left: 4px solid #3b82f6;
           padding-left: 1rem;
@@ -792,47 +802,189 @@ const MediaArticleViewer = ({
           padding: 1rem;
           border-radius: 0 8px 8px 0;
         }
+        
+        .article-content pre,
         .wysiwyg-content pre {
           background: #f1f5f9;
           padding: 1rem;
           border-radius: 8px;
           overflow-x: auto;
+          border: 1px solid #e2e8f0;
         }
+        
+        .article-content code,
+        .wysiwyg-content code {
+          background: #f1f5f9;
+          padding: 0.2rem 0.4rem;
+          border-radius: 4px;
+          font-size: 0.9em;
+          color: #d63384;
+        }
+        
+        .article-content pre code,
+        .wysiwyg-content pre code {
+          background: none;
+          padding: 0;
+          color: #333;
+        }
+        
+        .article-content table,
         .wysiwyg-content table {
           border-collapse: collapse;
           width: 100%;
           margin: 1rem 0;
-        }
-        .wysiwyg-content th,
-        .wysiwyg-content td {
           border: 1px solid #e2e8f0;
-          padding: 0.5rem;
-          text-align: left;
+          border-radius: 8px;
+          overflow: hidden;
         }
+        
+        .article-content th,
         .wysiwyg-content th {
           background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          padding: 0.75rem;
+          text-align: left;
           font-weight: 600;
+          color: #374151;
         }
-        .wysiwyg-content h1,
-        .wysiwyg-content h2,
-        .wysiwyg-content h3,
-        .wysiwyg-content h4,
-        .wysiwyg-content h5,
-        .wysiwyg-content h6 {
+        
+        .article-content td,
+        .wysiwyg-content td {
+          border: 1px solid #e2e8f0;
+          padding: 0.75rem;
+          text-align: left;
+        }
+        
+        .article-content .tip,
+        .wysiwyg-content .tip {
+          background: #dbeafe;
+          border: 1px solid #3b82f6;
+          border-radius: 8px;
+          padding: 1rem;
+          margin: 1rem 0;
+          border-left: 4px solid #3b82f6;
+        }
+        
+        .article-content .warning,
+        .wysiwyg-content .warning {
+          background: #fef3c7;
+          border: 1px solid #f59e0b;
+          border-radius: 8px;
+          padding: 1rem;
+          margin: 1rem 0;
+          border-left: 4px solid #f59e0b;
+        }
+        
+        .article-content .note,
+        .wysiwyg-content .note {
+          background: #d1fae5;
+          border: 1px solid #10b981;
+          border-radius: 8px;
+          padding: 1rem;
+          margin: 1rem 0;
+          border-left: 4px solid #10b981;
+        }
+        
+        .article-content h1,
+        .wysiwyg-content h1 {
+          color: #1f2937;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          font-size: 2rem;
+          font-weight: 700;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 0.5rem;
+        }
+        
+        .article-content h2,
+        .wysiwyg-content h2 {
           color: #1f2937;
           margin-top: 1.5rem;
           margin-bottom: 1rem;
+          font-size: 1.5rem;
+          font-weight: 600;
         }
+        
+        .article-content h3,
+        .wysiwyg-content h3 {
+          color: #1f2937;
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+        
+        .article-content h4,
+        .wysiwyg-content h4 {
+          color: #1f2937;
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+          font-size: 1.125rem;
+          font-weight: 600;
+        }
+        
+        .article-content p,
         .wysiwyg-content p {
           margin-bottom: 1rem;
+          line-height: 1.7;
         }
-        .wysiwyg-content ul,
+        
+        .article-content ul,
+        .wysiwyg-content ul {
+          margin-bottom: 1rem;
+          padding-left: 1.5rem;
+        }
+        
+        .article-content ol,
         .wysiwyg-content ol {
           margin-bottom: 1rem;
           padding-left: 1.5rem;
         }
+        
+        .article-content li,
         .wysiwyg-content li {
           margin-bottom: 0.5rem;
+          line-height: 1.6;
+        }
+        
+        .article-content strong,
+        .wysiwyg-content strong {
+          font-weight: 600;
+          color: #1f2937;
+        }
+        
+        .article-content em,
+        .wysiwyg-content em {
+          font-style: italic;
+        }
+        
+        .article-content a,
+        .wysiwyg-content a {
+          color: #3b82f6;
+          text-decoration: underline;
+        }
+        
+        .article-content a:hover,
+        .wysiwyg-content a:hover {
+          color: #2563eb;
+        }
+        
+        .article-content hr,
+        .wysiwyg-content hr {
+          border: none;
+          height: 1px;
+          background: #e5e7eb;
+          margin: 2rem 0;
+        }
+        
+        /* Content editable styles */
+        [contentEditable="true"] {
+          outline: none;
+        }
+        
+        [contentEditable="true"]:focus {
+          border-color: #3b82f6;
+          ring: 2px solid #3b82f6;
         }
       `}</style>
     </div>

@@ -190,24 +190,45 @@ const TinyMCEEditor = ({
 
   // Handle view mode change
   const handleViewModeChange = (mode) => {
-    if (!editorReady) return;
+    if (!editorReady && mode === 'wysiwyg') return;
 
-    const currentContent = editorRef.current?.getContent() || content;
-    
-    if (mode === 'markdown') {
-      const markdownContent = htmlToMarkdown(currentContent);
-      setContent(markdownContent);
-    } else if (mode === 'html') {
-      // Keep as HTML
-      setContent(currentContent);
-    } else if (mode === 'wysiwyg') {
-      if (viewMode === 'markdown') {
-        const htmlContent = markdownToHtml(content);
-        setContent(htmlContent);
+    try {
+      let currentContent = content;
+      
+      // Get current content from editor if in WYSIWYG mode
+      if (viewMode === 'wysiwyg' && editorRef.current && editorReady) {
+        currentContent = editorRef.current.getContent() || content;
       }
+      
+      if (mode === 'markdown') {
+        // Convert HTML to Markdown
+        if (viewMode === 'wysiwyg' || viewMode === 'html') {
+          const markdownContent = htmlToMarkdown(currentContent);
+          setContent(markdownContent);
+        }
+      } else if (mode === 'html') {
+        // Convert to HTML
+        if (viewMode === 'markdown') {
+          const htmlContent = markdownToHtml(currentContent);
+          setContent(htmlContent);
+        } else if (viewMode === 'wysiwyg' && editorRef.current) {
+          setContent(currentContent);
+        }
+      } else if (mode === 'wysiwyg') {
+        // Convert to WYSIWYG
+        if (viewMode === 'markdown') {
+          const htmlContent = markdownToHtml(currentContent);
+          setContent(htmlContent);
+        }
+        // HTML content can be used directly in WYSIWYG
+      }
+      
+      setViewMode(mode);
+    } catch (error) {
+      console.error('View mode change error:', error);
+      // Fallback to safe mode change
+      setViewMode(mode);
     }
-    
-    setViewMode(mode);
   };
 
   // AI Enhancement

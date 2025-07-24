@@ -106,7 +106,7 @@
 # Testing Data - Clean slate for fresh development
 #====================================================================================================
 
-## user_problem_statement: "Comprehensive Knowledge Engine overhaul based on detailed UX/UI feedback - fix content processing, improve workflows, implement modern CMS patterns, and add advanced recording capabilities"
+## user_problem_statement: "Enhance Content Library UX to Modern CMS-Style Interface - implement comprehensive sorting, filtering, and content management features for professional-grade content workflows"
 
 ## backend:
   - task: "Enhanced Health Check with AI Services"

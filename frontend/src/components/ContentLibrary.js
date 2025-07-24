@@ -419,7 +419,7 @@ const ContentLibrary = () => {
           <FolderOpen className="h-4 w-4" />
           <span>Assets</span>
           <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
-            {articles.filter(a => a.content?.includes('data:image')).length}
+            {actualAssetCount}
           </span>
         </button>
       </div>

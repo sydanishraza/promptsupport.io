@@ -34,7 +34,7 @@ const MainLayout = () => {
       case 'connections':
         return <Connections />;
       case 'content-library':
-        return <ContentLibraryEnhanced />;
+        return <ContentLibrary />;
       case 'systems':
         return <SystemsModule onNavigate={setActiveRoute} />;
       case 'knowledge-base-builder':

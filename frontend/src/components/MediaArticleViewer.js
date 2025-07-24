@@ -48,6 +48,8 @@ const MediaArticleViewer = ({
   backendUrl 
 }) => {
   const [content, setContent] = useState('');
+  const [htmlContent, setHtmlContent] = useState('');
+  const [markdownContent, setMarkdownContent] = useState('');
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState([]);
   const [status, setStatus] = useState('draft');
@@ -57,6 +59,8 @@ const MediaArticleViewer = ({
   const [metadata, setMetadata] = useState({});
   
   const editorRef = useRef(null);
+  const htmlEditorRef = useRef(null);
+  const markdownEditorRef = useRef(null);
   const turndownService = new TurndownService();
 
   // Configure marked for better rendering

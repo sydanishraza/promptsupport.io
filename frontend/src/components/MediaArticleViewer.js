@@ -388,7 +388,185 @@ const MediaArticleViewer = ({
     </motion.div>
   );
 
-  // Enhanced toolbar for editing
+  // WYSIWYG formatting functions
+  const formatWysiwyg = (command, value = null) => {
+    document.execCommand(command, false, value);
+    // Trigger content change
+    if (editorRef.current) {
+      handleContentChange(editorRef.current.innerHTML, 'wysiwyg');
+    }
+  };
+
+  // Insert HTML at cursor in WYSIWYG
+  const insertWysiwygHTML = (html) => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand('insertHTML', false, html);
+      handleContentChange(editorRef.current.innerHTML, 'wysiwyg');
+    }
+  };
+
+  // Enhanced toolbar for WYSIWYG editing
+  const renderWysiwygToolbar = () => {
+    return (
+      <div className="border-b border-gray-200 p-3 bg-gray-50">
+        <div className="flex flex-wrap gap-2">
+          {/* Basic Formatting */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => formatWysiwyg('bold')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Bold"
+            >
+              <Bold className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('italic')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Italic"
+            >
+              <Italic className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('underline')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Underline"
+            >
+              <Underline className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('strikeThrough')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Strikethrough"
+            >
+              <Strikethrough className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Headings */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => formatWysiwyg('formatBlock', 'h1')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Heading 1"
+            >
+              <Heading1 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('formatBlock', 'h2')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Heading 2"
+            >
+              <Heading2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('formatBlock', 'h3')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Heading 3"
+            >
+              <Heading3 className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Lists */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => formatWysiwyg('insertUnorderedList')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Bullet List"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('insertOrderedList')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Numbered List"
+            >
+              <span className="text-sm font-bold">1.</span>
+            </button>
+          </div>
+
+          {/* Alignment */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => formatWysiwyg('justifyLeft')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Align Left"
+            >
+              <AlignLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('justifyCenter')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Align Center"
+            >
+              <AlignCenter className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('justifyRight')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Align Right"
+            >
+              <AlignRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Special Elements */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => insertWysiwygHTML('<blockquote style="border-left: 4px solid #3b82f6; padding-left: 1rem; margin: 1rem 0; background: #f8fafc; padding: 1rem; border-radius: 0 8px 8px 0;">Quote text here</blockquote>')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Quote"
+            >
+              <Quote className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertWysiwygHTML('<code style="background: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.9em; color: #d63384;">inline code</code>&nbsp;')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Inline Code"
+            >
+              <Code2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                const url = prompt('Enter link URL:');
+                if (url) formatWysiwyg('insertHTML', `<a href="${url}" style="color: #3b82f6; text-decoration: underline;">Link text</a>&nbsp;`);
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Link"
+            >
+              <Link className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Custom Components */}
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => insertWysiwygHTML('<div class="tip" style="background: #dbeafe; border: 1px solid #3b82f6; border-radius: 8px; padding: 1rem; margin: 1rem 0; border-left: 4px solid #3b82f6;"><strong>💡 Tip:</strong> Your tip content here</div>')}
+              className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+              title="Insert Tip"
+            >
+              💡 Tip
+            </button>
+            <button
+              onClick={() => insertWysiwygHTML('<div class="warning" style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin: 1rem 0; border-left: 4px solid #f59e0b;"><strong>⚠️ Warning:</strong> Your warning content here</div>')}
+              className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+              title="Insert Warning"
+            >
+              ⚠️ Warning
+            </button>
+            <button
+              onClick={() => insertWysiwygHTML('<div class="note" style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 1rem; margin: 1rem 0; border-left: 4px solid #10b981;"><strong>📝 Note:</strong> Your note content here</div>')}
+              className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200"
+              title="Insert Note"
+            >
+              📝 Note
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
   const renderEnhancedToolbar = () => {
     const currentMode = viewMode;
     

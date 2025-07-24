@@ -466,7 +466,7 @@ const ContentLibrary = () => {
       </div>
 
       {/* Content Area */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 max-h-[calc(100vh-400px)] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -489,7 +489,7 @@ const ContentLibrary = () => {
           </div>
         ) : (
           <AssetManager
-            articles={filteredAndSortedArticles}
+            articles={articles}
             onArticleSelect={handleArticleSelect}
           />
         )}

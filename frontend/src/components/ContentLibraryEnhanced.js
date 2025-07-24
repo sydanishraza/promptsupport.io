@@ -1049,14 +1049,25 @@ const ContentLibraryEnhanced = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Enhanced Header with Breadcrumb */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Content Library</h1>
+            <div className="flex items-center space-x-2 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900">Content Library</h1>
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-600">CMS Dashboard</span>
+            </div>
             <p className="text-gray-600">
-              Manage AI-generated and user-edited articles, assets, and recordings with Tiptap editor
+              Manage AI-generated and user-edited articles, assets, and recordings with professional CMS workflows
             </p>
+            <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+              <span>Total Articles: {displayItems.length}</span>
+              <span>•</span>
+              <span>With Media: {displayItems.filter(item => item.hasMedia).length}</span>
+              <span>•</span>
+              <span>Published: {displayItems.filter(item => item.status === 'published').length}</span>
+            </div>
           </div>
           <div className="flex items-center space-x-3">
             <button

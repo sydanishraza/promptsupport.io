@@ -320,25 +320,63 @@ const ContentLibraryEnhanced = () => {
     { id: 'review', label: 'Under Review' }
   ];
 
-  // Transform real articles into display format
-  const contentItems = articles.map((article, index) => ({
-    id: article.id || index,
-    title: article.title || 'Untitled',
-    type: article.metadata?.recording_type ? 'video' : 'article',
-    status: article.status || 'draft',
-    source: article.source_type === 'file_upload' ? 'File Upload' : 
-            article.source_type === 'text_processing' ? 'Text Processing' :
-            article.source_type === 'url_processing' ? 'URL Processing' :
-            article.source_type === 'recording_processing' ? 'Recording' : 'AI Generated',
-    tags: Array.isArray(article.tags) ? article.tags : [],
-    wordCount: article.content ? article.content.length / 5 : 0, // Rough estimate
-    lastModified: article.updated_at || article.created_at,
-    author: 'Knowledge Engine',
-    views: Math.floor(Math.random() * 100), // Placeholder for now
-    preview: article.summary || (article.content ? article.content.substring(0, 100) + '...' : 'No preview available'),
-    content: article.content || '<p>Content not available</p>',
-    metadata: article.metadata
-  }));
+  // Enhanced source type detection and mapping
+  const getSourceType = (article) => {
+    if (article.source_type === 'file_upload') return 'upload';
+    if (article.source_type === 'text_processing') return 'manual';
+    if (article.source_type === 'url_processing') return 'integration';
+    if (article.source_type === 'recording_processing') return 'recording';
+    if (article.metadata?.is_ai_generated) return 'ai_generated';
+    return 'manual';
+  };
+
+  const getSourceLabel = (sourceType) => {
+    switch (sourceType) {
+      case 'upload': return 'File Upload';
+      case 'manual': return 'Manual';
+      case 'ai_generated': return 'AI Generated';
+      case 'integration': return 'Integration';
+      case 'recording': return 'Recording';
+      default: return 'Manual';
+    }
+  };
+
+  const getContentType = (article) => {
+    if (article.metadata?.recording_type) return 'video';
+    if (article.content?.includes('data:image')) return 'article'; // Article with media
+    return 'article';
+  };
+
+  // Transform real articles into display format with enhanced metadata
+  const contentItems = articles.map((article, index) => {
+    const sourceType = getSourceType(article);
+    const contentType = getContentType(article);
+    const hasMedia = article.content?.includes('data:image') || false;
+    const mediaCount = hasMedia ? (article.content?.split('data:image').length - 1) : 0;
+    
+    return {
+      id: article.id || index,
+      title: article.title || 'Untitled',
+      type: contentType,
+      status: article.status || 'draft',
+      source: getSourceLabel(sourceType),
+      source_type: sourceType,
+      tags: Array.isArray(article.tags) ? article.tags : [],
+      wordCount: article.content ? Math.round(article.content.length / 5) : 0,
+      lastModified: article.updated_at || article.created_at,
+      dateAdded: article.created_at,
+      author: article.metadata?.author || 'Knowledge Engine',
+      createdBy: article.metadata?.created_by || 'System',
+      views: article.metadata?.views || 0,
+      version: article.version || 1,
+      preview: article.summary || (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : 'No preview available'),
+      content: article.content || '<p>Content not available</p>',
+      metadata: article.metadata,
+      hasMedia: hasMedia,
+      mediaCount: mediaCount,
+      media_processed: article.media_processed || false
+    };
+  });
 
   // Add some default articles if no real articles exist (for demo purposes)
   const defaultArticles = contentItems.length === 0 ? [

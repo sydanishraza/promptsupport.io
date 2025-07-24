@@ -277,11 +277,12 @@ const MediaArticleViewer = ({
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  // Simple toolbar for basic formatting
-  const insertFormatting = (before, after = '') => {
-    if (!editorRef.current) return;
+  // Enhanced toolbar for full formatting
+  const insertFormatting = (before, after = '', targetMode = 'markdown') => {
+    const targetRef = targetMode === 'markdown' ? markdownEditorRef : htmlEditorRef;
+    if (!targetRef.current) return;
     
-    const textarea = editorRef.current;
+    const textarea = targetRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = textarea.value.substring(start, end);
@@ -289,12 +290,63 @@ const MediaArticleViewer = ({
     const newText = before + selectedText + after;
     const newContent = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
     
-    setContent(newContent);
+    if (targetMode === 'markdown') {
+      handleContentChange(newContent, 'markdown');
+    } else {
+      handleContentChange(newContent, 'html');
+    }
     
     // Reset cursor position
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+    }, 0);
+  };
+
+  // Insert special components
+  const insertComponent = (component, targetMode = 'markdown') => {
+    const components = {
+      tip: {
+        markdown: '\n> 💡 **Tip:** Your tip content here\n\n',
+        html: '\n<div class="tip">\n  <strong>💡 Tip:</strong> Your tip content here\n</div>\n\n'
+      },
+      warning: {
+        markdown: '\n> ⚠️ **Warning:** Your warning content here\n\n',
+        html: '\n<div class="warning">\n  <strong>⚠️ Warning:</strong> Your warning content here\n</div>\n\n'
+      },
+      note: {
+        markdown: '\n> 📝 **Note:** Your note content here\n\n',
+        html: '\n<div class="note">\n  <strong>📝 Note:</strong> Your note content here\n</div>\n\n'
+      },
+      code_block: {
+        markdown: '\n```javascript\n// Your code here\nconsole.log("Hello, world!");\n```\n\n',
+        html: '\n<pre><code class="language-javascript">\n// Your code here\nconsole.log("Hello, world!");\n</code></pre>\n\n'
+      },
+      table: {
+        markdown: '\n| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |\n| Cell 4   | Cell 5   | Cell 6   |\n\n',
+        html: '\n<table>\n  <thead>\n    <tr>\n      <th>Header 1</th>\n      <th>Header 2</th>\n      <th>Header 3</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Cell 1</td>\n      <td>Cell 2</td>\n      <td>Cell 3</td>\n    </tr>\n    <tr>\n      <td>Cell 4</td>\n      <td>Cell 5</td>\n      <td>Cell 6</td>\n    </tr>\n  </tbody>\n</table>\n\n'
+      }
+    };
+
+    const targetRef = targetMode === 'markdown' ? markdownEditorRef : htmlEditorRef;
+    if (!targetRef.current) return;
+    
+    const textarea = targetRef.current;
+    const start = textarea.selectionStart;
+    const componentText = components[component][targetMode];
+    
+    const newContent = textarea.value.substring(0, start) + componentText + textarea.value.substring(start);
+    
+    if (targetMode === 'markdown') {
+      handleContentChange(newContent, 'markdown');
+    } else {
+      handleContentChange(newContent, 'html');
+    }
+    
+    // Reset cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + componentText.length, start + componentText.length);
     }, 0);
   };
 

@@ -467,20 +467,36 @@ const MediaArticleViewer = ({
       scrollToCursor();
     }, 0);
   };
+  // WYSIWYG formatting functions with cursor preservation
   const formatWysiwyg = (command, value = null) => {
-    document.execCommand(command, false, value);
-    // Trigger content change
     if (editorRef.current) {
-      handleContentChange(editorRef.current.innerHTML, 'wysiwyg');
+      editorRef.current.focus();
+      
+      // Save cursor position before formatting
+      const savedPosition = saveCursorPosition();
+      
+      // Execute the formatting command
+      document.execCommand(command, false, value);
+      
+      // Update content and restore cursor
+      setTimeout(() => {
+        handleContentChangeWithCursor(editorRef.current.innerHTML, 'wysiwyg');
+      }, 0);
     }
   };
 
-  // Insert HTML at cursor in WYSIWYG
+  // Insert HTML at cursor in WYSIWYG with improved cursor handling
   const insertWysiwygHTML = (html) => {
     if (editorRef.current) {
       editorRef.current.focus();
+      
+      // Use document.execCommand for better cursor handling
       document.execCommand('insertHTML', false, html);
-      handleContentChange(editorRef.current.innerHTML, 'wysiwyg');
+      
+      // Update content
+      setTimeout(() => {
+        handleContentChangeWithCursor(editorRef.current.innerHTML, 'wysiwyg');
+      }, 0);
     }
   };
 

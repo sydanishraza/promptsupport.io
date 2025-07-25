@@ -1083,6 +1083,72 @@ const PromptSupportEditor = ({
   };
 
   /**
+   * Unified AI Brain handler - combines all AI modes into one comprehensive analysis
+   */
+  const handleUnifiedAIBrain = async () => {
+    setAiWritingMode(true);
+    setAiActionType('unified');
+    
+    try {
+      const currentText = editorRef.current?.textContent || '';
+      const selection = window.getSelection();
+      const selectedText = selection.toString();
+      const textToProcess = selectedText || currentText;
+      
+      if (!textToProcess.trim()) {
+        alert('Please type some content or select text to analyze with AI Brain.');
+        setAiWritingMode(false);
+        return;
+      }
+      
+      // Run all AI modes in parallel for comprehensive analysis
+      const [completionSuggestions, improvementSuggestions, grammarSuggestions] = await Promise.allSettled([
+        generateAISuggestions(textToProcess, 'completion'),
+        generateAISuggestions(textToProcess, 'improvement'), 
+        generateAISuggestions(textToProcess, 'grammar')
+      ]);
+      
+      // Combine all suggestions
+      const allSuggestions = [];
+      
+      if (completionSuggestions.status === 'fulfilled') {
+        allSuggestions.push(...completionSuggestions.value.map(s => ({ type: 'completion', text: s, icon: 'sparkles' })));
+      }
+      if (improvementSuggestions.status === 'fulfilled') {
+        allSuggestions.push(...improvementSuggestions.value.map(s => ({ type: 'improvement', text: s, icon: 'lightbulb' })));
+      }
+      if (grammarSuggestions.status === 'fulfilled') {
+        allSuggestions.push(...grammarSuggestions.value.map(s => ({ type: 'grammar', text: s, icon: 'check-square' })));
+      }
+      
+      // Calculate comprehensive AI Brain metrics
+      const metrics = {
+        wordsProcessed: textToProcess.split(' ').length,
+        suggestionsGenerated: allSuggestions.length,
+        mode: 'unified',
+        completionCount: completionSuggestions.status === 'fulfilled' ? completionSuggestions.value.length : 0,
+        improvementCount: improvementSuggestions.status === 'fulfilled' ? improvementSuggestions.value.length : 0,
+        grammarCount: grammarSuggestions.status === 'fulfilled' ? grammarSuggestions.value.length : 0,
+        processingTime: Date.now(),
+        confidence: Math.random() * 30 + 70, // Mock confidence 70-100%
+        improvements: allSuggestions.length,
+        suggestions: allSuggestions,
+        originalText: selectedText,
+        processedText: textToProcess
+      };
+      
+      setAiResults(metrics);
+      setShowAiBrainModal(true);
+      
+    } catch (error) {
+      console.error('Unified AI Brain error:', error);
+      alert('AI Brain is currently unavailable. Please try again later.');
+    } finally {
+      setAiWritingMode(false);
+    }
+  };
+
+  /**
    * Apply AI suggestion to content - Now functional
    */
   const applyAISuggestion = (suggestion) => {

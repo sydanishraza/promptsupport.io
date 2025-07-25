@@ -499,8 +499,114 @@ const MediaArticleViewer = ({
     setTimeout(() => {
       restoreCursorPosition(savedPosition);
       scrollToCursor();
-    }, 0);
+    }, 10); // Increased delay for better stability
   };
+
+  // Enhanced keyboard handler with proper event handling
+  const handleKeyDown = (e) => {
+    // Prevent backspace/delete from exiting edit mode
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.stopPropagation();
+      return;
+    }
+
+    // Keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'z':
+          e.preventDefault();
+          if (e.shiftKey) {
+            document.execCommand('redo');
+          } else {
+            document.execCommand('undo');
+          }
+          break;
+        case 'y':
+          e.preventDefault();
+          document.execCommand('redo');
+          break;
+        case 'b':
+          e.preventDefault();
+          formatWysiwyg('bold');
+          break;
+        case 'i':
+          e.preventDefault();
+          formatWysiwyg('italic');
+          break;
+        case 'u':
+          e.preventDefault();
+          formatWysiwyg('underline');
+          break;
+        case 'k':
+          e.preventDefault();
+          const url = prompt('Enter URL:');
+          if (url) {
+            formatWysiwyg('createLink', url);
+          }
+          break;
+        case 's':
+          e.preventDefault();
+          if (e.shiftKey) {
+            handleSave(false);
+          }
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Tab handling for indentation
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        formatWysiwyg('outdent');
+      } else {
+        formatWysiwyg('indent');
+      }
+    }
+
+    // Slash commands
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Check if we're at the beginning of a line or after whitespace
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const textBefore = range.startContainer.textContent?.substring(0, range.startOffset) || '';
+        if (textBefore === '' || textBefore.endsWith('\n') || textBefore.endsWith(' ')) {
+          e.preventDefault();
+          setShowSlashMenu(true);
+          setSlashMenuPosition(getCaretPosition());
+        }
+      }
+    }
+
+    // Hide slash menu on escape
+    if (e.key === 'Escape') {
+      setShowSlashMenu(false);
+    }
+  };
+
+  // Get caret position for slash menu positioning
+  const getCaretPosition = () => {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const editorRect = editorRef.current?.getBoundingClientRect();
+      
+      if (editorRect) {
+        return {
+          x: rect.left - editorRect.left,
+          y: rect.bottom - editorRect.top
+        };
+      }
+    }
+    return { x: 0, y: 0 };
+  };
+
+  // State for slash menu
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [slashMenuPosition, setSlashMenuPosition] = useState({ x: 0, y: 0 });
   // WYSIWYG formatting functions with cursor preservation
   const formatWysiwyg = (command, value = null) => {
     if (editorRef.current) {

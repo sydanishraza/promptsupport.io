@@ -711,7 +711,52 @@ const MediaArticleViewer = ({
     setShowSlashMenu(false);
   };
 
-  // Enhanced toolbar for WYSIWYG editing
+  // Slash command menu
+  const renderSlashMenu = () => {
+    if (!showSlashMenu) return null;
+
+    const commands = [
+      { icon: '🔤', label: 'Heading 1', action: () => insertContentBlock('heading1') },
+      { icon: '🔤', label: 'Heading 2', action: () => insertContentBlock('heading2') },
+      { icon: '🔤', label: 'Heading 3', action: () => insertContentBlock('heading3') },
+      { icon: '🔤', label: 'Heading 4', action: () => insertContentBlock('heading4') },
+      { icon: '📝', label: 'Paragraph', action: () => insertContentBlock('paragraph') },
+      { icon: '•', label: 'Bullet List', action: () => insertContentBlock('bulletList') },
+      { icon: '1.', label: 'Numbered List', action: () => insertContentBlock('numberedList') },
+      { icon: '❝', label: 'Quote', action: () => insertContentBlock('quote') },
+      { icon: '💻', label: 'Code Block', action: () => insertContentBlock('codeBlock') },
+      { icon: '📊', label: 'Table', action: () => insertContentBlock('table') },
+      { icon: '💡', label: 'Tip', action: () => insertContentBlock('tip') },
+      { icon: '⚠️', label: 'Warning', action: () => insertContentBlock('warning') },
+      { icon: '📝', label: 'Note', action: () => insertContentBlock('note') },
+      { icon: '📁', label: 'Expandable Section', action: () => insertContentBlock('expandable') },
+      { icon: '➖', label: 'Divider', action: () => insertContentBlock('divider') },
+    ];
+
+    return (
+      <div 
+        className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-64"
+        style={{ 
+          left: `${slashMenuPosition.x}px`, 
+          top: `${slashMenuPosition.y + 5}px`,
+          maxHeight: '300px',
+          overflowY: 'auto'
+        }}
+      >
+        <div className="text-xs text-gray-500 mb-2 px-2">Choose a block to insert:</div>
+        {commands.map((command, index) => (
+          <button
+            key={index}
+            onClick={command.action}
+            className="w-full flex items-center space-x-3 px-3 py-2 text-left hover:bg-gray-100 rounded text-sm"
+          >
+            <span className="text-lg">{command.icon}</span>
+            <span>{command.label}</span>
+          </button>
+        ))}
+      </div>
+    );
+  };
   const renderWysiwygToolbar = () => {
     return (
       <div className="border-b border-gray-200 p-3 bg-gray-50">

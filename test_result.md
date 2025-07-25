@@ -687,7 +687,7 @@
     status_history:
         -working: true
         -agent: "main"
-        -comment: "COMPLETED: Successfully moved sidebar toggle from header to panel border edge. Toggle now positioned with absolute positioning at top-1/2 transform -translate-y-1/2 for perfect vertical centering. In collapsed state, logo displays at exactly 35x35px using object-cover and toggle appears on right border. Enhanced navigation with hover tooltips showing item label, description, and 'Hover to expand' hint for expandable items. Added fly-out menus for Knowledge Engine and Systems expandable items when collapsed. Fly-out menus show all subitems with proper styling and interaction. Toggle functionality works perfectly in both directions. Logo size corrected to exact 35x35px in collapsed state with object-cover for proper aspect ratio."
+        -comment: "COMPLETED: Successfully moved sidebar toggle from header to panel border edge. Toggle positioned with absolute positioning at top-1/2 for perfect vertical centering. Collapsed panel width increased to 80px (w-20) to accommodate uncropped logo. Logo displays at 35px height with proper aspect ratio using object-contain and maxWidth 70px. Enhanced navigation with contextual tooltip positioning: expandable items show tooltips above flyout menus (bottom-full mb-2), non-expandable items show tooltips at button level (top-0). Fly-out menus for Knowledge Engine and Systems work perfectly with proper spacing. Toggle functionality works seamlessly in both directions. No overlap issues between tooltips and flyout menus."
 
 ## metadata:
   created_by: "main_agent"

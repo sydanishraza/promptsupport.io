@@ -3316,6 +3316,76 @@ const PromptSupportEditor = ({
         className={`h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}
       >
       
+      {/* Styles for editor enhancements */}
+      <style jsx>{`
+        @keyframes highlight-fade {
+          0% {
+            background-color: #fef3c7;
+            border-bottom-color: #f59e0b;
+          }
+          50% {
+            background-color: #fef3c7;
+            border-bottom-color: #f59e0b;
+          }
+          100% {
+            background-color: transparent;
+            border-bottom-color: transparent;
+          }
+        }
+        
+        .ai-suggestion-applied {
+          transition: all 0.3s ease;
+        }
+        
+        /* Fix text overflow issues */
+        .editor-content {
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          word-break: break-word;
+          white-space: pre-wrap;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        
+        .editor-content * {
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        
+        /* Link styles for editor */
+        .editor-content a {
+          color: #2563eb !important;
+          text-decoration: underline !important;
+          cursor: pointer !important;
+        }
+        
+        .editor-content a:hover {
+          color: #1d4ed8 !important;
+          text-decoration: underline !important;
+        }
+        
+        /* Ensure pasted content doesn't overflow */
+        .editor-content p,
+        .editor-content div,
+        .editor-content span {
+          max-width: 100%;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+        }
+        
+        /* Fix for contenteditable paste overflow */
+        [contenteditable] {
+          overflow: hidden !important;
+          word-wrap: break-word !important;
+          overflow-wrap: break-word !important;
+        }
+        
+        [contenteditable] * {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+      `}</style>
+      
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">
         <div className="flex items-center justify-between mb-4">

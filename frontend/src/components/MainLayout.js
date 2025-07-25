@@ -17,6 +17,26 @@ const MainLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Auto-collapse sidebar on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) { // md breakpoint
+        setSidebarCollapsed(true);
+      } else {
+        setSidebarCollapsed(false);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const renderMainContent = () => {
     switch (activeRoute) {
       case 'dashboard':

@@ -1331,7 +1331,7 @@ const PromptSupportEditor = ({
             <button
               onClick={() => insertBlock('codeBlock')}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
-              title="Code Block"
+              title="Code Block (⌘⇧C)"
             >
               <Code className="h-4 w-4" />
             </button>

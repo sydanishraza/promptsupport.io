@@ -462,55 +462,41 @@ const PromptSupportEditor = ({
     }
   };
 
-  // Paste handler to ensure clean markup and prevent overflow
+  // Simplified paste handler to ensure text selection works
   const handlePaste = (e) => {
     e.preventDefault();
     
-    // Get clipboard data
+    // Get plain text from clipboard
     const clipboardData = e.clipboardData || window.clipboardData;
     const pastedText = clipboardData.getData('text/plain');
     
     if (!pastedText) return;
     
-    // Clean the pasted text - remove extra whitespace and ensure proper wrapping
-    const cleanedText = pastedText
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .join('\n');
-    
-    // Insert clean text without any formatting
+    // Insert plain text while maintaining DOM structure
     const selection = window.getSelection();
     if (selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       range.deleteContents();
       
-      // Split by newlines and create proper paragraph structure
-      const lines = cleanedText.split('\n');
-      let htmlContent = '';
+      // Create a text node to preserve selection functionality
+      const textNode = document.createTextNode(pastedText);
+      range.insertNode(textNode);
       
-      lines.forEach((line, index) => {
-        if (line.trim()) {
-          htmlContent += `<p style="max-width: 100%; overflow-wrap: break-word; word-wrap: break-word; margin: 0 0 1em 0;">${line}</p>`;
-        }
-      });
-      
-      // Remove the last margin
-      htmlContent = htmlContent.replace(/margin: 0 0 1em 0;">([^<]+)<\/p>$/, 'margin: 0;">$1</p>');
-      
-      // Insert the cleaned HTML
-      executeCommand('insertHTML', htmlContent);
+      // Place cursor at the end of inserted text
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
     
     // Update content state
     setTimeout(() => {
-      if (contentRef.current) {
-        setContent(contentRef.current.innerHTML);
+      const editorElement = document.querySelector('[contenteditable]');
+      if (editorElement) {
+        setContent(editorElement.innerHTML);
         setHasUnsavedChanges(true);
       }
-    }, 100);
+    }, 10);
   };
 
   // Highlight applied AI suggestions

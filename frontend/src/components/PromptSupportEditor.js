@@ -1141,7 +1141,7 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Handle asset selection from library (Support both URL and base64 formats)
+   * Handle asset selection from library (Support both URL and base64 formats, prevent duplicates)
    */
   const handleAssetSelect = (asset) => {
     try {
@@ -1176,8 +1176,14 @@ const PromptSupportEditor = ({
       }
       
       if (imageSrc) {
-        insertImage(imageSrc, asset.name || 'Selected image');
+        // Close modal first
         setShowImageModal(false);
+        
+        // Restore cursor position and insert image
+        setTimeout(() => {
+          restoreCursorPosition();
+          insertImage(imageSrc, asset.name || 'Selected image');
+        }, 100); // Small delay to ensure modal close and cursor restoration
       } else {
         console.error('Could not determine image source:', asset);
         showAlert('Unable to insert selected asset. Please try another image.', 'Asset Error');

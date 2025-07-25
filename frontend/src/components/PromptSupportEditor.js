@@ -1074,7 +1074,7 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Handle asset selection from library (Fixed error handling)
+   * Handle asset selection from library (Support both URL and base64 formats)
    */
   const handleAssetSelect = (asset) => {
     try {
@@ -1085,12 +1085,34 @@ const PromptSupportEditor = ({
         return;
       }
       
-      // Check if asset has image data
-      if (asset.data && (asset.type === 'image' || !asset.type)) {
-        insertImage(asset.data, asset.name || 'Selected image');
+      // Determine image source based on storage type
+      let imageSrc = '';
+      
+      if (asset.url) {
+        // File-based asset - use URL
+        if (asset.url.startsWith('/static/')) {
+          // Prepend backend URL for relative paths
+          imageSrc = `${process.env.REACT_APP_BACKEND_URL}${asset.url}`;
+        } else {
+          imageSrc = asset.url;
+        }
+      } else if (asset.data && asset.data.startsWith('data:image')) {
+        // Base64-based asset
+        imageSrc = asset.data;
+      } else if (asset.data && asset.data.startsWith('/static/')) {
+        // Sometimes data contains URL for file-based assets
+        imageSrc = `${process.env.REACT_APP_BACKEND_URL}${asset.data}`;
+      } else {
+        console.error('Asset has no valid image source:', asset);
+        showAlert('Unable to insert selected asset. Invalid image source.', 'Asset Error');
+        return;
+      }
+      
+      if (imageSrc) {
+        insertImage(imageSrc, asset.name || 'Selected image');
         setShowImageModal(false);
       } else {
-        console.error('Asset missing data or not an image:', asset);
+        console.error('Could not determine image source:', asset);
         showAlert('Unable to insert selected asset. Please try another image.', 'Asset Error');
       }
     } catch (error) {

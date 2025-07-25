@@ -331,6 +331,7 @@ async def get_assets():
             formatted_assets.append({
                 "id": asset.get("id", str(asset.get("_id"))),
                 "name": asset.get("original_filename", asset.get("name", "Untitled")),
+                "original_filename": asset.get("original_filename"),
                 "type": "image",
                 "url": asset.get("url"),  # File URL instead of base64
                 "data": asset.get("url"),  # For compatibility, use URL as data

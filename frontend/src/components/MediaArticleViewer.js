@@ -1051,23 +1051,65 @@ const MediaArticleViewer = ({
       </div>
     );
   };
-            <button
-              onClick={() => formatWysiwyg('insertUnorderedList')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-              title="Bullet List"
-            >
-              <List className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => formatWysiwyg('insertOrderedList')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-              title="Numbered List"
-            >
-              <span className="text-sm font-bold">1.</span>
-            </button>
-          </div>
+  };
 
-          {/* Alignment */}
+  // Enhanced AI assistance functions
+  const handleAIRewrite = async (selectedText) => {
+    if (!selectedText.trim()) {
+      alert('Please select text to rewrite');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      // Placeholder for AI rewrite functionality
+      // In a real implementation, you would call your AI service here
+      console.log('AI rewrite request for:', selectedText);
+      
+      // Mock response - replace with actual AI integration
+      const rewrittenText = selectedText + ' (AI enhanced)';
+      
+      // Replace selected text with AI response
+      document.execCommand('insertHTML', false, rewrittenText);
+      
+    } catch (error) {
+      console.error('AI rewrite error:', error);
+      alert('AI rewrite failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Auto-save status display
+  const renderSaveStatus = () => {
+    let statusText = '';
+    let statusColor = '';
+    
+    switch (saveStatus) {
+      case 'saving':
+        statusText = 'Saving...';
+        statusColor = 'text-yellow-600';
+        break;
+      case 'saved':
+        statusText = `Saved ${new Date().toLocaleTimeString()}`;
+        statusColor = 'text-green-600';
+        break;
+      case 'unsaved':
+        statusText = 'Unsaved changes';
+        statusColor = 'text-red-600';
+        break;
+      default:
+        statusText = 'Ready';
+        statusColor = 'text-gray-600';
+    }
+
+    return (
+      <div className={`text-xs ${statusColor} flex items-center space-x-1`}>
+        {saveStatus === 'saving' && <RefreshCw className="h-3 w-3 animate-spin" />}
+        <span>{statusText}</span>
+      </div>
+    );
+  };
           <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
             <button
               onClick={() => formatWysiwyg('justifyLeft')}

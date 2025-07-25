@@ -140,6 +140,9 @@ const PromptSupportEditor = ({
   const [showAiDropdown, setShowAiDropdown] = useState(false);
   const [showImageDropdown, setShowImageDropdown] = useState(false);
   const [showContentAnalysis, setShowContentAnalysis] = useState(false);
+  const [showAiBrainModal, setShowAiBrainModal] = useState(false);
+  const [aiResults, setAiResults] = useState({});
+  const [aiActionType, setAiActionType] = useState('');
   const [selectedText, setSelectedText] = useState('');
   const [activeFormats, setActiveFormats] = useState({
     bold: false,

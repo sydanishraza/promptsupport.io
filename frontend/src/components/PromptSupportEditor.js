@@ -3413,7 +3413,6 @@ const PromptSupportEditor = ({
       
       {/* Phase 4: Content Analysis Modal */}
       {renderContentAnalysisModal()}
-      {renderAiBrainModal()}
       
       {/* Custom Modal System */}
       {renderCustomModal()}

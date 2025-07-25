@@ -1137,6 +1137,71 @@ const PromptSupportEditor = ({
             </button>
           </div>
 
+          {/* Phase 4: AI & Collaboration Group */}
+          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
+            <div className="relative group">
+              <button
+                onClick={() => handleAIAssist('suggest')}
+                className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                  aiWritingMode ? 'animate-pulse' : ''
+                }`}
+                title="AI Writing Assistant"
+                disabled={aiWritingMode}
+              >
+                <Brain className="h-4 w-4" />
+              </button>
+              
+              <div className="absolute top-10 left-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
+                <button
+                  onClick={() => handleAIAssist('completion')}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  Complete Text
+                </button>
+                <button
+                  onClick={() => handleAIAssist('improvement')}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  <Lightbulb className="h-4 w-4 text-yellow-600" />
+                  Improve Writing
+                </button>
+                <button
+                  onClick={() => handleAIAssist('grammar')}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  <CheckSquare className="h-4 w-4 text-green-600" />
+                  Grammar Check
+                </button>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                showComments ? 'bg-blue-100 text-blue-600' : ''
+              }`}
+              title="Comments & Suggestions"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {comments.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {comments.length}
+                </span>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setShowAiPanel(!showAiPanel)}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                showAiPanel ? 'bg-purple-100 text-purple-600' : ''
+              }`}
+              title="Content Analytics"
+            >
+              <TrendingUp className="h-4 w-4" />
+            </button>
+          </div>
+
           {/* Special Elements Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button

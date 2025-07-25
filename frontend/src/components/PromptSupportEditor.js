@@ -1638,8 +1638,88 @@ const PromptSupportEditor = ({
   // === PHASE 2: MODAL COMPONENTS ===
   
   /**
-   * Render asset library modal for image selection
+   * Render content analysis popup modal
    */
+  const renderContentAnalysisModal = () => {
+    if (!showContentAnalysis) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Content Analysis</h3>
+            <button
+              onClick={() => setShowContentAnalysis(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Basic Metrics */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{contentAnalytics.wordCount || 0}</div>
+                <div className="text-sm text-gray-600">Words</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{contentAnalytics.readingTime || 0}</div>
+                <div className="text-sm text-gray-600">Min Read</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{contentAnalytics.sentences || 0}</div>
+                <div className="text-sm text-gray-600">Sentences</div>
+              </div>
+              <div className="text-center p-3 bg-orange-50 rounded-lg">
+                <div className="text-2xl font-bold text-orange-600">{contentAnalytics.paragraphs || 0}</div>
+                <div className="text-sm text-gray-600">Paragraphs</div>
+              </div>
+            </div>
+
+            {/* Readability Score */}
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium">Readability Score</span>
+                <span className={`font-bold ${
+                  (contentAnalytics.readabilityScore || 0) > 60 ? 'text-green-600' : 
+                  (contentAnalytics.readabilityScore || 0) > 30 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {contentAnalytics.readabilityScore || 0}/100
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full ${
+                    (contentAnalytics.readabilityScore || 0) > 60 ? 'bg-green-500' : 
+                    (contentAnalytics.readabilityScore || 0) > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${contentAnalytics.readabilityScore || 0}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* AI Insights */}
+            {contentAnalytics.aiInsights && (
+              <div className="p-4 bg-purple-50 rounded-lg">
+                <h4 className="font-medium text-purple-800 mb-2">AI Insights</h4>
+                <p className="text-sm text-purple-700">{contentAnalytics.aiInsights}</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setShowContentAnalysis(false)}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
   const renderAssetLibraryModal = () => {
     if (!showImageModal) return null;
     

@@ -820,7 +820,7 @@ const PromptSupportEditor = ({
           }
         } catch (error) {
           console.error('File upload error:', error);
-          alert('Failed to upload image. Please try again.');
+          showAlert('Failed to upload image. Please try again.', 'Upload Error');
           setUploadProgress(0);
         }
       }

@@ -124,6 +124,7 @@ const PromptSupportEditor = ({
   const [draggedOver, setDraggedOver] = useState(false);
   // State for cursor position preservation
   const [savedCursorPosition, setSavedCursorPosition] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   

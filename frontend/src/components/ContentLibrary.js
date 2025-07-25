@@ -349,7 +349,7 @@ const ContentLibrary = () => {
           onEdit={() => setIsEditing(true)}
           onSave={handleSaveArticle}
           onCancel={() => {
-            setIsEditMode(false);
+            setIsEditing(false);
             setSelectedArticle(null);
           }}
           onDelete={handleDeleteArticle}

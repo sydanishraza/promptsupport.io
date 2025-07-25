@@ -348,6 +348,62 @@ const PromptSupportEditor = ({
 
   // === PHASE 1: CORE EDITABLE SURFACE ===
   
+  // Custom modal functions to replace browser modals
+  const showAlert = (message, title = 'Notice') => {
+    setCustomModal({
+      show: true,
+      type: 'alert',
+      title,
+      message,
+      onConfirm: () => setCustomModal(prev => ({ ...prev, show: false })),
+      onCancel: null,
+      inputValue: '',
+      inputPlaceholder: ''
+    });
+  };
+
+  const showConfirm = (message, title = 'Confirm') => {
+    return new Promise((resolve) => {
+      setCustomModal({
+        show: true,
+        type: 'confirm',
+        title,
+        message,
+        onConfirm: () => {
+          setCustomModal(prev => ({ ...prev, show: false }));
+          resolve(true);
+        },
+        onCancel: () => {
+          setCustomModal(prev => ({ ...prev, show: false }));
+          resolve(false);
+        },
+        inputValue: '',
+        inputPlaceholder: ''
+      });
+    });
+  };
+
+  const showPrompt = (message, defaultValue = '', title = 'Input Required') => {
+    return new Promise((resolve) => {
+      setCustomModal({
+        show: true,
+        type: 'prompt',
+        title,
+        message,
+        onConfirm: (value) => {
+          setCustomModal(prev => ({ ...prev, show: false }));
+          resolve(value || null);
+        },
+        onCancel: () => {
+          setCustomModal(prev => ({ ...prev, show: false }));
+          resolve(null);
+        },
+        inputValue: defaultValue,
+        inputPlaceholder: message
+      });
+    });
+  };
+
   /**
    * Simple content change handler - no cursor manipulation
    * Let the browser handle cursor positioning naturally like the title input

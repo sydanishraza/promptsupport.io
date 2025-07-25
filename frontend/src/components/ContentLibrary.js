@@ -357,58 +357,61 @@ const ContentLibrary = () => {
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4 max-w-full overflow-hidden">
-      {/* Enhanced Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 flex-shrink-0">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-2">
-              <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Content Library</h1>
+    <div className="h-full flex flex-col space-y-3 sm:space-y-4 max-w-full overflow-hidden p-3 sm:p-0">
+      {/* Enhanced Header - Mobile Optimized */}
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6 flex-shrink-0">
+        <div className="flex flex-col space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-2">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Content Library</h1>
+              </div>
+              <p className="text-sm lg:text-base text-gray-600 mb-2 sm:mb-3">
+                Manage articles and assets.
+              </p>
             </div>
-            <p className="text-sm lg:text-base text-gray-600 mb-3">
-              Manage articles and assets.
-            </p>
-            <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500">
-              <span>Total Articles: {articles.length}</span>
-              <span className="hidden sm:inline">•</span>
-              <span>With Media: {articles.filter(a => a.content?.includes('data:image')).length}</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Total Assets: {actualAssetCount}</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Published: {articles.filter(a => a.status === 'published').length}</span>
+            
+            {/* Action Buttons - Mobile Stack */}
+            <div className="flex flex-col sm:flex-row gap-2 lg:gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => fetchArticles()}
+                className="flex items-center justify-center sm:justify-start px-3 py-2.5 sm:py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={() => setShowSnipAndRecord(true)}
+                className="flex items-center justify-center sm:justify-start px-3 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                <span>Snip & Record</span>
+              </button>
+              <button
+                onClick={handleCreateArticle}
+                className="flex items-center justify-center sm:justify-start px-3 py-2.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                <span>Create Article</span>
+              </button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-            <button
-              onClick={() => fetchArticles()}
-              className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
-            >
-              <RefreshCw className="h-4 w-4 mr-1 lg:mr-2" />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-            <button
-              onClick={() => setShowSnipAndRecord(true)}
-              className="flex items-center px-3 lg:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
-            >
-              <Camera className="h-4 w-4 mr-1 lg:mr-2" />
-              <span className="hidden sm:inline">Snip & Record</span>
-            </button>
-            <button
-              onClick={handleCreateArticle}
-              className="flex items-center px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
-            >
-              <Plus className="h-4 w-4 mr-1 lg:mr-2" />
-              <span className="hidden sm:inline">Create Article</span>
-            </button>
+          
+          {/* Stats - Mobile Optimized */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
+            <span className="whitespace-nowrap">Articles: {articles.length}</span>
+            <span className="whitespace-nowrap">Media: {articles.filter(a => a.content?.includes('data:image')).length}</span>
+            <span className="whitespace-nowrap">Assets: {actualAssetCount}</span>
+            <span className="whitespace-nowrap">Public: {articles.filter(a => a.status === 'published').length}</span>
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex space-x-4 lg:space-x-6 border-b border-gray-200 overflow-x-auto flex-shrink-0">
+      {/* Tab Navigation - Mobile Optimized */}
+      <div className="flex space-x-2 sm:space-x-4 lg:space-x-6 border-b border-gray-200 overflow-x-auto flex-shrink-0 px-3 sm:px-0 -mx-3 sm:mx-0">
         <button
           onClick={() => setCurrentView('articles')}
-          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap ${
+          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-sm sm:text-base ${
             currentView === 'articles'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -422,7 +425,7 @@ const ContentLibrary = () => {
         </button>
         <button
           onClick={() => setCurrentView('assets')}
-          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap ${
+          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-sm sm:text-base ${
             currentView === 'assets'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -436,30 +439,30 @@ const ContentLibrary = () => {
         </button>
       </div>
 
-      {/* Control Bar - Articles */}
+      {/* Control Bar - Articles - Mobile Optimized */}
       {currentView === 'articles' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
-              {/* Search */}
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search articles, tags, or content..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
-                />
-              </div>
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-3 sm:space-y-4">
+            {/* Search - Full Width on Mobile */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search articles, tags, or content..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm sm:text-base"
+              />
+            </div>
 
-              {/* Filter and Sort Dropdowns */}
-              <div className="flex gap-3">
+            {/* Filters and View - Mobile Stack */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="relative">
                   <select
                     value={selectedFilter}
                     onChange={(e) => setSelectedFilter(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
                   >
                     {filterOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -474,7 +477,7 @@ const ContentLibrary = () => {
                   <select
                     value={selectedSort}
                     onChange={(e) => setSelectedSort(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
                   >
                     {sortOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -485,54 +488,54 @@ const ContentLibrary = () => {
                   <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
-            </div>
 
-            {/* View Mode Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">View:</span>
-              <div className="relative">
-                <select
-                  value={viewMode}
-                  onChange={(e) => setViewMode(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  {viewOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              {/* View Mode Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500 hidden sm:inline">View:</span>
+                <div className="relative">
+                  <select
+                    value={viewMode}
+                    onChange={(e) => setViewMode(e.target.value)}
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                  >
+                    {viewOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Control Bar - Assets */}
+      {/* Control Bar - Assets - Mobile Optimized */}
       {currentView === 'assets' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
-              {/* Search */}
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search assets, articles, or descriptions..."
-                  value={assetSearchQuery}
-                  onChange={(e) => setAssetSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
-                />
-              </div>
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-3 sm:space-y-4">
+            {/* Search - Full Width on Mobile */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search assets, articles, or descriptions..."
+                value={assetSearchQuery}
+                onChange={(e) => setAssetSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm sm:text-base"
+              />
+            </div>
 
-              {/* Filter and Sort Dropdowns */}
-              <div className="flex gap-3">
+            {/* Filters and View - Mobile Stack */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="relative">
                   <select
                     value={assetFilterType}
                     onChange={(e) => setAssetFilterType(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
                   >
                     <option value="all">All Assets</option>
                     <option value="image">Images</option>
@@ -549,7 +552,7 @@ const ContentLibrary = () => {
                   <select
                     value={assetSortBy}
                     onChange={(e) => setAssetSortBy(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
                   >
                     <option value="dateAdded">Sort by Date Added</option>
                     <option value="name">Sort by Name</option>
@@ -560,33 +563,33 @@ const ContentLibrary = () => {
                   <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
-            </div>
 
-            {/* View Mode Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">View:</span>
-              <div className="relative">
-                <select
-                  value={assetViewMode}
-                  onChange={(e) => setAssetViewMode(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  <option value="grid">Grid View</option>
-                  <option value="list">List View</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              {/* View Mode Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500 hidden sm:inline">View:</span>
+                <div className="relative">
+                  <select
+                    value={assetViewMode}
+                    onChange={(e) => setAssetViewMode(e.target.value)}
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                  >
+                    <option value="grid">Grid View</option>
+                    <option value="list">List View</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Content Area */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 min-h-0 overflow-hidden">
+      {/* Content Area - Mobile Optimized */}
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 flex-1 min-h-0 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="flex items-center justify-center h-32 sm:h-64">
+              <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : currentView === 'articles' ? (
             <div className="overflow-x-auto">
@@ -619,43 +622,47 @@ const ContentLibrary = () => {
         </div>
       </div>
 
-      {/* Pagination - Articles */}
+      {/* Pagination - Articles - Mobile Optimized */}
       {currentView === 'articles' && articles.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-            <div className="text-sm text-gray-500">
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
               Showing {startArticle}-{endArticle} of {totalArticles} articles
-              {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+              {totalPages > 1 && (
+                <span className="block sm:inline sm:ml-1">(Page {currentPage} of {totalPages})</span>
+              )}
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center space-x-1 sm:space-x-2">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">‹</span>
                 </button>
                 
-                {/* Page numbers */}
+                {/* Page numbers - Responsive */}
                 <div className="flex items-center space-x-1">
-                  {[...Array(Math.min(5, totalPages))].map((_, index) => {
+                  {[...Array(Math.min(window.innerWidth < 640 ? 3 : 5, totalPages))].map((_, index) => {
                     let pageNum;
-                    if (totalPages <= 5) {
+                    const maxPages = window.innerWidth < 640 ? 3 : 5;
+                    if (totalPages <= maxPages) {
                       pageNum = index + 1;
-                    } else if (currentPage <= 3) {
+                    } else if (currentPage <= Math.floor(maxPages/2) + 1) {
                       pageNum = index + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + index;
+                    } else if (currentPage >= totalPages - Math.floor(maxPages/2)) {
+                      pageNum = totalPages - maxPages + 1 + index;
                     } else {
-                      pageNum = currentPage - 2 + index;
+                      pageNum = currentPage - Math.floor(maxPages/2) + index;
                     }
                     
                     return (
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                        className={`px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm rounded-md sm:rounded-lg transition-colors ${
                           currentPage === pageNum
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-600 hover:bg-gray-100'
@@ -670,9 +677,10 @@ const ContentLibrary = () => {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">›</span>
                 </button>
               </div>
             )}
@@ -680,43 +688,47 @@ const ContentLibrary = () => {
         </div>
       )}
 
-      {/* Pagination - Assets */}
+      {/* Pagination - Assets - Mobile Optimized */}
       {currentView === 'assets' && assetPagination && assetPagination.totalPages > 1 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-            <div className="text-sm text-gray-500">
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
               Showing {assetPagination.startIndex}-{assetPagination.endIndex} of {assetPagination.totalItems} assets
-              {assetPagination.totalPages > 1 && ` (Page ${assetPagination.currentPage} of ${assetPagination.totalPages})`}
+              {assetPagination.totalPages > 1 && (
+                <span className="block sm:inline sm:ml-1">(Page {assetPagination.currentPage} of {assetPagination.totalPages})</span>
+              )}
             </div>
             {assetPagination.totalPages > 1 && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center space-x-1 sm:space-x-2">
                 <button
                   onClick={() => assetPagination.onPageChange(assetPagination.currentPage - 1)}
                   disabled={assetPagination.currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">‹</span>
                 </button>
                 
-                {/* Page numbers */}
+                {/* Page numbers - Responsive */}
                 <div className="flex items-center space-x-1">
-                  {[...Array(Math.min(5, assetPagination.totalPages))].map((_, index) => {
+                  {[...Array(Math.min(window.innerWidth < 640 ? 3 : 5, assetPagination.totalPages))].map((_, index) => {
                     let pageNum;
-                    if (assetPagination.totalPages <= 5) {
+                    const maxPages = window.innerWidth < 640 ? 3 : 5;
+                    if (assetPagination.totalPages <= maxPages) {
                       pageNum = index + 1;
-                    } else if (assetPagination.currentPage <= 3) {
+                    } else if (assetPagination.currentPage <= Math.floor(maxPages/2) + 1) {
                       pageNum = index + 1;
-                    } else if (assetPagination.currentPage >= assetPagination.totalPages - 2) {
-                      pageNum = assetPagination.totalPages - 4 + index;
+                    } else if (assetPagination.currentPage >= assetPagination.totalPages - Math.floor(maxPages/2)) {
+                      pageNum = assetPagination.totalPages - maxPages + 1 + index;
                     } else {
-                      pageNum = assetPagination.currentPage - 2 + index;
+                      pageNum = assetPagination.currentPage - Math.floor(maxPages/2) + index;
                     }
                     
                     return (
                       <button
                         key={pageNum}
                         onClick={() => assetPagination.onPageChange(pageNum)}
-                        className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                        className={`px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm rounded-md sm:rounded-lg transition-colors ${
                           assetPagination.currentPage === pageNum
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-600 hover:bg-gray-100'
@@ -731,9 +743,10 @@ const ContentLibrary = () => {
                 <button
                   onClick={() => assetPagination.onPageChange(assetPagination.currentPage + 1)}
                   disabled={assetPagination.currentPage === assetPagination.totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">›</span>
                 </button>
               </div>
             )}

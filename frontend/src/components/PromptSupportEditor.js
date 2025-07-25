@@ -2830,6 +2830,122 @@ const PromptSupportEditor = ({
       </div>
     );
   };
+
+  /**
+   * Render custom modal system to replace browser modals
+   */
+  const renderCustomModal = () => {
+    if (!customModal.show) return null;
+    
+    const handleInputChange = (e) => {
+      setCustomModal(prev => ({ ...prev, inputValue: e.target.value }));
+    };
+    
+    const handleConfirm = () => {
+      if (customModal.type === 'prompt') {
+        customModal.onConfirm(customModal.inputValue);
+      } else {
+        customModal.onConfirm();
+      }
+    };
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-2 rounded-lg ${
+              customModal.type === 'alert' ? 'bg-blue-100' : 
+              customModal.type === 'confirm' ? 'bg-yellow-100' : 'bg-green-100'
+            }`}>
+              {customModal.type === 'alert' ? (
+                <Info className={`h-5 w-5 text-blue-600`} />
+              ) : customModal.type === 'confirm' ? (
+                <AlertTriangle className={`h-5 w-5 text-yellow-600`} />
+              ) : (
+                <Edit3 className={`h-5 w-5 text-green-600`} />
+              )}
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">{customModal.title}</h3>
+          </div>
+          
+          <p className="text-gray-700 mb-6">{customModal.message}</p>
+          
+          {customModal.type === 'prompt' && (
+            <input
+              type="text"
+              value={customModal.inputValue}
+              onChange={handleInputChange}
+              placeholder={customModal.inputPlaceholder}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-6"
+              autoFocus
+              onKeyPress={(e) => e.key === 'Enter' && handleConfirm()}
+            />
+          )}
+          
+          <div className="flex gap-3 justify-end">
+            {customModal.onCancel && (
+              <button
+                onClick={customModal.onCancel}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={handleConfirm}
+              className={`px-4 py-2 text-white rounded-lg transition-colors ${
+                customModal.type === 'alert' ? 'bg-blue-600 hover:bg-blue-700' :
+                customModal.type === 'confirm' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {customModal.type === 'prompt' ? 'OK' : customModal.type === 'confirm' ? 'Confirm' : 'OK'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render link tooltip for hover/edit functionality
+   */
+  const renderLinkTooltip = () => {
+    if (!linkTooltip.show) return null;
+    
+    return (
+      <div 
+        className="fixed z-50 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm"
+        style={{ 
+          left: linkTooltip.x, 
+          top: linkTooltip.y - 60,
+          transform: 'translateX(-50%)'
+        }}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <Link className="h-3 w-3" />
+          <span className="font-medium truncate max-w-48">{linkTooltip.url}</span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => editLink(linkTooltip.element)}
+            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => removeLink(linkTooltip.element)}
+            className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+        {/* Tooltip arrow */}
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+      </div>
+    );
+  };
+
   const renderAIPanel = () => {
     if (!showAiPanel) return null;
     

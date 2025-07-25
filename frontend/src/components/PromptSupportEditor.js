@@ -1812,8 +1812,13 @@ const PromptSupportEditor = ({
                   .wysiwyg-editor h3 { font-size: 1.5rem; font-weight: bold; margin: 0.75rem 0; line-height: 1.4; }
                   .wysiwyg-editor h4 { font-size: 1.25rem; font-weight: bold; margin: 0.625rem 0; line-height: 1.4; }
                   .wysiwyg-editor p { margin: 0.5rem 0; }
-                  .wysiwyg-editor ul, .wysiwyg-editor ol { margin: 0.5rem 0; padding-left: 1.5rem; }
-                  .wysiwyg-editor li { margin: 0.25rem 0; }
+                  .wysiwyg-editor ul { margin: 0.5rem 0; padding-left: 1.5rem; list-style-type: disc; }
+                  .wysiwyg-editor ol { margin: 0.5rem 0; padding-left: 1.5rem; list-style-type: decimal; }
+                  .wysiwyg-editor ul ul { list-style-type: circle; margin: 0.25rem 0; }
+                  .wysiwyg-editor ul ul ul { list-style-type: square; }
+                  .wysiwyg-editor ol ol { list-style-type: lower-alpha; margin: 0.25rem 0; }
+                  .wysiwyg-editor ol ol ol { list-style-type: lower-roman; }
+                  .wysiwyg-editor li { margin: 0.25rem 0; display: list-item; }
                   .wysiwyg-editor blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; color: #6b7280; background: #f9fafb; }
                   .wysiwyg-editor code { background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em; }
                   .wysiwyg-editor pre { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; margin: 16px 0; overflow-x: auto; }

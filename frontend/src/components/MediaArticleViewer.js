@@ -757,30 +757,49 @@ const MediaArticleViewer = ({
       </div>
     );
   };
+  // Enhanced toolbar for WYSIWYG editing with all modern features
   const renderWysiwygToolbar = () => {
     return (
       <div className="border-b border-gray-200 p-3 bg-gray-50">
         <div className="flex flex-wrap gap-2">
+          {/* Undo/Redo */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => document.execCommand('undo')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Undo (Ctrl+Z)"
+            >
+              <RefreshCw className="h-4 w-4 transform rotate-180" />
+            </button>
+            <button
+              onClick={() => document.execCommand('redo')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Redo (Ctrl+Y)"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
           {/* Basic Formatting */}
           <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
             <button
               onClick={() => formatWysiwyg('bold')}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-              title="Bold"
+              title="Bold (Ctrl+B)"
             >
               <Bold className="h-4 w-4" />
             </button>
             <button
               onClick={() => formatWysiwyg('italic')}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-              title="Italic"
+              title="Italic (Ctrl+I)"
             >
               <Italic className="h-4 w-4" />
             </button>
             <button
               onClick={() => formatWysiwyg('underline')}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
-              title="Underline"
+              title="Underline (Ctrl+U)"
             >
               <Underline className="h-4 w-4" />
             </button>
@@ -790,6 +809,18 @@ const MediaArticleViewer = ({
               title="Strikethrough"
             >
               <Strikethrough className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                const code = prompt('Enter inline code:');
+                if (code) {
+                  insertWysiwygHTML(`<code style="background-color: #f3f4f6; padding: 2px 4px; border-radius: 3px; font-family: monospace;">${code}</code>`);
+                }
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Inline Code"
+            >
+              <Code2 className="h-4 w-4" />
             </button>
           </div>
 
@@ -816,10 +847,210 @@ const MediaArticleViewer = ({
             >
               <Heading3 className="h-4 w-4" />
             </button>
+            <button
+              onClick={() => formatWysiwyg('formatBlock', 'h4')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Heading 4"
+            >
+              <span className="font-bold text-sm">H4</span>
+            </button>
           </div>
 
-          {/* Lists */}
+          {/* Lists and Alignment */}
           <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => formatWysiwyg('insertUnorderedList')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Bullet List"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('insertOrderedList')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Numbered List"
+            >
+              <span className="text-sm font-bold">1.</span>
+            </button>
+            <button
+              onClick={() => formatWysiwyg('indent')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Indent (Tab)"
+            >
+              →
+            </button>
+            <button
+              onClick={() => formatWysiwyg('outdent')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Outdent (Shift+Tab)"
+            >
+              ←
+            </button>
+          </div>
+
+          {/* Alignment */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => formatWysiwyg('justifyLeft')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Align Left"
+            >
+              <AlignLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('justifyCenter')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Align Center"
+            >
+              <AlignCenter className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => formatWysiwyg('justifyRight')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Align Right"
+            >
+              <AlignRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Insert Elements */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => {
+                const url = prompt('Enter link URL:');
+                if (url) {
+                  formatWysiwyg('createLink', url);
+                }
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Insert Link (Ctrl+K)"
+            >
+              <Link className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const img = `<img src="${event.target.result}" alt="${file.name}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0;" />`;
+                      insertWysiwygHTML(img);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                };
+                input.click();
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Insert Image"
+            >
+              <Image className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertContentBlock('table')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Insert Table"
+            >
+              <span className="text-xs font-bold">⊞</span>
+            </button>
+            <button
+              onClick={() => insertWysiwygHTML('<hr style="margin: 20px 0; border: none; border-top: 2px solid #e5e7eb;" />')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Insert Horizontal Line"
+            >
+              ─
+            </button>
+          </div>
+
+          {/* Special Blocks */}
+          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+            <button
+              onClick={() => insertContentBlock('quote')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Quote Block"
+            >
+              <Quote className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertContentBlock('codeBlock')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Code Block"
+            >
+              <Code className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => insertContentBlock('tip')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Tip Callout"
+            >
+              💡
+            </button>
+            <button
+              onClick={() => insertContentBlock('warning')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Warning Callout"
+            >
+              ⚠️
+            </button>
+            <button
+              onClick={() => insertContentBlock('note')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Note Callout"
+            >
+              📝
+            </button>
+            <button
+              onClick={() => insertContentBlock('expandable')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="Expandable Section"
+            >
+              📁
+            </button>
+          </div>
+
+          {/* AI Tools */}
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={handleAIEnhancement}
+              disabled={isProcessing}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded disabled:opacity-50"
+              title="AI Enhancement"
+            >
+              {isProcessing ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+            </button>
+            <button
+              onClick={() => {
+                const selection = window.getSelection();
+                if (selection.toString()) {
+                  // AI rewrite selected text (placeholder)
+                  console.log('AI rewrite:', selection.toString());
+                } else {
+                  alert('Please select text to rewrite');
+                }
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+              title="AI Rewrite Selected Text"
+            >
+              <Brain className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Slash Command Help */}
+        <div className="mt-2 text-xs text-gray-500">
+          💡 Type <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">/</kbd> for quick insert menu
+        </div>
+      </div>
+    );
+  };
             <button
               onClick={() => formatWysiwyg('insertUnorderedList')}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"

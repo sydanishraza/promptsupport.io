@@ -113,7 +113,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       animate={{ width: collapsed ? 64 : 256 }}
     >
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
         {!collapsed ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -128,7 +128,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
             </div>
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
             >
               <ChevronLeft size={16} />
             </button>
@@ -142,7 +142,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
             />
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
             >
               <ChevronRight size={16} />
             </button>

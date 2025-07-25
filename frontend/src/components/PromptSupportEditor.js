@@ -2638,6 +2638,22 @@ const PromptSupportEditor = ({
                     </div>
                   </div>
                 )}
+                
+                {/* Phase 3: Upload Progress Indicator */}
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 border">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="text-sm text-gray-600">Uploading... {uploadProgress}%</span>
+                    </div>
+                    <div className="w-48 bg-gray-200 rounded-full h-2 mt-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all" 
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1814,6 +1814,23 @@ const PromptSupportEditor = ({
                     color: '#1f2937',
                     outline: 'none'
                   }}
+                  css={`
+                    h1 { font-size: 2rem; font-weight: bold; margin: 1rem 0; }
+                    h2 { font-size: 1.75rem; font-weight: bold; margin: 0.875rem 0; }
+                    h3 { font-size: 1.5rem; font-weight: bold; margin: 0.75rem 0; }
+                    h4 { font-size: 1.25rem; font-weight: bold; margin: 0.625rem 0; }
+                    p { margin: 0.5rem 0; }
+                    ul, ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+                    li { margin: 0.25rem 0; }
+                    blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; color: #6b7280; }
+                    code { background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+                    pre { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; margin: 16px 0; overflow-x: auto; }
+                    strong, b { font-weight: bold; }
+                    em, i { font-style: italic; }
+                    u { text-decoration: underline; }
+                    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+                    td { border: 1px solid #e5e7eb; padding: 8px; }
+                  `}
                   suppressContentEditableWarning={true}
                 />
                 

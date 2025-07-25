@@ -1074,8 +1074,8 @@ const MediaArticleViewer = ({
         </div>
       )}
 
-      {/* Content Area */}
-      <div className="p-4 flex-1 overflow-y-auto">
+      {/* Content Area - Flex grow to fill available space */}
+      <div className="p-4 flex-1 overflow-hidden flex flex-col min-h-0">
         {viewMode === 'wysiwyg' ? (
           <div className="min-h-96">
             {isEditing ? (

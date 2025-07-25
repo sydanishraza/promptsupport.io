@@ -1313,7 +1313,7 @@ const PromptSupportEditor = ({
       
     } catch (error) {
       console.error('Unified AI Brain error:', error);
-      alert('AI Brain is currently unavailable. Please try again later.');
+      showAlert('AI Brain is currently unavailable. Please try again later.', 'AI Error');
     } finally {
       setAiWritingMode(false);
     }

@@ -1803,7 +1803,7 @@ const PromptSupportEditor = ({
     );
   };
 
-  // === SAVE HANDLING (Enhanced with real API) ===
+  // === SAVE HANDLING (Enhanced with real API and mode switching) ===
   
   const handleSave = async (publishAction = 'draft') => {
     try {
@@ -1846,20 +1846,37 @@ const PromptSupportEditor = ({
           await onSave({ ...articleData, id: article?.id || result.id });
         }
         
+        // Auto-exit edit mode after successful save
+        if (onCancel) {
+          onCancel(); // This should switch back to view mode
+        }
+        
         return true;
       } else {
         throw new Error('Save failed');
       }
     } catch (error) {
       console.error('Save error:', error);
+      alert('Save failed. Please try again.');
       return false;
     } finally {
       setIsAutoSaving(false);
     }
   };
 
-  const handlePublish = () => handleSave('published');
-  const handleSaveDraft = () => handleSave('draft');
+  const handlePublish = async () => {
+    const success = await handleSave('published');
+    if (success) {
+      alert('Article published successfully!');
+    }
+  };
+  
+  const handleSaveDraft = async () => {
+    const success = await handleSave('draft');
+    if (success) {
+      alert('Draft saved successfully!');
+    }
+  };
 
   // === PHASE 2: MODAL COMPONENTS ===
   

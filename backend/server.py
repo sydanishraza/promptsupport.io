@@ -49,7 +49,9 @@ app = FastAPI(
 )
 
 # Mount static files for serving uploaded images
-app.mount("/static", StaticFiles(directory="static"), name="static")
+import os
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # CORS middleware
 app.add_middleware(

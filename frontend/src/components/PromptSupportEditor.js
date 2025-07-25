@@ -2637,16 +2637,19 @@ const PromptSupportEditor = ({
                           onClick={() => {
                             const textToInsert = suggestion.text || suggestion;
                             if (aiResults.originalText) {
-                              // Replace selected text
+                              // Replace selected text with highlighting
                               const selection = window.getSelection();
                               if (selection.rangeCount > 0) {
                                 const range = selection.getRangeAt(0);
                                 range.deleteContents();
-                                range.insertNode(document.createTextNode(textToInsert));
+                                const highlightedHTML = highlightAppliedSuggestion(textToInsert);
+                                range.insertNode(document.createElement('span'));
+                                range.startContainer.innerHTML = highlightedHTML;
                               }
                             } else {
-                              // Insert at cursor
-                              executeCommand('insertHTML', ` ${textToInsert}`);
+                              // Insert at cursor with highlighting
+                              const highlightedHTML = highlightAppliedSuggestion(textToInsert);
+                              executeCommand('insertHTML', ` ${highlightedHTML}`);
                             }
                             setShowAiBrainModal(false);
                           }}

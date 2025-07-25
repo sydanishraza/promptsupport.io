@@ -493,6 +493,13 @@ const PromptSupportEditor = ({
   };
 
   /**
+   * Convert selected text to paragraph
+   */
+  const convertToParagraph = () => {
+    executeFormattingCommand('formatBlock', 'p');
+  };
+
+  /**
    * Detect active formatting at cursor position
    */
   const detectActiveFormats = () => {

@@ -1551,7 +1551,7 @@ const PromptSupportEditor = ({
   const addComment = () => {
     const selection = window.getSelection();
     if (selection.toString().length === 0) {
-      alert('Please select some text to comment on');
+      showAlert('Please select some text to comment on');
       return;
     }
     

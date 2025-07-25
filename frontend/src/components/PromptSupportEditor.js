@@ -50,6 +50,11 @@ const PromptSupportEditor = ({
   const [editorMode, setEditorMode] = useState('wysiwyg'); // 'wysiwyg' | 'markdown' | 'html'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
+  // === REFS ===
+  const editorRef = useRef(null);
+  const markdownRef = useRef(null);
+  const htmlRef = useRef(null);
+  
   // === CONTENT REF CALLBACK ===
   const contentRef = (element) => {
     editorRef.current = element;

@@ -1556,6 +1556,10 @@ const PromptSupportEditor = ({
       {/* Phase 2: Modals */}
       {renderTableModal()}
       
+      {/* Phase 4: AI and Collaboration Panels */}
+      {renderAIPanel()}
+      {renderCollaborationSidebar()}
+      
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -537,8 +537,9 @@ const PromptSupportEditor = ({
                 dangerouslySetInnerHTML={{ __html: content || '<p>No content</p>' }} 
               />
             ) : (
-              // Edit mode: use clean contentEditable with initial content
+              // Edit mode: use clean contentEditable with controlled initialization
               <div
+                key={`editor-${isEditing}-${article?.id}`} // Force re-render when switching modes
                 ref={editorRef}
                 contentEditable={true}
                 onInput={(e) => {
@@ -556,7 +557,7 @@ const PromptSupportEditor = ({
                   outline: 'none'
                 }}
                 suppressContentEditableWarning={true}
-                dangerouslySetInnerHTML={content ? { __html: content } : { __html: '<p>Start writing your content...</p>' }}
+                dangerouslySetInnerHTML={{ __html: content || '<p>Start writing your content...</p>' }}
               />
             )}
           </div>

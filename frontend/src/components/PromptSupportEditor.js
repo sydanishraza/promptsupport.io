@@ -2298,20 +2298,6 @@ const PromptSupportEditor = ({
             </button>
           </div>
 
-          {/* Phase 4: Unified AI Brain Tool */}
-          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
-            <button
-              onClick={() => handleUnifiedAIBrain()}
-              className={`p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-100 rounded transition-colors ${
-                aiWritingMode ? 'animate-pulse' : ''
-              }`}
-              title="AI Brain - Suggestions & Improvements"
-              disabled={aiWritingMode}
-            >
-              <Brain className="h-4 w-4" />
-            </button>
-          </div>
-
           {/* Collaboration & Analytics Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button

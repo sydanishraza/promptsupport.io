@@ -1066,9 +1066,66 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Show asset library modal for image selection (Fixed hooks issue)
+   * Save current cursor position for later restoration
+   */
+  const saveCursorPosition = () => {
+    if (!editorRef.current || editorMode !== 'wysiwyg') return;
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      
+      // Save the range information
+      const savedRange = {
+        startContainer: range.startContainer,
+        startOffset: range.startOffset,
+        endContainer: range.endContainer,
+        endOffset: range.endOffset,
+        collapsed: range.collapsed
+      };
+      
+      setSavedCursorPosition(savedRange);
+    }
+  };
+
+  /**
+   * Restore previously saved cursor position
+   */
+  const restoreCursorPosition = () => {
+    if (!savedCursorPosition || !editorRef.current || editorMode !== 'wysiwyg') return;
+    
+    try {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      
+      // Restore the range
+      range.setStart(savedCursorPosition.startContainer, savedCursorPosition.startOffset);
+      range.setEnd(savedCursorPosition.endContainer, savedCursorPosition.endOffset);
+      
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // Clear saved position
+      setSavedCursorPosition(null);
+    } catch (error) {
+      console.error('Error restoring cursor position:', error);
+      // Fallback: position at end of editor
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  };
+
+  /**
+   * Show asset library modal for image selection (with cursor position preservation)
    */
   const showAssetLibrary = async () => {
+    // Save current cursor position before opening modal
+    saveCursorPosition();
+    
     setShowImageModal(true);
     setAssetsLoading(true);
     

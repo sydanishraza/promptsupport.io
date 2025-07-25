@@ -883,6 +883,39 @@ const PromptSupportEditor = ({
             </button>
           </div>
 
+          {/* Phase 3: Media Group */}
+          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => handleFileUpload(e.target.files)}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Upload Image"
+            >
+              <Image className="h-4 w-4" />
+            </button>
+            <button
+              onClick={insertVideoEmbed}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Embed Video"
+            >
+              <Video className="h-4 w-4" />
+            </button>
+            <button
+              onClick={insertLink}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Insert Link (⌘K)"
+            >
+              <Link className="h-4 w-4" />
+            </button>
+          </div>
+
           {/* Special Elements Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button

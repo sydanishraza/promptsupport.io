@@ -249,7 +249,8 @@ const AssetManager = ({ articles, onArticleSelect }) => {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-4">
+    <>
+      <div className="p-4 lg:p-6 space-y-4">
       {/* Enhanced Asset Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">

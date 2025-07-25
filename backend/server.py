@@ -305,21 +305,39 @@ async def create_article(request: SaveArticleRequest):
 
 @app.get("/api/assets")
 async def get_assets():
-    """Get all assets from the asset library including embedded images from articles"""
+    """Get all assets from the asset library including both file-based and embedded images"""
     try:
-        collection = db["content_library"]
+        content_collection = db["content_library"]
+        assets_collection = db["assets"]
         
-        # Get direct image assets
-        direct_assets_cursor = collection.find({"type": {"$in": ["image", "media"]}})
+        # Get file-based assets from the new assets collection
+        file_assets_cursor = assets_collection.find({})
+        file_assets = await file_assets_cursor.to_list(length=200)
+        
+        # Get direct image assets from content_library (legacy)
+        direct_assets_cursor = content_collection.find({"type": {"$in": ["image", "media"]}})
         direct_assets = await direct_assets_cursor.to_list(length=100)
         
         # Get articles with embedded images
-        articles_cursor = collection.find({"content": {"$regex": "data:image", "$options": "i"}})
+        articles_cursor = content_collection.find({"content": {"$regex": "data:image", "$options": "i"}})
         articles_with_images = await articles_cursor.to_list(length=200)
         
         formatted_assets = []
         
-        # Add direct assets
+        # Add file-based assets (new system)
+        for asset in file_assets:
+            formatted_assets.append({
+                "id": asset.get("id", str(asset.get("_id"))),
+                "name": asset.get("original_filename", asset.get("name", "Untitled")),
+                "type": "image",
+                "url": asset.get("url"),  # File URL instead of base64
+                "data": asset.get("url"),  # For compatibility, use URL as data
+                "created_at": asset.get("created_at"),
+                "size": asset.get("size", 0),
+                "storage_type": "file"
+            })
+        
+        # Add direct assets (legacy base64 system)
         for asset in direct_assets:
             if asset.get("data"):
                 formatted_assets.append({
@@ -328,7 +346,8 @@ async def get_assets():
                     "type": "image",
                     "data": asset.get("data"),
                     "created_at": asset.get("created_at"),
-                    "size": len(asset.get("data", "")) if asset.get("data") else 0
+                    "size": len(asset.get("data", "")) if asset.get("data") else 0,
+                    "storage_type": "base64"
                 })
         
         # Extract images from articles
@@ -370,7 +389,8 @@ async def get_assets():
                                 "type": "image", 
                                 "data": image_data,
                                 "created_at": article.get("created_at"),
-                                "size": len(image_data)
+                                "size": len(image_data),
+                                "storage_type": "embedded"
                             })
         
         # Sort by creation date (newest first) - handle mixed datetime/string types

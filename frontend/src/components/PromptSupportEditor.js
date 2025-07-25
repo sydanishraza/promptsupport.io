@@ -2392,7 +2392,7 @@ const PromptSupportEditor = ({
     
     const success = await handleSave('draft', true);
     if (success) {
-      alert('Draft saved successfully!');
+      showAlert('Draft saved successfully!', 'Success');
     }
   };
 

@@ -2210,7 +2210,7 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Render AI Brain results modal with metrics and suggestions
+   * Render unified AI Brain results modal with comprehensive suggestions and improvements
    */
   const renderAiBrainModal = () => {
     if (!showAiBrainModal) return null;
@@ -2218,16 +2218,39 @@ const PromptSupportEditor = ({
     const actionLabels = {
       completion: 'Text Completion',
       improvement: 'Writing Improvement', 
-      grammar: 'Grammar Check'
+      grammar: 'Grammar Check',
+      unified: 'AI Brain Analysis'
+    };
+    
+    const getSuggestionIcon = (type) => {
+      switch (type) {
+        case 'completion':
+          return <Sparkles className="h-4 w-4 text-purple-600" />;
+        case 'improvement':
+          return <Lightbulb className="h-4 w-4 text-yellow-600" />;
+        case 'grammar':
+          return <CheckSquare className="h-4 w-4 text-green-600" />;
+        default:
+          return <Brain className="h-4 w-4 text-blue-600" />;
+      }
+    };
+    
+    const getSuggestionTypeLabel = (type) => {
+      switch (type) {
+        case 'completion': return 'Text Completion';
+        case 'improvement': return 'Writing Improvement';
+        case 'grammar': return 'Grammar Check';
+        default: return 'Suggestion';
+      }
     };
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-96 max-w-lg max-h-96 overflow-y-auto">
+        <div className="bg-white rounded-lg p-6 w-[600px] max-w-4xl max-h-[80vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              AI Brain - {actionLabels[aiActionType]}
+              <Brain className="h-5 w-5 text-purple-600" />
+              {actionLabels[aiActionType]}
             </h3>
             <button
               onClick={() => setShowAiBrainModal(false)}
@@ -2237,61 +2260,111 @@ const PromptSupportEditor = ({
             </button>
           </div>
           
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{aiResults.wordsProcessed || 0}</div>
-              <div className="text-sm text-gray-600">Words Processed</div>
+          {/* Unified Mode Metrics */}
+          {aiActionType === 'unified' ? (
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{aiResults.completionCount || 0}</div>
+                <div className="text-sm text-gray-600">Completions</div>
+              </div>
+              <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600">{aiResults.improvementCount || 0}</div>
+                <div className="text-sm text-gray-600">Improvements</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{aiResults.grammarCount || 0}</div>
+                <div className="text-sm text-gray-600">Grammar Fixes</div>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{aiResults.wordsProcessed || 0}</div>
+                <div className="text-sm text-gray-600">Words Analyzed</div>
+              </div>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{aiResults.suggestionsGenerated || 0}</div>
-              <div className="text-sm text-gray-600">Suggestions</div>
+          ) : (
+            /* Single Mode Metrics */
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{aiResults.wordsProcessed || 0}</div>
+                <div className="text-sm text-gray-600">Words Processed</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{aiResults.suggestionsGenerated || 0}</div>
+                <div className="text-sm text-gray-600">Suggestions</div>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{aiResults.improvements || 0}</div>
+                <div className="text-sm text-gray-600">Improvements</div>
+              </div>
+              <div className="text-center p-3 bg-orange-50 rounded-lg">
+                <div className="text-2xl font-bold text-orange-600">{Math.round(aiResults.confidence) || 0}%</div>
+                <div className="text-sm text-gray-600">Confidence</div>
+              </div>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{aiResults.improvements || 0}</div>
-              <div className="text-sm text-gray-600">Improvements</div>
-            </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">{Math.round(aiResults.confidence) || 0}%</div>
-              <div className="text-sm text-gray-600">Confidence</div>
-            </div>
-          </div>
+          )}
 
-          {/* Suggestions */}
+          {/* Suggestions & Improvements */}
           {aiResults.suggestions && aiResults.suggestions.length > 0 && (
             <div className="mb-4">
-              <h4 className="font-medium text-gray-800 mb-2">AI Suggestions:</h4>
-              <div className="space-y-2">
+              <h4 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-600" />
+                AI Suggestions & Improvements:
+              </h4>
+              <div className="space-y-3 max-h-60 overflow-y-auto">
                 {aiResults.suggestions.map((suggestion, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded border-l-4 border-purple-500">
-                    <p className="text-sm text-gray-700">{suggestion}</p>
-                    <button
-                      onClick={() => {
-                        if (aiResults.originalText) {
-                          // Replace selected text
-                          const selection = window.getSelection();
-                          if (selection.rangeCount > 0) {
-                            const range = selection.getRangeAt(0);
-                            range.deleteContents();
-                            range.insertNode(document.createTextNode(suggestion));
-                          }
-                        } else {
-                          // Insert at cursor
-                          executeCommand('insertHTML', ` ${suggestion}`);
-                        }
-                        setShowAiBrainModal(false);
-                      }}
-                      className="mt-2 px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
-                    >
-                      Apply Suggestion
-                    </button>
+                  <div key={index} className="border border-gray-200 rounded-lg p-3 hover:border-purple-300 transition-colors">
+                    <div className="flex items-start gap-2">
+                      {suggestion.type ? getSuggestionIcon(suggestion.type) : <Brain className="h-4 w-4 text-blue-600 mt-0.5" />}
+                      <div className="flex-1">
+                        {suggestion.type && (
+                          <div className="text-xs text-gray-500 mb-1">
+                            {getSuggestionTypeLabel(suggestion.type)}
+                          </div>
+                        )}
+                        <p className="text-sm text-gray-700 mb-2">
+                          {suggestion.text || suggestion}
+                        </p>
+                        <button
+                          onClick={() => {
+                            const textToInsert = suggestion.text || suggestion;
+                            if (aiResults.originalText) {
+                              // Replace selected text
+                              const selection = window.getSelection();
+                              if (selection.rangeCount > 0) {
+                                const range = selection.getRangeAt(0);
+                                range.deleteContents();
+                                range.insertNode(document.createTextNode(textToInsert));
+                              }
+                            } else {
+                              // Insert at cursor
+                              executeCommand('insertHTML', ` ${textToInsert}`);
+                            }
+                            setShowAiBrainModal(false);
+                          }}
+                          className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* No suggestions message */}
+          {(!aiResults.suggestions || aiResults.suggestions.length === 0) && (
+            <div className="text-center py-8">
+              <Brain className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500">No AI suggestions available at the moment.</p>
+              <p className="text-sm text-gray-400 mt-1">Try selecting some text or typing more content.</p>
+            </div>
+          )}
           
-          <div className="text-center">
+          <div className="flex justify-between items-center mt-6">
+            <div className="text-xs text-gray-500">
+              {aiResults.originalText ? `Selected: "${aiResults.originalText.substring(0, 50)}..."` : 'Full document analyzed'}
+            </div>
             <button
               onClick={() => setShowAiBrainModal(false)}
               className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"

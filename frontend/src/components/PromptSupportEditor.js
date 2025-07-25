@@ -497,7 +497,11 @@ const PromptSupportEditor = ({
           <div
             ref={editorRef}
             contentEditable={isEditing}
-            onInput={(e) => handleContentChange(e.target.innerHTML, 'wysiwyg')}
+            onInput={(e) => {
+              // Simple natural input handling like the title
+              setContent(e.target.innerHTML);
+              setHasUnsavedChanges(true);
+            }}
             onKeyDown={handleKeyDown}
             className={`h-full p-6 overflow-y-auto focus:outline-none ${
               isEditing ? 'prose prose-lg max-w-none' : 'prose prose-lg max-w-none'

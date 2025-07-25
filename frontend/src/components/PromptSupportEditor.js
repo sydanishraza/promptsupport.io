@@ -498,25 +498,28 @@ const PromptSupportEditor = ({
             ref={editorRef}
             contentEditable={isEditing}
             onInput={(e) => {
-              // Simple natural input handling like the title
               setContent(e.target.innerHTML);
               setHasUnsavedChanges(true);
             }}
             onKeyDown={handleKeyDown}
-            className="h-full p-6 overflow-y-auto focus:outline-none prose prose-lg max-w-none"
+            className="h-full p-6 overflow-y-auto focus:outline-none"
             style={{
               minHeight: '400px',
               lineHeight: '1.7',
               fontSize: '16px',
-              direction: 'ltr',
-              writingMode: 'lr-tb'
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              color: '#1f2937'
             }}
             suppressContentEditableWarning={true}
           >
-            {isEditing && !content ? (
-              <p style={{ color: '#9ca3af' }}>Start writing your content...</p>
+            {!isEditing ? (
+              <div dangerouslySetInnerHTML={{ __html: content || '<p>No content</p>' }} />
             ) : (
-              <div dangerouslySetInnerHTML={{ __html: content }} />
+              content ? (
+                <div dangerouslySetInnerHTML={{ __html: content }} />
+              ) : (
+                <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>Start writing your content...</p>
+              )
             )}
           </div>
         ) : editorMode === 'markdown' ? (

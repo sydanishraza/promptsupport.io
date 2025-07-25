@@ -460,41 +460,91 @@ const PromptSupportEditor = ({
     }
   };
 
-  // Simplified paste handler to ensure text selection works
+  // Enhanced paste handler with support for both plain text and rich content
   const handlePaste = (e) => {
     e.preventDefault();
     
-    // Get plain text from clipboard
     const clipboardData = e.clipboardData || window.clipboardData;
-    const pastedText = clipboardData.getData('text/plain');
     
-    if (!pastedText) return;
+    // Try to get HTML content first (for rich text)
+    let pastedContent = clipboardData.getData('text/html');
     
-    // Insert plain text while maintaining DOM structure
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      
-      // Create a text node to preserve selection functionality
-      const textNode = document.createTextNode(pastedText);
-      range.insertNode(textNode);
-      
-      // Place cursor at the end of inserted text
-      range.setStartAfter(textNode);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
+    // If no HTML, get plain text
+    if (!pastedContent) {
+      pastedContent = clipboardData.getData('text/plain');
     }
     
-    // Update content state
-    setTimeout(() => {
-      const editorElement = document.querySelector('[contenteditable]');
-      if (editorElement) {
-        setContent(editorElement.innerHTML);
-        setHasUnsavedChanges(true);
+    if (!pastedContent) return;
+    
+    // Clean up the pasted content - remove dangerous tags and scripts
+    const cleanContent = pastedContent
+      .replace(/<script[^>]*>.*?<\/script>/gi, '')
+      .replace(/<style[^>]*>.*?<\/style>/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers
+      .replace(/javascript:/gi, ''); // Remove javascript: URLs
+    
+    // Use document.execCommand for better compatibility and cursor positioning
+    try {
+      // Focus the editor first
+      if (editorRef.current) {
+        editorRef.current.focus();
       }
-    }, 10);
+      
+      // Insert the content using execCommand which handles cursor positioning automatically
+      if (cleanContent.includes('<') && cleanContent.includes('>')) {
+        // Rich HTML content
+        document.execCommand('insertHTML', false, cleanContent);
+      } else {
+        // Plain text content
+        document.execCommand('insertText', false, cleanContent);
+      }
+      
+      // Update content state
+      setTimeout(() => {
+        if (editorRef.current) {
+          setContent(editorRef.current.innerHTML);
+          setHasUnsavedChanges(true);
+        }
+      }, 10);
+      
+    } catch (error) {
+      console.error('Paste error:', error);
+      
+      // Fallback method if execCommand fails
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        
+        if (cleanContent.includes('<') && cleanContent.includes('>')) {
+          // Create a temporary div to parse HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = cleanContent;
+          
+          // Insert all child nodes
+          while (tempDiv.firstChild) {
+            range.insertNode(tempDiv.firstChild);
+          }
+        } else {
+          // Insert plain text
+          const textNode = document.createTextNode(cleanContent);
+          range.insertNode(textNode);
+          range.setStartAfter(textNode);
+        }
+        
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Update content state
+        setTimeout(() => {
+          if (editorRef.current) {
+            setContent(editorRef.current.innerHTML);
+            setHasUnsavedChanges(true);
+          }
+        }, 10);
+      }
+    }
   };
 
   /**

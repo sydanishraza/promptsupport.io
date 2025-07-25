@@ -22,6 +22,8 @@ from pymongo import MongoClient
 import aiofiles
 from dotenv import load_dotenv
 import requests
+import httpx
+import re
 from bs4 import BeautifulSoup
 from media_intelligence import media_intelligence
 

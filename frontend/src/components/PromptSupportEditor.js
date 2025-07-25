@@ -1463,27 +1463,56 @@ const PromptSupportEditor = ({
     );
   };
 
-  // === SAVE HANDLING (Enhanced) ===
+  // === SAVE HANDLING (Enhanced with real API) ===
   
   const handleSave = async (publishAction = 'draft') => {
     try {
+      setIsAutoSaving(true);
+      
       const articleData = {
-        id: article.id,
         title: title,
         content: content,
-        status: publishAction // 'draft', 'published'
+        status: publishAction
       };
 
-      // Show saving state
-      setIsAutoSaving(true);
-      const success = await onSave(articleData);
-      
-      if (success) {
+      let response;
+      if (article?.id) {
+        // Update existing article
+        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/content-library/${article.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(articleData)
+        });
+      } else {
+        // Create new article
+        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/content-library`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(articleData)
+        });
+      }
+
+      if (response.ok) {
+        const result = await response.json();
         setHasUnsavedChanges(false);
         setLastSaved(new Date());
+        
+        // Call onSave prop if provided
+        if (onSave) {
+          await onSave({ ...articleData, id: article?.id || result.id });
+        }
+        
+        return true;
+      } else {
+        throw new Error('Save failed');
       }
     } catch (error) {
       console.error('Save error:', error);
+      return false;
     } finally {
       setIsAutoSaving(false);
     }

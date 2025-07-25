@@ -142,20 +142,16 @@ const PromptSupportEditor = ({
   // === PHASE 1: FORMATTING COMMANDS ===
   
   /**
-   * Execute formatting commands with proper cursor handling
+   * Execute formatting commands with natural cursor behavior
    */
   const executeCommand = (command, value = null) => {
     if (editorRef.current && editorMode === 'wysiwyg') {
       editorRef.current.focus();
       
       try {
-        const success = document.execCommand(command, false, value);
-        if (success) {
-          // Update content after command execution
-          setTimeout(() => {
-            handleContentChange(editorRef.current.innerHTML, 'wysiwyg');
-          }, 10);
-        }
+        document.execCommand(command, false, value);
+        // Let the browser handle the update naturally
+        setHasUnsavedChanges(true);
       } catch (error) {
         console.error('Command execution failed:', error);
       }

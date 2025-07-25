@@ -301,18 +301,23 @@ async def create_article(request: SaveArticleRequest):
 
 @app.get("/api/assets")
 async def get_assets():
-    """Get all assets from the asset library"""
+    """Get all assets from the asset library including embedded images from articles"""
     try:
         collection = db["content_library"]
         
-        # Get all image assets
-        assets_cursor = collection.find({"type": {"$in": ["image", "media"]}})
-        assets_list = await assets_cursor.to_list(length=100)
+        # Get direct image assets
+        direct_assets_cursor = collection.find({"type": {"$in": ["image", "media"]}})
+        direct_assets = await direct_assets_cursor.to_list(length=100)
         
-        # Format assets for frontend
+        # Get articles with embedded images
+        articles_cursor = collection.find({"content": {"$regex": "data:image", "$options": "i"}})
+        articles_with_images = await articles_cursor.to_list(length=200)
+        
         formatted_assets = []
-        for asset in assets_list:
-            if asset.get("data"):  # Has base64 image data
+        
+        # Add direct assets
+        for asset in direct_assets:
+            if asset.get("data"):
                 formatted_assets.append({
                     "id": asset.get("id", str(asset.get("_id"))),
                     "name": asset.get("title", asset.get("name", "Untitled")),
@@ -321,6 +326,34 @@ async def get_assets():
                     "created_at": asset.get("created_at"),
                     "size": len(asset.get("data", "")) if asset.get("data") else 0
                 })
+        
+        # Extract images from articles
+        import re
+        for article in articles_with_images:
+            content = article.get("content", "")
+            if content:
+                # Find all base64 images in content
+                image_matches = re.findall(r'(data:image/[^;]+;base64,[A-Za-z0-9+/=]+)', content)
+                
+                for i, image_data in enumerate(image_matches):
+                    # Skip very small images (likely placeholders)
+                    if len(image_data) > 100:
+                        asset_id = f"{article.get('id', str(article.get('_id')))}_img_{i}"
+                        asset_name = f"Image from {article.get('title', 'article')[:30]}"
+                        
+                        # Check if this asset is already added
+                        if not any(a.get('id') == asset_id for a in formatted_assets):
+                            formatted_assets.append({
+                                "id": asset_id,
+                                "name": asset_name,
+                                "type": "image", 
+                                "data": image_data,
+                                "created_at": article.get("created_at"),
+                                "size": len(image_data)
+                            })
+        
+        # Sort by creation date (newest first)
+        formatted_assets.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         
         return {"assets": formatted_assets, "total": len(formatted_assets)}
         

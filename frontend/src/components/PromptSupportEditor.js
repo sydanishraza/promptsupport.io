@@ -60,7 +60,8 @@ import {
   CheckSquare,
   MessageCircle,
   User,
-  Sparkles
+  Sparkles,
+  ImageIcon
 } from 'lucide-react';
 
 /**

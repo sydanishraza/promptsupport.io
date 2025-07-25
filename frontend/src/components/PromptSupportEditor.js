@@ -1290,22 +1290,6 @@ const PromptSupportEditor = ({
       setTimeout(() => {
         setContent(editorRef.current.innerHTML);
         setHasUnsavedChanges(true);
-        
-        // Ensure editor content maintains proper height after image insertion
-        if (editorRef.current) {
-          // Force minimum height if content is shorter than viewport
-          const currentHeight = editorRef.current.scrollHeight;
-          const minContentHeight = 400; // Minimum height to ensure scrollability
-          
-          if (currentHeight < minContentHeight) {
-            // Add temporary spacing to maintain scrollable height
-            const tempSpacing = document.createElement('div');
-            tempSpacing.style.height = `${minContentHeight - currentHeight + 100}px`;
-            tempSpacing.style.visibility = 'hidden';
-            tempSpacing.setAttribute('data-temp-spacing', 'true');
-            editorRef.current.appendChild(tempSpacing);
-          }
-        }
       }, 50);
       
     } catch (error) {

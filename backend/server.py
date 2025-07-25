@@ -48,10 +48,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Mount static files for serving uploaded images
+# Mount static files for serving uploaded images under /api/static route
 import os
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/api/static", StaticFiles(directory=static_dir), name="static")
 
 # CORS middleware
 app.add_middleware(

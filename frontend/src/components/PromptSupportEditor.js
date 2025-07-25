@@ -1245,6 +1245,13 @@ const PromptSupportEditor = ({
         selection.addRange(range);
       }
       
+      // Immediately ensure editor scrollability after insertion
+      if (editorRef.current) {
+        editorRef.current.style.overflowY = 'auto';
+        editorRef.current.style.maxHeight = '500px';
+        editorRef.current.style.height = 'auto';
+      }
+      
       // Update content state and mark as changed
       setTimeout(() => {
         setContent(editorRef.current.innerHTML);

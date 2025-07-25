@@ -38,7 +38,18 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  ChevronRight
+  ChevronRight,
+  Image,
+  Upload,
+  Link,
+  Video,
+  FileIcon,
+  Maximize2,
+  RotateCw,
+  Crop,
+  Zap,
+  Command,
+  Search
 } from 'lucide-react';
 
 /**

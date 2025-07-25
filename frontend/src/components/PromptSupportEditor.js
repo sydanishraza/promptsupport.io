@@ -791,7 +791,99 @@ const PromptSupportEditor = ({
     setCollaborators(mockCollaborators);
   };
 
-  // === PHASE 2: ADVANCED FORMATTING ===
+  // === MARKDOWN CONVERSION ===
+  
+  /**
+   * Convert HTML to Markdown
+   */
+  const htmlToMarkdown = (html) => {
+    let markdown = html;
+    
+    // Convert headings
+    markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
+    markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
+    markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
+    markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
+    
+    // Convert formatting
+    markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+    markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+    markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+    markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+    markdown = markdown.replace(/<u[^>]*>(.*?)<\/u>/gi, '_$1_');
+    
+    // Convert lists
+    markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
+      return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n') + '\n';
+    });
+    markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
+      let counter = 1;
+      return content.replace(/<li[^>]*>(.*?)<\/li>/gi, () => `${counter++}. $1\n`) + '\n';
+    });
+    
+    // Convert blockquotes
+    markdown = markdown.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, (match, content) => {
+      return content.replace(/<p[^>]*>(.*?)<\/p>/gi, '> $1\n') + '\n';
+    });
+    
+    // Convert code
+    markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+    markdown = markdown.replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, (match, content) => {
+      return '```\n' + content.replace(/<br[^>]*>/gi, '\n') + '\n```\n\n';
+    });
+    
+    // Convert links
+    markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+    
+    // Convert paragraphs
+    markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
+    
+    // Clean up extra whitespace and HTML tags
+    markdown = markdown.replace(/<[^>]*>/g, '');
+    markdown = markdown.replace(/\n\s*\n\s*\n/g, '\n\n');
+    markdown = markdown.trim();
+    
+    return markdown;
+  };
+
+  /**
+   * Convert Markdown to HTML
+   */
+  const markdownToHtml = (markdown) => {
+    let html = markdown;
+    
+    // Convert headings
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+    
+    // Convert formatting
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.*?)_/g, '<u>$1</u>');
+    
+    // Convert code blocks
+    html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+    
+    // Convert links
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    
+    // Convert lists
+    html = html.replace(/^\- (.*)$/gim, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    html = html.replace(/^\d+\. (.*)$/gim, '<li>$1</li>');
+    
+    // Convert blockquotes
+    html = html.replace(/^> (.*)$/gim, '<blockquote><p>$1</p></blockquote>');
+    
+    // Convert paragraphs
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = '<p>' + html + '</p>';
+    
+    return html;
+  };
   
   /**
    * Handle text alignment

@@ -147,6 +147,7 @@ const PromptSupportEditor = ({
   // Asset library modal state
   const [assets, setAssets] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetSearchTerm, setAssetSearchTerm] = useState('');
   // Save state management
   const [isSaving, setIsSaving] = useState(false);
   const [activeFormats, setActiveFormats] = useState({

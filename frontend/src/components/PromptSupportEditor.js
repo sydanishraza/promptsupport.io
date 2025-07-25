@@ -1247,9 +1247,11 @@ const PromptSupportEditor = ({
       
       // Immediately ensure editor scrollability after insertion
       if (editorRef.current) {
-        editorRef.current.style.overflowY = 'auto';
-        editorRef.current.style.maxHeight = '500px';
-        editorRef.current.style.height = 'auto';
+        // Use setProperty with important to override any CSS conflicts
+        editorRef.current.style.setProperty('overflow-y', 'auto', 'important');
+        editorRef.current.style.setProperty('max-height', '500px', 'important');
+        editorRef.current.style.setProperty('height', 'auto', 'important');
+        editorRef.current.style.setProperty('overflow-x', 'hidden', 'important');
       }
       
       // Update content state and mark as changed
@@ -1257,19 +1259,20 @@ const PromptSupportEditor = ({
         setContent(editorRef.current.innerHTML);
         setHasUnsavedChanges(true);
         
-        // Ensure editor remains scrollable by forcing proper overflow and height
+        // Double-check and ensure editor remains scrollable
         if (editorRef.current) {
-          // Set proper overflow-y and max-height for scrollability
-          editorRef.current.style.overflowY = 'auto';
-          editorRef.current.style.maxHeight = '500px';
-          editorRef.current.style.height = 'auto';
+          // Use setProperty with important to override any CSS conflicts
+          editorRef.current.style.setProperty('overflow-y', 'auto', 'important');
+          editorRef.current.style.setProperty('max-height', '500px', 'important');
+          editorRef.current.style.setProperty('height', 'auto', 'important');
+          editorRef.current.style.setProperty('overflow-x', 'hidden', 'important');
           
           // Force a reflow to ensure proper layout
           editorRef.current.offsetHeight;
           
-          // Additional check to ensure scrollability
+          // Additional check to ensure scrollability - force scroll if needed
           if (editorRef.current.scrollHeight > editorRef.current.clientHeight) {
-            editorRef.current.style.overflowY = 'scroll';
+            editorRef.current.style.setProperty('overflow-y', 'scroll', 'important');
           }
         }
       }, 50);

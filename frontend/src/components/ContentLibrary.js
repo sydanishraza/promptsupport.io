@@ -357,112 +357,112 @@ const ContentLibrary = () => {
   }
 
   return (
-    <div className="h-full flex flex-col space-y-3 sm:space-y-4 max-w-full overflow-hidden p-3 sm:p-0">
-      {/* Enhanced Header - Mobile Optimized */}
-      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6 flex-shrink-0">
-        <div className="flex flex-col space-y-3 sm:space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+    <div className="h-full flex flex-col space-y-2 sm:space-y-4 max-w-full overflow-hidden p-2 sm:p-3 md:p-0">
+      {/* Enhanced Header - Mobile Compact */}
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-6 flex-shrink-0">
+        <div className="flex flex-col space-y-2 sm:space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-2">
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Content Library</h1>
+              <div className="flex items-center space-x-2 mb-1 sm:mb-2">
+                <h1 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900">Content Library</h1>
               </div>
-              <p className="text-sm lg:text-base text-gray-600 mb-2 sm:mb-3">
+              <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-1 sm:mb-3 hidden sm:block">
                 Manage articles and assets.
               </p>
             </div>
             
-            {/* Action Buttons - Mobile Stack */}
-            <div className="flex flex-col sm:flex-row gap-2 lg:gap-3 w-full sm:w-auto">
+            {/* Action Buttons - Mobile Compact */}
+            <div className="flex flex-row sm:flex-row gap-1.5 sm:gap-2 lg:gap-3 w-full sm:w-auto">
               <button
                 onClick={() => fetchArticles()}
-                className="flex items-center justify-center sm:justify-start px-3 py-2.5 sm:py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                <span>Refresh</span>
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Refresh</span>
               </button>
               <button
                 onClick={() => setShowSnipAndRecord(true)}
-                className="flex items-center justify-center sm:justify-start px-3 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-green-600 hover:bg-green-700 text-white rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
               >
-                <Camera className="h-4 w-4 mr-2" />
-                <span>Snip & Record</span>
+                <Camera className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Snip</span>
               </button>
               <button
                 onClick={handleCreateArticle}
-                className="flex items-center justify-center sm:justify-start px-3 py-2.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                <span>Create Article</span>
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Create</span>
               </button>
             </div>
           </div>
           
-          {/* Stats - Mobile Optimized */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
-            <span className="whitespace-nowrap">Articles: {articles.length}</span>
-            <span className="whitespace-nowrap">Media: {articles.filter(a => a.content?.includes('data:image')).length}</span>
-            <span className="whitespace-nowrap">Assets: {actualAssetCount}</span>
-            <span className="whitespace-nowrap">Public: {articles.filter(a => a.status === 'published').length}</span>
+          {/* Stats - Mobile Compact */}
+          <div className="grid grid-cols-4 sm:flex sm:flex-wrap items-center gap-1 sm:gap-2 lg:gap-4 text-xs text-gray-500">
+            <span className="whitespace-nowrap text-center sm:text-left">A: {articles.length}</span>
+            <span className="whitespace-nowrap text-center sm:text-left">M: {articles.filter(a => a.content?.includes('data:image')).length}</span>
+            <span className="whitespace-nowrap text-center sm:text-left">As: {actualAssetCount}</span>
+            <span className="whitespace-nowrap text-center sm:text-left">P: {articles.filter(a => a.status === 'published').length}</span>
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation - Mobile Optimized */}
-      <div className="flex space-x-2 sm:space-x-4 lg:space-x-6 border-b border-gray-200 overflow-x-auto flex-shrink-0 px-3 sm:px-0 -mx-3 sm:mx-0">
+      {/* Tab Navigation - Mobile Compact */}
+      <div className="flex space-x-2 sm:space-x-4 lg:space-x-6 border-b border-gray-200 overflow-x-auto flex-shrink-0 px-2 sm:px-3 md:px-0 -mx-2 sm:-mx-3 md:mx-0">
         <button
           onClick={() => setCurrentView('articles')}
-          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-sm sm:text-base ${
+          className={`flex items-center space-x-1 sm:space-x-2 pb-2 sm:pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-xs sm:text-sm md:text-base ${
             currentView === 'articles'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          <FileText className="h-4 w-4" />
+          <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
           <span>Articles</span>
-          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+          <span className="bg-gray-100 text-gray-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
             {articles.length}
           </span>
         </button>
         <button
           onClick={() => setCurrentView('assets')}
-          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-sm sm:text-base ${
+          className={`flex items-center space-x-1 sm:space-x-2 pb-2 sm:pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-xs sm:text-sm md:text-base ${
             currentView === 'assets'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          <FolderOpen className="h-4 w-4" />
+          <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4" />
           <span>Assets</span>
-          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+          <span className="bg-gray-100 text-gray-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
             {actualAssetCount}
           </span>
         </button>
       </div>
 
-      {/* Control Bar - Articles - Mobile Optimized */}
+      {/* Control Bar - Articles - Mobile Compact */}
       {currentView === 'articles' && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-3 sm:space-y-4">
-            {/* Search - Full Width on Mobile */}
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-2 sm:space-y-3">
+            {/* Search - Compact on Mobile */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search articles, tags, or content..."
+                placeholder="Search articles..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm sm:text-base"
+                className="pl-7 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2.5 md:py-2 border border-gray-300 rounded-md sm:rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-xs sm:text-sm md:text-base"
               />
             </div>
 
-            {/* Filters and View - Mobile Stack */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4">
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {/* Filters and View - Mobile Compact */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-4">
+              <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 lg:gap-3">
                 <div className="relative">
                   <select
                     value={selectedFilter}
                     onChange={(e) => setSelectedFilter(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
                   >
                     {filterOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -470,33 +470,33 @@ const ContentLibrary = () => {
                       </option>
                     ))}
                   </select>
-                  <Filter className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <Filter className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
                 </div>
 
                 <div className="relative">
                   <select
                     value={selectedSort}
                     onChange={(e) => setSelectedSort(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
                   >
                     {sortOptions.map(option => (
                       <option key={option.value} value={option.value}>
-                        Sort by {option.label}
+                        Sort: {option.label}
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
               {/* View Mode Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 hidden sm:inline">View:</span>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline">View:</span>
                 <div className="relative">
                   <select
                     value={viewMode}
                     onChange={(e) => setViewMode(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
                   >
                     {viewOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -504,7 +504,7 @@ const ContentLibrary = () => {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -512,30 +512,30 @@ const ContentLibrary = () => {
         </div>
       )}
 
-      {/* Control Bar - Assets - Mobile Optimized */}
+      {/* Control Bar - Assets - Mobile Compact */}
       {currentView === 'assets' && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-3 sm:space-y-4">
-            {/* Search - Full Width on Mobile */}
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-2 sm:space-y-3">
+            {/* Search - Compact on Mobile */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search assets, articles, or descriptions..."
+                placeholder="Search assets..."
                 value={assetSearchQuery}
                 onChange={(e) => setAssetSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm sm:text-base"
+                className="pl-7 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2.5 md:py-2 border border-gray-300 rounded-md sm:rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-xs sm:text-sm md:text-base"
               />
             </div>
 
-            {/* Filters and View - Mobile Stack */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4">
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {/* Filters and View - Mobile Compact */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-4">
+              <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 lg:gap-3">
                 <div className="relative">
                   <select
                     value={assetFilterType}
                     onChange={(e) => setAssetFilterType(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
                   >
                     <option value="all">All Assets</option>
                     <option value="image">Images</option>
@@ -545,38 +545,38 @@ const ContentLibrary = () => {
                     <option value="svg">SVG</option>
                     <option value="processed">AI Processed</option>
                   </select>
-                  <Filter className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <Filter className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
                 </div>
 
                 <div className="relative">
                   <select
                     value={assetSortBy}
                     onChange={(e) => setAssetSortBy(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
                   >
-                    <option value="dateAdded">Sort by Date Added</option>
-                    <option value="name">Sort by Name</option>
-                    <option value="size">Sort by File Size</option>
-                    <option value="format">Sort by Format</option>
-                    <option value="articleTitle">Sort by Source Article</option>
+                    <option value="dateAdded">Sort: Date Added</option>
+                    <option value="name">Sort: Name</option>
+                    <option value="size">Sort: File Size</option>
+                    <option value="format">Sort: Format</option>
+                    <option value="articleTitle">Sort: Source Article</option>
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
               {/* View Mode Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 hidden sm:inline">View:</span>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline">View:</span>
                 <div className="relative">
                   <select
                     value={assetViewMode}
                     onChange={(e) => setAssetViewMode(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
                   >
                     <option value="grid">Grid View</option>
                     <option value="list">List View</option>
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -588,8 +588,8 @@ const ContentLibrary = () => {
       <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 flex-1 min-h-0 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-32 sm:h-64">
-              <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
+            <div className="flex items-center justify-center h-24 sm:h-32 md:h-64">
+              <div className="animate-spin rounded-full h-4 w-4 sm:h-6 sm:w-6 md:h-8 md:w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : currentView === 'articles' ? (
             <div className="overflow-x-auto">
@@ -622,29 +622,29 @@ const ContentLibrary = () => {
         </div>
       </div>
 
-      {/* Pagination - Articles - Mobile Optimized */}
+      {/* Pagination - Articles - Mobile Compact */}
       {currentView === 'articles' && articles.length > 0 && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
-              Showing {startArticle}-{endArticle} of {totalArticles} articles
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-gray-500 text-center sm:text-left">
+              {startArticle}-{endArticle} of {totalArticles}
               {totalPages > 1 && (
-                <span className="block sm:inline sm:ml-1">(Page {currentPage} of {totalPages})</span>
+                <span className="block sm:inline sm:ml-1">({currentPage}/{totalPages})</span>
               )}
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center justify-center space-x-1 sm:space-x-2">
+              <div className="flex items-center justify-center space-x-1">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="hidden sm:inline">Previous</span>
                   <span className="sm:hidden">‹</span>
                 </button>
                 
                 {/* Page numbers - Responsive */}
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-0.5 sm:space-x-1">
                   {[...Array(Math.min(window.innerWidth < 640 ? 3 : 5, totalPages))].map((_, index) => {
                     let pageNum;
                     const maxPages = window.innerWidth < 640 ? 3 : 5;
@@ -662,7 +662,7 @@ const ContentLibrary = () => {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm rounded-md sm:rounded-lg transition-colors ${
+                        className={`px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm rounded transition-colors ${
                           currentPage === pageNum
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-600 hover:bg-gray-100'
@@ -677,7 +677,7 @@ const ContentLibrary = () => {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="hidden sm:inline">Next</span>
                   <span className="sm:hidden">›</span>
@@ -688,29 +688,29 @@ const ContentLibrary = () => {
         </div>
       )}
 
-      {/* Pagination - Assets - Mobile Optimized */}
+      {/* Pagination - Assets - Mobile Compact */}
       {currentView === 'assets' && assetPagination && assetPagination.totalPages > 1 && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
-              Showing {assetPagination.startIndex}-{assetPagination.endIndex} of {assetPagination.totalItems} assets
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
+          <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-gray-500 text-center sm:text-left">
+              {assetPagination.startIndex}-{assetPagination.endIndex} of {assetPagination.totalItems}
               {assetPagination.totalPages > 1 && (
-                <span className="block sm:inline sm:ml-1">(Page {assetPagination.currentPage} of {assetPagination.totalPages})</span>
+                <span className="block sm:inline sm:ml-1">({assetPagination.currentPage}/{assetPagination.totalPages})</span>
               )}
             </div>
             {assetPagination.totalPages > 1 && (
-              <div className="flex items-center justify-center space-x-1 sm:space-x-2">
+              <div className="flex items-center justify-center space-x-1">
                 <button
                   onClick={() => assetPagination.onPageChange(assetPagination.currentPage - 1)}
                   disabled={assetPagination.currentPage === 1}
-                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="hidden sm:inline">Previous</span>
                   <span className="sm:hidden">‹</span>
                 </button>
                 
                 {/* Page numbers - Responsive */}
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-0.5 sm:space-x-1">
                   {[...Array(Math.min(window.innerWidth < 640 ? 3 : 5, assetPagination.totalPages))].map((_, index) => {
                     let pageNum;
                     const maxPages = window.innerWidth < 640 ? 3 : 5;
@@ -728,7 +728,7 @@ const ContentLibrary = () => {
                       <button
                         key={pageNum}
                         onClick={() => assetPagination.onPageChange(pageNum)}
-                        className={`px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm rounded-md sm:rounded-lg transition-colors ${
+                        className={`px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm rounded transition-colors ${
                           assetPagination.currentPage === pageNum
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-600 hover:bg-gray-100'
@@ -743,7 +743,7 @@ const ContentLibrary = () => {
                 <button
                   onClick={() => assetPagination.onPageChange(assetPagination.currentPage + 1)}
                   disabled={assetPagination.currentPage === assetPagination.totalPages}
-                  className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm border border-gray-300 rounded-md sm:rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="hidden sm:inline">Next</span>
                   <span className="sm:hidden">›</span>

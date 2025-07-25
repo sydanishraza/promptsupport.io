@@ -252,7 +252,7 @@ const PromptSupportEditor = ({
     }
   }, [content, isEditing]);
 
-  // Phase 4: Track text selection for commenting
+  // Phase 4: Track text selection for commenting and format detection
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
@@ -261,11 +261,29 @@ const PromptSupportEditor = ({
       } else {
         setSelectedText('');
       }
+      
+      // Detect active formats when selection changes
+      if (isEditing) {
+        detectActiveFormats();
+      }
     };
 
     if (isEditing) {
       document.addEventListener('selectionchange', handleSelectionChange);
-      return () => document.removeEventListener('selectionchange', handleSelectionChange);
+      // Also trigger on click in editor
+      const editorElement = editorRef.current;
+      if (editorElement) {
+        editorElement.addEventListener('click', handleSelectionChange);
+        editorElement.addEventListener('keyup', handleSelectionChange);
+      }
+      
+      return () => {
+        document.removeEventListener('selectionchange', handleSelectionChange);
+        if (editorElement) {
+          editorElement.removeEventListener('click', handleSelectionChange);
+          editorElement.removeEventListener('keyup', handleSelectionChange);
+        }
+      };
     }
   }, [isEditing]);
 

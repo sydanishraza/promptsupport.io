@@ -521,32 +521,40 @@ const PromptSupportEditor = ({
       {/* Content Area */}
       <div className="flex-1 overflow-hidden">
         {editorMode === 'wysiwyg' ? (
-          <div
-            ref={editorRef}
-            contentEditable={isEditing}
-            onInput={(e) => {
-              setContent(e.target.innerHTML);
-              setHasUnsavedChanges(true);
-            }}
-            onKeyDown={handleKeyDown}
-            className="h-full p-6 overflow-y-auto focus:outline-none"
-            style={{
-              minHeight: '400px',
-              lineHeight: '1.7',
-              fontSize: '16px',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              color: '#1f2937'
-            }}
-            suppressContentEditableWarning={true}
-          >
+          <div className="h-full relative">
             {!isEditing ? (
-              <div dangerouslySetInnerHTML={{ __html: content || '<p>No content</p>' }} />
+              // View mode: safely render HTML content
+              <div 
+                className="h-full p-6 overflow-y-auto prose prose-lg max-w-none"
+                style={{
+                  minHeight: '400px',
+                  lineHeight: '1.7',
+                  fontSize: '16px'
+                }}
+                dangerouslySetInnerHTML={{ __html: content || '<p>No content</p>' }} 
+              />
             ) : (
-              content ? (
-                <div dangerouslySetInnerHTML={{ __html: content }} />
-              ) : (
-                <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>Start writing your content...</p>
-              )
+              // Edit mode: use clean contentEditable without dangerouslySetInnerHTML
+              <div
+                ref={editorRef}
+                contentEditable={true}
+                onInput={(e) => {
+                  setContent(e.target.innerHTML);
+                  setHasUnsavedChanges(true);
+                }}
+                onKeyDown={handleKeyDown}
+                className="h-full p-6 overflow-y-auto focus:outline-none"
+                style={{
+                  minHeight: '400px',
+                  lineHeight: '1.7',
+                  fontSize: '16px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  color: '#1f2937',
+                  outline: 'none'
+                }}
+                suppressContentEditableWarning={true}
+                data-placeholder="Start writing your content..."
+              />
             )}
           </div>
         ) : editorMode === 'markdown' ? (

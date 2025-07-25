@@ -1277,32 +1277,51 @@ const PromptSupportEditor = ({
           {/* Basic Formatting Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button
-              onClick={() => executeCommand('bold')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              onClick={() => executeFormattingCommand('bold')}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                activeFormats.bold ? 'bg-blue-100 text-blue-600' : ''
+              }`}
               title="Bold (⌘B)"
             >
               <Bold className="h-4 w-4" />
             </button>
             <button
-              onClick={() => executeCommand('italic')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              onClick={() => executeFormattingCommand('italic')}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                activeFormats.italic ? 'bg-blue-100 text-blue-600' : ''
+              }`}
               title="Italic (⌘I)"
             >
               <Italic className="h-4 w-4" />
             </button>
             <button
-              onClick={() => executeCommand('underline')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              onClick={() => executeFormattingCommand('underline')}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                activeFormats.underline ? 'bg-blue-100 text-blue-600' : ''
+              }`}
               title="Underline (⌘U)"
             >
               <Underline className="h-4 w-4" />
             </button>
             <button
-              onClick={() => executeCommand('strikeThrough')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              onClick={() => executeFormattingCommand('strikeThrough')}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                activeFormats.strikethrough ? 'bg-blue-100 text-blue-600' : ''
+              }`}
               title="Strikethrough"
             >
               <Strikethrough className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Clear Formatting Group */}
+          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
+            <button
+              onClick={clearFormatting}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Clear Formatting"
+            >
+              <X className="h-4 w-4" />
             </button>
           </div>
 

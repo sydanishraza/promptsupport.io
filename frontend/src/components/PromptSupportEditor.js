@@ -59,10 +59,37 @@ const PromptSupportEditor = ({
   useEffect(() => {
     if (article) {
       setTitle(article.title || '');
-      setContent(article.content || '<p>Start writing your content...</p>');
       setHasUnsavedChanges(false);
+      
+      // Set content but don't use dangerouslySetInnerHTML initially
+      const initialContent = article.content || '<p>Start writing your content...</p>';
+      setContent(initialContent);
+      
+      // Only populate the editor content when entering edit mode
+      // This prevents cursor reset issues with existing content
     }
   }, [article]);
+
+  // Handle entering edit mode and populating content
+  useEffect(() => {
+    if (isEditing && editorRef.current && content) {
+      // Only set innerHTML when entering edit mode, not during typing
+      if (editorRef.current.innerHTML !== content) {
+        editorRef.current.innerHTML = content;
+        
+        // Place cursor at the end of content
+        setTimeout(() => {
+          const range = document.createRange();
+          const selection = window.getSelection();
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false); // Collapse to end
+          selection.removeAllRanges();
+          selection.addRange(range);
+          editorRef.current.focus();
+        }, 100);
+      }
+    }
+  }, [isEditing, content]);
 
   // === PHASE 1: CORE EDITABLE SURFACE ===
   

@@ -114,43 +114,38 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       initial={false}
       animate={{ width: collapsed ? 64 : 256 }}
     >
+      {/* Toggle Button - On Panel Border Edge */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className={`absolute right-0 top-1/2 transform -translate-y-1/2 ${
+          collapsed ? 'translate-x-1/2' : '-translate-x-1/2'
+        } w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 z-40 flex items-center justify-center shadow-sm transition-all duration-300`}
+        title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+      >
+        {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+      </button>
+
       {/* Header */}
       <div className="px-6 h-[81px] flex items-center border-b border-gray-200 dark:border-gray-700">
         {!collapsed ? (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center space-x-3">
-              <img
-                src="/ps-logo.png"
-                alt="PromptSupport Logo"
-                className="w-8 h-8 object-contain"
-              />
-              <span className="font-semibold text-gray-900 dark:text-white text-lg">
-                PromptSupport
-              </span>
-            </div>
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-            >
-              <ChevronLeft size={16} />
-            </button>
+          <div className="flex items-center space-x-3">
+            <img
+              src="/ps-logo.png"
+              alt="PromptSupport Logo"
+              className="w-8 h-8 object-contain"
+            />
+            <span className="font-semibold text-gray-900 dark:text-white text-lg">
+              PromptSupport
+            </span>
           </div>
         ) : (
-          <div className="relative w-full flex items-center justify-center">
-            {/* Centered Logo - Larger Size */}
+          <div className="w-full flex items-center justify-center">
+            {/* Centered Logo - Larger Size for Better Visibility */}
             <img
               src="/ps-logo.png"
               alt="PromptSupport Logo"
               className="w-10 h-10 object-contain"
             />
-            {/* Toggle Button - Right Edge, Vertically Centered */}
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="absolute right-0 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-              title="Expand Sidebar"
-            >
-              <ChevronRight size={14} />
-            </button>
           </div>
         )}
       </div>

@@ -1457,15 +1457,19 @@ const PromptSupportEditor = ({
           {/* Lists Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button
-              onClick={() => executeCommand('insertUnorderedList')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              onClick={() => executeFormattingCommand('insertUnorderedList')}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                activeFormats.ul ? 'bg-blue-100 text-blue-600' : ''
+              }`}
               title="Bullet List"
             >
               <List className="h-4 w-4" />
             </button>
             <button
-              onClick={() => executeCommand('insertOrderedList')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              onClick={() => executeFormattingCommand('insertOrderedList')}
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+                activeFormats.ol ? 'bg-blue-100 text-blue-600' : ''
+              }`}
               title="Numbered List"
             >
               <ListOrdered className="h-4 w-4" />

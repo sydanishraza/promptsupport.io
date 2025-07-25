@@ -3788,7 +3788,7 @@ const PromptSupportEditor = ({
                   onMouseOver={handleLinkHover}
                   onMouseOut={handleLinkMouseOut}
                   onClick={handleLinkClick}
-                  className={`wysiwyg-editor editor-content p-6 overflow-y-auto focus:outline-none transition-colors ${
+                  className={`wysiwyg-editor editor-content p-6 focus:outline-none transition-colors ${
                     draggedOver ? 'bg-blue-50 border-2 border-dashed border-blue-300' : ''
                   }`}
                   style={{
@@ -3800,8 +3800,9 @@ const PromptSupportEditor = ({
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                     color: '#1f2937',
                     outline: 'none',
-                    overflowY: 'auto',
-                    overflowX: 'hidden'
+                    overflowY: 'auto !important',
+                    overflowX: 'hidden !important',
+                    WebkitOverflowScrolling: 'touch'
                   }}
                   css={`
                     h1 { font-size: 2rem; font-weight: bold; margin: 1rem 0; }

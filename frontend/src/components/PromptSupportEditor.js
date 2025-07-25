@@ -1281,25 +1281,34 @@ const PromptSupportEditor = ({
     );
   };
 
-  // === SAVE HANDLING ===
+  // === SAVE HANDLING (Enhanced) ===
   
-  const handleSave = async () => {
+  const handleSave = async (publishAction = 'draft') => {
     try {
       const articleData = {
         id: article.id,
         title: title,
         content: content,
-        status: article.status || 'draft'
+        status: publishAction // 'draft', 'published'
       };
 
+      // Show saving state
+      setIsAutoSaving(true);
       const success = await onSave(articleData);
+      
       if (success) {
         setHasUnsavedChanges(false);
+        setLastSaved(new Date());
       }
     } catch (error) {
       console.error('Save error:', error);
+    } finally {
+      setIsAutoSaving(false);
     }
   };
+
+  const handlePublish = () => handleSave('published');
+  const handleSaveDraft = () => handleSave('draft');
 
   // === PHASE 2: MODAL COMPONENTS ===
   

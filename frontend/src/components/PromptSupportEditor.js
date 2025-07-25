@@ -144,6 +144,11 @@ const PromptSupportEditor = ({
   const [aiResults, setAiResults] = useState({});
   const [aiActionType, setAiActionType] = useState('');
   const [selectedText, setSelectedText] = useState('');
+  // Asset library modal state
+  const [assets, setAssets] = useState([]);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  // Save state management
+  const [isSaving, setIsSaving] = useState(false);
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,

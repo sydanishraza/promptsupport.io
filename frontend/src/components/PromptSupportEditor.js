@@ -1060,11 +1060,18 @@ const PromptSupportEditor = ({
           overflow-y: auto !important;
           overflow-x: hidden !important;
           max-height: 500px !important;
+          min-height: 400px !important;
           height: auto !important;
           -webkit-overflow-scrolling: touch !important;
         }
         .wysiwyg-editor.editor-content * {
           max-width: 100% !important;
+        }
+        .wysiwyg-editor.editor-content:after {
+          content: '';
+          display: block;
+          height: 100px;
+          visibility: hidden;
         }
       `;
       document.head.appendChild(style);

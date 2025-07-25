@@ -1018,8 +1018,44 @@ const PromptSupportEditor = ({
   // === PHASE 2: MODAL COMPONENTS ===
   
   /**
-   * Custom table creation modal
+   * Render slash command menu
    */
+  const renderSlashMenu = () => {
+    if (!showSlashMenu) return null;
+    
+    const filteredCommands = getFilteredSlashCommands();
+    
+    return (
+      <div 
+        ref={slashMenuRef}
+        className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-w-64 max-h-80 overflow-y-auto"
+        style={{
+          left: slashMenuPosition.x,
+          top: slashMenuPosition.y
+        }}
+      >
+        <div className="p-2">
+          <div className="text-xs text-gray-500 mb-2 px-2">Quick Insert</div>
+          {filteredCommands.map((command) => {
+            const Icon = command.icon;
+            return (
+              <button
+                key={command.key}
+                onClick={() => {
+                  command.action();
+                  setShowSlashMenu(false);
+                }}
+                className="flex items-center gap-3 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded transition-colors"
+              >
+                <Icon className="h-4 w-4 text-gray-600" />
+                <span>{command.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
   const renderTableModal = () => {
     if (!showTableModal) return null;
     

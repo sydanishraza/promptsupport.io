@@ -996,7 +996,7 @@ const PromptSupportEditor = ({
   // === PHASE 3: MEDIA INTEGRATION (Enhanced with real asset library) ===
   
   /**
-   * Handle file upload, save to asset library, then embed
+   * Handle file upload, save to asset library, then embed using URL
    */
   const handleFileUpload = async (files) => {
     for (const file of Array.from(files)) {
@@ -1018,8 +1018,9 @@ const PromptSupportEditor = ({
           if (uploadResponse.ok) {
             const result = await uploadResponse.json();
             
-            // Insert image from asset library
-            insertImage(result.asset.data, result.asset.name);
+            // Insert image using URL from asset library (not base64)
+            const imageUrl = `${process.env.REACT_APP_BACKEND_URL}${result.asset.url}`;
+            insertImage(imageUrl, result.asset.original_filename || result.asset.name);
             setUploadProgress(100);
             
             // Reset progress after delay

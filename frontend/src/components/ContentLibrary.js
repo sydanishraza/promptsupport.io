@@ -429,48 +429,69 @@ const ContentLibrary = () => {
         </button>
       </div>
 
-      {/* Control Bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
-            {/* Search */}
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search articles, tags, or content..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
-              />
-            </div>
-
-            {/* Filter and Sort Dropdowns */}
-            <div className="flex gap-3">
-              <div className="relative">
-                <select
-                  value={selectedFilter}
-                  onChange={(e) => setSelectedFilter(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  {filterOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <Filter className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+      {/* Control Bar - Articles */}
+      {currentView === 'articles' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
+              {/* Search */}
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search articles, tags, or content..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
+                />
               </div>
 
+              {/* Filter and Sort Dropdowns */}
+              <div className="flex gap-3">
+                <div className="relative">
+                  <select
+                    value={selectedFilter}
+                    onChange={(e) => setSelectedFilter(e.target.value)}
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    {filterOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Filter className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={selectedSort}
+                    onChange={(e) => setSelectedSort(e.target.value)}
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    {sortOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        Sort by {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* View Mode Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">View:</span>
               <div className="relative">
                 <select
-                  value={selectedSort}
-                  onChange={(e) => setSelectedSort(e.target.value)}
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value)}
                   className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
-                  {sortOptions.map(option => (
+                  {viewOptions.map(option => (
                     <option key={option.value} value={option.value}>
-                      Sort by {option.label}
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -478,27 +499,8 @@ const ContentLibrary = () => {
               </div>
             </div>
           </div>
-
-          {/* View Mode Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">View:</span>
-            <div className="relative">
-              <select
-                value={viewMode}
-                onChange={(e) => setViewMode(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                {viewOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Content Area */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 max-h-[calc(100vh-500px)] overflow-y-auto">

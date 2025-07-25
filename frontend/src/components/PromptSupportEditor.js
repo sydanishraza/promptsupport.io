@@ -3025,7 +3025,7 @@ const PromptSupportEditor = ({
                               : asset.data
                           }
                           alt={asset.name}
-                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                          className="w-full h-full object-cover transition-all duration-200 group-hover:scale-105 group-hover:opacity-90 group-hover:brightness-110"
                           loading="lazy"
                           onError={(e) => {
                             e.target.style.display = 'none';

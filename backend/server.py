@@ -332,12 +332,29 @@ async def get_assets():
         for article in articles_with_images:
             content = article.get("content", "")
             if content:
-                # Find all base64 images in content
-                image_matches = re.findall(r'(data:image/[^;]+;base64,[A-Za-z0-9+/=]+)', content)
+                # Find all base64 images in content using multiple patterns
+                patterns = [
+                    r'(data:image/[^;]+;base64,[A-Za-z0-9+/=]+)',  # Standard pattern
+                    r'(data:image/[^;]+;base64,[^)\\s]+)',         # Match until ) or whitespace
+                    r'(data:image/[^;]+;base64,[^)]+)',           # Match until )
+                ]
                 
-                for i, image_data in enumerate(image_matches):
-                    # Skip very small images (likely placeholders)
-                    if len(image_data) > 100:
+                image_matches = []
+                for pattern in patterns:
+                    matches = re.findall(pattern, content)
+                    image_matches.extend(matches)
+                
+                # Remove duplicates while preserving order
+                seen = set()
+                unique_matches = []
+                for match in image_matches:
+                    if match not in seen:
+                        seen.add(match)
+                        unique_matches.append(match)
+                
+                for i, image_data in enumerate(unique_matches):
+                    # Skip very small images (likely placeholders) but be more lenient
+                    if len(image_data) > 50:  # Reduced from 100 to 50
                         asset_id = f"{article.get('id', str(article.get('_id')))}_img_{i}"
                         asset_name = f"Image from {article.get('title', 'article')[:30]}"
                         

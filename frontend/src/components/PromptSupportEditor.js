@@ -1543,8 +1543,61 @@ const PromptSupportEditor = ({
   // === PHASE 2: MODAL COMPONENTS ===
   
   /**
-   * Render AI suggestions panel
+   * Render asset library modal for image selection
    */
+  const renderAssetLibraryModal = () => {
+    if (!showImageModal) return null;
+    
+    // Mock assets - in real implementation, this would fetch from the asset API
+    const mockAssets = [
+      { id: 1, name: 'Sample Image 1', type: 'image', data: '/api/placeholder/400/300?text=Sample+1' },
+      { id: 2, name: 'Sample Image 2', type: 'image', data: '/api/placeholder/400/300?text=Sample+2' },
+      { id: 3, name: 'Sample Image 3', type: 'image', data: '/api/placeholder/400/300?text=Sample+3' },
+      { id: 4, name: 'Sample Image 4', type: 'image', data: '/api/placeholder/400/300?text=Sample+4' }
+    ];
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-4/5 max-w-4xl max-h-4/5 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Choose from Asset Library</h3>
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {mockAssets.map(asset => (
+              <div
+                key={asset.id}
+                onClick={() => handleAssetSelect(asset)}
+                className="cursor-pointer border border-gray-200 rounded-lg p-2 hover:border-blue-500 hover:shadow-md transition-all"
+              >
+                <img
+                  src={asset.data}
+                  alt={asset.name}
+                  className="w-full h-32 object-cover rounded mb-2"
+                />
+                <p className="text-sm text-gray-700 truncate">{asset.name}</p>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
   const renderAIPanel = () => {
     if (!showAiPanel) return null;
     

@@ -171,13 +171,17 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
                   setShowFlyout(null);
                 }
               }}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left transition-colors relative ${
+              className={`w-full flex items-center transition-colors relative ${
+                collapsed 
+                  ? 'justify-center px-4 py-3' 
+                  : 'space-x-3 px-3 py-2.5'
+              } rounded-lg text-left ${
                 activeRoute === item.id
                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
-              <item.icon size={20} />
+              <item.icon size={collapsed ? 24 : 20} />
               {!collapsed && (
                 <>
                   <span className="flex-1 font-medium">{item.label}</span>

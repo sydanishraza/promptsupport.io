@@ -3710,7 +3710,7 @@ const PromptSupportEditor = ({
         ) : (
           <textarea
             ref={htmlRef}
-            value={content}
+            value={beautifyHtmlContent(content)}
             onChange={(e) => handleContentChange(e.target.value, 'html')}
             onKeyDown={handleKeyDown}
             className="w-full h-full p-6 border-none outline-none resize-none font-mono text-sm bg-gray-50"

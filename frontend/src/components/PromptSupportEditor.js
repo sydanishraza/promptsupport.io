@@ -2362,7 +2362,7 @@ const PromptSupportEditor = ({
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert(`Save failed: ${error.message}. Please try again.`);
+      showAlert(`Save failed: ${error.message}. Please try again.`, 'Save Error');
       return false;
     } finally {
       setIsSaving(false);

@@ -110,6 +110,8 @@ const PromptSupportEditor = ({
   const editorRef = useRef(null);
   const markdownRef = useRef(null);
   const htmlRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const slashMenuRef = useRef(null);
   
   // === CONTENT REF CALLBACK ===
   const contentRef = (element) => {

@@ -1246,62 +1246,184 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Content analytics with real content analysis and metrics
+   * Content analytics with enhanced real content analysis and metrics
    */
-  const analyzeContent = async (content) => {
+  const analyzeContent = async (contentToAnalyze) => {
     try {
+      // Get content from multiple sources to ensure we have text to analyze
+      let content = contentToAnalyze;
+      
+      if (!content || content.trim().length === 0) {
+        // Try to get content from editor
+        content = editorRef.current?.innerHTML || '';
+        
+        if (!content || content.trim().length === 0) {
+          content = editorRef.current?.textContent || '';
+        }
+        
+        if (!content || content.trim().length === 0) {
+          // Use current article content as fallback
+          content = article?.content || '';
+        }
+      }
+      
+      console.log('Analyzing content:', content?.substring(0, 100) + '...');
+      
       // Try to get AI-powered analysis first
-      const analytics = await getContentAnalysis(content);
-      setContentAnalytics(analytics);
-      return analytics;
-    } catch (error) {
-      console.error('Content analysis error:', error);
+      try {
+        const analytics = await getContentAnalysis(content);
+        if (analytics && analytics.wordCount > 0) {
+          setContentAnalytics(analytics);
+          return analytics;
+        }
+      } catch (error) {
+        console.warn('AI analysis failed, using fallback:', error);
+      }
       
       // Enhanced fallback analysis with real metrics
       const text = content.replace(/<[^>]*>/g, ''); // Remove HTML tags
       const words = text.split(/\s+/).filter(word => word.length > 0);
       const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-      const paragraphs = content.split(/<\/p>|<p>/gi).filter(p => p.trim().length > 0);
+      const paragraphs = content.split(/<\/p>|<p>|<br>|\n\n/gi).filter(p => p.trim().length > 0);
+      
+      // Only proceed if we have actual content
+      if (words.length === 0) {
+        const emptyAnalytics = {
+          wordCount: 0,
+          characterCount: 0,
+          sentences: 0,
+          paragraphs: 0,
+          headings: { h1: 0, h2: 0, h3: 0, h4: 0 },
+          totalHeadings: 0,
+          readingTime: 0,
+          readabilityScore: 0,
+          avgWordsPerSentence: 0,
+          avgSentencesPerParagraph: 0,
+          links: 0,
+          images: 0,
+          lists: 0,
+          codeBlocks: 0,
+          aiInsights: 'No content to analyze. Please add some text to get metrics.'
+        };
+        setContentAnalytics(emptyAnalytics);
+        return emptyAnalytics;
+      }
       
       // Heading analysis
       const headings = {
-        h1: (content.match(/<h1[^>]*>/gi) || []).length,
-        h2: (content.match(/<h2[^>]*>/gi) || []).length,
-        h3: (content.match(/<h3[^>]*>/gi) || []).length,
-        h4: (content.match(/<h4[^>]*>/gi) || []).length
+        h1: (content.match(/<h1[^>]*>|^#\s/gmi) || []).length,
+        h2: (content.match(/<h2[^>]*>|^##\s/gmi) || []).length,
+        h3: (content.match(/<h3[^>]*>|^###\s/gmi) || []).length,
+        h4: (content.match(/<h4[^>]*>|^####\s/gmi) || []).length
       };
       
-      // Readability estimation (simple Flesch Reading Ease approximation)
+      // Readability estimation (Flesch Reading Ease approximation)
       const avgWordsPerSentence = words.length / Math.max(sentences.length, 1);
       const avgSyllablesPerWord = words.reduce((acc, word) => {
-        return acc + Math.max(1, word.match(/[aeiouAEIOU]/g)?.length || 1);
+        // Simple syllable counting
+        const syllables = word.toLowerCase().match(/[aeiouy]+/g) || [''];
+        return acc + Math.max(1, syllables.length);
       }, 0) / Math.max(words.length, 1);
       
       const readabilityScore = Math.max(0, Math.min(100, 
         206.835 - (1.015 * avgWordsPerSentence) - (84.6 * avgSyllablesPerWord)
       ));
       
+      // Content structure analysis
+      const links = (content.match(/<a[^>]*>|https?:\/\/\S+/gi) || []).length;
+      const images = (content.match(/<img[^>]*>|!\[.*?\]/gi) || []).length;
+      const lists = (content.match(/<[ou]l[^>]*>|^[\s]*[-*+]\s/gmi) || []).length;
+      const codeBlocks = (content.match(/<pre[^>]*>|```/gi) || []).length;
+      
       const analytics = {
         wordCount: words.length,
         characterCount: text.length,
         sentences: sentences.length,
-        paragraphs: paragraphs.length,
+        paragraphs: Math.max(paragraphs.length, 1),
         headings: headings,
         totalHeadings: headings.h1 + headings.h2 + headings.h3 + headings.h4,
         readingTime: Math.ceil(words.length / 200), // 200 words per minute average
         readabilityScore: Math.round(readabilityScore),
         avgWordsPerSentence: Math.round(avgWordsPerSentence * 10) / 10,
         avgSentencesPerParagraph: Math.round((sentences.length / Math.max(paragraphs.length, 1)) * 10) / 10,
-        links: (content.match(/<a[^>]*>/gi) || []).length,
-        images: (content.match(/<img[^>]*>/gi) || []).length,
-        lists: (content.match(/<[ou]l[^>]*>/gi) || []).length,
-        codeBlocks: (content.match(/<pre[^>]*>/gi) || []).length,
-        aiInsights: `Document has ${words.length} words across ${paragraphs.length} paragraphs. ${readabilityScore > 60 ? 'Good readability score.' : readabilityScore > 30 ? 'Moderate readability - consider shorter sentences.' : 'Complex content - consider simplifying.'} ${headings.h1 + headings.h2 + headings.h3 + headings.h4 > 0 ? 'Well-structured with headings.' : 'Consider adding headings for better structure.'}`
+        links: links,
+        images: images,
+        lists: lists,
+        codeBlocks: codeBlocks,
+        aiInsights: generateContentInsights(words.length, sentences.length, paragraphs.length, readabilityScore, headings, links, images)
       };
       
+      console.log('Generated analytics:', analytics);
       setContentAnalytics(analytics);
       return analytics;
+      
+    } catch (error) {
+      console.error('Content analysis error:', error);
+      
+      // Minimal fallback
+      const fallbackAnalytics = {
+        wordCount: 0,
+        characterCount: 0,
+        sentences: 0,
+        paragraphs: 0,
+        headings: { h1: 0, h2: 0, h3: 0, h4: 0 },
+        totalHeadings: 0,
+        readingTime: 0,
+        readabilityScore: 0,
+        avgWordsPerSentence: 0,
+        avgSentencesPerParagraph: 0,
+        links: 0,
+        images: 0,
+        lists: 0,
+        codeBlocks: 0,
+        aiInsights: 'Content analysis temporarily unavailable. Please try again.'
+      };
+      
+      setContentAnalytics(fallbackAnalytics);
+      return fallbackAnalytics;
     }
+  };
+
+  /**
+   * Generate AI insights based on content metrics
+   */
+  const generateContentInsights = (wordCount, sentenceCount, paragraphCount, readabilityScore, headings, links, images) => {
+    const insights = [];
+    
+    // Word count insights
+    if (wordCount < 50) {
+      insights.push("Consider adding more content for better engagement.");
+    } else if (wordCount > 1000) {
+      insights.push("Great depth of content!");
+    }
+    
+    // Readability insights
+    if (readabilityScore > 60) {
+      insights.push("Excellent readability score - easy to understand.");
+    } else if (readabilityScore > 30) {
+      insights.push("Moderate readability - consider shorter sentences.");
+    } else {
+      insights.push("Complex content - consider simplifying for broader audience.");
+    }
+    
+    // Structure insights
+    const totalHeadings = headings.h1 + headings.h2 + headings.h3 + headings.h4;
+    if (totalHeadings === 0 && wordCount > 200) {
+      insights.push("Consider adding headings to improve structure.");
+    } else if (totalHeadings > 0) {
+      insights.push("Well-structured with headings - great for readability.");
+    }
+    
+    // Media insights
+    if (images > 0) {
+      insights.push(`Contains ${images} image${images > 1 ? 's' : ''} for visual engagement.`);
+    }
+    
+    if (links > 0) {
+      insights.push(`Includes ${links} link${links > 1 ? 's' : ''} for additional resources.`);
+    }
+    
+    return insights.join(' ');
   };
 
   // === PHASE 4: COLLABORATION FEATURES ===

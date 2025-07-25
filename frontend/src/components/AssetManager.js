@@ -21,7 +21,9 @@ import {
   Copy,
   ExternalLink,
   SortAsc,
-  SortDesc
+  SortDesc,
+  ArrowUpDown,
+  FileImage
 } from 'lucide-react';
 
 import AssetModal from './AssetModal';

@@ -1385,7 +1385,7 @@ const PromptSupportEditor = ({
                   onClick={showAssetLibrary}
                   className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
                 >
-                  <FileImage className="h-4 w-4 text-blue-600" />
+                  <ImageIcon className="h-4 w-4 text-blue-600" />
                   Choose from Assets
                 </button>
               </div>

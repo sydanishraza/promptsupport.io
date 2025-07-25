@@ -774,32 +774,40 @@ const PromptSupportEditor = ({
     
     const url = await showPrompt('Enter link URL:', 'https://', 'Add Link');
     if (url && url.trim()) {
-      // Get the current selection range
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        
-        // Create the link element
-        const linkElement = document.createElement('a');
-        linkElement.href = url.trim();
-        linkElement.setAttribute('data-url', url.trim());
-        linkElement.className = 'text-blue-600 underline hover:text-blue-800 cursor-pointer';
-        linkElement.target = '_blank';
-        linkElement.textContent = selectedText;
-        
-        // Replace the selected content with the link
-        range.deleteContents();
-        range.insertNode(linkElement);
-        
-        // Clear the selection and place cursor after the link
-        selection.removeAllRanges();
-        const newRange = document.createRange();
-        newRange.setStartAfter(linkElement);
-        newRange.collapse(true);
-        selection.addRange(newRange);
-        
-        // Update content state
-        setContent(contentRef.current.innerHTML);
-        setHasUnsavedChanges(true);
+      try {
+        // Get the current selection range
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          
+          // Create the link element
+          const linkElement = document.createElement('a');
+          linkElement.href = url.trim();
+          linkElement.setAttribute('data-url', url.trim());
+          linkElement.className = 'text-blue-600 underline hover:text-blue-800 cursor-pointer';
+          linkElement.target = '_blank';
+          linkElement.textContent = selectedText;
+          
+          // Replace the selected content with the link
+          range.deleteContents();
+          range.insertNode(linkElement);
+          
+          // Clear the selection and place cursor after the link
+          selection.removeAllRanges();
+          const newRange = document.createRange();
+          newRange.setStartAfter(linkElement);
+          newRange.collapse(true);
+          selection.addRange(newRange);
+          
+          // Update content state safely
+          const editorElement = document.querySelector('[contenteditable]');
+          if (editorElement) {
+            setContent(editorElement.innerHTML);
+            setHasUnsavedChanges(true);
+          }
+        }
+      } catch (error) {
+        console.error('Link creation error:', error);
+        showAlert('Error creating link. Please try again.', 'Link Error');
       }
     }
   };

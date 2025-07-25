@@ -728,12 +728,28 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Handle asset selection from library
+   * Handle asset selection from library (Fixed error handling)
    */
   const handleAssetSelect = (asset) => {
-    if (asset.type === 'image' && asset.data) {
-      insertImage(asset.data, asset.name || 'Selected image');
-      setShowImageModal(false);
+    try {
+      console.log('Selected asset:', asset); // Debug logging
+      
+      if (!asset) {
+        console.error('No asset selected');
+        return;
+      }
+      
+      // Check if asset has image data
+      if (asset.data && (asset.type === 'image' || !asset.type)) {
+        insertImage(asset.data, asset.name || 'Selected image');
+        setShowImageModal(false);
+      } else {
+        console.error('Asset missing data or not an image:', asset);
+        alert('Unable to insert selected asset. Please try another image.');
+      }
+    } catch (error) {
+      console.error('Asset selection error:', error);
+      alert('Error inserting image. Please try again.');
     }
   };
 

@@ -1885,8 +1885,11 @@ const PromptSupportEditor = ({
         ) : editorMode === 'markdown' ? (
           <textarea
             ref={markdownRef}
-            value={content}
-            onChange={(e) => handleContentChange(e.target.value, 'markdown')}
+            value={htmlToMarkdown(content)}
+            onChange={(e) => {
+              const htmlContent = markdownToHtml(e.target.value);
+              handleContentChange(htmlContent, 'markdown');
+            }}
             onKeyDown={handleKeyDown}
             className="w-full h-full p-6 border-none outline-none resize-none font-mono text-sm bg-gray-50"
             placeholder="Write your content in Markdown..."

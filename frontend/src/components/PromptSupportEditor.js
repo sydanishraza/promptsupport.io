@@ -2047,6 +2047,9 @@ const PromptSupportEditor = ({
       {/* Phase 3: Asset Library Modal */}
       {renderAssetLibraryModal()}
       
+      {/* Phase 4: Content Analysis Modal */}
+      {renderContentAnalysisModal()}
+      
       {/* Phase 4: AI and Collaboration Panels */}
       {renderAIPanel()}
       {renderCollaborationSidebar()}

@@ -805,6 +805,9 @@
         -working: true
         -agent: "main"
         -comment: "FIXED: Completely rewrote the removeLink function to use document.execCommand('unlink') as the primary method, which properly handles selection and maintains undo history. Added comprehensive fallback using DOM manipulation with document fragments to ensure reliability. The function now immediately updates the content state without timing delays, providing instant feedback to users."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ COMPREHENSIVE FRONTEND TESTING COMPLETED: Link removal functionality thoroughly tested and verified as working perfectly. Test scenario: Created hyperlink using Ctrl+K shortcut, clicked on link to show tooltip, clicked 'Remove Link' option, and confirmed that the link was properly detached from the text while preserving content. The editor content updates correctly and the functionality works seamlessly without any errors or issues."
 
   - task: "Implement HTML View Beautification"
     implemented: true

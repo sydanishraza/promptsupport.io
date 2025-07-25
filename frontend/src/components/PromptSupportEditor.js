@@ -1304,8 +1304,143 @@ const PromptSupportEditor = ({
   // === PHASE 2: MODAL COMPONENTS ===
   
   /**
-   * Render slash command menu
+   * Render AI suggestions panel
    */
+  const renderAIPanel = () => {
+    if (!showAiPanel) return null;
+    
+    return (
+      <div className="ai-panel fixed right-4 top-20 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">AI Assistant</h3>
+            <button
+              onClick={() => setShowAiPanel(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Content Analytics */}
+        <div className="p-4 border-b border-gray-200">
+          <h4 className="font-medium text-gray-800 mb-2">Content Insights</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Words:</span>
+              <span className="font-medium">{contentAnalytics.wordCount || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Reading Time:</span>
+              <span className="font-medium">{contentAnalytics.readingTime || 0} min</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Readability:</span>
+              <span className={`font-medium ${
+                (contentAnalytics.readabilityScore || 0) > 60 ? 'text-green-600' : 
+                (contentAnalytics.readabilityScore || 0) > 30 ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {contentAnalytics.readabilityScore || 0}/100
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* AI Suggestions */}
+        {aiSuggestions.length > 0 && (
+          <div className="p-4">
+            <h4 className="font-medium text-gray-800 mb-2">AI Suggestions</h4>
+            <div className="space-y-2">
+              {aiSuggestions.map((suggestion, index) => (
+                <div key={index} className="p-3 bg-purple-50 rounded-lg">
+                  <p className="text-sm text-gray-700 mb-2">{suggestion}</p>
+                  <button
+                    onClick={() => applyAISuggestion(suggestion)}
+                    className="text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700"
+                  >
+                    Apply
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /**
+   * Render collaboration sidebar
+   */
+  const renderCollaborationSidebar = () => {
+    if (!showComments) return null;
+    
+    return (
+      <div className="fixed right-4 top-20 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">Collaboration</h3>
+            <button
+              onClick={() => setShowComments(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Active Collaborators */}
+        {collaborators.length > 0 && (
+          <div className="p-4 border-b border-gray-200">
+            <h4 className="font-medium text-gray-800 mb-2">Active Now</h4>
+            <div className="flex space-x-2">
+              {collaborators.map(collaborator => (
+                <div key={collaborator.id} className="flex items-center space-x-1">
+                  <span className="text-lg">{collaborator.avatar}</span>
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Comments */}
+        <div className="p-4">
+          <h4 className="font-medium text-gray-800 mb-2">Comments</h4>
+          {comments.length === 0 ? (
+            <p className="text-sm text-gray-500">No comments yet</p>
+          ) : (
+            <div className="space-y-3">
+              {comments.map(comment => (
+                <div key={comment.id} className={`p-3 rounded-lg ${
+                  comment.resolved ? 'bg-green-50' : 'bg-yellow-50'
+                }`}>
+                  <div className="flex items-start justify-between mb-1">
+                    <span className="font-medium text-sm">{comment.author}</span>
+                    <button
+                      onClick={() => toggleCommentResolution(comment.id)}
+                      className={`text-xs px-2 py-1 rounded ${
+                        comment.resolved 
+                          ? 'bg-green-200 text-green-800' 
+                          : 'bg-yellow-200 text-yellow-800'
+                      }`}
+                    >
+                      {comment.resolved ? 'Resolved' : 'Open'}
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-700">{comment.text}</p>
+                  <span className="text-xs text-gray-500">
+                    {comment.timestamp.toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
   const renderSlashMenu = () => {
     if (!showSlashMenu) return null;
     

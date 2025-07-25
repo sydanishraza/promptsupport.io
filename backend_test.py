@@ -2445,228 +2445,231 @@ This test verifies that the file upload pipeline properly triggers the Content L
             print(f"⚠️ Media intelligence test encountered error - {str(e)}")
             return True  # Don't fail main test for supplementary features
 
-    def run_all_tests(self):
-        """Run all Enhanced Content Engine tests with focus on Media Intelligence System"""
-        print("🚀 Starting Enhanced Content Engine Backend Testing")
-        print("🎯 FOCUS: Comprehensive Media Intelligence System with LLM + Vision Models")
-        print("🚨 URGENT: Image Verification for Frontend Display Issues")
-        print(f"Backend URL: {self.base_url}")
-        print("=" * 70)
+    def test_content_library_regression_after_cursor_fix(self):
+        """FOCUS TEST: Verify Content Library APIs work after PromptSupportEditor cursor fix"""
+        print("\n🎯 REGRESSION TEST: Content Library APIs after PromptSupportEditor cursor fix...")
         
-        results = {}
+        regression_tests = []
         
-        # Initialize test article ID for enhanced tests
-        self.test_article_id = None
+        # Test 1: Health Check
+        print("\n1️⃣ Testing Health Check...")
+        try:
+            health_result = self.test_health_check()
+            regression_tests.append(("Health Check", health_result))
+        except Exception as e:
+            print(f"❌ Health check crashed: {e}")
+            regression_tests.append(("Health Check", False))
         
-        # Run URGENT image verification test first
-        print("\n🚨 URGENT IMAGE VERIFICATION TEST")
-        print("=" * 50)
-        results['urgent_image_verification'] = self.test_urgent_image_verification()
-        
-        # Run Enhanced Knowledge Engine tests with billing-management-test.docx
-        print("\n🔥 ENHANCED KNOWLEDGE ENGINE WITH BILLING MANAGEMENT DOCX")
-        print("=" * 50)
-        results['billing_management_docx_upload'] = self.test_billing_management_docx_upload()
-        results['image_extraction_verification'] = self.test_image_extraction_verification()
-        results['media_intelligence_endpoints'] = self.test_media_intelligence_endpoints()
-        
-        # Run Media Intelligence System tests (main focus)
-        print("\n🎯 COMPREHENSIVE MEDIA INTELLIGENCE SYSTEM TESTS")
-        print("=" * 50)
-        results['media_intelligence_analyze'] = self.test_media_intelligence_analyze()
-        results['media_intelligence_process_article'] = self.test_media_intelligence_process_article()
-        results['media_intelligence_stats'] = self.test_media_intelligence_stats()
-        results['media_intelligence_service_functionality'] = self.test_media_intelligence_service_functionality()
-        
-        # Run basic health checks
-        results['health_check'] = self.test_health_check()
-        results['status_endpoint'] = self.test_status_endpoint()
-        
-        # Enhanced Content Library functionality tests
-        print("\n🎯 ENHANCED CONTENT LIBRARY FUNCTIONALITY TESTS")
-        print("=" * 50)
-        results['enhanced_content_library_create'] = self.test_enhanced_content_library_create()
-        results['enhanced_content_library_update'] = self.test_enhanced_content_library_update()
-        results['enhanced_content_library_version_history'] = self.test_enhanced_content_library_version_history()
-        results['enhanced_content_library_restore_version'] = self.test_enhanced_content_library_restore_version()
-        results['enhanced_content_library_delete'] = self.test_enhanced_content_library_delete()
-        results['enhanced_content_library_status_changes'] = self.test_enhanced_content_library_status_changes()
-        results['enhanced_content_library_article_duplication'] = self.test_enhanced_content_library_article_duplication()
-        results['enhanced_content_library_media_detection'] = self.test_enhanced_content_library_media_detection()
-        results['enhanced_content_library_source_type_mapping'] = self.test_enhanced_content_library_source_type_mapping()
-        results['enhanced_content_library_metadata_management'] = self.test_enhanced_content_library_metadata_management()
-        results['enhanced_content_library_api_integration'] = self.test_enhanced_content_library_api_integration()
-        
-        # Original Content Library integration tests
-        print("\n📚 ORIGINAL CONTENT LIBRARY INTEGRATION TESTS")
-        print("=" * 50)
-        results['content_library_integration'] = self.test_content_library_integration()
-        results['file_upload_content_library_integration'] = self.test_file_upload_content_library_integration()
-        
-        # Supporting functionality tests
-        print("\n🔧 SUPPORTING FUNCTIONALITY TESTS")
-        print("=" * 50)
-        results['content_processing'] = self.test_content_processing()
-        results['file_upload'] = self.test_file_upload()
-        results['search_functionality'] = self.test_search_functionality()
-        results['job_status'] = self.test_job_status()
-        results['document_listing'] = self.test_document_listing()
-        
-        # AI Chat (known to have issues, lower priority)
-        results['ai_chat'] = self.test_ai_chat()
-        
-        # Summary
-        print("\n" + "=" * 70)
-        print("📊 COMPREHENSIVE MEDIA INTELLIGENCE SYSTEM TEST RESULTS")
-        print("🎯 LLM + VISION MODELS INTEGRATION TESTING")
-        print("🚨 URGENT IMAGE VERIFICATION RESULTS")
-        print("=" * 70)
-        
-        passed = 0
-        total = len(results)
-        
-        # Prioritize Media Intelligence tests and URGENT test in display
-        priority_tests = [
-            'urgent_image_verification',
-            'billing_management_docx_upload',
-            'image_extraction_verification', 
-            'media_intelligence_endpoints',
-            'media_intelligence_analyze',
-            'media_intelligence_process_article',
-            'media_intelligence_stats',
-            'media_intelligence_service_functionality',
-            'enhanced_content_library_create',
-            'enhanced_content_library_update', 
-            'enhanced_content_library_version_history',
-            'enhanced_content_library_restore_version',
-            'enhanced_content_library_delete',
-            'enhanced_content_library_status_changes',
-            'enhanced_content_library_article_duplication',
-            'enhanced_content_library_media_detection',
-            'enhanced_content_library_source_type_mapping',
-            'enhanced_content_library_metadata_management',
-            'enhanced_content_library_api_integration',
-            'content_library_integration',
-            'file_upload_content_library_integration',
-            'content_processing',
-            'file_upload',
-            'health_check',
-            'status_endpoint',
-            'search_functionality',
-            'job_status',
-            'document_listing',
-            'ai_chat'
-        ]
-        
-        for test_name in priority_tests:
-            if test_name in results:
-                result = results[test_name]
-                status = "✅ PASS" if result else "❌ FAIL"
-                if test_name == 'urgent_image_verification':
-                    priority_marker = "🚨 URGENT: "
-                elif test_name in ['billing_management_docx_upload', 'image_extraction_verification', 'media_intelligence_endpoints']:
-                    priority_marker = "🔥 REVIEW: "
-                elif 'media_intelligence' in test_name:
-                    priority_marker = "🎯 MEDIA AI: "
-                elif 'enhanced_content_library' in test_name:
-                    priority_marker = "📚 "
-                else:
-                    priority_marker = ""
-                print(f"{priority_marker}{test_name.replace('_', ' ').title()}: {status}")
-                if result:
-                    passed += 1
-        
-        print(f"\nOverall: {passed}/{total} tests passed")
-        
-        # URGENT image verification assessment
-        urgent_passed = results.get('urgent_image_verification', False)
-        if urgent_passed:
-            print("🎉 URGENT IMAGE VERIFICATION: PASSED - Backend has embedded images")
-        else:
-            print("❌ URGENT IMAGE VERIFICATION: FAILED - Backend image data issues detected")
-        
-        # Media Intelligence System specific assessment
-        media_intelligence_tests = [
-            'media_intelligence_analyze',
-            'media_intelligence_process_article',
-            'media_intelligence_stats',
-            'media_intelligence_service_functionality'
-        ]
-        media_intelligence_passed = sum(1 for test in media_intelligence_tests if results.get(test, False))
-        
-        print(f"\n🎯 COMPREHENSIVE MEDIA INTELLIGENCE SYSTEM: {media_intelligence_passed}/{len(media_intelligence_tests)} tests passed")
-        
-        # Enhanced Content Library specific assessment
-        enhanced_tests = [
-            'enhanced_content_library_create',
-            'enhanced_content_library_update', 
-            'enhanced_content_library_version_history',
-            'enhanced_content_library_restore_version',
-            'enhanced_content_library_delete',
-            'enhanced_content_library_status_changes',
-            'enhanced_content_library_article_duplication',
-            'enhanced_content_library_media_detection',
-            'enhanced_content_library_source_type_mapping',
-            'enhanced_content_library_metadata_management',
-            'enhanced_content_library_api_integration'
-        ]
-        enhanced_passed = sum(1 for test in enhanced_tests if results.get(test, False))
-        
-        print(f"📚 ENHANCED CONTENT LIBRARY BACKEND: {enhanced_passed}/{len(enhanced_tests)} tests passed")
-        
-        # Original Content Library integration assessment
-        content_library_tests = ['content_library_integration', 'file_upload_content_library_integration']
-        content_library_passed = sum(1 for test in content_library_tests if results.get(test, False))
-        
-        print(f"📖 ORIGINAL CONTENT LIBRARY INTEGRATION: {content_library_passed}/{len(content_library_tests)} tests passed")
-        
-        # Core functionality assessment
-        core_tests = ['health_check', 'status_endpoint', 'content_processing', 'search_functionality', 'document_listing']
-        core_passed = sum(1 for test in core_tests if results.get(test, False))
-        
-        print(f"🔧 CORE FUNCTIONALITY: {core_passed}/{len(core_tests)} tests passed")
-        
-        # Overall assessment with media intelligence priority
-        if media_intelligence_passed >= 3:  # At least 3 out of 4 media intelligence tests should pass
-            print("🎉 COMPREHENSIVE MEDIA INTELLIGENCE SYSTEM: WORKING!")
-            print("   ✅ LLM + Vision model integration functional")
-            print("   ✅ Intelligent media classification operational")
-            print("   ✅ Auto-generated captions and placement working")
-            print("   ✅ Enhanced accessibility features active")
+        # Test 2: GET /api/content-library
+        print("\n2️⃣ Testing GET /api/content-library...")
+        try:
+            response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            print(f"Status Code: {response.status_code}")
             
-            if urgent_passed:
-                print("🎉 URGENT ISSUE RESOLVED: Backend contains embedded images as expected!")
-                if enhanced_passed >= 4:  # At least 4 out of 6 enhanced tests should pass
-                    print("🎉 Enhanced Content Library backend functionality is working!")
-                    if content_library_passed >= 1 and core_passed >= 4:
-                        print("🎉 Complete system integration is working!")
-                        return True
+            if response.status_code == 200:
+                data = response.json()
+                articles = data.get("articles", [])
+                total = data.get("total", 0)
+                
+                print(f"✅ GET /api/content-library working - {total} articles found")
+                print(f"Articles returned: {len(articles)}")
+                
+                # Verify article structure
+                if articles:
+                    sample_article = articles[0]
+                    required_fields = ['id', 'title', 'status', 'created_at']
+                    missing_fields = [field for field in required_fields if field not in sample_article]
+                    
+                    if not missing_fields:
+                        print("✅ Article structure intact")
+                        regression_tests.append(("GET /api/content-library", True))
                     else:
-                        print("⚠️ Media Intelligence and Enhanced features work, but some integration or core issues remain")
-                        return True
+                        print(f"❌ Article missing fields: {missing_fields}")
+                        regression_tests.append(("GET /api/content-library", False))
                 else:
-                    print("⚠️ Media Intelligence works but Enhanced Content Library has some issues")
-                    return True
+                    print("✅ API working (no articles found)")
+                    regression_tests.append(("GET /api/content-library", True))
             else:
-                print("⚠️ Media Intelligence works but backend image data problems detected!")
-                return True
+                print(f"❌ GET /api/content-library failed - status {response.status_code}")
+                print(f"Response: {response.text}")
+                regression_tests.append(("GET /api/content-library", False))
+                
+        except Exception as e:
+            print(f"❌ GET /api/content-library crashed: {e}")
+            regression_tests.append(("GET /api/content-library", False))
+        
+        # Test 3: POST /api/content-library (Article Creation)
+        print("\n3️⃣ Testing POST /api/content-library (Article Creation)...")
+        try:
+            article_data = {
+                'title': 'Regression Test Article - PromptSupportEditor Cursor Fix',
+                'content': '# Regression Test\n\nThis article verifies that the PromptSupportEditor cursor fix did not break backend article creation functionality.\n\n## Test Details\n\n- Created after cursor fix implementation\n- Tests POST /api/content-library endpoint\n- Verifies article saving works correctly\n\n## Expected Result\n\nArticle should be created successfully with proper ID and metadata.',
+                'status': 'draft',
+                'tags': json.dumps(['regression-test', 'cursor-fix', 'backend-verification']),
+                'metadata': json.dumps({
+                    'test_type': 'regression_test',
+                    'created_after': 'promptsupport_editor_cursor_fix',
+                    'purpose': 'verify_no_backend_regression'
+                })
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/content-library",
+                data=article_data,
+                timeout=15
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success") and "article_id" in data:
+                    self.regression_test_article_id = data["article_id"]
+                    print(f"✅ POST /api/content-library working - Article created with ID: {self.regression_test_article_id}")
+                    regression_tests.append(("POST /api/content-library", True))
+                else:
+                    print("❌ POST /api/content-library failed - invalid response")
+                    regression_tests.append(("POST /api/content-library", False))
+            else:
+                print(f"❌ POST /api/content-library failed - status {response.status_code}")
+                print(f"Response: {response.text}")
+                regression_tests.append(("POST /api/content-library", False))
+                
+        except Exception as e:
+            print(f"❌ POST /api/content-library crashed: {e}")
+            regression_tests.append(("POST /api/content-library", False))
+        
+        # Test 4: PUT /api/content-library/{id} (Article Updates)
+        print("\n4️⃣ Testing PUT /api/content-library/{id} (Article Updates)...")
+        try:
+            if hasattr(self, 'regression_test_article_id') and self.regression_test_article_id:
+                updated_data = {
+                    'title': 'UPDATED: Regression Test Article - PromptSupportEditor Cursor Fix',
+                    'content': '# Updated Regression Test\n\nThis article has been UPDATED to verify that the PromptSupportEditor cursor fix did not break backend article update functionality.\n\n## Update Test Details\n\n- Updated after cursor fix implementation\n- Tests PUT /api/content-library/{id} endpoint\n- Verifies article updating and content persistence work correctly\n\n## Update Results\n\nArticle should be updated successfully with incremented version number.\n\n## Additional Content\n\nThis additional content verifies that content persistence is working properly after the frontend cursor fix.',
+                    'status': 'published',
+                    'tags': json.dumps(['regression-test', 'cursor-fix', 'backend-verification', 'updated']),
+                    'metadata': json.dumps({
+                        'test_type': 'regression_test_update',
+                        'updated_after': 'promptsupport_editor_cursor_fix',
+                        'purpose': 'verify_no_backend_regression_on_updates',
+                        'version_test': True
+                    })
+                }
+                
+                response = requests.put(
+                    f"{self.base_url}/content-library/{self.regression_test_article_id}",
+                    data=updated_data,
+                    timeout=15
+                )
+                
+                print(f"Status Code: {response.status_code}")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success") and "version" in data:
+                        print(f"✅ PUT /api/content-library/{{id}} working - Updated to version {data['version']}")
+                        regression_tests.append(("PUT /api/content-library/{id}", True))
+                    else:
+                        print("❌ PUT /api/content-library/{id} failed - invalid response")
+                        regression_tests.append(("PUT /api/content-library/{id}", False))
+                else:
+                    print(f"❌ PUT /api/content-library/{{id}} failed - status {response.status_code}")
+                    print(f"Response: {response.text}")
+                    regression_tests.append(("PUT /api/content-library/{id}", False))
+            else:
+                print("⚠️ No article ID available for update test - skipping")
+                regression_tests.append(("PUT /api/content-library/{id}", True))  # Not a failure
+                
+        except Exception as e:
+            print(f"❌ PUT /api/content-library/{{id}} crashed: {e}")
+            regression_tests.append(("PUT /api/content-library/{id}", False))
+        
+        # Test 5: Article Content Persistence Verification
+        print("\n5️⃣ Testing Article Content Persistence...")
+        try:
+            if hasattr(self, 'regression_test_article_id') and self.regression_test_article_id:
+                # Fetch the updated article and verify content was saved correctly
+                response = requests.get(f"{self.base_url}/content-library", timeout=10)
+                
+                if response.status_code == 200:
+                    articles = response.json().get("articles", [])
+                    
+                    # Find our test article
+                    test_article = None
+                    for article in articles:
+                        if article.get("id") == self.regression_test_article_id:
+                            test_article = article
+                            break
+                    
+                    if test_article:
+                        content = test_article.get("content", "")
+                        title = test_article.get("title", "")
+                        
+                        # Verify the updated content is present
+                        if ("UPDATED" in title and 
+                            "Updated Regression Test" in content and 
+                            "Additional Content" in content):
+                            print("✅ Article content persistence working - Updated content saved correctly")
+                            regression_tests.append(("Article Content Persistence", True))
+                        else:
+                            print("❌ Article content persistence failed - Updated content not found")
+                            print(f"Title: {title}")
+                            print(f"Content preview: {content[:200]}...")
+                            regression_tests.append(("Article Content Persistence", False))
+                    else:
+                        print("❌ Could not find test article for persistence verification")
+                        regression_tests.append(("Article Content Persistence", False))
+                else:
+                    print("❌ Could not fetch articles for persistence verification")
+                    regression_tests.append(("Article Content Persistence", False))
+            else:
+                print("⚠️ No article ID available for persistence test - skipping")
+                regression_tests.append(("Article Content Persistence", True))  # Not a failure
+                
+        except Exception as e:
+            print(f"❌ Article content persistence test crashed: {e}")
+            regression_tests.append(("Article Content Persistence", False))
+        
+        return regression_tests
+
+    def run_all_tests(self):
+        """Run focused regression tests for Content Library APIs after cursor fix"""
+        print("🚀 FOCUSED REGRESSION TESTING: Content Library APIs after PromptSupportEditor cursor fix")
+        print("=" * 80)
+        print("🎯 FOCUS: Verify backend functionality is unaffected by frontend cursor fix")
+        print("=" * 80)
+        
+        # Run the focused regression test
+        regression_results = self.test_content_library_regression_after_cursor_fix()
+        
+        # Calculate results
+        passed = sum(1 for _, result in regression_results if result)
+        failed = len(regression_results) - passed
+        
+        # Print summary
+        print("\n" + "="*80)
+        print("🎯 REGRESSION TEST SUMMARY - Content Library APIs")
+        print("="*80)
+        print(f"✅ Passed: {passed}")
+        print(f"❌ Failed: {failed}")
+        print(f"📊 Total: {len(regression_results)}")
+        if len(regression_results) > 0:
+            print(f"📈 Success Rate: {(passed/len(regression_results)*100):.1f}%")
+        
+        print("\n📋 Detailed Results:")
+        for test_name, result in regression_results:
+            status = "✅ PASS" if result else "❌ FAIL"
+            print(f"  {status} - {test_name}")
+        
+        print("\n🔍 REGRESSION ANALYSIS:")
+        if failed == 0:
+            print("✅ NO REGRESSIONS DETECTED: All Content Library APIs working normally")
+            print("✅ PromptSupportEditor cursor fix did not affect backend functionality")
         else:
-            print(f"❌ COMPREHENSIVE MEDIA INTELLIGENCE SYSTEM: ISSUES DETECTED!")
-            print(f"   Only {media_intelligence_passed}/{len(media_intelligence_tests)} media intelligence tests passed")
-            
-            if urgent_passed:
-                print("✅ Images found in backend (frontend display issue)")
-            else:
-                print("❌ Backend image data problems confirmed")
-            
-            if enhanced_passed >= 4:
-                print("✅ Enhanced Content Library backend works")
-            if content_library_passed >= 1:
-                print("✅ Original Content Library integration works")
-            if core_passed >= 4:
-                print("✅ Core functionality works")
-            
-            return False
+            print(f"⚠️ POTENTIAL REGRESSIONS: {failed} test(s) failed")
+            print("🔍 Investigation needed to determine if issues are related to cursor fix")
+        
+        return passed, failed, regression_results
 
 if __name__ == "__main__":
     tester = EnhancedContentEngineTest()

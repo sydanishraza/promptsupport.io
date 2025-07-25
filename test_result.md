@@ -776,6 +776,66 @@
         -agent: "main"
         -comment: "FULLY COMPLETED: Comprehensive overhaul of WYSIWYG editor implementing ALL requested features. CRITICAL FIXES: Fixed cursor jumping/sticking by proper event handling and cursor preservation. Fixed backspace/delete exiting edit mode with stopPropagation(). COMPREHENSIVE TOOLBAR: Added Undo/Redo, Bold/Italic/Underline/Strikethrough, H1-H4 headings, Lists (bullet/numbered), Indent/Outdent, Link/Image/Table insertion, Quote/Code blocks, Callouts (Tip/Warning/Note/Expandable), AI tools, Horizontal line. KEYBOARD SHORTCUTS: Implemented Ctrl+Z/Y (Undo/Redo), Ctrl+B/I/U (Bold/Italic/Underline), Ctrl+K (Link), Ctrl+S (Save), Tab/Shift+Tab (Indent/Outdent). SLASH COMMANDS: Type '/' for quick insert menu with all content blocks. CONTENT SUPPORT: Lists, tables, callouts, expandable sections, quotes, code blocks, all properly rendered. MODERN UX: Multi-view modes (WYSIWYG/Preview/Markdown/HTML), auto-save with status tracking, real-time save status, metadata panel. AUTO-SAVE: Saves after 2s inactivity with visual status ('Saving...', 'Saved [time]', 'Unsaved changes'). TESTED FEATURES: All toolbar buttons work, callout blocks render perfectly, table insertion functional, auto-save operational. Completely modern, production-ready editor."
 
+  - task: "Fix Paste Functionality in WYSIWYG Editor"
+    implemented: false
+    working: false
+    file: "frontend/src/components/PromptSupportEditor.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: Cannot paste content into the editor - nothing appears when trying to paste. This breaks basic usability and needs immediate attention."
+
+  - task: "Fix Link Remove Option in Tooltip"
+    implemented: false
+    working: false
+    file: "frontend/src/components/PromptSupportEditor.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: The 'Remove Link' option in the link tooltip does not work when clicked. It should properly detach the hyperlink from the selected text."
+
+  - task: "Implement HTML View Beautification"
+    implemented: false
+    working: false
+    file: "frontend/src/components/PromptSupportEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: The HTML tab should always display well-indented, cleaned-up, beautified HTML markup. No redundant tags, inline styles, or broken structure should be present."
+
+  - task: "Fix Image Handling - Use Proper File Formats Instead of Base64"
+    implemented: false
+    working: false
+    file: "frontend/src/components/PromptSupportEditor.js, backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: When inserting images, the editor is embedding them as base64 data, which is not ideal. If the original image is a PNG, JPG, etc., it should be embedded using the actual source file format and URL."
+
+  - task: "Fix Asset Upload - Maintain Original Format and Save to Asset Library"
+    implemented: false
+    working: false
+    file: "frontend/src/components/PromptSupportEditor.js, backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "USER REPORTED ISSUE: If a user uploads an image from their computer, the platform should retain the original format (e.g., PNG), save the image to the Asset Library, then embed via a file reference, not base64."
+
 ## metadata:
   created_by: "main_agent"
   version: "2.0"

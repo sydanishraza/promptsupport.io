@@ -131,6 +131,174 @@ async def startup_event():
     
     print("🎉 Enhanced Content Engine started successfully!")
 
+@app.post("/api/ai-assistance")
+async def ai_assistance(request: AIAssistanceRequest):
+    """Provide AI writing assistance using OpenAI"""
+    try:
+        if not OPENAI_API_KEY:
+            return {"error": "OpenAI API key not configured", "suggestions": []}
+        
+        # Prepare prompt based on mode
+        prompts = {
+            "completion": f"Continue this text naturally and coherently:\n\n{request.content}\n\nContinuation:",
+            "improvement": f"Analyze this text and suggest specific improvements for clarity, engagement, and readability:\n\n{request.content}\n\nSuggestions:",
+            "grammar": f"Check this text for grammar, spelling, and style issues and provide corrections:\n\n{request.content}\n\nCorrections:",
+            "analysis": f"Analyze this content for readability, structure, tone, and provide insights:\n\n{request.content}\n\nAnalysis:"
+        }
+        
+        prompt = prompts.get(request.mode, prompts["completion"])
+        
+        # Make request to OpenAI
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "gpt-4",
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful writing assistant. Provide clear, actionable suggestions."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 500,
+                    "temperature": 0.7
+                }
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                
+                # Split response into suggestions
+                suggestions = [s.strip() for s in ai_response.split('\n') if s.strip()]
+                
+                return {
+                    "suggestions": suggestions[:3],  # Limit to 3 suggestions
+                    "mode": request.mode,
+                    "success": True
+                }
+            else:
+                print(f"OpenAI API error: {response.status_code} - {response.text}")
+                return {"error": "AI service temporarily unavailable", "suggestions": []}
+                
+    except Exception as e:
+        print(f"AI assistance error: {str(e)}")
+        return {"error": str(e), "suggestions": []}
+
+@app.post("/api/content-analysis")
+async def content_analysis(request: AIAssistanceRequest):
+    """Analyze content for insights using OpenAI"""
+    try:
+        if not OPENAI_API_KEY:
+            return {"error": "OpenAI API key not configured"}
+        
+        # Strip HTML tags for analysis
+        text_content = re.sub(r'<[^>]*>', '', request.content)
+        
+        # Basic metrics
+        words = len(text_content.split())
+        sentences = len([s for s in re.split(r'[.!?]+', text_content) if s.strip()])
+        paragraphs = len([p for p in text_content.split('\n\n') if p.strip()])
+        
+        # Get AI analysis
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "gpt-4",
+                    "messages": [
+                        {"role": "system", "content": "You are a content analysis expert. Provide readability score (0-100), tone assessment, and key insights."},
+                        {"role": "user", "content": f"Analyze this content:\n\n{text_content[:1000]}"}
+                    ],
+                    "max_tokens": 300,
+                    "temperature": 0.3
+                }
+            )
+            
+            ai_insights = ""
+            readability_score = 70  # Default
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_insights = result["choices"][0]["message"]["content"]
+                
+                # Extract readability score if mentioned
+                score_match = re.search(r'readability.*?(\d+)', ai_insights, re.IGNORECASE)
+                if score_match:
+                    readability_score = int(score_match.group(1))
+        
+        return {
+            "wordCount": words,
+            "sentences": sentences,
+            "paragraphs": paragraphs,
+            "readingTime": max(1, words // 200),  # Avg 200 words per minute
+            "readabilityScore": readability_score,
+            "characterCount": len(text_content),
+            "aiInsights": ai_insights,
+            "success": True
+        }
+        
+    except Exception as e:
+        print(f"Content analysis error: {str(e)}")
+        return {"error": str(e)}
+
+@app.put("/api/content-library/{article_id}")
+async def update_article(article_id: str, request: SaveArticleRequest):
+    """Update an existing article"""
+    try:
+        collection = db["content_library"]
+        
+        update_data = {
+            "title": request.title,
+            "content": request.content,
+            "status": request.status,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        result = await collection.update_one(
+            {"id": article_id},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Article not found")
+            
+        return {"success": True, "message": f"Article {request.status}"}
+        
+    except Exception as e:
+        print(f"Update article error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/content-library")
+async def create_article(request: SaveArticleRequest):
+    """Create a new article"""
+    try:
+        collection = db["content_library"]
+        
+        article_data = {
+            "id": str(uuid.uuid4()),
+            "title": request.title,
+            "content": request.content,
+            "status": request.status,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "type": "article"
+        }
+        
+        await collection.insert_one(article_data)
+        
+        return {"success": True, "id": article_data["id"], "message": f"Article {request.status}"}
+        
+    except Exception as e:
+        print(f"Create article error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Health check endpoint
 @app.get("/api/health")
 async def health_check():

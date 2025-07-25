@@ -898,15 +898,18 @@
 
   - task: "Fix Editor Scrollability After Image Insertion"
     implemented: true
-    working: true
+    working: false
     file: "frontend/src/components/PromptSupportEditor.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
         -working: true
         -agent: "testing"
         -comment: "✅ EDITOR SCROLLABILITY TESTING COMPLETED: Editor scrollability is working correctly. The editor maintains proper scroll functionality with scroll height (varies) > client height, allowing users to scroll through content. ✅ NO BLACK SCREEN ISSUES: No black screen problems detected during scrolling tests. ✅ PROPER OVERFLOW HANDLING: Editor has proper CSS styling with overflow: auto and max-height constraints that maintain scrollability. ✅ CONTENT EXPANSION: Editor properly handles content expansion and maintains scrollable interface after content additions. The scrollability issue mentioned in the review request appears to be resolved."
+        -working: false
+        -agent: "testing"
+        -comment: "🔥 CRITICAL SCROLLABILITY ISSUE CONFIRMED: Comprehensive testing reveals significant problems with editor scrollability after image insertion as mentioned in the review request. ❌ OVERFLOW-Y ISSUE: Editor has overflow-y: hidden instead of auto/scroll, preventing proper scrolling functionality. ❌ SCROLLABILITY AFTER FIRST IMAGE: Editor is NOT scrollable after inserting the first image (scrollHeight: 500px = clientHeight: 500px, isScrollable: false). ❌ INCONSISTENT BEHAVIOR: Editor becomes scrollable only after inserting multiple images, indicating the fix is not working consistently. ❌ CSS STYLING PROBLEM: The overflow-y fix in the insertImage function is not being applied properly - computed style shows 'hidden' instead of 'auto' or 'scroll'. TECHNICAL DETAILS: Before insertion (scrollable: false, overflow-y: hidden), after first image (scrollable: false, overflow-y: hidden), after multiple images (scrollable: true but overflow-y still hidden). The JavaScript fix that sets editor.style.overflowY = 'auto' and editor.style.maxHeight = '500px' is not taking effect. This confirms the exact issue described in the review request - the overflow-y fix is not working correctly."
 
   - task: "Prevent Duplicate Assets from Asset Library Selection"
     implemented: true

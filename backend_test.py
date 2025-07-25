@@ -3301,6 +3301,458 @@ This test verifies that the file upload pipeline properly triggers the Content L
         
         return passed, failed, regression_results
 
+    def test_asset_upload_endpoint(self):
+        """Test /api/assets/upload endpoint - Upload image files and verify file system storage"""
+        print("\n🔍 Testing Asset Upload Endpoint...")
+        try:
+            # Create a simple test image (1x1 PNG)
+            import base64
+            import io
+            
+            # Simple 1x1 red PNG image in base64
+            test_image_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+            test_image_data = base64.b64decode(test_image_b64)
+            
+            # Create file-like object
+            file_data = io.BytesIO(test_image_data)
+            
+            files = {
+                'file': ('test_image.png', file_data, 'image/png')
+            }
+            
+            print("Uploading test image file...")
+            response = requests.post(
+                f"{self.base_url}/assets/upload",
+                files=files,
+                timeout=30
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                # Verify response structure
+                if (data.get("success") and "asset" in data):
+                    asset = data["asset"]
+                    
+                    # Check required asset fields
+                    required_fields = ['id', 'name', 'type', 'url', 'original_filename', 'size']
+                    missing_fields = [field for field in required_fields if field not in asset]
+                    
+                    if not missing_fields:
+                        print(f"✅ Asset upload successful")
+                        print(f"   Asset ID: {asset.get('id')}")
+                        print(f"   Original filename: {asset.get('original_filename')}")
+                        print(f"   URL: {asset.get('url')}")
+                        print(f"   Size: {asset.get('size')} bytes")
+                        
+                        # Store asset info for static file serving test
+                        self.test_asset_url = asset.get('url')
+                        self.test_asset_id = asset.get('id')
+                        
+                        return True
+                    else:
+                        print(f"❌ Asset upload response missing fields: {missing_fields}")
+                        return False
+                else:
+                    print("❌ Asset upload failed - invalid response structure")
+                    return False
+            else:
+                print(f"❌ Asset upload failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Asset upload test failed - {str(e)}")
+            return False
+
+    def test_static_file_serving(self):
+        """Test static file serving - Verify uploaded images are accessible via URLs with correct headers"""
+        print("\n🔍 Testing Static File Serving...")
+        try:
+            if not hasattr(self, 'test_asset_url') or not self.test_asset_url:
+                print("⚠️ No test asset URL available - running asset upload first...")
+                if not self.test_asset_upload_endpoint():
+                    print("❌ Could not upload test asset for static file serving test")
+                    return False
+            
+            # Test accessing the uploaded image via its URL
+            static_url = self.base_url.replace('/api', '') + self.test_asset_url
+            print(f"Testing static file access: {static_url}")
+            
+            response = requests.get(static_url, timeout=15)
+            
+            print(f"Status Code: {response.status_code}")
+            print(f"Content-Type: {response.headers.get('content-type', 'Not set')}")
+            print(f"Content-Length: {response.headers.get('content-length', 'Not set')}")
+            
+            if response.status_code == 200:
+                # Verify content-type header is correct for images
+                content_type = response.headers.get('content-type', '')
+                
+                if content_type.startswith('image/'):
+                    print(f"✅ Static file serving successful")
+                    print(f"   Content-Type: {content_type}")
+                    print(f"   Response size: {len(response.content)} bytes")
+                    
+                    # Verify we got actual image data, not HTML
+                    if len(response.content) > 0 and not response.content.startswith(b'<!DOCTYPE'):
+                        print("✅ Received actual image data (not HTML)")
+                        return True
+                    else:
+                        print("❌ Received HTML instead of image data")
+                        print(f"Response preview: {response.content[:100]}")
+                        return False
+                else:
+                    print(f"❌ Incorrect content-type: {content_type} (expected image/*)")
+                    return False
+            else:
+                print(f"❌ Static file serving failed - status code {response.status_code}")
+                print(f"Response: {response.text[:200]}...")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Static file serving test failed - {str(e)}")
+            return False
+
+    def test_asset_library_endpoint(self):
+        """Test /api/assets endpoint - Verify uploaded images appear in asset library with metadata"""
+        print("\n🔍 Testing Asset Library Endpoint...")
+        try:
+            response = requests.get(f"{self.base_url}/assets", timeout=15)
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response structure: {list(data.keys())}")
+                
+                if "assets" in data and "total" in data:
+                    assets = data["assets"]
+                    total = data["total"]
+                    
+                    print(f"Total assets: {total}")
+                    print(f"Assets returned: {len(assets)}")
+                    
+                    if assets:
+                        # Check if our test asset is in the library
+                        test_asset_found = False
+                        file_based_assets = 0
+                        embedded_assets = 0
+                        
+                        for asset in assets:
+                            storage_type = asset.get('storage_type', 'unknown')
+                            
+                            if storage_type == 'file':
+                                file_based_assets += 1
+                            elif storage_type == 'embedded':
+                                embedded_assets += 1
+                            
+                            # Check if this is our test asset
+                            if (hasattr(self, 'test_asset_id') and 
+                                asset.get('id') == self.test_asset_id):
+                                test_asset_found = True
+                                print(f"✅ Found our test asset in library:")
+                                print(f"   ID: {asset.get('id')}")
+                                print(f"   Name: {asset.get('name')}")
+                                print(f"   Storage type: {asset.get('storage_type')}")
+                                print(f"   URL: {asset.get('url')}")
+                        
+                        print(f"Asset breakdown: {file_based_assets} file-based, {embedded_assets} embedded")
+                        
+                        # Verify asset structure
+                        sample_asset = assets[0]
+                        required_fields = ['id', 'name', 'type', 'created_at', 'size', 'storage_type']
+                        missing_fields = [field for field in required_fields if field not in sample_asset]
+                        
+                        if not missing_fields:
+                            print("✅ Asset library structure correct")
+                            
+                            if test_asset_found:
+                                print("✅ Test asset found in library")
+                            else:
+                                print("⚠️ Test asset not found (may be from previous test)")
+                            
+                            return True
+                        else:
+                            print(f"❌ Asset structure missing fields: {missing_fields}")
+                            return False
+                    else:
+                        print("⚠️ No assets found in library")
+                        return True  # Empty library is not necessarily a failure
+                else:
+                    print("❌ Asset library response missing required fields")
+                    return False
+            else:
+                print(f"❌ Asset library failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Asset library test failed - {str(e)}")
+            return False
+
+    def test_file_storage_verification(self):
+        """Test file storage - Verify images are saved to /app/backend/static/uploads/ with original format"""
+        print("\n🔍 Testing File Storage Verification...")
+        try:
+            # This test checks if files are actually saved to the file system
+            # We'll upload a file and then check if it exists on disk
+            
+            import base64
+            import io
+            import os
+            
+            # Create a test JPEG image
+            test_jpeg_b64 = "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/wA=="
+            test_jpeg_data = base64.b64decode(test_jpeg_b64)
+            
+            # Create file-like object
+            file_data = io.BytesIO(test_jpeg_data)
+            
+            files = {
+                'file': ('test_storage.jpg', file_data, 'image/jpeg')
+            }
+            
+            print("Uploading JPEG file to test storage...")
+            response = requests.post(
+                f"{self.base_url}/assets/upload",
+                files=files,
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Could not upload test file - status code {response.status_code}")
+                return False
+            
+            data = response.json()
+            asset = data.get("asset", {})
+            asset_url = asset.get("url", "")
+            
+            if not asset_url:
+                print("❌ No asset URL returned from upload")
+                return False
+            
+            print(f"Asset URL: {asset_url}")
+            
+            # Extract filename from URL (e.g., /static/uploads/filename.jpg)
+            if "/static/uploads/" in asset_url:
+                filename = asset_url.split("/static/uploads/")[-1]
+                expected_file_path = f"/app/backend/static/uploads/{filename}"
+                
+                print(f"Expected file path: {expected_file_path}")
+                
+                # Check if file exists on disk
+                if os.path.exists(expected_file_path):
+                    file_size = os.path.getsize(expected_file_path)
+                    print(f"✅ File exists on disk: {expected_file_path}")
+                    print(f"   File size: {file_size} bytes")
+                    
+                    # Verify file format is preserved
+                    if filename.endswith('.jpg') or filename.endswith('.jpeg'):
+                        print("✅ Original JPEG format preserved")
+                        
+                        # Read file and verify it's actual image data
+                        with open(expected_file_path, 'rb') as f:
+                            file_content = f.read()
+                            
+                        # JPEG files start with FF D8 FF
+                        if file_content.startswith(b'\xff\xd8\xff'):
+                            print("✅ File contains valid JPEG data")
+                            return True
+                        else:
+                            print("❌ File does not contain valid JPEG data")
+                            return False
+                    else:
+                        print(f"❌ File format not preserved: {filename}")
+                        return False
+                else:
+                    print(f"❌ File does not exist on disk: {expected_file_path}")
+                    
+                    # Check if uploads directory exists
+                    uploads_dir = "/app/backend/static/uploads/"
+                    if os.path.exists(uploads_dir):
+                        files_in_dir = os.listdir(uploads_dir)
+                        print(f"Files in uploads directory: {files_in_dir}")
+                    else:
+                        print(f"❌ Uploads directory does not exist: {uploads_dir}")
+                    
+                    return False
+            else:
+                print(f"❌ Unexpected asset URL format: {asset_url}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ File storage verification failed - {str(e)}")
+            return False
+
+    def test_database_integration(self):
+        """Test database integration - Verify asset metadata is stored correctly in MongoDB"""
+        print("\n🔍 Testing Database Integration...")
+        try:
+            # Upload a test asset first
+            import base64
+            import io
+            
+            test_png_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+            test_png_data = base64.b64decode(test_png_b64)
+            
+            file_data = io.BytesIO(test_png_data)
+            
+            files = {
+                'file': ('database_test.png', file_data, 'image/png')
+            }
+            
+            print("Uploading PNG file to test database integration...")
+            upload_response = requests.post(
+                f"{self.base_url}/assets/upload",
+                files=files,
+                timeout=30
+            )
+            
+            if upload_response.status_code != 200:
+                print(f"❌ Could not upload test file - status code {upload_response.status_code}")
+                return False
+            
+            upload_data = upload_response.json()
+            test_asset = upload_data.get("asset", {})
+            test_asset_id = test_asset.get("id")
+            
+            if not test_asset_id:
+                print("❌ No asset ID returned from upload")
+                return False
+            
+            print(f"Uploaded asset ID: {test_asset_id}")
+            
+            # Now check if the asset appears in the asset library (which queries the database)
+            library_response = requests.get(f"{self.base_url}/assets", timeout=15)
+            
+            if library_response.status_code != 200:
+                print(f"❌ Could not fetch asset library - status code {library_response.status_code}")
+                return False
+            
+            library_data = library_response.json()
+            assets = library_data.get("assets", [])
+            
+            # Find our test asset in the library
+            test_asset_found = None
+            for asset in assets:
+                if asset.get("id") == test_asset_id:
+                    test_asset_found = asset
+                    break
+            
+            if not test_asset_found:
+                print(f"❌ Test asset not found in library (ID: {test_asset_id})")
+                print(f"Available asset IDs: {[a.get('id') for a in assets[:5]]}")
+                return False
+            
+            print("✅ Test asset found in database")
+            
+            # Verify database metadata fields
+            required_db_fields = [
+                'id', 'original_filename', 'name', 'type', 'url', 
+                'content_type', 'size', 'created_at', 'storage_type'
+            ]
+            
+            missing_fields = []
+            for field in required_db_fields:
+                if field not in test_asset_found:
+                    missing_fields.append(field)
+            
+            if missing_fields:
+                print(f"❌ Database metadata missing fields: {missing_fields}")
+                print(f"Available fields: {list(test_asset_found.keys())}")
+                return False
+            
+            # Verify specific metadata values
+            metadata_checks = [
+                ('original_filename', 'database_test.png'),
+                ('type', 'image'),
+                ('storage_type', 'file'),
+                ('content_type', 'image/png')
+            ]
+            
+            for field, expected_value in metadata_checks:
+                actual_value = test_asset_found.get(field)
+                if actual_value != expected_value:
+                    print(f"❌ Metadata mismatch - {field}: expected '{expected_value}', got '{actual_value}'")
+                    return False
+            
+            print("✅ Database integration successful")
+            print(f"   Asset metadata correctly stored:")
+            print(f"   - Original filename: {test_asset_found.get('original_filename')}")
+            print(f"   - Content type: {test_asset_found.get('content_type')}")
+            print(f"   - Size: {test_asset_found.get('size')} bytes")
+            print(f"   - Storage type: {test_asset_found.get('storage_type')}")
+            print(f"   - Created at: {test_asset_found.get('created_at')}")
+            
+            return True
+                
+        except Exception as e:
+            print(f"❌ Database integration test failed - {str(e)}")
+            return False
+
+    def run_asset_upload_tests(self):
+        """Run the specific asset upload and static file serving tests requested in the review"""
+        print("🎯 ASSET UPLOAD AND STATIC FILE SERVING SYSTEM TESTING")
+        print("=" * 70)
+        print("🔍 Testing the recently fixed asset upload endpoint and static file serving")
+        print("=" * 70)
+        
+        asset_tests = [
+            ("Asset Upload Endpoint (/api/assets/upload)", self.test_asset_upload_endpoint),
+            ("Static File Serving", self.test_static_file_serving),
+            ("Asset Library Endpoint (/api/assets)", self.test_asset_library_endpoint),
+            ("File Storage Verification", self.test_file_storage_verification),
+            ("Database Integration", self.test_database_integration)
+        ]
+        
+        results = []
+        passed = 0
+        failed = 0
+        
+        for test_name, test_func in asset_tests:
+            try:
+                print(f"\n{'='*20} {test_name} {'='*20}")
+                result = test_func()
+                if result:
+                    print(f"✅ {test_name}: PASSED")
+                    passed += 1
+                else:
+                    print(f"❌ {test_name}: FAILED")
+                    failed += 1
+                results.append((test_name, result))
+            except Exception as e:
+                print(f"💥 {test_name}: ERROR - {str(e)}")
+                failed += 1
+                results.append((test_name, False))
+        
+        print("\n" + "="*70)
+        print("🎯 ASSET UPLOAD SYSTEM TEST SUMMARY")
+        print("="*70)
+        print(f"✅ Passed: {passed}")
+        print(f"❌ Failed: {failed}")
+        print(f"📊 Total: {len(results)}")
+        if len(results) > 0:
+            print(f"📈 Success Rate: {(passed/len(results)*100):.1f}%")
+        
+        print("\n📋 Detailed Results:")
+        for test_name, result in results:
+            status = "✅ PASS" if result else "❌ FAIL"
+            print(f"  {status} - {test_name}")
+        
+        print("\n🔍 SYSTEM ANALYSIS:")
+        if failed == 0:
+            print("✅ ASSET UPLOAD SYSTEM FULLY FUNCTIONAL")
+            print("✅ All components working: upload, storage, serving, database")
+        else:
+            print(f"⚠️ ISSUES DETECTED: {failed} component(s) failed")
+            print("🔍 Investigation needed for failing components")
+        
+        return results
+
     def test_critical_asset_upload_system(self):
         """Test the critical asset upload system fixes - POST /api/assets/upload"""
         print("\n🔍 Testing Critical Asset Upload System...")

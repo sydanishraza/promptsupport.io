@@ -2574,64 +2574,195 @@ const PromptSupportEditor = ({
   /**
    * Render asset library modal for image selection (Fixed React hooks issue)
    */
+  /**
+   * Render modern, responsive asset library modal with enhanced UI/UX
+   */
   const renderAssetLibraryModal = () => {
     if (!showImageModal) return null;
     
+    // Filter assets based on search term
+    const filteredAssets = assets.filter(asset => 
+      asset.name.toLowerCase().includes(assetSearchTerm.toLowerCase())
+    );
+    
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-4/5 max-w-4xl max-h-4/5 overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Choose from Asset Library</h3>
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-full max-h-[90vh] flex flex-col animate-in fade-in duration-200">
+          {/* Modern Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <ImageIcon className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Asset Library</h3>
+                <p className="text-sm text-gray-500">Choose an image for your content</p>
+              </div>
+            </div>
             <button
-              onClick={() => setShowImageModal(false)}
-              className="text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setShowImageModal(false);
+                setAssetSearchTerm('');
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5 text-gray-500 group-hover:text-gray-700" />
             </button>
           </div>
-          
-          {assetsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading assets...</span>
+
+          {/* Search and Filter Bar */}
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search assets..."
+                  value={assetSearchTerm}
+                  onChange={(e) => setAssetSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full font-medium">
+                  {filteredAssets.length}
+                </span>
+                <span>{filteredAssets.length === 1 ? 'asset' : 'assets'}</span>
+              </div>
             </div>
-          ) : assets.length === 0 ? (
-            <div className="text-center py-12">
-              <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No assets found in library.</p>
-              <p className="text-sm text-gray-400 mt-2">Upload images to see them here.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {assets.map(asset => (
-                <div
-                  key={asset.id}
-                  onClick={() => handleAssetSelect(asset)}
-                  className="cursor-pointer border border-gray-200 rounded-lg p-2 hover:border-blue-500 hover:shadow-md transition-all"
-                >
-                  <img
-                    src={asset.data}
-                    alt={asset.name}
-                    className="w-full h-32 object-cover rounded mb-2"
-                  />
-                  <p className="text-sm text-gray-700 truncate" title={asset.name}>
-                    {asset.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {Math.round(asset.size / 1024)}KB
-                  </p>
+          </div>
+
+          {/* Content Area with Overflow Handling */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {assetsLoading ? (
+              /* Modern Loading State */
+              <div className="flex-1 flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+                    <ImageIcon className="h-6 w-6 text-blue-500 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <p className="mt-4 text-gray-600 font-medium">Loading your assets...</p>
+                  <p className="text-sm text-gray-500 mt-1">This might take a moment</p>
                 </div>
-              ))}
+              </div>
+            ) : filteredAssets.length === 0 ? (
+              /* Enhanced Empty State */
+              <div className="flex-1 flex items-center justify-center bg-gray-50">
+                <div className="text-center max-w-md mx-auto px-6">
+                  {assetSearchTerm ? (
+                    /* No Search Results */
+                    <>
+                      <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Search className="h-8 w-8 text-yellow-600" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">No assets found</h4>
+                      <p className="text-gray-500 mb-4">
+                        No assets match "{assetSearchTerm}". Try a different search term.
+                      </p>
+                      <button
+                        onClick={() => setAssetSearchTerm('')}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Clear Search
+                      </button>
+                    </>
+                  ) : (
+                    /* No Assets Available */
+                    <>
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <ImageIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">No assets yet</h4>
+                      <p className="text-gray-500">
+                        Upload some images to see them here. They'll appear automatically once added to your content.
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Responsive Grid with Overflow Handling */
+              <div className="flex-1 overflow-y-auto px-6 py-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {filteredAssets.map((asset, index) => (
+                    <div
+                      key={asset.id}
+                      onClick={() => handleAssetSelect(asset)}
+                      className="group cursor-pointer bg-white border border-gray-200 rounded-xl p-3 hover:border-blue-500 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
+                      style={{
+                        animationDelay: `${index * 50}ms`
+                      }}
+                    >
+                      {/* Image Container with Aspect Ratio */}
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-3 relative">
+                        <img
+                          src={asset.data}
+                          alt={asset.name}
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        {/* Fallback for broken images */}
+                        <div className="hidden w-full h-full items-center justify-center bg-gray-100">
+                          <ImageIcon className="h-8 w-8 text-gray-400" />
+                        </div>
+                        
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white rounded-full p-2">
+                            <Eye className="h-4 w-4 text-gray-700" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Asset Info */}
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors" title={asset.name}>
+                          {asset.name}
+                        </h4>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{Math.round(asset.size / 1024)}KB</span>
+                          <span className="px-2 py-1 bg-gray-100 rounded-full">
+                            {asset.type}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Load More Button (if needed for pagination) */}
+                {filteredAssets.length > 0 && (
+                  <div className="mt-8 text-center">
+                    <p className="text-sm text-gray-500">
+                      Showing {filteredAssets.length} asset{filteredAssets.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Modern Footer */}
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Click any image to insert it into your content
+              </div>
+              <button
+                onClick={() => {
+                  setShowImageModal(false);
+                  setAssetSearchTerm('');
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
             </div>
-          )}
-          
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => setShowImageModal(false)}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       </div>

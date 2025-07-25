@@ -1760,7 +1760,9 @@ const PromptSupportEditor = ({
               <CheckSquare className="h-4 w-4" />
             </button>
           </div>
-            
+
+          {/* Collaboration & Analytics Group */}
+          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button
               onClick={() => setShowComments(!showComments)}
               className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors relative ${

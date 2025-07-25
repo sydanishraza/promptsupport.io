@@ -1177,27 +1177,16 @@ const MediaArticleViewer = ({
               title="Insert Warning"
             >
               ⚠️ Warning
-            </button>
-            <button
-              onClick={() => insertWysiwygHTML('<div class="note" style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 1rem; margin: 1rem 0; border-left: 4px solid #10b981;"><strong>📝 Note:</strong> Your note content here</div>')}
-              className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200"
-              title="Insert Note"
-            >
-              📝 Note
-            </button>
-          </div>
-        </div>
+  };
+
+  // Main render function
+  if (!article) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        Select an article to view or edit
       </div>
     );
-  };
-  const renderEnhancedToolbar = () => {
-    const currentMode = viewMode;
-    
-    return (
-      <div className="border-b border-gray-200 p-3 bg-gray-50">
-        <div className="flex flex-wrap gap-2">
-          {/* Basic Formatting */}
-          <div className="flex items-center space-x-1 border-r border-gray-300 pr-3">
+  }
             <button
               onClick={() => insertFormatting('**', '**', currentMode)}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"

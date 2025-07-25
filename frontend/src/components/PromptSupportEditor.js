@@ -124,6 +124,19 @@ const PromptSupportEditor = ({
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   
+  // === PHASE 4: AI & COLLABORATION STATE ===
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+  const [collaborators, setCollaborators] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [showComments, setShowComments] = useState(false);
+  const [contentAnalytics, setContentAnalytics] = useState({});
+  const [aiWritingMode, setAiWritingMode] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [currentSuggestion, setCurrentSuggestion] = useState(null);
+  
   // === REFS ===
   const editorRef = useRef(null);
   const markdownRef = useRef(null);

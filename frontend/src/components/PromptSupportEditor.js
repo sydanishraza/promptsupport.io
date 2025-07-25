@@ -1193,7 +1193,7 @@ const PromptSupportEditor = ({
       
     } catch (error) {
       console.error('AI assistance error:', error);
-      alert('AI assistance is currently unavailable. Please try again later.');
+      showAlert('AI assistance is currently unavailable. Please try again later.', 'AI Error');
     } finally {
       setAiWritingMode(false);
     }

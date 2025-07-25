@@ -1897,24 +1897,43 @@ const PromptSupportEditor = ({
           </div>
         )}
         
-        {/* Comments */}
+        {/* Comments & Suggestions */}
         <div className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-gray-800">Comments</h4>
+            <h4 className="font-medium text-gray-800">Comments & Suggestions</h4>
             <button
               onClick={addComment}
               className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+              title="Select text first, then click to add comment"
             >
               Add Comment
             </button>
           </div>
+          
+          {selectedText && (
+            <div className="mb-3 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+              <div className="text-xs text-blue-600 font-medium">Text Selected:</div>
+              <div className="text-sm text-blue-800">"{selectedText.substring(0, 50)}..."</div>
+              <button
+                onClick={addComment}
+                className="mt-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+              >
+                Comment on this text
+              </button>
+            </div>
+          )}
+          
           {comments.length === 0 ? (
-            <p className="text-sm text-gray-500">No comments yet. Select text and click "Add Comment" to start.</p>
+            <div className="text-center py-4">
+              <MessageSquare className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No comments yet.</p>
+              <p className="text-xs text-gray-400 mt-1">Select text in the editor and click "Add Comment"</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {comments.map(comment => (
-                <div key={comment.id} className={`p-3 rounded-lg ${
-                  comment.resolved ? 'bg-green-50' : 'bg-yellow-50'
+                <div key={comment.id} className={`p-3 rounded-lg border ${
+                  comment.resolved ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
                 }`}>
                   <div className="flex items-start justify-between mb-1">
                     <span className="font-medium text-sm">{comment.author}</span>
@@ -1923,11 +1942,11 @@ const PromptSupportEditor = ({
                         onClick={() => toggleCommentResolution(comment.id)}
                         className={`text-xs px-2 py-1 rounded ${
                           comment.resolved 
-                            ? 'bg-green-200 text-green-800' 
-                            : 'bg-yellow-200 text-yellow-800'
+                            ? 'bg-green-200 text-green-800 hover:bg-green-300' 
+                            : 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300'
                         }`}
                       >
-                        {comment.resolved ? 'Resolved' : 'Open'}
+                        {comment.resolved ? '✓ Resolved' : 'Open'}
                       </button>
                       <button
                         onClick={() => removeComment(comment.id)}
@@ -1938,7 +1957,7 @@ const PromptSupportEditor = ({
                     </div>
                   </div>
                   {comment.selectedText && (
-                    <div className="text-xs text-gray-600 mb-1 italic">
+                    <div className="text-xs text-gray-600 mb-1 p-1 bg-gray-100 rounded italic">
                       On: "{comment.selectedText.substring(0, 50)}..."
                     </div>
                   )}

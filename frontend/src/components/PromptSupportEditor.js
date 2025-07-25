@@ -674,10 +674,19 @@ const PromptSupportEditor = ({
       executeCommand('insertHTML', `<code style="background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace;">code</code>`);
     }
   };
-  const insertLink = () => {
-    const url = prompt('Enter link URL:');
+  const insertLink = async () => {
+    const selection = window.getSelection();
+    const selectedText = selection.toString();
+    
+    if (!selectedText.trim()) {
+      showAlert('Please select some text to add a link to.');
+      return;
+    }
+    
+    const url = await showPrompt('Enter link URL:', 'https://', 'Add Link');
     if (url && url.trim()) {
-      executeCommand('createLink', url.trim());
+      const linkHTML = `<a href="${url}" data-url="${url}" class="text-blue-600 underline hover:text-blue-800 cursor-pointer" target="_blank">${selectedText}</a>`;
+      executeCommand('insertHTML', linkHTML);
     }
   };
 

@@ -731,55 +731,49 @@ const PromptSupportEditor = ({
       return;
     }
     
+    // Store selection details before showing modal
+    const range = selection.getRangeAt(0);
+    const startContainer = range.startContainer;
+    const startOffset = range.startOffset;
+    const endOffset = range.endOffset;
+    
     const url = await showPrompt('Enter link URL:', 'https://', 'Add Link');
     if (url && url.trim()) {
       try {
-        // Store the range before showing modal (modal might clear selection)
-        const range = selection.getRangeAt(0);
-        const startContainer = range.startContainer;
-        const startOffset = range.startOffset;
-        const endOffset = range.endOffset;
-        
-        // Recreate the range after modal closes
+        // Recreate selection after modal closes (selection gets lost)
         const newRange = document.createRange();
         newRange.setStart(startContainer, startOffset);
         newRange.setEnd(startContainer, endOffset);
         
-        // Delete the selected text
-        newRange.deleteContents();
+        // Verify the range is still valid and within the editor
+        const editor = document.querySelector('[contenteditable]');
+        if (!editor || !editor.contains(startContainer)) {
+          console.error('Selection is no longer valid or not within editor');
+          showAlert('Selection lost. Please select the text again and try adding the link.', 'Selection Error');
+          return;
+        }
         
-        // Create the link element with proper styling
-        const linkElement = document.createElement('a');
-        linkElement.href = url.trim();
-        linkElement.setAttribute('data-url', url.trim());
-        linkElement.className = 'text-blue-600 underline hover:text-blue-800 cursor-pointer';
-        linkElement.target = '_blank';
-        linkElement.textContent = selectedText;
+        // Create the link HTML directly and use execCommand for reliable insertion
+        const linkHTML = `<a href="${url.trim()}" class="text-blue-600 underline hover:text-blue-800 cursor-pointer" target="_blank" data-url="${url.trim()}">${selectedText}</a>`;
         
-        // Insert the link
-        newRange.insertNode(linkElement);
-        
-        // Place cursor after the link
-        newRange.setStartAfter(linkElement);
-        newRange.collapse(true);
+        // Clear current selection and set the new range
         selection.removeAllRanges();
         selection.addRange(newRange);
         
-        // Force update the content state
-        const editorElement = document.querySelector('[contenteditable]');
-        if (editorElement) {
-          setContent(editorElement.innerHTML);
-          setHasUnsavedChanges(true);
-          
-          // Force re-render by triggering input event
-          const event = new Event('input', { bubbles: true });
-          editorElement.dispatchEvent(event);
-        }
+        // Use execCommand which properly handles the current selection within the editor
+        document.execCommand('insertHTML', false, linkHTML);
+        
+        // Update content state
+        setTimeout(() => {
+          if (editor) {
+            setContent(editor.innerHTML);
+            setHasUnsavedChanges(true);
+          }
+        }, 50);
         
       } catch (error) {
         console.error('Link creation error:', error);
-        // Fallback to simpler method if DOM manipulation fails
-        executeCommand('insertHTML', `<a href="${url.trim()}" class="text-blue-600 underline hover:text-blue-800 cursor-pointer" target="_blank">${selectedText}</a>`);
+        showAlert('Error creating link. Please try selecting the text again.', 'Link Error');
       }
     }
   };

@@ -134,6 +134,8 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
     setHoveredItem(null);
     setShowFlyout(null);
   };
+
+  const handleItemClick = (itemId) => {
     if (itemId === 'systems') {
       setSystemsExpanded(!systemsExpanded);
     } else if (itemId === 'knowledge-engine') {

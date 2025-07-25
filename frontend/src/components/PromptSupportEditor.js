@@ -1322,14 +1322,9 @@ const PromptSupportEditor = ({
               <Quote className="h-4 w-4" />
             </button>
             <button
-              onClick={() => {
-                const code = prompt('Enter inline code:');
-                if (code) {
-                  executeCommand('insertHTML', `<code style="background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace;">${code}</code>`);
-                }
-              }}
+              onClick={insertInlineCode}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
-              title="Inline Code"
+              title="Inline Code (⌘`)"
             >
               <Code2 className="h-4 w-4" />
             </button>

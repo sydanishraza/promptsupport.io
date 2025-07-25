@@ -424,6 +424,40 @@ const PromptSupportEditor = ({
     parent.removeChild(linkElement);
   };
 
+  // Link hover handlers
+  const handleLinkHover = (e) => {
+    if (e.target.tagName === 'A' && isEditing) {
+      const rect = e.target.getBoundingClientRect();
+      setLinkTooltip({
+        show: true,
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+        url: e.target.href,
+        element: e.target
+      });
+    }
+  };
+
+  const handleLinkMouseOut = (e) => {
+    if (e.target.tagName === 'A') {
+      // Add small delay to prevent flickering
+      setTimeout(() => {
+        setLinkTooltip(prev => ({ ...prev, show: false }));
+      }, 100);
+    }
+  };
+
+  const handleLinkClick = (e) => {
+    if (e.target.tagName === 'A') {
+      if (isEditing) {
+        e.preventDefault(); // Prevent navigation in edit mode
+      } else {
+        // Allow normal link behavior in view mode
+        e.target.target = '_blank'; // Ensure links open in new tab
+      }
+    }
+  };
+
   // Highlight applied AI suggestions
   const highlightAppliedSuggestion = (text) => {
     const suggestionId = `suggestion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

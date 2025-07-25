@@ -70,26 +70,29 @@ const PromptSupportEditor = ({
     }
   }, [article]);
 
-  // Handle entering edit mode and populating content
+  // Handle entering edit mode - avoid innerHTML manipulation
   useEffect(() => {
-    if (isEditing && editorRef.current && content) {
-      // Only set innerHTML when entering edit mode, not during typing
-      if (editorRef.current.innerHTML !== content) {
-        editorRef.current.innerHTML = content;
-        
-        // Place cursor at the end of content
-        setTimeout(() => {
+    if (isEditing && editorRef.current) {
+      // Simply focus the editor and let the content be handled naturally
+      // The contentEditable will display content through its initial value
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.focus();
+          // Place cursor at the end of existing content
           const range = document.createRange();
           const selection = window.getSelection();
-          range.selectNodeContents(editorRef.current);
-          range.collapse(false); // Collapse to end
+          if (editorRef.current.childNodes.length > 0) {
+            range.selectNodeContents(editorRef.current);
+            range.collapse(false);
+          } else {
+            range.setStart(editorRef.current, 0);
+          }
           selection.removeAllRanges();
           selection.addRange(range);
-          editorRef.current.focus();
-        }, 100);
-      }
+        }
+      }, 50);
     }
-  }, [isEditing, content]);
+  }, [isEditing]);
 
   // === PHASE 1: CORE EDITABLE SURFACE ===
   

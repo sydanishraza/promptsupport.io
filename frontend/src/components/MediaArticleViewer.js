@@ -1077,14 +1077,14 @@ const MediaArticleViewer = ({
       {/* Content Area - Flex grow to fill available space */}
       <div className="p-4 flex-1 overflow-hidden flex flex-col min-h-0">
         {viewMode === 'wysiwyg' ? (
-          <div className="min-h-96">
+          <div className="flex-1 flex flex-col min-h-0">
             {isEditing ? (
-              <div className="space-y-4">
+              <div className="flex-1 flex flex-col space-y-4 min-h-0">
                 {/* WYSIWYG Editor Area */}
                 <div
                   ref={editorRef}
                   contentEditable={true}
-                  className="w-full min-h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="flex-1 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white overflow-y-auto"
                   onInput={(e) => {
                     e.preventDefault();
                     handleContentChangeWithCursor(e.target.innerHTML, 'wysiwyg');
@@ -1125,9 +1125,6 @@ const MediaArticleViewer = ({
                     color: '#333',
                     lineHeight: '1.6',
                     fontSize: '16px',
-                    minHeight: '400px',
-                    maxHeight: '600px',
-                    overflow: 'auto',
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                     backgroundColor: '#fff',
                     scrollBehavior: 'smooth'
@@ -1137,22 +1134,24 @@ const MediaArticleViewer = ({
                 />
                 
                 {/* WYSIWYG Helper Text */}
-                <div className="text-xs text-gray-500 px-2">
+                <div className="text-xs text-gray-500 px-2 flex-shrink-0">
                   💡 Use the toolbar above to format your text, or type directly in the editor. 
                   Images and rich content are fully supported.
                 </div>
               </div>
             ) : (
-              <div className="prose prose-lg max-w-none">
-                <div 
-                  dangerouslySetInnerHTML={{ __html: content }}
-                  className="wysiwyg-content"
-                  style={{
-                    color: '#333',
-                    lineHeight: '1.6',
-                    fontSize: '16px'
-                  }}
-                />
+              <div className="flex-1 overflow-y-auto">
+                <div className="prose prose-lg max-w-none">
+                  <div 
+                    dangerouslySetInnerHTML={{ __html: content }}
+                    className="wysiwyg-content"
+                    style={{
+                      color: '#333',
+                      lineHeight: '1.6',
+                      fontSize: '16px'
+                    }}
+                  />
+                </div>
               </div>
             )}
           </div>

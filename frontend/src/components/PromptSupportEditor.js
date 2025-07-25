@@ -3783,11 +3783,13 @@ const PromptSupportEditor = ({
                   }`}
                   style={{
                     minHeight: '400px',
+                    maxHeight: '500px',
                     lineHeight: '1.7',
                     fontSize: '16px',
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                     color: '#1f2937',
-                    outline: 'none'
+                    outline: 'none',
+                    overflowY: 'auto'
                   }}
                   css={`
                     h1 { font-size: 2rem; font-weight: bold; margin: 1rem 0; }

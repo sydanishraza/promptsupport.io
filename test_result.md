@@ -881,23 +881,59 @@
         -agent: "main"
         -comment: "VERIFIED: Asset upload system is now fully functional. ✅ CONFIRMED: Files are saved to /app/backend/static/uploads/ with original format preserved (PNG, JPG, etc.). ✅ CONFIRMED: Asset upload endpoint (/api/assets/upload) works correctly and returns proper asset metadata with URLs. ✅ CONFIRMED: Static file serving works properly - uploaded images are accessible via their generated URLs. ✅ CONFIRMED: Asset library integration - uploaded images immediately appear in the asset library with correct metadata. The complete file upload and storage system is working as designed."
 
+  - task: "Fix Image Handling - Asset Library Cursor Position and Hover Overlay"
+    implemented: true
+    working: false
+    file: "frontend/src/components/PromptSupportEditor.js"
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "testing"
+        -comment: "🔥 CRITICAL HOVER OVERLAY ISSUE CONFIRMED: Comprehensive testing reveals that the Asset Library modal opens correctly and shows 129 assets, but there is a hover overlay preventing asset selection. ERROR: 'subtree intercepts pointer events' - this confirms the exact hover overlay issue mentioned in the review request. ❌ ASSET LIBRARY CURSOR POSITION TEST FAILED: Assets cannot be clicked due to hover overlay blocking pointer events. The modal displays assets correctly but clicks are intercepted by overlay elements. ✅ PARTIAL SUCCESS: Force click (click with force=True) can bypass the hover overlay, indicating the issue is solvable. ❌ CURSOR POSITION: Cannot test cursor position insertion because asset selection is blocked by hover overlay. CRITICAL FIX NEEDED: The hover overlay in the Asset Library modal needs to be fixed to allow direct asset clicks without requiring force clicks. This is preventing users from inserting images from the Asset Library at cursor position."
+
+  - task: "Fix Editor Scrollability After Image Insertion"
+    implemented: true
+    working: true
+    file: "frontend/src/components/PromptSupportEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "✅ EDITOR SCROLLABILITY TESTING COMPLETED: Editor scrollability is working correctly. The editor maintains proper scroll functionality with scroll height (varies) > client height, allowing users to scroll through content. ✅ NO BLACK SCREEN ISSUES: No black screen problems detected during scrolling tests. ✅ PROPER OVERFLOW HANDLING: Editor has proper CSS styling with overflow: auto and max-height constraints that maintain scrollability. ✅ CONTENT EXPANSION: Editor properly handles content expansion and maintains scrollable interface after content additions. The scrollability issue mentioned in the review request appears to be resolved."
+
+  - task: "Prevent Duplicate Assets from Asset Library Selection"
+    implemented: true
+    working: true
+    file: "frontend/src/components/PromptSupportEditor.js, backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "✅ NO DUPLICATE ASSETS TESTING COMPLETED: Asset duplication prevention is working correctly. Initial asset count: 12, Final asset count after testing: 12 (no increase). ✅ EXISTING ASSET REUSE: When selecting existing assets from the Asset Library, no new duplicate entries are created in the asset collection. ✅ PROPER ASSET HANDLING: The system correctly reuses existing assets rather than creating duplicates when images are inserted from the Asset Library. ✅ BACKEND INTEGRATION: The /api/assets endpoint properly manages asset references without creating unnecessary duplicates. The no-duplicate-assets requirement from the review request is working as expected."
+
 ## metadata:
   created_by: "main_agent"
-  version: "2.0"
-  test_sequence: 0
-  run_ui: false
+  version: "2.1"
+  test_sequence: 1
+  run_ui: true
 
 ## test_plan:
-  current_focus: []
-  stuck_tasks: []
+  current_focus:
+    - "Fix Image Handling - Asset Library Cursor Position and Hover Overlay"
+  stuck_tasks:
+    - "Fix Image Handling - Asset Library Cursor Position and Hover Overlay"
   test_all: false
   test_priority: "high_first"
 
 ## agent_communication:
-    -agent: "main"
-    -message: "STARTING CRITICAL EDITOR ISSUES FIX: User has identified 5 critical issues with the PromptSupportEditor that need immediate attention: 1) Paste functionality completely broken - nothing appears when pasting, 2) Link remove option not working in tooltip, 3) HTML view needs proper beautification and formatting, 4) Images being embedded as base64 instead of proper file formats/URLs, 5) Local asset uploads converting to base64 instead of maintaining original format and saving to Asset Library properly. These are fundamental usability issues that need to be resolved before any new feature development."
     -agent: "testing"
-    -message: "CRITICAL EDITOR FIXES TESTING COMPLETED: Tested the asset upload and retrieval systems as requested in the review. RESULTS: 2/4 critical tests passed (50% success rate). ✅ WORKING: Asset Upload System saves files properly with file URLs instead of base64, Asset Retrieval System returns both new file-based and legacy base64 assets correctly. ❌ ISSUES FOUND: Static file serving returns HTML instead of image content (FastAPI StaticFiles configuration issue), Database integration missing 'original_filename' field in API responses. ASSESSMENT: Core file storage and database operations working correctly, but static file serving needs configuration fix for images to be accessible via URLs. Files are saved to /app/backend/static/uploads/ but not served properly through /static/uploads/ URLs."
+    -message: "COMPREHENSIVE IMAGE HANDLING TESTING COMPLETED: Tested all three critical image handling issues mentioned in the review request. RESULTS: 2/3 tests passed (67% success rate). ✅ WORKING: Editor Scrollability - editor remains scrollable after image insertion with no black screen issues. No Duplicate Assets - existing assets are reused without creating duplicates. ❌ CRITICAL ISSUE: Asset Library Cursor Position - hover overlay prevents asset selection with error 'subtree intercepts pointer events'. ASSESSMENT: The hover overlay fix mentioned in the review request is NOT working - assets cannot be clicked in the Asset Library modal. Force clicks can bypass the overlay, indicating the issue is solvable but needs code fix. This is blocking users from inserting images from Asset Library at cursor position."
     -agent: "testing"
     -message: "🎯 ASSET MANAGEMENT SYSTEM COMPREHENSIVE TESTING COMPLETED: Tested image upload and asset management system to ensure cursor positioning and modal fixes don't break existing functionality. RESULTS: 14/17 tests passed (82.4% success rate). ✅ ALL ASSET MANAGEMENT TESTS PASSED: Asset Upload Endpoint working perfectly - uploads images with proper file storage and unique URLs, Asset Library Endpoint returns comprehensive asset list (129 total) with proper metadata, Static File Serving working flawlessly via /api/static/ route with correct content-type headers, Database Asset Integrity excellent with no duplicate IDs and 91.5% integrity rate, Asset Selection doesn't create duplicates. ✅ CRITICAL VERIFICATION: Recent cursor positioning and modal fixes have NOT broken existing asset management functionality. All core asset upload, library, and serving features work correctly. Images uploaded locally now display properly instead of appearing broken. Static file serving uses correct /api/static/ route prefix and external URL access works through production domain. ASSESSMENT: The image handling and asset management system is fully operational and ready for production use."
     -agent: "testing"

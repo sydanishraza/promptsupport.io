@@ -1412,9 +1412,12 @@ const PromptSupportEditor = ({
 
           {/* Phase 4: AI & Collaboration Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
-            <div className="relative group">
+            <div 
+              className="relative"
+              onMouseEnter={() => setShowAiDropdown(true)}
+              onMouseLeave={() => setShowAiDropdown(false)}
+            >
               <button
-                onClick={() => handleAIAssist('suggest')}
                 className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
                   aiWritingMode ? 'animate-pulse' : ''
                 }`}
@@ -1424,29 +1427,40 @@ const PromptSupportEditor = ({
                 <Brain className="h-4 w-4" />
               </button>
               
-              <div className="absolute top-10 left-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
-                <button
-                  onClick={() => handleAIAssist('completion')}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <Sparkles className="h-4 w-4 text-purple-600" />
-                  Complete Text
-                </button>
-                <button
-                  onClick={() => handleAIAssist('improvement')}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <Lightbulb className="h-4 w-4 text-yellow-600" />
-                  Improve Writing
-                </button>
-                <button
-                  onClick={() => handleAIAssist('grammar')}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <CheckSquare className="h-4 w-4 text-green-600" />
-                  Grammar Check
-                </button>
-              </div>
+              {showAiDropdown && (
+                <div className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
+                  <button
+                    onClick={() => {
+                      handleAIAssist('completion');
+                      setShowAiDropdown(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    Complete Text
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleAIAssist('improvement');
+                      setShowAiDropdown(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <Lightbulb className="h-4 w-4 text-yellow-600" />
+                    Improve Writing
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleAIAssist('grammar');
+                      setShowAiDropdown(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <CheckSquare className="h-4 w-4 text-green-600" />
+                    Grammar Check
+                  </button>
+                </div>
+              )}
             </div>
             
             <button
@@ -1465,17 +1479,12 @@ const PromptSupportEditor = ({
             </button>
             
             <button
-              onClick={addComment}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
-              title="Add Comment to Selection"
-            >
-              <MessageSquare className="h-4 w-4" />
-            </button>
-            
-            <button
-              onClick={() => setShowAiPanel(!showAiPanel)}
+              onClick={() => {
+                analyzeContent(content);
+                setShowContentAnalysis(true);
+              }}
               className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
-                showAiPanel ? 'bg-purple-100 text-purple-600' : ''
+                showContentAnalysis ? 'bg-purple-100 text-purple-600' : ''
               }`}
               title="Content Analytics"
             >

@@ -2076,6 +2076,102 @@ const PromptSupportEditor = ({
       </div>
     );
   };
+
+  /**
+   * Render AI Brain results modal with metrics and suggestions
+   */
+  const renderAiBrainModal = () => {
+    if (!showAiBrainModal) return null;
+    
+    const actionLabels = {
+      completion: 'Text Completion',
+      improvement: 'Writing Improvement', 
+      grammar: 'Grammar Check'
+    };
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-96 max-w-lg max-h-96 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              AI Brain - {actionLabels[aiActionType]}
+            </h3>
+            <button
+              onClick={() => setShowAiBrainModal(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{aiResults.wordsProcessed || 0}</div>
+              <div className="text-sm text-gray-600">Words Processed</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{aiResults.suggestionsGenerated || 0}</div>
+              <div className="text-sm text-gray-600">Suggestions</div>
+            </div>
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{aiResults.improvements || 0}</div>
+              <div className="text-sm text-gray-600">Improvements</div>
+            </div>
+            <div className="text-center p-3 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">{Math.round(aiResults.confidence) || 0}%</div>
+              <div className="text-sm text-gray-600">Confidence</div>
+            </div>
+          </div>
+
+          {/* Suggestions */}
+          {aiResults.suggestions && aiResults.suggestions.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-medium text-gray-800 mb-2">AI Suggestions:</h4>
+              <div className="space-y-2">
+                {aiResults.suggestions.map((suggestion, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded border-l-4 border-purple-500">
+                    <p className="text-sm text-gray-700">{suggestion}</p>
+                    <button
+                      onClick={() => {
+                        if (aiResults.originalText) {
+                          // Replace selected text
+                          const selection = window.getSelection();
+                          if (selection.rangeCount > 0) {
+                            const range = selection.getRangeAt(0);
+                            range.deleteContents();
+                            range.insertNode(document.createTextNode(suggestion));
+                          }
+                        } else {
+                          // Insert at cursor
+                          executeCommand('insertHTML', ` ${suggestion}`);
+                        }
+                        setShowAiBrainModal(false);
+                      }}
+                      className="mt-2 px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+                    >
+                      Apply Suggestion
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="text-center">
+            <button
+              onClick={() => setShowAiBrainModal(false)}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   /**
    * Render asset library modal for image selection with real data
    */

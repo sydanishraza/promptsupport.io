@@ -1286,36 +1286,10 @@ const PromptSupportEditor = ({
         selection.addRange(range);
       }
       
-      // Immediately ensure editor scrollability after insertion
-      if (editorRef.current) {
-        // Use setProperty with important to override any CSS conflicts
-        editorRef.current.style.setProperty('overflow-y', 'auto', 'important');
-        editorRef.current.style.setProperty('max-height', '500px', 'important');
-        editorRef.current.style.setProperty('height', 'auto', 'important');
-        editorRef.current.style.setProperty('overflow-x', 'hidden', 'important');
-      }
-      
       // Update content state and mark as changed
       setTimeout(() => {
         setContent(editorRef.current.innerHTML);
         setHasUnsavedChanges(true);
-        
-        // Double-check and ensure editor remains scrollable
-        if (editorRef.current) {
-          // Use setProperty with important to override any CSS conflicts
-          editorRef.current.style.setProperty('overflow-y', 'auto', 'important');
-          editorRef.current.style.setProperty('max-height', '500px', 'important');
-          editorRef.current.style.setProperty('height', 'auto', 'important');
-          editorRef.current.style.setProperty('overflow-x', 'hidden', 'important');
-          
-          // Force a reflow to ensure proper layout
-          editorRef.current.offsetHeight;
-          
-          // Additional check to ensure scrollability - force scroll if needed
-          if (editorRef.current.scrollHeight > editorRef.current.clientHeight) {
-            editorRef.current.style.setProperty('overflow-y', 'scroll', 'important');
-          }
-        }
       }, 50);
       
     } catch (error) {

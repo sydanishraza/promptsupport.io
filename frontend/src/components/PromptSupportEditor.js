@@ -206,13 +206,21 @@ const PromptSupportEditor = ({
       if (showAiPanel && !event.target.closest('.ai-panel')) {
         setShowAiPanel(false);
       }
+      // Close AI dropdown if clicking outside
+      if (showAiDropdown && !event.target.closest('[title="AI Writing Assistant"]')) {
+        setShowAiDropdown(false);
+      }
+      // Close image dropdown if clicking outside
+      if (showImageDropdown && !event.target.closest('[title="Insert Image"]')) {
+        setShowImageDropdown(false);
+      }
     };
     
-    if (showColorPicker || showSlashMenu || showAiPanel) {
+    if (showColorPicker || showSlashMenu || showAiPanel || showAiDropdown || showImageDropdown) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showColorPicker, showSlashMenu, showAiPanel]);
+  }, [showColorPicker, showSlashMenu, showAiPanel, showAiDropdown, showImageDropdown]);
 
   // Phase 4: Auto-save functionality
   useEffect(() => {

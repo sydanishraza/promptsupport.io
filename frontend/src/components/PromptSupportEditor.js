@@ -1110,26 +1110,59 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Content analytics using real LLM analysis
+   * Content analytics with real content analysis and metrics
    */
   const analyzeContent = async (content) => {
     try {
+      // Try to get AI-powered analysis first
       const analytics = await getContentAnalysis(content);
       setContentAnalytics(analytics);
       return analytics;
     } catch (error) {
       console.error('Content analysis error:', error);
-      // Fallback analysis
-      const text = content.replace(/<[^>]*>/g, '');
+      
+      // Enhanced fallback analysis with real metrics
+      const text = content.replace(/<[^>]*>/g, ''); // Remove HTML tags
       const words = text.split(/\s+/).filter(word => word.length > 0);
+      const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      const paragraphs = content.split(/<\/p>|<p>/gi).filter(p => p.trim().length > 0);
+      
+      // Heading analysis
+      const headings = {
+        h1: (content.match(/<h1[^>]*>/gi) || []).length,
+        h2: (content.match(/<h2[^>]*>/gi) || []).length,
+        h3: (content.match(/<h3[^>]*>/gi) || []).length,
+        h4: (content.match(/<h4[^>]*>/gi) || []).length
+      };
+      
+      // Readability estimation (simple Flesch Reading Ease approximation)
+      const avgWordsPerSentence = words.length / Math.max(sentences.length, 1);
+      const avgSyllablesPerWord = words.reduce((acc, word) => {
+        return acc + Math.max(1, word.match(/[aeiouAEIOU]/g)?.length || 1);
+      }, 0) / Math.max(words.length, 1);
+      
+      const readabilityScore = Math.max(0, Math.min(100, 
+        206.835 - (1.015 * avgWordsPerSentence) - (84.6 * avgSyllablesPerWord)
+      ));
+      
       const analytics = {
         wordCount: words.length,
         characterCount: text.length,
-        sentences: text.split(/[.!?]+/).length - 1,
-        paragraphs: Math.max(content.split(/<\/p>/gi).length - 1, 1),
-        readingTime: Math.ceil(words.length / 200),
-        readabilityScore: 70
+        sentences: sentences.length,
+        paragraphs: paragraphs.length,
+        headings: headings,
+        totalHeadings: headings.h1 + headings.h2 + headings.h3 + headings.h4,
+        readingTime: Math.ceil(words.length / 200), // 200 words per minute average
+        readabilityScore: Math.round(readabilityScore),
+        avgWordsPerSentence: Math.round(avgWordsPerSentence * 10) / 10,
+        avgSentencesPerParagraph: Math.round((sentences.length / Math.max(paragraphs.length, 1)) * 10) / 10,
+        links: (content.match(/<a[^>]*>/gi) || []).length,
+        images: (content.match(/<img[^>]*>/gi) || []).length,
+        lists: (content.match(/<[ou]l[^>]*>/gi) || []).length,
+        codeBlocks: (content.match(/<pre[^>]*>/gi) || []).length,
+        aiInsights: `Document has ${words.length} words across ${paragraphs.length} paragraphs. ${readabilityScore > 60 ? 'Good readability score.' : readabilityScore > 30 ? 'Moderate readability - consider shorter sentences.' : 'Complex content - consider simplifying.'} ${headings.h1 + headings.h2 + headings.h3 + headings.h4 > 0 ? 'Well-structured with headings.' : 'Consider adding headings for better structure.'}`
       };
+      
       setContentAnalytics(analytics);
       return analytics;
     }

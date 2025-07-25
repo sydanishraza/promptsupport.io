@@ -225,12 +225,29 @@ const PromptSupportEditor = ({
     return () => clearTimeout(autoSaveTimer);
   }, [hasUnsavedChanges, content, title, isEditing]);
 
-  // Phase 4: Content analytics
+  // Phase 4: Content analytics and selection tracking
   useEffect(() => {
     if (content && isEditing) {
       analyzeContent(content);
     }
   }, [content, isEditing]);
+
+  // Phase 4: Track text selection for commenting
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0 && isEditing) {
+        setSelectedText(selection.toString());
+      } else {
+        setSelectedText('');
+      }
+    };
+
+    if (isEditing) {
+      document.addEventListener('selectionchange', handleSelectionChange);
+      return () => document.removeEventListener('selectionchange', handleSelectionChange);
+    }
+  }, [isEditing]);
 
   // Phase 4: Collaboration presence simulation
   useEffect(() => {

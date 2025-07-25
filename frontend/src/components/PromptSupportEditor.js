@@ -1734,13 +1734,33 @@ const PromptSupportEditor = ({
               </button>
             ) : (
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleSave}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>Save</span>
-                </button>
+                <div className="relative group">
+                  <button
+                    onClick={handleSaveDraft}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>Save</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                  
+                  <div className="absolute top-10 right-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-max">
+                    <button
+                      onClick={handleSaveDraft}
+                      className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                    >
+                      <Save className="h-4 w-4 text-gray-600" />
+                      Save as Draft
+                    </button>
+                    <button
+                      onClick={handlePublish}
+                      className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                    >
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      Save & Publish
+                    </button>
+                  </div>
+                </div>
                 <button
                   onClick={onCancel}
                   className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"

@@ -1871,9 +1871,9 @@ const PromptSupportEditor = ({
     );
   };
 
-  // === SAVE HANDLING (Enhanced with real API and mode switching) ===
+  // === SAVE HANDLING (Fixed with proper mode switching behavior) ===
   
-  const handleSave = async (publishAction = 'draft') => {
+  const handleSave = async (publishAction = 'draft', shouldExitEdit = false) => {
     try {
       setIsAutoSaving(true);
       
@@ -1914,9 +1914,9 @@ const PromptSupportEditor = ({
           await onSave({ ...articleData, id: article?.id || result.id });
         }
         
-        // Auto-exit edit mode after successful save
-        if (onCancel) {
-          onCancel(); // This should switch back to view mode
+        // Only exit edit mode if explicitly requested (for Draft/Publish actions)
+        if (shouldExitEdit && onEdit) {
+          onEdit(); // Switch to view mode, don't exit to library
         }
         
         return true;
@@ -1932,15 +1932,23 @@ const PromptSupportEditor = ({
     }
   };
 
+  // Main save button - save without exiting edit mode
+  const handleMainSave = async () => {
+    const success = await handleSave('draft', false);
+    if (success) {
+      alert('Content saved successfully!');
+    }
+  };
+
   const handlePublish = async () => {
-    const success = await handleSave('published');
+    const success = await handleSave('published', true);
     if (success) {
       alert('Article published successfully!');
     }
   };
   
   const handleSaveDraft = async () => {
-    const success = await handleSave('draft');
+    const success = await handleSave('draft', true);
     if (success) {
       alert('Draft saved successfully!');
     }

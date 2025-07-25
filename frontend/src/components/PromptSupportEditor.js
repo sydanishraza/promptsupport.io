@@ -2374,7 +2374,7 @@ const PromptSupportEditor = ({
   const handleMainSave = async () => {
     const success = await handleSave('draft', false);
     if (success) {
-      alert('Content saved successfully!');
+      showAlert('Content saved successfully!', 'Success');
     }
   };
 

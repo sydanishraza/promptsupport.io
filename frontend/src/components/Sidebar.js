@@ -151,17 +151,30 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       </div>
 
       {/* Navigation Items */}
-      <nav className="p-2 space-y-1">
+      <nav className="p-2 space-y-1 relative">
         {navigationItems.map((item) => (
-          <div key={item.id}>
+          <div key={item.id} className="relative">
             <button
               onClick={() => handleItemClick(item.id)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+              onMouseEnter={() => {
+                if (collapsed) {
+                  setHoveredItem(item.id);
+                  if (item.expandable) {
+                    setShowFlyout(item.id);
+                  }
+                }
+              }}
+              onMouseLeave={() => {
+                if (collapsed) {
+                  setHoveredItem(null);
+                  setShowFlyout(null);
+                }
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left transition-colors relative ${
                 activeRoute === item.id
                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
-              title={collapsed ? item.label : item.description}
             >
               <item.icon size={20} />
               {!collapsed && (
@@ -174,9 +187,57 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
                   )}
                 </>
               )}
+              
+              {/* Enhanced Tooltip for Collapsed State */}
+              {collapsed && hoveredItem === item.id && (
+                <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg z-50 whitespace-nowrap">
+                  <div className="font-medium">{item.label}</div>
+                  {item.description && (
+                    <div className="text-xs text-gray-300 mt-1">{item.description}</div>
+                  )}
+                  {item.expandable && (
+                    <div className="text-xs text-gray-400 mt-1 flex items-center">
+                      <ChevronRight size={12} className="mr-1" />
+                      Hover to expand
+                    </div>
+                  )}
+                </div>
+              )}
             </button>
 
-            {/* Systems Subitems */}
+            {/* Fly-out Menu for Expandable Items in Collapsed State */}
+            {collapsed && item.expandable && showFlyout === item.id && (
+              <div 
+                className="absolute left-full ml-2 top-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-48"
+                onMouseEnter={() => setShowFlyout(item.id)}
+                onMouseLeave={() => setShowFlyout(null)}
+              >
+                <div className="p-2">
+                  <div className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 mb-1">
+                    {item.label}
+                  </div>
+                  {item.subitems.map((subitem) => (
+                    <button
+                      key={subitem.id}
+                      onClick={() => {
+                        handleItemClick(subitem.id);
+                        setShowFlyout(null);
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        activeRoute === (subitem.id === 'knowledge-base' ? 'knowledge-base-builder' : subitem.id)
+                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <subitem.icon size={16} />
+                      <span>{subitem.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Regular Subitems for Expanded State */}
             {item.expandable && item.expanded && !collapsed && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}

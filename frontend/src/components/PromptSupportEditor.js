@@ -2383,7 +2383,7 @@ const PromptSupportEditor = ({
     
     const success = await handleSave('published', true);
     if (success) {
-      alert('Article published successfully!');
+      showAlert('Article published successfully!', 'Success');
     }
   };
   

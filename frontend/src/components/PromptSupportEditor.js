@@ -61,36 +61,33 @@ const PromptSupportEditor = ({
       setTitle(article.title || '');
       setHasUnsavedChanges(false);
       
-      // Set content but don't use dangerouslySetInnerHTML initially
+      // Set initial content, clean and simple
       const initialContent = article.content || '<p>Start writing your content...</p>';
       setContent(initialContent);
-      
-      // Only populate the editor content when entering edit mode
-      // This prevents cursor reset issues with existing content
     }
   }, [article]);
 
-  // Handle entering edit mode - avoid innerHTML manipulation
+  // Handle entering edit mode - use a cleaner approach
   useEffect(() => {
     if (isEditing && editorRef.current) {
-      // Simply focus the editor and let the content be handled naturally
-      // The contentEditable will display content through its initial value
+      // Simply focus the editor
       setTimeout(() => {
         if (editorRef.current) {
           editorRef.current.focus();
-          // Place cursor at the end of existing content
+          // Place cursor at the end naturally
           const range = document.createRange();
           const selection = window.getSelection();
-          if (editorRef.current.childNodes.length > 0) {
+          try {
             range.selectNodeContents(editorRef.current);
             range.collapse(false);
-          } else {
-            range.setStart(editorRef.current, 0);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } catch (e) {
+            // Fallback - just focus
+            console.log('Cursor positioning fallback');
           }
-          selection.removeAllRanges();
-          selection.addRange(range);
         }
-      }, 50);
+      }, 100);
     }
   }, [isEditing]);
 

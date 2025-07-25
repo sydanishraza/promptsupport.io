@@ -246,12 +246,130 @@ const PromptSupportEditor = ({
       quote: '<blockquote><p>Quote text here</p></blockquote>',
       codeBlock: '<pre><code>// Your code here</code></pre>',
       hr: '<hr>',
-      paragraph: '<p>New paragraph</p>'
+      paragraph: '<p>New paragraph</p>',
+      // Phase 2: Advanced blocks
+      table2x2: `
+        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+          <tr>
+            <td style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Header 1</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Header 2</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 1</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 2</td>
+          </tr>
+        </table>`,
+      table3x3: `
+        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+          <tr>
+            <td style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Header 1</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Header 2</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Header 3</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 1</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 2</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 3</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 4</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 5</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">Cell 6</td>
+          </tr>
+        </table>`,
+      twoColumns: `
+        <div style="display: flex; gap: 16px; margin: 16px 0;">
+          <div style="flex: 1; padding: 16px; background: #f9fafb; border-radius: 8px;">
+            <p>Left column content</p>
+          </div>
+          <div style="flex: 1; padding: 16px; background: #f9fafb; border-radius: 8px;">
+            <p>Right column content</p>
+          </div>
+        </div>`,
+      infoCallout: `
+        <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px;">
+          <div style="color: #3b82f6; font-size: 20px;">ℹ️</div>
+          <div style="flex: 1;">
+            <p style="margin: 0; color: #1e40af;"><strong>Info:</strong> Your information message here</p>
+          </div>
+        </div>`,
+      warningCallout: `
+        <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #fefce8; border-left: 4px solid #eab308; border-radius: 8px;">
+          <div style="color: #eab308; font-size: 20px;">⚠️</div>
+          <div style="flex: 1;">
+            <p style="margin: 0; color: #a16207;"><strong>Warning:</strong> Your warning message here</p>
+          </div>
+        </div>`,
+      successCallout: `
+        <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 8px;">
+          <div style="color: #22c55e; font-size: 20px;">✅</div>
+          <div style="flex: 1;">
+            <p style="margin: 0; color: #15803d;"><strong>Success:</strong> Your success message here</p>
+          </div>
+        </div>`,
+      errorCallout: `
+        <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 8px;">
+          <div style="color: #ef4444; font-size: 20px;">❌</div>
+          <div style="flex: 1;">
+            <p style="margin: 0; color: #dc2626;"><strong>Error:</strong> Your error message here</p>
+          </div>
+        </div>`,
+      expandableSection: `
+        <details style="margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <summary style="padding: 12px 16px; background: #f9fafb; cursor: pointer; font-weight: 600;">Click to expand</summary>
+          <div style="padding: 16px;">
+            <p>Expandable content goes here...</p>
+          </div>
+        </details>`
     };
 
     if (blocks[blockType] && editorMode === 'wysiwyg') {
       executeCommand('insertHTML', blocks[blockType]);
     }
+  };
+
+  // === PHASE 2: ADVANCED FORMATTING ===
+  
+  /**
+   * Handle text alignment
+   */
+  const handleAlignment = (alignment) => {
+    executeCommand('justify' + alignment.charAt(0).toUpperCase() + alignment.slice(1));
+  };
+
+  /**
+   * Handle text and background colors
+   */
+  const handleColorChange = (color, type = 'text') => {
+    if (type === 'text') {
+      executeCommand('foreColor', color);
+      setCurrentTextColor(color);
+    } else {
+      executeCommand('backColor', color);
+      setCurrentBgColor(color);
+    }
+  };
+
+  /**
+   * Insert custom table with specified dimensions
+   */
+  const insertCustomTable = (rows, cols) => {
+    let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 16px 0;">';
+    
+    for (let i = 0; i < rows; i++) {
+      tableHTML += '<tr>';
+      for (let j = 0; j < cols; j++) {
+        const isHeader = i === 0;
+        const cellStyle = `border: 1px solid #e5e7eb; padding: 8px; ${isHeader ? 'background: #f9fafb; font-weight: 600;' : ''}`;
+        const cellContent = isHeader ? `Header ${j + 1}` : `Cell ${i}-${j + 1}`;
+        tableHTML += `<td style="${cellStyle}">${cellContent}</td>`;
+      }
+      tableHTML += '</tr>';
+    }
+    
+    tableHTML += '</table>';
+    executeCommand('insertHTML', tableHTML);
+    setShowTableModal(false);
   };
 
   // === PHASE 1: TOOLBAR FRAMEWORK ===

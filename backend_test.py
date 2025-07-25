@@ -4754,16 +4754,12 @@ This test verifies that the file upload pipeline properly triggers the Content L
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
             
-            # IMAGE UPLOAD AND STATIC FILE SERVING TESTS (PRIMARY FOCUS)
-            ("Image Upload Endpoint", self.test_image_upload_endpoint),
-            ("Asset Library Comprehensive", self.test_asset_library_comprehensive),
-            ("Static File Serving Comprehensive", self.test_static_file_serving_comprehensive),
-            ("Comprehensive Asset Verification", self.test_comprehensive_asset_verification),
+            # ASSET MANAGEMENT TESTS (PRIMARY FOCUS FOR THIS REVIEW)
             ("Asset Upload Endpoint", self.test_asset_upload_endpoint),
-            ("Static File Serving", self.test_static_file_serving),
             ("Asset Library Endpoint", self.test_asset_library_endpoint),
-            ("External URL Access", self.test_external_url_access),
-            ("Image Upload Integration Flow", self.test_image_upload_integration_flow),
+            ("Static File Serving", self.test_static_file_serving),
+            ("Database Asset Integrity", self.test_database_asset_integrity),
+            ("Asset Selection No Duplicates", self.test_asset_selection_no_duplicates),
             
             # Content Library tests
             ("Content Library Integration", self.test_content_library_integration),

@@ -501,6 +501,23 @@ const PromptSupportEditor = ({
   };
 
   /**
+   * Show asset library modal for image selection
+   */
+  const showAssetLibrary = () => {
+    setShowImageModal(true);
+  };
+
+  /**
+   * Handle asset selection from library
+   */
+  const handleAssetSelect = (asset) => {
+    if (asset.type === 'image' && asset.data) {
+      insertImage(asset.data, asset.name || 'Selected image');
+      setShowImageModal(false);
+    }
+  };
+
+  /**
    * Insert image into editor
    */
   const insertImage = (src, alt = 'Image') => {

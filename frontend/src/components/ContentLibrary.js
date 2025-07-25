@@ -343,14 +343,17 @@ const ContentLibrary = () => {
         </div>
 
         {/* ModernMediaArticleViewer */}
-        <ModernMediaArticleViewer
+        <PromptSupportEditor
           article={selectedArticle}
           isEditing={isEditing}
           onEdit={() => setIsEditing(true)}
           onSave={handleSaveArticle}
-          onCancel={() => setIsEditing(false)}
-          onDelete={() => handleDeleteArticle(selectedArticle.id)}
-          backendUrl={backendUrl}
+          onCancel={() => {
+            setIsEditMode(false);
+            setSelectedArticle(null);
+          }}
+          onDelete={handleDeleteArticle}
+          className="h-full"
         />
       </div>
     );

@@ -1446,7 +1446,7 @@ const PromptSupportEditor = ({
             
             <button
               onClick={() => setShowComments(!showComments)}
-              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
+              className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors relative ${
                 showComments ? 'bg-blue-100 text-blue-600' : ''
               }`}
               title="Comments & Suggestions"
@@ -1457,6 +1457,14 @@ const PromptSupportEditor = ({
                   {comments.length}
                 </span>
               )}
+            </button>
+            
+            <button
+              onClick={addComment}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Add Comment to Selection"
+            >
+              <MessageSquare className="h-4 w-4" />
             </button>
             
             <button

@@ -927,8 +927,8 @@ const PromptSupportEditor = ({
   /**
    * Insert video embed
    */
-  const insertVideoEmbed = () => {
-    const url = prompt('Enter video URL (YouTube, Vimeo, etc.):');
+  const insertVideoEmbed = async () => {
+    const url = await showPrompt('Enter video URL (YouTube, Vimeo, etc.):', 'https://', 'Add Video');
     if (url && url.trim()) {
       let embedHTML = '';
       

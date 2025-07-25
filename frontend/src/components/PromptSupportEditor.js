@@ -3079,18 +3079,26 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Render link tooltip for hover/edit functionality
+   * Render link tooltip with improved hover behavior
    */
   const renderLinkTooltip = () => {
     if (!linkTooltip.show) return null;
     
     return (
       <div 
-        className="fixed z-50 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm"
+        className="fixed z-50 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm link-tooltip"
         style={{ 
           left: linkTooltip.x, 
           top: linkTooltip.y - 60,
           transform: 'translateX(-50%)'
+        }}
+        onMouseEnter={() => {
+          // Keep tooltip visible when hovering over it
+          setLinkTooltip(prev => ({ ...prev, show: true }));
+        }}
+        onMouseLeave={() => {
+          // Hide when leaving tooltip
+          setLinkTooltip(prev => ({ ...prev, show: false }));
         }}
       >
         <div className="flex items-center gap-2 mb-2">

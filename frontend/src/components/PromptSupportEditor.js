@@ -420,41 +420,49 @@ const PromptSupportEditor = ({
     setLinkTooltip({ show: false, x: 0, y: 0, url: '', element: null });
     
     try {
-      // Store the text content of the link
+      // Store the text content and parent before manipulation
       const linkText = linkElement.textContent;
       const parent = linkElement.parentNode;
       
       if (parent && editorRef.current && editorRef.current.contains(linkElement)) {
-        // Remove the link element while preserving its text content
-        const textNode = document.createTextNode(linkText);
-        parent.replaceChild(textNode, linkElement);
+        // Use document.execCommand to maintain proper selection and undo history
+        const selection = window.getSelection();
+        const range = document.createRange();
         
-        // Update the content state
-        setTimeout(() => {
-          if (editorRef.current) {
-            setContent(editorRef.current.innerHTML);
-            setHasUnsavedChanges(true);
-          }
-        }, 10);
+        // Select the entire link
+        range.selectNode(linkElement);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Use execCommand to remove the link while preserving text
+        document.execCommand('unlink', false, null);
+        
+        // Clear selection
+        selection.removeAllRanges();
+        
+        // Update the content state immediately
+        setContent(editorRef.current.innerHTML);
+        setHasUnsavedChanges(true);
       }
     } catch (error) {
       console.error('Error removing link:', error);
       
-      // Fallback method
+      // Fallback method using DOM manipulation
       try {
         const parent = linkElement.parentNode;
+        const fragment = document.createDocumentFragment();
+        
+        // Move all child nodes to fragment
         while (linkElement.firstChild) {
-          parent.insertBefore(linkElement.firstChild, linkElement);
+          fragment.appendChild(linkElement.firstChild);
         }
-        parent.removeChild(linkElement);
+        
+        // Replace the link with the fragment
+        parent.replaceChild(fragment, linkElement);
         
         // Update content state
-        setTimeout(() => {
-          if (editorRef.current) {
-            setContent(editorRef.current.innerHTML);
-            setHasUnsavedChanges(true);
-          }
-        }, 10);
+        setContent(editorRef.current.innerHTML);
+        setHasUnsavedChanges(true);
       } catch (fallbackError) {
         console.error('Fallback link removal also failed:', fallbackError);
       }

@@ -642,22 +642,22 @@ const PromptSupportEditor = ({
    * Generate AI content suggestions based on context
    */
   const generateAISuggestions = async (context, type = 'completion') => {
-    // Simulate AI suggestion generation (in real implementation, this would call OpenAI API)
+    // Mock AI responses for demonstration (in production, would call actual LLM API)
     const suggestions = {
       completion: [
-        'Continue with examples and practical applications...',
-        'Add relevant statistics and data to support your points...',
-        'Include a call-to-action or next steps for readers...'
+        `${context.slice(-50)}... and this opens up new possibilities for enhanced user engagement and interaction.`,
+        `Building on this concept, we can explore how modern web applications handle similar scenarios.`,
+        `This approach provides several benefits including improved performance, better user experience, and scalability.`
       ],
       improvement: [
-        'Consider adding subheadings to improve readability',
-        'This paragraph could benefit from bullet points',
-        'Add a conclusion to summarize key takeaways'
+        'Consider breaking this into shorter paragraphs for better readability',
+        'Add specific examples to illustrate your points more clearly',
+        'Include relevant statistics or data to support your arguments'
       ],
       grammar: [
         'Consider using active voice instead of passive voice',
-        'This sentence could be shortened for clarity',
-        'Check for consistent tense throughout the document'
+        'This sentence could be restructured for better clarity',
+        'Check for consistent verb tense throughout the paragraph'
       ]
     };
     
@@ -665,7 +665,7 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * AI Writing Assistant
+   * AI Writing Assistant - Now functional
    */
   const handleAIAssist = async (mode = 'suggest') => {
     setAiWritingMode(true);
@@ -675,6 +675,13 @@ const PromptSupportEditor = ({
       const suggestions = await generateAISuggestions(currentText, mode);
       setAiSuggestions(suggestions);
       setShowAiPanel(true);
+      
+      // For completion mode, auto-apply the first suggestion
+      if (mode === 'completion' && suggestions.length > 0) {
+        setTimeout(() => {
+          executeCommand('insertHTML', `<span style="color: #666;">${suggestions[0]}</span>`);
+        }, 500);
+      }
     } catch (error) {
       console.error('AI assistance error:', error);
     } finally {
@@ -683,13 +690,14 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Apply AI suggestion to content
+   * Apply AI suggestion to content - Now functional
    */
   const applyAISuggestion = (suggestion) => {
     if (editorMode === 'wysiwyg') {
-      executeCommand('insertHTML', suggestion);
+      executeCommand('insertHTML', ` ${suggestion}`);
     }
     setShowAiPanel(false);
+    setAiSuggestions([]);
   };
 
   /**

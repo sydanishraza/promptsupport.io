@@ -431,16 +431,23 @@ const AssetManager = ({
 
               {/* Quick Actions */}
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewInArticle(asset);
-                  }}
-                  className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  <span>View in Article</span>
-                </button>
+                {!asset.isBackendAsset ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewInArticle(asset);
+                    }}
+                    className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    <span>View in Article</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center space-x-1 text-xs text-green-600">
+                    <CheckCircle className="h-3 w-3" />
+                    <span>Asset Library</span>
+                  </div>
+                )}
                 <div className="flex items-center space-x-1">
                   <button
                     onClick={(e) => {

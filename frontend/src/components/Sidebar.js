@@ -158,9 +158,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       {/* Toggle Button - On Panel Border Edge */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className={`absolute right-0 top-1/2 transform -translate-y-1/2 ${
-          collapsed ? 'translate-x-1/2' : '-translate-x-1/2'
-        } w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 z-40 flex items-center justify-center shadow-sm transition-all duration-300`}
+        className={`absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 z-40 flex items-center justify-center shadow-sm transition-all duration-300`}
         title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
       >
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}

@@ -1118,7 +1118,7 @@ const PromptSupportEditor = ({
       console.error('Content analysis error:', error);
       
       // Show user-friendly error message
-      alert(`Content analysis is currently unavailable: ${error.message}`);
+      showAlert(`Content analysis is currently unavailable: ${error.message}`, 'Analysis Error');
       
       // Fallback to basic analysis
       const text = content.replace(/<[^>]*>/g, '');

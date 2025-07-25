@@ -191,7 +191,9 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
               
               {/* Enhanced Tooltip for Collapsed State */}
               {collapsed && hoveredItem === item.id && (
-                <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg z-50 whitespace-nowrap">
+                <div className={`absolute left-full ml-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg z-50 whitespace-nowrap ${
+                  item.expandable ? 'bottom-full mb-2' : 'top-0'
+                }`}>
                   <div className="font-medium">{item.label}</div>
                   {item.description && (
                     <div className="text-xs text-gray-300 mt-1">{item.description}</div>

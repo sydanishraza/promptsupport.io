@@ -677,6 +677,18 @@
         -agent: "testing"
         -comment: "🎉 COMPREHENSIVE TESTING COMPLETED: View toggles controlled by edit mode is working perfectly! ✅ VIEW MODE: Successfully verified that 0 view toggles are visible in view mode (should be 0) - clean read-only interface. ✅ EDIT MODE: Successfully verified that 3 view toggles (WYSIWYG, Markdown, HTML) are visible in edit mode (should be > 0). ✅ CONDITIONAL RENDERING: {isEditing && (...)} logic properly controls toggle visibility. ✅ MODE TRANSITIONS: Toggles appear when entering edit mode and disappear when exiting edit mode. The view toggles are now properly controlled by edit mode state as intended."
 
+  - task: "Fix Sidebar Toggle Positioning and Enhanced Navigation"
+    implemented: true
+    working: true
+    file: "frontend/src/components/Sidebar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "COMPLETED: Successfully moved sidebar toggle from header to panel border edge. Toggle now positioned with absolute positioning at top-1/2 transform -translate-y-1/2 for perfect vertical centering. In collapsed state, logo remains visible (w-10 h-10) and toggle appears on right border. Enhanced navigation with hover tooltips showing item label, description, and 'Hover to expand' hint for expandable items. Added fly-out menus for Knowledge Engine and Systems expandable items when collapsed. Fly-out menus show all subitems with proper styling and interaction. Toggle functionality works perfectly in both directions."
+
 ## metadata:
   created_by: "main_agent"
   version: "2.0"

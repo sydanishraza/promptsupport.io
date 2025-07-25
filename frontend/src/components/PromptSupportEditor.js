@@ -553,7 +553,6 @@ const PromptSupportEditor = ({
                   outline: 'none'
                 }}
                 suppressContentEditableWarning={true}
-                data-placeholder="Start writing your content..."
               />
             )}
           </div>

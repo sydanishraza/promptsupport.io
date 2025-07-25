@@ -82,23 +82,23 @@ const MainLayout = () => {
 
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        sidebarCollapsed ? 'ml-16' : 'ml-64'
+        sidebarCollapsed ? 'ml-16 md:ml-20' : 'ml-64'
       }`}>
-        {/* Top Bar */}
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 h-[81px] flex items-center">
+        {/* Top Bar - Mobile Optimized */}
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 sm:px-6 h-[60px] sm:h-[81px] flex items-center">
           <div className="flex items-center justify-between w-full">
-            <div>
-              <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
+            <div className="hidden sm:block">
+              <p className="text-sm sm:text-lg font-medium text-gray-600 dark:text-gray-300">
                 AI-Native. Fully Autonomous. Always On.
               </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+            <div className="flex items-center space-x-2 sm:space-x-4 ml-auto sm:ml-0">
+              <button className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-sm sm:text-base">
                 🔔
               </button>
               <button 
                 onClick={() => setSettingsOpen(true)}
-                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-sm sm:text-base"
                 title="Settings"
               >
                 ⚙️
@@ -107,8 +107,8 @@ const MainLayout = () => {
           </div>
         </header>
 
-        {/* Dynamic Main View */}
-        <main className="flex-1 overflow-auto p-6">
+        {/* Dynamic Main View - Mobile Optimized */}
+        <main className="flex-1 overflow-auto p-2 sm:p-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeRoute}

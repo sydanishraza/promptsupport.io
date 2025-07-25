@@ -1555,7 +1555,7 @@ const PromptSupportEditor = ({
       return;
     }
     
-    const commentText = prompt('Enter your comment:');
+    const commentText = await showPrompt('Enter your comment:', '', 'Add Comment');
     if (!commentText) return;
     
     const range = selection.getRangeAt(0);

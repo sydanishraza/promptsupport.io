@@ -2027,16 +2027,19 @@ const PromptSupportEditor = ({
   // === PHASE 2: MODAL COMPONENTS ===
   
   /**
-   * Render content analysis popup modal
+   * Render enhanced content analysis popup modal with detailed metrics
    */
   const renderContentAnalysisModal = () => {
     if (!showContentAnalysis) return null;
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
+        <div className="bg-white rounded-lg p-6 w-[500px] max-h-[600px] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Content Analysis</h3>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              Content Analysis
+            </h3>
             <button
               onClick={() => setShowContentAnalysis(false)}
               className="text-gray-400 hover:text-gray-600"
@@ -2066,6 +2069,35 @@ const PromptSupportEditor = ({
               </div>
             </div>
 
+            {/* Extended Metrics */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="text-center p-2 bg-gray-50 rounded">
+                <div className="text-lg font-bold text-gray-600">{contentAnalytics.totalHeadings || 0}</div>
+                <div className="text-xs text-gray-500">Headings</div>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded">
+                <div className="text-lg font-bold text-gray-600">{contentAnalytics.links || 0}</div>
+                <div className="text-xs text-gray-500">Links</div>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded">
+                <div className="text-lg font-bold text-gray-600">{contentAnalytics.images || 0}</div>
+                <div className="text-xs text-gray-500">Images</div>
+              </div>
+            </div>
+
+            {/* Structure Analysis */}
+            {contentAnalytics.headings && (
+              <div className="p-4 bg-indigo-50 rounded-lg">
+                <h4 className="font-medium text-indigo-800 mb-2">Document Structure</h4>
+                <div className="grid grid-cols-4 gap-2 text-sm">
+                  <div>H1: <span className="font-bold">{contentAnalytics.headings.h1 || 0}</span></div>
+                  <div>H2: <span className="font-bold">{contentAnalytics.headings.h2 || 0}</span></div>
+                  <div>H3: <span className="font-bold">{contentAnalytics.headings.h3 || 0}</span></div>
+                  <div>H4: <span className="font-bold">{contentAnalytics.headings.h4 || 0}</span></div>
+                </div>
+              </div>
+            )}
+
             {/* Readability Score */}
             <div className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between mb-2">
@@ -2086,6 +2118,11 @@ const PromptSupportEditor = ({
                   style={{ width: `${contentAnalytics.readabilityScore || 0}%` }}
                 ></div>
               </div>
+              {contentAnalytics.avgWordsPerSentence && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Avg words per sentence: {contentAnalytics.avgWordsPerSentence}
+                </div>
+              )}
             </div>
 
             {/* AI Insights */}

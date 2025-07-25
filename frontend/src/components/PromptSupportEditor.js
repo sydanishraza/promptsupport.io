@@ -198,13 +198,43 @@ const PromptSupportEditor = ({
       if (showSlashMenu && slashMenuRef.current && !slashMenuRef.current.contains(event.target)) {
         setShowSlashMenu(false);
       }
+      if (showAiPanel && !event.target.closest('.ai-panel')) {
+        setShowAiPanel(false);
+      }
     };
     
-    if (showColorPicker || showSlashMenu) {
+    if (showColorPicker || showSlashMenu || showAiPanel) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showColorPicker, showSlashMenu]);
+  }, [showColorPicker, showSlashMenu, showAiPanel]);
+
+  // Phase 4: Auto-save functionality
+  useEffect(() => {
+    if (!hasUnsavedChanges || !isEditing) return;
+    
+    const autoSaveTimer = setTimeout(() => {
+      autoSave();
+    }, 3000); // Auto-save after 3 seconds of inactivity
+    
+    return () => clearTimeout(autoSaveTimer);
+  }, [hasUnsavedChanges, content, title, isEditing]);
+
+  // Phase 4: Content analytics
+  useEffect(() => {
+    if (content && isEditing) {
+      analyzeContent(content);
+    }
+  }, [content, isEditing]);
+
+  // Phase 4: Collaboration presence simulation
+  useEffect(() => {
+    if (isEditing) {
+      updateCollaboratorPresence();
+      const presenceInterval = setInterval(updateCollaboratorPresence, 10000);
+      return () => clearInterval(presenceInterval);
+    }
+  }, [isEditing]);
 
   // === PHASE 1: CORE EDITABLE SURFACE ===
   

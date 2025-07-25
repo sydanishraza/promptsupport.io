@@ -2003,10 +2003,17 @@ const PromptSupportEditor = ({
     );
   };
 
-  // === SAVE HANDLING (Fixed with proper mode switching behavior) ===
+  // === SAVE HANDLING (Fixed with proper mode switching behavior and duplicate prevention) ===
   
   const handleSave = async (publishAction = 'draft', shouldExitEdit = false) => {
+    // Prevent multiple simultaneous saves
+    if (isSaving) {
+      console.log('Save already in progress, skipping duplicate save request');
+      return false;
+    }
+
     try {
+      setIsSaving(true);
       setIsAutoSaving(true);
       
       const articleData = {
@@ -2017,7 +2024,7 @@ const PromptSupportEditor = ({
 
       let response;
       if (article?.id) {
-        // Update existing article
+        // Update existing article - this prevents creating duplicates
         response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/content-library/${article.id}`, {
           method: 'PUT',
           headers: {
@@ -2026,7 +2033,7 @@ const PromptSupportEditor = ({
           body: JSON.stringify(articleData)
         });
       } else {
-        // Create new article
+        // Create new article only if no ID exists
         response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/content-library`, {
           method: 'POST',
           headers: {
@@ -2041,9 +2048,14 @@ const PromptSupportEditor = ({
         setHasUnsavedChanges(false);
         setLastSaved(new Date());
         
-        // Call onSave prop if provided
-        if (onSave) {
-          await onSave({ ...articleData, id: article?.id || result.id });
+        // Update article ID if it was a new article
+        if (!article?.id && result.id) {
+          // Store the new article ID to prevent future duplicates
+          if (onSave) {
+            await onSave({ ...articleData, id: result.id });
+          }
+        } else if (onSave) {
+          await onSave({ ...articleData, id: article.id });
         }
         
         // Only exit edit mode if explicitly requested (for Draft/Publish actions)
@@ -2053,13 +2065,14 @@ const PromptSupportEditor = ({
         
         return true;
       } else {
-        throw new Error('Save failed');
+        throw new Error(`Save failed: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert('Save failed. Please try again.');
+      alert(`Save failed: ${error.message}. Please try again.`);
       return false;
     } finally {
+      setIsSaving(false);
       setIsAutoSaving(false);
     }
   };
@@ -2073,6 +2086,8 @@ const PromptSupportEditor = ({
   };
 
   const handlePublish = async () => {
+    if (isSaving) return; // Prevent duplicate clicks
+    
     const success = await handleSave('published', true);
     if (success) {
       alert('Article published successfully!');
@@ -2080,6 +2095,8 @@ const PromptSupportEditor = ({
   };
   
   const handleSaveDraft = async () => {
+    if (isSaving) return; // Prevent duplicate clicks
+    
     const success = await handleSave('draft', true);
     if (success) {
       alert('Draft saved successfully!');

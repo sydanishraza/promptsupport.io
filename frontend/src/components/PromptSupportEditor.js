@@ -1635,8 +1635,8 @@ const PromptSupportEditor = ({
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <div 
               className="relative"
-              onMouseEnter={() => setShowAiDropdown(true)}
-              onMouseLeave={() => setShowAiDropdown(false)}
+              onMouseEnter={() => handleMenuHover('ai', true)}
+              onMouseLeave={() => handleMenuHover('ai', false)}
             >
               <button
                 className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
@@ -1649,7 +1649,11 @@ const PromptSupportEditor = ({
               </button>
               
               {showAiDropdown && (
-                <div className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
+                <div 
+                  className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max"
+                  onMouseEnter={() => handleMenuHover('ai', true)}
+                  onMouseLeave={() => handleMenuHover('ai', false)}
+                >
                   <button
                     onClick={() => {
                       handleAIAssist('completion');

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { html as beautifyHtml } from 'js-beautify';
 import { 
   Bold, 
   Italic, 

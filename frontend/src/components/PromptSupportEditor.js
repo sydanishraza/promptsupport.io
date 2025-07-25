@@ -772,9 +772,6 @@ const PromptSupportEditor = ({
   const renderTableModal = () => {
     if (!showTableModal) return null;
     
-    const [rows, setRows] = useState(3);
-    const [cols, setCols] = useState(3);
-    
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-96">
@@ -783,34 +780,34 @@ const PromptSupportEditor = ({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Rows: {rows}
+                Rows: {tableRows}
               </label>
               <input
                 type="range"
                 min="2"
                 max="10"
-                value={rows}
-                onChange={(e) => setRows(Number(e.target.value))}
+                value={tableRows}
+                onChange={(e) => setTableRows(Number(e.target.value))}
                 className="w-full"
               />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Columns: {cols}
+                Columns: {tableCols}
               </label>
               <input
                 type="range"
                 min="2"
                 max="6"
-                value={cols}
-                onChange={(e) => setCols(Number(e.target.value))}
+                value={tableCols}
+                onChange={(e) => setTableCols(Number(e.target.value))}
                 className="w-full"
               />
             </div>
             
             <div className="text-sm text-gray-500">
-              Preview: {rows} × {cols} table
+              Preview: {tableRows} × {tableCols} table
             </div>
           </div>
           
@@ -822,7 +819,7 @@ const PromptSupportEditor = ({
               Cancel
             </button>
             <button
-              onClick={() => insertCustomTable(rows, cols)}
+              onClick={() => insertCustomTable(tableRows, tableCols)}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
               Insert Table

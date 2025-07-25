@@ -368,7 +368,159 @@ const PromptSupportEditor = ({
     }
   };
 
-  // === PHASE 2: ADVANCED FORMATTING ===
+  // === PHASE 3: MEDIA INTEGRATION ===
+  
+  /**
+   * Handle file upload and convert to base64
+   */
+  const handleFileUpload = (files) => {
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64 = e.target.result;
+          insertImage(base64, file.name);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  /**
+   * Insert image into editor
+   */
+  const insertImage = (src, alt = 'Image') => {
+    const imageHTML = `
+      <figure style="margin: 16px 0; text-align: center;">
+        <img src="${src}" alt="${alt}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+        <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic;">${alt}</figcaption>
+      </figure>
+    `;
+    executeCommand('insertHTML', imageHTML);
+  };
+
+  /**
+   * Handle drag and drop
+   */
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDraggedOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDraggedOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDraggedOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files);
+    }
+  };
+
+  /**
+   * Insert video embed
+   */
+  const insertVideoEmbed = () => {
+    const url = prompt('Enter video URL (YouTube, Vimeo, etc.):');
+    if (url && url.trim()) {
+      let embedHTML = '';
+      
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        const videoId = url.includes('youtu.be') 
+          ? url.split('youtu.be/')[1].split('?')[0]
+          : url.split('v=')[1]?.split('&')[0];
+        
+        embedHTML = `
+          <div style="margin: 16px 0; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+            <iframe src="https://www.youtube.com/embed/${videoId}" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; border-radius: 8px;"
+                    allowfullscreen></iframe>
+          </div>
+        `;
+      } else if (url.includes('vimeo.com')) {
+        const videoId = url.split('vimeo.com/')[1].split('?')[0];
+        embedHTML = `
+          <div style="margin: 16px 0; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+            <iframe src="https://player.vimeo.com/video/${videoId}" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; border-radius: 8px;"
+                    allowfullscreen></iframe>
+          </div>
+        `;
+      } else {
+        embedHTML = `
+          <div style="margin: 16px 0; text-align: center;">
+            <video controls style="max-width: 100%; height: auto; border-radius: 8px;">
+              <source src="${url}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        `;
+      }
+      
+      executeCommand('insertHTML', embedHTML);
+    }
+  };
+
+  // === PHASE 3: SLASH COMMANDS ===
+  
+  /**
+   * Slash command menu items
+   */
+  const slashCommands = [
+    { key: 'h1', label: 'Heading 1', icon: Heading1, action: () => insertBlock('h1') },
+    { key: 'h2', label: 'Heading 2', icon: Heading2, action: () => insertBlock('h2') },
+    { key: 'h3', label: 'Heading 3', icon: Heading3, action: () => insertBlock('h3') },
+    { key: 'table', label: 'Table', icon: Table, action: () => insertBlock('table2x2') },
+    { key: 'columns', label: 'Two Columns', icon: Columns, action: () => insertBlock('twoColumns') },
+    { key: 'quote', label: 'Quote', icon: Quote, action: () => insertBlock('quote') },
+    { key: 'code', label: 'Code Block', icon: Code, action: () => insertBlock('codeBlock') },
+    { key: 'info', label: 'Info Callout', icon: Info, action: () => insertBlock('infoCallout') },
+    { key: 'warning', label: 'Warning Callout', icon: AlertTriangle, action: () => insertBlock('warningCallout') },
+    { key: 'success', label: 'Success Callout', icon: CheckCircle, action: () => insertBlock('successCallout') },
+    { key: 'error', label: 'Error Callout', icon: XCircle, action: () => insertBlock('errorCallout') },
+    { key: 'image', label: 'Upload Image', icon: Image, action: () => fileInputRef.current?.click() },
+    { key: 'video', label: 'Video Embed', icon: Video, action: insertVideoEmbed },
+    { key: 'hr', label: 'Divider', icon: Minus, action: () => insertBlock('hr') }
+  ];
+
+  /**
+   * Handle slash command detection and menu
+   */
+  const handleSlashCommand = (e) => {
+    if (e.key === '/') {
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          const editorRect = editorRef.current.getBoundingClientRect();
+          
+          setSlashMenuPosition({
+            x: rect.left - editorRect.left,
+            y: rect.bottom - editorRect.top + 8
+          });
+          setShowSlashMenu(true);
+        }
+      }, 10);
+    } else if (e.key === 'Escape') {
+      setShowSlashMenu(false);
+    }
+  };
+
+  /**
+   * Filter slash commands based on input
+   */
+  const getFilteredSlashCommands = (query = '') => {
+    if (!query) return slashCommands;
+    return slashCommands.filter(cmd => 
+      cmd.label.toLowerCase().includes(query.toLowerCase()) ||
+      cmd.key.toLowerCase().includes(query.toLowerCase())
+    );
+  };
   
   /**
    * Handle text alignment

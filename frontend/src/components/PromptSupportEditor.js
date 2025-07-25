@@ -440,10 +440,53 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Convert selected text to paragraph
+   * Detect active formatting at cursor position
    */
-  const convertToParagraph = () => {
-    executeCommand('formatBlock', 'p');
+  const detectActiveFormats = () => {
+    if (!isEditing || !editorRef.current) return;
+
+    const formats = {
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline'),
+      strikethrough: document.queryCommandState('strikeThrough'),
+      h1: false,
+      h2: false,
+      h3: false,
+      h4: false,
+      ul: document.queryCommandState('insertUnorderedList'),
+      ol: document.queryCommandState('insertOrderedList')
+    };
+
+    // Check for heading formats
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      let node = selection.anchorNode;
+      while (node && node !== editorRef.current) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const tagName = node.tagName?.toLowerCase();
+          if (tagName === 'h1') formats.h1 = true;
+          if (tagName === 'h2') formats.h2 = true;
+          if (tagName === 'h3') formats.h3 = true;
+          if (tagName === 'h4') formats.h4 = true;
+        }
+        node = node.parentNode;
+      }
+    }
+
+    setActiveFormats(formats);
+  };
+
+  /**
+   * Enhanced execute command with format toggle
+   */
+  const executeFormattingCommand = (command, value = null) => {
+    executeCommand(command, value);
+    
+    // Update active formats after command
+    setTimeout(() => {
+      detectActiveFormats();
+    }, 10);
   };
   const insertInlineCode = () => {
     const selection = window.getSelection();

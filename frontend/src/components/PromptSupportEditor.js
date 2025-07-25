@@ -835,19 +835,51 @@ const PromptSupportEditor = ({
   // === PHASE 4: COLLABORATION FEATURES ===
   
   /**
-   * Add comment to content
+   * Add comment to selected text
    */
-  const addComment = (text, position) => {
+  const addComment = () => {
+    const selection = window.getSelection();
+    if (selection.toString().length === 0) {
+      alert('Please select some text to comment on');
+      return;
+    }
+    
+    const commentText = prompt('Enter your comment:');
+    if (!commentText) return;
+    
+    const range = selection.getRangeAt(0);
+    const selectedText = selection.toString();
+    
+    // Create comment span with unique ID
+    const commentId = Date.now();
+    const commentSpan = document.createElement('span');
+    commentSpan.setAttribute('data-comment-id', commentId);
+    commentSpan.style.backgroundColor = '#fff3cd';
+    commentSpan.style.borderBottom = '2px solid #ffc107';
+    commentSpan.style.cursor = 'pointer';
+    commentSpan.title = `Comment: ${commentText}`;
+    
+    // Wrap selected content
+    try {
+      range.surroundContents(commentSpan);
+    } catch (e) {
+      // Fallback for complex selections
+      const span = `<span data-comment-id="${commentId}" style="background-color: #fff3cd; border-bottom: 2px solid #ffc107; cursor: pointer;" title="Comment: ${commentText}">${selectedText}</span>`;
+      executeCommand('insertHTML', span);
+    }
+    
+    // Add to comments list
     const newComment = {
-      id: Date.now(),
-      text,
+      id: commentId,
+      text: commentText,
+      selectedText: selectedText,
       author: 'Current User',
       timestamp: new Date(),
-      position,
       resolved: false
     };
     
     setComments(prev => [...prev, newComment]);
+    selection.removeAllRanges();
   };
 
   /**
@@ -861,6 +893,36 @@ const PromptSupportEditor = ({
           : comment
       )
     );
+    
+    // Update visual styling in editor
+    const commentSpan = editorRef.current?.querySelector(`[data-comment-id="${commentId}"]`);
+    if (commentSpan) {
+      const comment = comments.find(c => c.id === commentId);
+      if (comment?.resolved) {
+        commentSpan.style.backgroundColor = '#d4edda';
+        commentSpan.style.borderBottom = '2px solid #28a745';
+      } else {
+        commentSpan.style.backgroundColor = '#fff3cd';
+        commentSpan.style.borderBottom = '2px solid #ffc107';
+      }
+    }
+  };
+
+  /**
+   * Remove comment
+   */
+  const removeComment = (commentId) => {
+    setComments(prev => prev.filter(comment => comment.id !== commentId));
+    
+    // Remove visual styling from editor
+    const commentSpan = editorRef.current?.querySelector(`[data-comment-id="${commentId}"]`);
+    if (commentSpan) {
+      const parent = commentSpan.parentNode;
+      while (commentSpan.firstChild) {
+        parent.insertBefore(commentSpan.firstChild, commentSpan);
+      }
+      parent.removeChild(commentSpan);
+    }
   };
 
   /**

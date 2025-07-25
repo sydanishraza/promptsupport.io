@@ -44,83 +44,149 @@ const AssetManager = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [assetsPerPage] = useState(12);
 
-  // Extract media assets from articles
+  // Fetch real assets from backend plus extract media assets from articles
   useEffect(() => {
-    const extractedAssets = [];
-    
-    articles.forEach(article => {
-      if (article.content && article.content.includes('data:image')) {
-        // Extract base64 images with more flexible regex
-        const imageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
-        
-        // Also try to find images in HTML format
-        const htmlImageRegex = /<img[^>]*src="data:image\/([^;]+);base64,([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g;
-        
-        let match;
-        let assetCounter = 0;
-        
-        // Process markdown format images
-        while ((match = imageRegex.exec(article.content)) !== null) {
-          const [fullMatch, altText, format, base64Data] = match;
-          
-          // Skip if base64 data is too short (likely truncated)
-          if (base64Data.length < 50) {
-            console.warn(`Skipping truncated image in article ${article.id}: ${base64Data.length} chars`);
-            continue;
+    const fetchAllAssets = async () => {
+      try {
+        // Fetch real assets from the backend
+        const backendAssets = [];
+        try {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/assets`);
+          if (response.ok) {
+            const data = await response.json();
+            const realAssets = data.assets || [];
+            
+            // Transform backend assets to match the component's expected format
+            realAssets.forEach(asset => {
+              if (asset.type === 'image') {
+                let imageSource = '';
+                
+                // Determine the image source based on storage type
+                if (asset.url) {
+                  // File-based asset
+                  if (asset.url.startsWith('/api/static/') || asset.url.startsWith('/static/')) {
+                    imageSource = `${process.env.REACT_APP_BACKEND_URL}${asset.url}`;
+                  } else {
+                    imageSource = asset.url;
+                  }
+                } else if (asset.data && asset.data.startsWith('data:image')) {
+                  // Base64 asset
+                  imageSource = asset.data;
+                }
+                
+                if (imageSource) {
+                  backendAssets.push({
+                    id: asset.id,
+                    type: 'image',
+                    format: asset.original_filename ? asset.original_filename.split('.').pop().toLowerCase() : 'unknown',
+                    name: asset.name || asset.original_filename || 'Unnamed asset',
+                    altText: asset.name || asset.original_filename || 'Image',
+                    dataUrl: imageSource,
+                    size: asset.size || 0,
+                    articleId: null, // These are standalone assets, not tied to articles
+                    articleTitle: 'Asset Library',
+                    dateAdded: asset.created_at,
+                    lastUpdated: asset.updated_at,
+                    source: asset.storage_type || 'asset_library',
+                    processed: true,
+                    isBackendAsset: true // Flag to distinguish from article-extracted assets
+                  });
+                }
+              }
+            });
           }
-          
-          const assetId = `${article.id}-md-${assetCounter++}`;
-          
-          extractedAssets.push({
-            id: assetId,
-            type: 'image',
-            format: format.toLowerCase(),
-            name: altText || `Image ${assetCounter} from ${article.title}`,
-            altText: altText,
-            dataUrl: `data:image/${format};base64,${base64Data}`,
-            size: Math.round(base64Data.length * 0.75), // Approximate size
-            articleId: article.id,
-            articleTitle: article.title,
-            dateAdded: article.created_at,
-            lastUpdated: article.updated_at,
-            source: article.source_type,
-            processed: article.media_processed || false
-          });
+        } catch (error) {
+          console.error('Failed to fetch backend assets:', error);
         }
         
-        // Process HTML format images
-        while ((match = htmlImageRegex.exec(article.content)) !== null) {
-          const [fullMatch, format, base64Data, altText] = match;
-          
-          // Skip if base64 data is too short (likely truncated)
-          if (base64Data.length < 50) {
-            console.warn(`Skipping truncated HTML image in article ${article.id}: ${base64Data.length} chars`);
-            continue;
+        // Extract media assets from articles (legacy support)
+        const extractedAssets = [];
+        
+        articles.forEach(article => {
+          if (article.content && article.content.includes('data:image')) {
+            // Extract base64 images with more flexible regex
+            const imageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
+            
+            // Also try to find images in HTML format
+            const htmlImageRegex = /<img[^>]*src="data:image\/([^;]+);base64,([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g;
+            
+            let match;
+            let assetCounter = 0;
+            
+            // Process markdown format images
+            while ((match = imageRegex.exec(article.content)) !== null) {
+              const [fullMatch, altText, format, base64Data] = match;
+              
+              // Skip if base64 data is too short (likely truncated)
+              if (base64Data.length < 50) {
+                console.warn(`Skipping truncated image in article ${article.id}: ${base64Data.length} chars`);
+                continue;
+              }
+              
+              const assetId = `${article.id}-md-${assetCounter++}`;
+              
+              extractedAssets.push({
+                id: assetId,
+                type: 'image',
+                format: format.toLowerCase(),
+                name: altText || `Image ${assetCounter} from ${article.title}`,
+                altText: altText,
+                dataUrl: `data:image/${format};base64,${base64Data}`,
+                size: Math.round(base64Data.length * 0.75), // Approximate size
+                articleId: article.id,
+                articleTitle: article.title,
+                dateAdded: article.created_at,
+                lastUpdated: article.updated_at,
+                source: article.source_type,
+                processed: article.media_processed || false,
+                isBackendAsset: false
+              });
+            }
+            
+            // Process HTML format images
+            while ((match = htmlImageRegex.exec(article.content)) !== null) {
+              const [fullMatch, format, base64Data, altText] = match;
+              
+              // Skip if base64 data is too short (likely truncated)
+              if (base64Data.length < 50) {
+                console.warn(`Skipping truncated HTML image in article ${article.id}: ${base64Data.length} chars`);
+                continue;
+              }
+              
+              const assetId = `${article.id}-html-${assetCounter++}`;
+              
+              extractedAssets.push({
+                id: assetId,
+                type: 'image',
+                format: format.toLowerCase(),
+                name: altText || `HTML Image ${assetCounter} from ${article.title}`,
+                altText: altText,
+                dataUrl: `data:image/${format};base64,${base64Data}`,
+                size: Math.round(base64Data.length * 0.75), // Approximate size
+                articleId: article.id,
+                articleTitle: article.title,
+                dateAdded: article.created_at,
+                lastUpdated: article.updated_at,
+                source: article.source_type,
+                processed: article.media_processed || false,
+                isBackendAsset: false
+              });
+            }
           }
-          
-          const assetId = `${article.id}-html-${assetCounter++}`;
-          
-          extractedAssets.push({
-            id: assetId,
-            type: 'image',
-            format: format.toLowerCase(),
-            name: altText || `HTML Image ${assetCounter} from ${article.title}`,
-            altText: altText,
-            dataUrl: `data:image/${format};base64,${base64Data}`,
-            size: Math.round(base64Data.length * 0.75), // Approximate size
-            articleId: article.id,
-            articleTitle: article.title,
-            dateAdded: article.created_at,
-            lastUpdated: article.updated_at,
-            source: article.source_type,
-            processed: article.media_processed || false
-          });
-        }
-      }
-    });
+        });
 
-    console.log(`Extracted ${extractedAssets.length} assets from ${articles.length} articles`);
-    setAssets(extractedAssets);
+        // Combine backend assets and extracted assets
+        const allAssets = [...backendAssets, ...extractedAssets];
+        
+        console.log(`Loaded ${backendAssets.length} assets from backend and extracted ${extractedAssets.length} assets from ${articles.length} articles`);
+        setAssets(allAssets);
+      } catch (error) {
+        console.error('Error loading assets:', error);
+        setAssets([]);
+      }
+    };
+
+    fetchAllAssets();
   }, [articles]);
 
   // Filter and sort assets

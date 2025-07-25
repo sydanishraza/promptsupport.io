@@ -342,8 +342,8 @@ const ContentLibrary = () => {
           <span>{selectedArticle.title || 'New Article'}</span>
         </div>
 
-        {/* MediaArticleViewer */}
-        <MediaArticleViewer
+        {/* ModernMediaArticleViewer */}
+        <ModernMediaArticleViewer
           article={selectedArticle}
           isEditing={isEditing}
           onEdit={() => setIsEditing(true)}

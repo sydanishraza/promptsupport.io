@@ -1,60 +1,71 @@
 <analysis>
-The previous AI engineer's trajectory shows a systematic approach to enhancing the PromptSupport application's Content Library. Initially, the focus was on critical UI/UX issues reported by the user, including navigation (scrolling and pagination), assets count accuracy, and editor functionality (WYSIWYG display, toolbar, view toggles). The engineer meticulously addressed these by modifying  and , implementing pagination, improving editor styling, and adding comprehensive toolbar controls and save feedback.
+The previous AI engineer's work involved an iterative and systematic approach to address a wide range of UI/UX issues and implement significant feature enhancements. Initially, the focus was on the PromptSupport application's Content Library, tackling critical bugs like navigation, asset count accuracy, and editor functionality (WYSIWYG display, toolbar, view toggles). This led to extensive modifications in  and  (which was later completely replaced).
 
-Subsequently, the work shifted to refining visual consistency and layout across the application. This involved harmonizing pagination and filter sections between the Articles and Assets tabs by refactoring components to ensure proper state management and dedicated containers. Lastly, significant effort was placed on precise pixel-perfect alignment of header heights and refining the sidebar's collapsed state, specifically the logo size and toggle button placement. The AI engineer consistently verified fixes through screenshots and iteratively adjusted until explicit user requirements were met, demonstrating a robust problem-solving loop. The last task involves moving the sidebar collapse toggle to the panel border.
+Subsequently, efforts shifted to visual consistency, including harmonizing pagination and filter sections, and refining sidebar elements like logo sizing and toggle placement. The engineer meticulously addressed user feedback, often validating changes with screenshots. The latest, and most substantial, undertaking is a complete overhaul of the WYSIWYG editor based on a detailed multi-phase plan provided by the user. While Phase 1: Core Editor Foundation was declared complete, a persistent cursor behavior issue, particularly with existing articles, immediately surfaced and is currently being debugged and fixed by modifying  to handle content rendering and cursor positioning more naturally.
 </analysis>
 
 <product_requirements>
-PromptSupport is an AI-native web application designed as a comprehensive support stack, ingesting content to build a Knowledge Base, AI Chatbot, Multichannel Ticketing, AI Community, and Self-Service Portal. It features a two-column UI with a persistent left sidebar and a Quick Setup Wizard.
+PromptSupport is an AI-native web application designed to be a comprehensive support stack, building a Knowledge Base, AI Chatbot, Multichannel Ticketing, AI Community, and Self-Service Portal from ingested content. It features a two-column UI with a persistent left sidebar and a Quick Setup Wizard.
 
-**Current Implementation Details:**
-The application has a functional React frontend and FastAPI backend. The Knowledge Engine supports multi-modal content ingestion with AI services for extraction, summarization, and article creation. The Content Library fetches and displays articles, with  serving as a robust WYSIWYG editor supporting Markdown and HTML toggles, metadata management, saving, and version history. Media extraction, classification, and captioning via LLM+Vision models are functional. Content splitting and LLM-based writing quality enhancement are also implemented.
+The current implementation includes a React frontend and FastAPI backend. The Knowledge Engine supports multi-modal content ingestion with AI services. The Content Library displays articles and assets, utilizing  (now ) as a robust WYSIWYG editor with Markdown/HTML toggles, metadata management, saving, and version history. Media extraction and content splitting/enhancement via LLMs are functional.
 
-The Content Library UI was recently redesigned to a modern CMS-style interface with grid/table views, filter/sort/view dropdowns, and a Create Article button. The  now includes a comprehensive toolbar, synchronized views, and proper CSS rendering for rich content. The Assets Library displays real image thumbnails with modal previews, search, filtering, and metadata. Pagination is implemented for article browsing.
-
-Recent explicit requests focused on: fixing Content Library navigation/scrolling, assets tab count accuracy, WYSIWYG editor black screen/flicker, missing/incomplete WYSIWYG toolbar, conditional display of view toggles, cursor jumps, lack of save feedback, editor auto-scroll, consistent pagination/filter UI across tabs, logo replacement, and consistent header heights, and improved collapsed sidebar logo size and toggle placement.
+Recent explicit requests and problems addressed include:
+- Fixing Content Library navigation, scrolling, and asset tab count accuracy.
+- Resolving WYSIWYG editor issues: black screen/flicker, missing/incomplete toolbar, conditional view toggles, cursor jumps, lack of save feedback, auto-scroll.
+- Ensuring consistent pagination/filter UI across Content Library tabs.
+- Replacing the application logo and ensuring consistent header heights across the application.
+- Improving the collapsed sidebar: logo size, toggle placement, and enhanced navigation behavior (tooltips, fly-out menus).
+- Addressing mobile responsiveness issues in the Content Library, including auto-collapsing the sidebar and compacting UI elements for better content visibility.
+- A comprehensive overhaul of the WYSIWYG editor, specifying core foundation, structural blocks, media integration, keyboard UX, AI enhancements, content sync, and testing.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS, Framer Motion,  (HTML-to-Markdown),  (Markdown-to-HTML), Styled-JSX,  (custom rich text editor),  for editor actions.
+-   **Frontend**: React.js, TailwindCSS, Framer Motion,  (HTML-to-Markdown),  (Markdown-to-HTML), , Styled-JSX.
 -   **Backend**: FastAPI (Python), MongoDB.
 -   **AI/LLM Integrations**: OpenAI GPT-4o, OpenAI GPT-4 Vision API via .
 -   **Deployment**: Kubernetes, Supervisor.
 </key_technical_concepts>
 
 <code_architecture>
-The application utilizes a full-stack architecture comprising a React frontend and a FastAPI backend.
+The application uses a React frontend and a FastAPI backend.
 
 
 
--   ****: Main FastAPI backend.
-    -   **Importance**: Handles all API endpoints.
+-   ****:
+    -   **Importance**: Handles all API endpoints for the application.
     -   **Changes**: Updated for pagination support in content library endpoints and fixed image extraction regex for base64 images.
 -   ****:
-    -   **Importance**: Central component for content library UI.
-    -   **Changes**: Completely redesigned for CMS-style interface. Handles article/asset tabs, search, filters, and integrates , , , . Implemented pagination logic. Modified to house separate, consistent filter and pagination containers for Articles and Assets. Header text updated.
+    -   **Importance**: Root component managing global layout and state.
+    -   **Changes**: Modified to pass  state from  and added  for window resize listener to manage sidebar collapse on mobile.
 -   ****:
-    -   **Importance**: Primary editor/viewer, robust for base64 image rendering.
-    -   **Changes**: Recreated and enhanced after TinyMCE failure. Now a fully functional WYSIWYG editor with comprehensive toolbar (), synchronized Markdown/HTML views, and improved CSS. Fixed black screen flicker, cursor jumps, auto-scroll to cursor. Implemented keyboard shortcuts (Ctrl+Z/Y, Ctrl+B/I/U/K). Added save/edit mode feedback. Adjusted overall height with flex layout to prevent overflow.
--   ****:
-    -   **Importance**: Manages and displays media assets.
-    -   **Changes**: Implemented to show real image thumbnails and integrate . Modified to expose pagination data to parent () and removed internal filter/pagination controls, relying on props from  for filtering.
+    -   **Importance**: Top-level component rendering routes, the main page header, and integrating the .
+    -   **Changes**: Modified header for consistent height (81px), implemented responsive logic to auto-collapse the sidebar on mobile () using  and  for screen width.
 -   ****:
     -   **Importance**: Left navigation panel component.
-    -   **Changes**: Modified header padding () to achieve exact 81px height consistency with  header. Logo file replaced. Logo size increased () and collapse toggle repositioned () in collapsed state for better brand visibility.
+    -   **Changes**: Modified for consistent header height. Logo () replaced, its size adjusted (from w-10 h-10 to 35x35px) and its  property changed from  to  to prevent cropping. Sidebar collapsed width increased (from 64px to 80px). Collapse toggle repositioned to the right edge of the panel, vertically centered, and its logic updated for consistent placement in both expanded/collapsed states. Enhanced navigation for collapsed state: added hover tooltips and fly-out menus for nested items, with improved positioning to prevent overlap. Page icons increased in size (24px collapsed) and centered with improved padding. Flyout menu behavior enhanced for smooth transitions (no disappearance when moving cursor from icon to menu) by reducing gap and managing mouse events with timeouts.
 -   ****:
-    -   **Importance**: Top-level component rendering routes and the main page header.
-    -   **Changes**: Modified header to have  and  for consistent height and vertical alignment with the sidebar header.
+    -   **Importance**: Central component for content library UI, managing articles and assets.
+    -   **Changes**: Redesigned for a CMS-style interface. Handles article/asset tabs, search, filters, and integrates , , , and  (replacing ). Pagination logic implemented. Modified to house separate, consistent filter and pagination containers. Header text updated. Layout adjusted using flexbox to fix pagination border cropping. Mobile responsiveness implemented: compact header, abbreviated stats, smaller action buttons, ultra-small filter controls, mobile-optimized tabs/navigation, and compact pagination.
+-   ****:
+    -   **Importance**: Previously the primary editor/viewer.
+    -   **Changes**: Recreated and enhanced multiple times, fixing WYSIWYG display, toolbar, view toggles, cursor jumps, save feedback. Ultimately **abandoned and replaced** by  due to accumulated complexity and issues.
+-   ****:
+    -   **Importance**: **NEWLY CREATED** as the primary WYSIWYG editor, replacing . Designed based on a detailed multi-phase specification.
+    -   **Changes**: **Phase 1 (Core Foundation)** completed. Includes basic editable surface (contentEditable), rich text input, autosizing, cursor stability (initially problematic, repeatedly fixed). Implemented a comprehensive toolbar with Undo/Redo, Bold, Italic, Underline, Strikethrough, Headings (H1-H4), Ordered/Unordered lists, Quote, Inline Code, Code Block, Horizontal Divider. Multi-mode support (WYSIWYG, Markdown, HTML) with mode switching only in edit mode. Has status indicators (Editing, Viewing, Saved). Current work is focused on fixing a persistent cursor issue, particularly when loading existing articles, by simplifying content rendering and input handling to avoid  interference.
+-   ****:
+    -   **Importance**: Manages and displays media assets within the Content Library.
+    -   **Changes**: Implemented to show real image thumbnails and integrate . Modified to expose pagination data to  and removed internal filter/pagination controls.
 -   ****:
     -   **Importance**: Application logo.
-    -   **Changes**: Replaced with a new version for updated branding.
+    -   **Changes**: Replaced with a new version for updated branding and repeatedly resized/repositioned to meet precise user requirements.
 -   ****:
     -   **Importance**: Main CSS file.
-    -   **Changes**: Enhanced with styling rules for editor components (tips, warnings, notes) and potentially general layout adjustments for consistency.
+    -   **Changes**: Enhanced with styling rules for editor components (tips, warnings, notes) and general layout adjustments for consistency and mobile responsiveness.
+
 </code_architecture>
 
 <pending_tasks>
--   Full implementation of the Enhanced Content Engine (remaining UX/UI improvements for the editor, beyond basic rendering and toggles already implemented).
+-   Full implementation of the Enhanced Content Engine (remaining UX/UI improvements for the editor, beyond basic rendering and toggles already implemented, which falls under the subsequent phases of the  rebuild).
 -   Implement the Developer Docs System.
 -   Develop the AI Agent System (all 5 agents).
 -   Full implementation of the Quick Setup Wizard's multi-step flow.
@@ -64,18 +75,20 @@ The application utilizes a full-stack architecture comprising a React frontend a
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was focused on resolving UI/UX inconsistencies and alignment issues in the application's header and sidebar. The latest task involves fixing the positioning of the sidebar collapse toggle.
+Immediately prior to this summary, the AI engineer was deep into a comprehensive overhaul of the WYSIWYG editor. The previous  component was deemed completely messed up by the user, leading to its deletion and a rebuild from scratch into a new component, , following a detailed multi-phase development plan.
 
-Initially, the AI engineer successfully implemented:
-1.  **Content Library Enhancements**: Resolved navigation and scrolling, fixed asset count accuracy, redesigned content/asset filter and pagination containers for consistency across tabs, updated header text for clarity.
-2.  **WYSIWYG Editor Stability**: Fixed black screen flicker, cursor jumps while typing, implemented keyboard shortcuts, and added auto-scroll to cursor. The editor now includes a comprehensive toolbar, and view toggles are context-aware (only shown in edit mode). Save/edit mode feedback (auto-save status, Editing/Viewing badges) was also added.
-3.  **Layout Consistency**: Addressed the height overflow issue of the editor/viewer, ensuring content fits within the viewport by using flexbox and dynamic height calculations.
-4.  **Logo and Header Alignment**: Replaced the application logo. Multiple iterations were made to achieve pixel-perfect height consistency (exactly 81px) between the left navigation panel header (containing the logo) and the main page header (containing settings/notifications).
-5.  **Collapsed Sidebar Logo/Toggle**: Increased the logo size and moved the collapse/expand toggle to the right edge of the collapsed sidebar, centrally aligned.
+Phase 1: Core Editor Foundation was declared complete by the AI engineer, successfully implementing a basic editable surface with rich text input, cursor stability, a comprehensive toolbar (bold, italic, headings, lists, code, etc.), and multi-mode support (WYSIWYG, Markdown, HTML).
 
-The last interaction (Chat Message 314) indicates that the user still finds the toggle positioned within the header, and explicitly requested it be moved on the edge of the panel border and not in the header. The AI engineer acknowledged this and is in the process of rectifying it.
+However, a critical issue arose right after Phase 1 was declared complete: the cursor behavior in the article body section of the  was still problematic. Specifically, the user reported that the cursor position often stays on the extreme left while text appears elsewhere, and for *existing* articles, the cursor automatically switches position to the start of line 1. The engineer identified the use of  for initializing content as a likely culprit for the cursor resetting in existing articles.
+
+The current work involves:
+- Simplifying the  function in  to avoid complex cursor manipulation.
+- Simplifying the  function to avoid interfering with natural cursor behavior.
+- Updating the  div to use a simpler  handler.
+- Most recently, attempting to fix the issue by changing how content initialization is handled () and avoiding  during editing ().
+- The last action was adding a CSS rule for the placeholder (), which suggests the focus remains on ensuring correct text flow and cursor positioning in the editor.
 </current_work>
 
 <optional_next_step>
-Move the sidebar collapse toggle from the header to the edge of the sidebar panel border.
+Test the  to verify that the cursor behavior is now fixed for both new and existing articles, especially after the changes to  and content initialization.
 </optional_next_step>

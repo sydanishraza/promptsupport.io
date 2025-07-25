@@ -113,7 +113,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       animate={{ width: collapsed ? 64 : 256 }}
     >
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         {!collapsed ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">

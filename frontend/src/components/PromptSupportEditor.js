@@ -3679,6 +3679,7 @@ const PromptSupportEditor = ({
                     setHasUnsavedChanges(true);
                   }}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}

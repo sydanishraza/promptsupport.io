@@ -659,22 +659,65 @@ const PromptSupportEditor = ({
     }
   };
 
-  // === PHASE 3: MEDIA INTEGRATION ===
+  // === PHASE 3: MEDIA INTEGRATION (Enhanced with real asset library) ===
   
   /**
-   * Handle file upload and convert to base64
+   * Handle file upload, save to asset library, then embed
    */
-  const handleFileUpload = (files) => {
-    Array.from(files).forEach(file => {
+  const handleFileUpload = async (files) => {
+    for (const file of Array.from(files)) {
       if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const base64 = e.target.result;
-          insertImage(base64, file.name);
-        };
-        reader.readAsDataURL(file);
+        try {
+          setUploadProgress(25);
+          
+          // Upload to asset library first
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const uploadResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/assets/upload`, {
+            method: 'POST',
+            body: formData
+          });
+          
+          setUploadProgress(75);
+          
+          if (uploadResponse.ok) {
+            const result = await uploadResponse.json();
+            
+            // Insert image from asset library
+            insertImage(result.asset.data, result.asset.name);
+            setUploadProgress(100);
+            
+            // Reset progress after delay
+            setTimeout(() => setUploadProgress(0), 1000);
+          } else {
+            throw new Error('Upload failed');
+          }
+        } catch (error) {
+          console.error('File upload error:', error);
+          alert('Failed to upload image. Please try again.');
+          setUploadProgress(0);
+        }
       }
-    });
+    }
+  };
+
+  /**
+   * Fetch real assets from asset library
+   */
+  const fetchAssets = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/assets`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.assets || [];
+      }
+    } catch (error) {
+      console.error('Failed to fetch assets:', error);
+    }
+    
+    // Fallback to empty array
+    return [];
   };
 
   /**

@@ -1213,7 +1213,7 @@ const PromptSupportEditor = ({
       const textToProcess = selectedText || currentText;
       
       if (!textToProcess.trim()) {
-        alert('Please type some content or select text to analyze with AI Brain.');
+        showAlert('Please type some content or select text to analyze with AI Brain.');
         setAiWritingMode(false);
         return;
       }

@@ -3127,6 +3127,12 @@ const PromptSupportEditor = ({
       {renderContentAnalysisModal()}
       {renderAiBrainModal()}
       
+      {/* Custom Modal System */}
+      {renderCustomModal()}
+      
+      {/* Link Tooltip */}
+      {renderLinkTooltip()}
+      
       {/* Phase 4: AI and Collaboration Panels */}
       {renderAIPanel()}
       {renderCollaborationSidebar()}

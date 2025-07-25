@@ -497,31 +497,6 @@ const PromptSupportEditor = ({
     }, 10);
   };
 
-  // Highlight applied AI suggestions
-  const highlightAppliedSuggestion = (text) => {
-    const suggestionId = `suggestion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const highlightedHTML = `<span class="ai-suggestion-applied" data-suggestion-id="${suggestionId}" style="background-color: #fef3c7; border-bottom: 2px solid #f59e0b; padding: 1px 2px; border-radius: 2px; animation: highlight-fade 3s ease-out forwards;">${text}</span>`;
-    
-    // Add to applied suggestions for tracking
-    setAppliedSuggestions(prev => [...prev, { id: suggestionId, text, timestamp: Date.now() }]);
-    
-    // Remove highlighting after 5 seconds
-    setTimeout(() => {
-      const element = document.querySelector(`[data-suggestion-id="${suggestionId}"]`);
-      if (element) {
-        const parent = element.parentNode;
-        while (element.firstChild) {
-          parent.insertBefore(element.firstChild, element);
-        }
-        parent.removeChild(element);
-        parent.normalize(); // Merge adjacent text nodes
-      }
-      setAppliedSuggestions(prev => prev.filter(s => s.id !== suggestionId));
-    }, 5000);
-    
-    return highlightedHTML;
-  };
-
   /**
    * Simple content change handler - no cursor manipulation
    * Let the browser handle cursor positioning naturally like the title input

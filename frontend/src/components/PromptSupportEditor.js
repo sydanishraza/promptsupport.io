@@ -79,6 +79,8 @@ const PromptSupportEditor = ({
   const [showTableModal, setShowTableModal] = useState(false);
   const [currentTextColor, setCurrentTextColor] = useState('#1f2937');
   const [currentBgColor, setCurrentBgColor] = useState('transparent');
+  const [tableRows, setTableRows] = useState(3);
+  const [tableCols, setTableCols] = useState(3);
   
   // === REFS ===
   const editorRef = useRef(null);

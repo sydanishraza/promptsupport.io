@@ -158,17 +158,22 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]);
 
-  // Phase 2: Close dropdowns when clicking outside
+  // Phase 2 & 3: Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
-      setShowColorPicker(false);
+    const handleClickOutside = (event) => {
+      if (showColorPicker && !event.target.closest('[title="Text Color"]')) {
+        setShowColorPicker(false);
+      }
+      if (showSlashMenu && slashMenuRef.current && !slashMenuRef.current.contains(event.target)) {
+        setShowSlashMenu(false);
+      }
     };
     
-    if (showColorPicker) {
+    if (showColorPicker || showSlashMenu) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showColorPicker]);
+  }, [showColorPicker, showSlashMenu]);
 
   // === PHASE 1: CORE EDITABLE SURFACE ===
   

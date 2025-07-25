@@ -22,7 +22,23 @@ import {
   FileText,
   Save,
   X,
-  Settings
+  Settings,
+  Table,
+  Columns,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Palette,
+  ChevronDown,
+  Plus,
+  Trash2,
+  Move,
+  Info,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  ChevronRight
 } from 'lucide-react';
 
 /**

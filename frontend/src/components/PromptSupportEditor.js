@@ -3017,7 +3017,7 @@ const PromptSupportEditor = ({
                       {/* Image Container with Aspect Ratio */}
                       <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-3 relative">
                         <img
-                          src={asset.data}
+                          src={asset.url || asset.data}
                           alt={asset.name}
                           className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                           loading="lazy"

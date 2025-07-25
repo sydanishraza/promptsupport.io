@@ -837,16 +837,19 @@
         -comment: "FIXED: Completely overhauled image handling system. Backend now uses proper file storage with StaticFiles serving instead of base64. Images are saved to /static/uploads/ directory and served via URLs. Frontend updated to handle both URL-based and legacy base64 assets. Asset selection logic enhanced to determine correct image source format (URL vs base64) automatically."
 
   - task: "Fix Asset Upload - Maintain Original Format and Save to Asset Library"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/PromptSupportEditor.js, backend/server.py"
     stuck_count: 0
     priority: "critical"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: If a user uploads an image from their computer, the platform should retain the original format (e.g., PNG), save the image to the Asset Library, then embed via a file reference, not base64."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Completely redesigned asset upload system. Backend now saves files to disk with original format preserved, generates unique filenames with proper extensions, creates separate 'assets' collection for metadata. Frontend updated to use file URLs instead of base64 for new uploads. Maintains backward compatibility with existing base64 assets while transitioning to file-based storage."
 
 ## metadata:
   created_by: "main_agent"

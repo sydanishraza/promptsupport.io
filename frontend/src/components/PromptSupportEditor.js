@@ -845,11 +845,15 @@ const PromptSupportEditor = ({
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={`h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}
-    >
+    <>
+      {/* Phase 2: Modals */}
+      {renderTableModal()}
+      
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className={`h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}
+      >
       
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">

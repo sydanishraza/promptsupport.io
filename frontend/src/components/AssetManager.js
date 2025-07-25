@@ -163,7 +163,22 @@ const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
   // Pagination
   const totalPages = Math.ceil(sortedAssets.length / assetsPerPage);
   const startIndex = (currentPage - 1) * assetsPerPage;
-  const paginatedAssets = sortedAssets.slice(startIndex, startIndex + assetsPerPage);
+  const endIndex = startIndex + assetsPerPage;
+  const paginatedAssets = sortedAssets.slice(startIndex, endIndex);
+
+  // Send pagination data to parent component
+  useEffect(() => {
+    if (onPaginationChange) {
+      onPaginationChange({
+        currentPage,
+        totalPages,
+        totalItems: sortedAssets.length,
+        startIndex: startIndex + 1,
+        endIndex: Math.min(endIndex, sortedAssets.length),
+        onPageChange: setCurrentPage
+      });
+    }
+  }, [currentPage, totalPages, sortedAssets.length, startIndex, endIndex, onPaginationChange]);
 
   // Handle asset click
   const handleAssetClick = (asset) => {

@@ -399,8 +399,40 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Insert inline code - wrap selected text or insert at cursor
+   * Clear all formatting from selected text
    */
+  const clearFormatting = () => {
+    // Remove all formatting from selected text
+    executeCommand('removeFormat');
+    
+    // Additional cleanup for stubborn formatting
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString();
+      
+      if (selectedText) {
+        // Create a plain text span to replace formatted content
+        const plainSpan = document.createElement('span');
+        plainSpan.textContent = selectedText;
+        
+        try {
+          range.deleteContents();
+          range.insertNode(plainSpan);
+        } catch (e) {
+          // Fallback: use execCommand
+          executeCommand('insertHTML', selectedText);
+        }
+      }
+    }
+  };
+
+  /**
+   * Convert selected text to paragraph
+   */
+  const convertToParagraph = () => {
+    executeCommand('formatBlock', 'p');
+  };
   const insertInlineCode = () => {
     const selection = window.getSelection();
     if (selection.toString().length > 0) {

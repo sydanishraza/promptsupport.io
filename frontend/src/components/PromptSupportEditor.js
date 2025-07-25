@@ -141,6 +141,18 @@ const PromptSupportEditor = ({
   const [showImageDropdown, setShowImageDropdown] = useState(false);
   const [showContentAnalysis, setShowContentAnalysis] = useState(false);
   const [selectedText, setSelectedText] = useState('');
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    h1: false,
+    h2: false,
+    h3: false,
+    h4: false,
+    ul: false,
+    ol: false
+  });
   
   // === REFS ===
   const editorRef = useRef(null);

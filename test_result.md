@@ -838,9 +838,9 @@
 
   - task: "Fix Asset Upload - Maintain Original Format and Save to Asset Library"
     implemented: true
-    working: true
+    working: false
     file: "frontend/src/components/PromptSupportEditor.js, backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "critical"
     needs_retesting: false
     status_history:
@@ -850,6 +850,9 @@
         -working: true
         -agent: "main"
         -comment: "FIXED: Completely redesigned asset upload system. Backend now saves files to disk with original format preserved, generates unique filenames with proper extensions, creates separate 'assets' collection for metadata. Frontend updated to use file URLs instead of base64 for new uploads. Maintains backward compatibility with existing base64 assets while transitioning to file-based storage."
+        -working: false
+        -agent: "testing"
+        -comment: "CRITICAL TESTING RESULTS: Asset upload system partially working but has critical issues. ✅ PASSED: Asset Upload System - Files are uploaded with proper file URLs (/static/uploads/filename) instead of base64, saved to 'assets' collection. ✅ PASSED: Asset Retrieval System - GET /api/assets returns both new file-based assets (2 found) and legacy base64/embedded assets (103 found) correctly. ❌ FAILED: File Storage Verification - Static files are saved to /app/backend/static/uploads/ but FastAPI static file serving returns HTML (text/html; charset=utf-8) instead of image content, indicating routing/configuration issue. ❌ FAILED: Database Integration - Assets missing 'original_filename' field in response despite being saved correctly to database. ASSESSMENT: Core file upload and database storage working, but static file serving and metadata retrieval need fixes."
 
 ## metadata:
   created_by: "main_agent"

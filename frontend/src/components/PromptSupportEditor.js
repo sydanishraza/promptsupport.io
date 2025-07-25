@@ -2493,7 +2493,7 @@ const PromptSupportEditor = ({
               <div className="flex items-center space-x-2">
                 <div className="relative group">
                   <button
-                    onClick={handleSaveDraft}
+                    onClick={handleMainSave}
                     className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     <Save className="h-4 w-4" />

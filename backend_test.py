@@ -3262,6 +3262,362 @@ This test verifies that the file upload pipeline properly triggers the Content L
         
         return results
 
+    def test_image_upload_functionality(self):
+        """Test comprehensive image upload functionality as requested in review"""
+        print("\n🔍 Testing Image Upload Functionality (Review Request)...")
+        try:
+            # Create a simple test image (1x1 pixel PNG)
+            import base64
+            
+            # Minimal PNG image data (1x1 transparent pixel)
+            png_data = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+            
+            # Create file-like object
+            file_data = io.BytesIO(png_data)
+            
+            files = {
+                'file': ('test_image.png', file_data, 'image/png')
+            }
+            
+            print("📤 Step 1: Uploading test image file...")
+            response = requests.post(
+                f"{self.base_url}/assets/upload",
+                files=files,
+                timeout=30
+            )
+            
+            print(f"Upload Status Code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ Image upload failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            upload_data = response.json()
+            print(f"Upload Response: {json.dumps(upload_data, indent=2)}")
+            
+            # Verify upload response structure
+            if not (upload_data.get("success") and "asset" in upload_data):
+                print("❌ Upload response missing required fields")
+                return False
+            
+            asset = upload_data["asset"]
+            asset_url = asset.get("url")
+            asset_id = asset.get("id")
+            
+            if not asset_url:
+                print("❌ No URL returned from upload")
+                return False
+            
+            print(f"✅ Image uploaded successfully!")
+            print(f"   Asset ID: {asset_id}")
+            print(f"   Asset URL: {asset_url}")
+            print(f"   Original filename: {asset.get('original_filename')}")
+            print(f"   Size: {asset.get('size')} bytes")
+            
+            # Step 2: Verify the uploaded image is accessible via the returned URL
+            print(f"\n📥 Step 2: Verifying image accessibility via URL...")
+            
+            # Construct full URL for testing
+            if asset_url.startswith('/'):
+                # Relative URL - need to construct full URL
+                base_domain = self.base_url.replace('/api', '')
+                full_image_url = f"{base_domain}{asset_url}"
+            else:
+                full_image_url = asset_url
+            
+            print(f"Testing image URL: {full_image_url}")
+            
+            try:
+                image_response = requests.get(full_image_url, timeout=10)
+                print(f"Image URL Status Code: {image_response.status_code}")
+                print(f"Content-Type: {image_response.headers.get('content-type', 'N/A')}")
+                print(f"Content-Length: {len(image_response.content)} bytes")
+                
+                if image_response.status_code == 200:
+                    # Verify it's actually image content
+                    content_type = image_response.headers.get('content-type', '')
+                    if 'image' in content_type:
+                        print("✅ Image is accessible and returns proper image content!")
+                    else:
+                        print(f"⚠️ URL accessible but content-type is not image: {content_type}")
+                        # Check if it's HTML (common issue with static file serving)
+                        if 'html' in content_type.lower():
+                            print("❌ CRITICAL: Static file serving returns HTML instead of image!")
+                            print(f"Response preview: {image_response.text[:200]}...")
+                            return False
+                else:
+                    print(f"❌ Image URL not accessible - status code {image_response.status_code}")
+                    return False
+                    
+            except Exception as e:
+                print(f"❌ Error accessing image URL: {str(e)}")
+                return False
+            
+            # Step 3: Test the assets endpoint to confirm the uploaded image appears
+            print(f"\n📋 Step 3: Verifying image appears in asset library...")
+            
+            assets_response = requests.get(f"{self.base_url}/assets", timeout=10)
+            print(f"Assets endpoint Status Code: {assets_response.status_code}")
+            
+            if assets_response.status_code != 200:
+                print(f"❌ Assets endpoint failed - status code {assets_response.status_code}")
+                return False
+            
+            assets_data = assets_response.json()
+            assets = assets_data.get("assets", [])
+            total_assets = assets_data.get("total", 0)
+            
+            print(f"Total assets in library: {total_assets}")
+            print(f"Assets returned: {len(assets)}")
+            
+            # Look for our uploaded asset
+            uploaded_asset_found = False
+            for asset_item in assets:
+                if (asset_item.get("id") == asset_id or 
+                    asset_item.get("name") == "test_image.png" or
+                    asset_item.get("original_filename") == "test_image.png"):
+                    uploaded_asset_found = True
+                    print(f"✅ Found uploaded asset in library!")
+                    print(f"   ID: {asset_item.get('id')}")
+                    print(f"   Name: {asset_item.get('name')}")
+                    print(f"   Type: {asset_item.get('type')}")
+                    print(f"   Storage Type: {asset_item.get('storage_type', 'N/A')}")
+                    break
+            
+            if not uploaded_asset_found:
+                print("❌ Uploaded asset not found in asset library!")
+                print("Available assets:")
+                for i, asset_item in enumerate(assets[:5]):  # Show first 5
+                    print(f"  {i+1}. {asset_item.get('name')} (ID: {asset_item.get('id')})")
+                return False
+            
+            # Step 4: Test full flow verification
+            print(f"\n🔄 Step 4: Full image upload flow verification...")
+            
+            # Verify the asset has proper file-based storage (not base64)
+            found_asset = None
+            for asset_item in assets:
+                if asset_item.get("id") == asset_id:
+                    found_asset = asset_item
+                    break
+            
+            if found_asset:
+                storage_type = found_asset.get("storage_type")
+                asset_data = found_asset.get("data")
+                asset_url_check = found_asset.get("url") or found_asset.get("data")
+                
+                print(f"Asset storage type: {storage_type}")
+                print(f"Asset URL/data: {asset_url_check[:50]}..." if asset_url_check else "None")
+                
+                # Verify it's file-based storage (not base64)
+                if storage_type == "file" and asset_url_check and not asset_url_check.startswith("data:"):
+                    print("✅ Asset uses proper file-based storage (not base64)!")
+                elif storage_type == "base64" or (asset_url_check and asset_url_check.startswith("data:")):
+                    print("⚠️ Asset uses base64 storage - this may be legacy format")
+                else:
+                    print(f"⚠️ Asset storage type unclear: {storage_type}")
+                
+                # Final URL accessibility test
+                if asset_url_check and not asset_url_check.startswith("data:"):
+                    final_url = asset_url_check if asset_url_check.startswith("http") else f"{self.base_url.replace('/api', '')}{asset_url_check}"
+                    try:
+                        final_response = requests.get(final_url, timeout=5)
+                        if final_response.status_code == 200 and 'image' in final_response.headers.get('content-type', ''):
+                            print("✅ Final URL accessibility confirmed!")
+                        else:
+                            print(f"❌ Final URL accessibility failed: {final_response.status_code}")
+                            return False
+                    except Exception as e:
+                        print(f"❌ Final URL test failed: {str(e)}")
+                        return False
+            
+            print("\n🎉 IMAGE UPLOAD FUNCTIONALITY TEST SUMMARY:")
+            print("✅ Image upload endpoint working")
+            print("✅ Uploaded image accessible via returned URL")
+            print("✅ Uploaded image appears in asset library")
+            print("✅ Full image upload flow verified")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Image upload functionality test failed - {str(e)}")
+            return False
+
+    def test_static_file_serving_debug(self):
+        """Debug static file serving issues specifically"""
+        print("\n🔍 Testing Static File Serving Debug...")
+        try:
+            # Test if static files directory exists and is accessible
+            print("🔧 Debugging static file serving configuration...")
+            
+            # Try to access the static files mount point directly
+            static_test_urls = [
+                f"{self.base_url.replace('/api', '')}/static/",
+                f"{self.base_url}/static/",  # With /api prefix
+            ]
+            
+            for test_url in static_test_urls:
+                print(f"Testing static mount: {test_url}")
+                try:
+                    response = requests.get(test_url, timeout=5)
+                    print(f"  Status: {response.status_code}")
+                    print(f"  Content-Type: {response.headers.get('content-type', 'N/A')}")
+                    if response.status_code == 200:
+                        print(f"  Response preview: {response.text[:100]}...")
+                    elif response.status_code == 404:
+                        print("  404 - Static mount not accessible at this path")
+                    elif response.status_code == 403:
+                        print("  403 - Static mount exists but directory listing forbidden (normal)")
+                except Exception as e:
+                    print(f"  Error: {str(e)}")
+            
+            # Test backend health to ensure it's running
+            health_response = requests.get(f"{self.base_url}/health", timeout=5)
+            print(f"\nBackend health check: {health_response.status_code}")
+            
+            if health_response.status_code == 200:
+                print("✅ Backend is running and accessible")
+            else:
+                print("❌ Backend health check failed")
+                return False
+            
+            # Check if uploads directory exists by trying to upload a file
+            print("\n🔧 Testing upload directory accessibility...")
+            
+            # Create minimal test file
+            import base64
+            png_data = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+            file_data = io.BytesIO(png_data)
+            
+            files = {'file': ('debug_test.png', file_data, 'image/png')}
+            
+            upload_response = requests.post(f"{self.base_url}/assets/upload", files=files, timeout=10)
+            print(f"Debug upload status: {upload_response.status_code}")
+            
+            if upload_response.status_code == 200:
+                upload_data = upload_response.json()
+                debug_url = upload_data.get("asset", {}).get("url")
+                print(f"Debug upload URL: {debug_url}")
+                
+                if debug_url:
+                    # Test the returned URL
+                    full_debug_url = f"{self.base_url.replace('/api', '')}{debug_url}"
+                    print(f"Testing debug URL: {full_debug_url}")
+                    
+                    debug_access = requests.get(full_debug_url, timeout=5)
+                    print(f"Debug URL access: {debug_access.status_code}")
+                    print(f"Debug content-type: {debug_access.headers.get('content-type', 'N/A')}")
+                    
+                    if debug_access.status_code == 200:
+                        if 'image' in debug_access.headers.get('content-type', ''):
+                            print("✅ Static file serving is working correctly!")
+                            return True
+                        else:
+                            print("❌ Static file serving returns wrong content-type")
+                            print(f"Response content: {debug_access.text[:200]}...")
+                            return False
+                    else:
+                        print("❌ Static file serving not accessible")
+                        return False
+            else:
+                print(f"❌ Debug upload failed: {upload_response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Static file serving debug failed - {str(e)}")
+            return False
+
+    def test_cors_and_networking_issues(self):
+        """Test for CORS and networking issues that might affect image display"""
+        print("\n🔍 Testing CORS and Networking Issues...")
+        try:
+            # Test CORS headers on various endpoints
+            endpoints_to_test = [
+                f"{self.base_url}/health",
+                f"{self.base_url}/assets",
+                f"{self.base_url.replace('/api', '')}/static/"
+            ]
+            
+            for endpoint in endpoints_to_test:
+                print(f"\n🔧 Testing CORS for: {endpoint}")
+                try:
+                    # Test with OPTIONS request (preflight)
+                    options_response = requests.options(endpoint, timeout=5)
+                    print(f"  OPTIONS status: {options_response.status_code}")
+                    
+                    # Check CORS headers
+                    cors_headers = {
+                        'Access-Control-Allow-Origin': options_response.headers.get('Access-Control-Allow-Origin'),
+                        'Access-Control-Allow-Methods': options_response.headers.get('Access-Control-Allow-Methods'),
+                        'Access-Control-Allow-Headers': options_response.headers.get('Access-Control-Allow-Headers'),
+                        'Access-Control-Allow-Credentials': options_response.headers.get('Access-Control-Allow-Credentials')
+                    }
+                    
+                    for header, value in cors_headers.items():
+                        if value:
+                            print(f"  {header}: {value}")
+                    
+                    # Test with GET request
+                    get_response = requests.get(endpoint, timeout=5)
+                    print(f"  GET status: {get_response.status_code}")
+                    
+                    get_cors_origin = get_response.headers.get('Access-Control-Allow-Origin')
+                    if get_cors_origin:
+                        print(f"  GET CORS Origin: {get_cors_origin}")
+                    
+                except Exception as e:
+                    print(f"  Error testing {endpoint}: {str(e)}")
+            
+            # Test cross-origin request simulation
+            print(f"\n🔧 Testing cross-origin request simulation...")
+            
+            headers = {
+                'Origin': 'https://example.com',
+                'Referer': 'https://example.com/test'
+            }
+            
+            try:
+                cors_test = requests.get(f"{self.base_url}/assets", headers=headers, timeout=5)
+                print(f"Cross-origin test status: {cors_test.status_code}")
+                
+                cors_response_origin = cors_test.headers.get('Access-Control-Allow-Origin')
+                if cors_response_origin == '*' or cors_response_origin == 'https://example.com':
+                    print("✅ CORS configured to allow cross-origin requests")
+                else:
+                    print(f"⚠️ CORS may be restrictive: {cors_response_origin}")
+                
+            except Exception as e:
+                print(f"Cross-origin test error: {str(e)}")
+            
+            # Test network connectivity and DNS resolution
+            print(f"\n🔧 Testing network connectivity...")
+            
+            backend_domain = self.base_url.split('/')[2]  # Extract domain from URL
+            print(f"Backend domain: {backend_domain}")
+            
+            # Test if domain resolves
+            try:
+                import socket
+                ip = socket.gethostbyname(backend_domain.split(':')[0])  # Remove port if present
+                print(f"Domain resolves to: {ip}")
+            except Exception as e:
+                print(f"DNS resolution error: {str(e)}")
+            
+            # Test basic connectivity
+            try:
+                ping_response = requests.get(f"https://{backend_domain}/", timeout=5)
+                print(f"Root domain connectivity: {ping_response.status_code}")
+            except Exception as e:
+                print(f"Root domain connectivity error: {str(e)}")
+            
+            print("\n✅ CORS and networking tests completed")
+            return True
+            
+        except Exception as e:
+            print(f"❌ CORS and networking test failed - {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run focused regression tests for Content Library APIs after cursor fix"""
         print("🚀 FOCUSED REGRESSION TESTING: Content Library APIs after PromptSupportEditor cursor fix")

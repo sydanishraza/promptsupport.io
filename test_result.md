@@ -822,16 +822,19 @@
         -comment: "FIXED: Integrated js-beautify library for HTML beautification. Created beautifyHtmlContent function with proper indentation settings (2 spaces, preserve newlines, indent inner HTML). HTML textarea now displays clean, formatted markup with proper structure. Added error handling to gracefully fallback to original content if beautification fails."
 
   - task: "Fix Image Handling - Use Proper File Formats Instead of Base64"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/PromptSupportEditor.js, backend/server.py"
     stuck_count: 0
     priority: "critical"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: When inserting images, the editor is embedding them as base64 data, which is not ideal. If the original image is a PNG, JPG, etc., it should be embedded using the actual source file format and URL."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Completely overhauled image handling system. Backend now uses proper file storage with StaticFiles serving instead of base64. Images are saved to /static/uploads/ directory and served via URLs. Frontend updated to handle both URL-based and legacy base64 assets. Asset selection logic enhanced to determine correct image source format (URL vs base64) automatically."
 
   - task: "Fix Asset Upload - Maintain Original Format and Save to Asset Library"
     implemented: false

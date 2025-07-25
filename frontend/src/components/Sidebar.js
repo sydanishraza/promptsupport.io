@@ -198,20 +198,8 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
           <div key={item.id} className="relative">
             <button
               onClick={() => handleItemClick(item.id)}
-              onMouseEnter={() => {
-                if (collapsed) {
-                  setHoveredItem(item.id);
-                  if (item.expandable) {
-                    setShowFlyout(item.id);
-                  }
-                }
-              }}
-              onMouseLeave={() => {
-                if (collapsed) {
-                  setHoveredItem(null);
-                  setShowFlyout(null);
-                }
-              }}
+              onMouseEnter={() => handleItemMouseEnter(item.id, item.expandable)}
+              onMouseLeave={handleItemMouseLeave}
               className={`w-full flex items-center transition-colors relative ${
                 collapsed 
                   ? 'justify-center px-4 py-3' 

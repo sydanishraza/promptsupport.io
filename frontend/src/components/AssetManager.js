@@ -264,8 +264,7 @@ const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
   }
 
   return (
-    <>
-      <div className="p-4 lg:p-6 space-y-4">
+    <div className="p-4 lg:p-6 space-y-4">
       {/* Enhanced Asset Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
@@ -314,12 +313,12 @@ const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
               className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
             >
-              {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+              <ArrowUpDown className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* View Mode */}
+        {/* View Mode Toggle */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">View:</span>
           <div className="flex bg-gray-100 rounded-lg p-1">
@@ -332,7 +331,7 @@ const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
               }`}
             >
               <Grid3X3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Grid</span>
+              <span>Grid</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -343,76 +342,77 @@ const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
               }`}
             >
               <List className="h-4 w-4" />
-              <span className="hidden sm:inline">List</span>
+              <span>List</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Asset Stats */}
-      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-        <span>Total Assets: {assets.length}</span>
-        <span>•</span>
-        <span>Showing: {paginatedAssets.length} of {sortedAssets.length}</span>
-        <span>•</span>
-        <span>AI Processed: {assets.filter(a => a.processed).length}</span>
-        <span>•</span>
-        <span>Page {currentPage} of {totalPages}</span>
-      </div>
-
-      {/* Enhanced Assets Grid/List */}
+      {/* Assets Display */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
           {paginatedAssets.map((asset, index) => (
             <motion.div
               key={asset.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1, duration: 0.3 }}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+              transition={{ delay: index * 0.05 }}
               onClick={() => handleAssetClick(asset)}
+              className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
             >
-              {/* Enhanced Asset Preview */}
-              <div className="mb-3 relative">
-                {asset.type === 'image' ? (
-                  <div className="relative">
-                    <img
-                      src={asset.dataUrl}
-                      alt={asset.altText || asset.name}
-                      className="w-full h-32 object-cover rounded-lg"
-                      onError={(e) => {
-                        console.error('Image load error:', e);
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                    <div className="hidden w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <Image className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                        <span className="text-xs text-gray-500">Image Preview</span>
-                      </div>
-                    </div>
-                    {/* Overlay with click hint */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
-                      <div className="opacity-0 hover:opacity-100 transition-opacity">
-                        <div className="bg-white bg-opacity-90 rounded-full p-2">
-                          <Eye className="h-5 w-5 text-gray-700" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Asset Thumbnail */}
+              <div className="relative aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+                {asset.dataUrl ? (
+                  <img
+                    src={asset.dataUrl}
+                    alt={asset.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
                 ) : (
-                  <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      {getAssetIcon(asset)}
-                      <span className="text-xs text-gray-500 mt-2 block">{asset.format.toUpperCase()}</span>
-                    </div>
+                  <div className="flex flex-col items-center justify-center text-gray-400">
+                    <FileImage className="h-8 w-8 mb-2" />
+                    <span className="text-xs">Preview unavailable</span>
                   </div>
                 )}
+                <div className="hidden w-full h-full flex-col items-center justify-center text-gray-400">
+                  <FileImage className="h-8 w-8 mb-2" />
+                  <span className="text-xs">Preview unavailable</span>
+                </div>
+                
+                {/* Asset overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                
+                {/* Asset actions overlay */}
+                <div className="absolute top-2 right-2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(asset);
+                    }}
+                    className="p-2 text-gray-400 hover:text-green-600 rounded"
+                    title="Download"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyToClipboard(asset);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 rounded"
+                    title="Copy Data URL"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Enhanced Asset Info */}
-              <div className="space-y-2">
+              {/* Asset Details */}
+              <div className="p-4">
                 <h3 className="font-medium text-gray-900 truncate" title={asset.name}>
                   {asset.name}
                 </h3>
@@ -478,86 +478,86 @@ const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
               key={asset.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.3 }}
-              className="flex items-center space-x-4 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow cursor-pointer"
+              transition={{ delay: index * 0.02 }}
               onClick={() => handleAssetClick(asset)}
+              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 cursor-pointer group"
             >
-              {/* Enhanced Asset Preview */}
-              <div className="flex-shrink-0">
-                {asset.type === 'image' ? (
-                  <div className="relative">
+              <div className="flex items-center space-x-4">
+                {/* Thumbnail */}
+                <div className="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
+                  {asset.dataUrl ? (
                     <img
                       src={asset.dataUrl}
-                      alt={asset.altText || asset.name}
-                      className="w-16 h-16 object-cover rounded-lg"
+                      alt={asset.name}
+                      className="w-full h-full object-cover"
                       onError={(e) => {
-                        console.error('Image load error:', e);
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="hidden w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <Image className="h-6 w-6 text-gray-400" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    {getAssetIcon(asset)}
-                  </div>
-                )}
-              </div>
-
-              {/* Enhanced Asset Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 truncate">{asset.name}</h3>
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs uppercase">
-                    {asset.format}
-                  </span>
-                  <span>{formatFileSize(asset.size)}</span>
-                  <span>From: {asset.articleTitle}</span>
-                  <span>{formatDate(asset.dateAdded)}</span>
-                  {asset.processed && (
-                    <div className="flex items-center space-x-1">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span className="text-xs">AI Processed</span>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <FileImage className="h-6 w-6" />
                     </div>
                   )}
+                  <div className="hidden w-full h-full flex items-center justify-center text-gray-400">
+                    <FileImage className="h-6 w-6" />
+                  </div>
                 </div>
-              </div>
 
-              {/* Quick Actions */}
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewInArticle(asset);
-                  }}
-                  className="flex items-center space-x-1 px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  <span>View in Article</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownload(asset);
-                  }}
-                  className="p-2 text-gray-400 hover:text-green-600 rounded"
-                  title="Download"
-                >
-                  <Download className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCopyToClipboard(asset);
-                  }}
-                  className="p-2 text-gray-400 hover:text-blue-600 rounded"
-                  title="Copy Data URL"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-gray-900 truncate">{asset.name}</h3>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs uppercase">
+                        {asset.format}
+                      </span>
+                      <span className="text-sm text-gray-500">{formatFileSize(asset.size)}</span>
+                      {asset.processed && (
+                        <CheckCircle className="h-4 w-4 text-green-600" title="AI Processed" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-sm text-gray-500 truncate">From: {asset.articleTitle}</p>
+                    <p className="text-sm text-gray-500">{formatDate(asset.dateAdded)}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewInArticle(asset);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 rounded"
+                    title="View in Article"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(asset);
+                    }}
+                    className="p-2 text-gray-400 hover:text-green-600 rounded"
+                    title="Download"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyToClipboard(asset);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 rounded"
+                    title="Copy Data URL"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -585,68 +585,6 @@ const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
         onViewInArticle={handleViewInArticleFromModal}
       />
     </div>
-    
-    {/* Pagination - Separate section to match ContentLibrary style */}
-    {totalPages > 1 && (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-          <div className="text-sm text-gray-500">
-            Showing {startIndex + 1}-{Math.min(startIndex + assetsPerPage, sortedAssets.length)} of {sortedAssets.length} assets
-            {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
-          </div>
-          {totalPages > 1 && (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              
-              {/* Page numbers */}
-              <div className="flex items-center space-x-1">
-                {[...Array(Math.min(5, totalPages))].map((_, index) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = index + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = index + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + index;
-                  } else {
-                    pageNum = currentPage - 2 + index;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                        currentPage === pageNum
-                          ? 'bg-blue-600 text-white'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-              
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-    </>
   );
 };
 

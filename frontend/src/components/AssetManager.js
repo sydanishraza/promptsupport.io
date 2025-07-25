@@ -631,6 +631,7 @@ const AssetManager = ({ articles, onArticleSelect }) => {
         </div>
       </div>
     )}
+    </>
   );
 };
 

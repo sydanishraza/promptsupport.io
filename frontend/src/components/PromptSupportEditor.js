@@ -141,6 +141,9 @@ const PromptSupportEditor = ({
   const [showImageDropdown, setShowImageDropdown] = useState(false);
   const [showContentAnalysis, setShowContentAnalysis] = useState(false);
   const [selectedText, setSelectedText] = useState('');
+  const [showAiBrainModal, setShowAiBrainModal] = useState(false);
+  const [aiResults, setAiResults] = useState(null);
+  const [aiActionType, setAiActionType] = useState('');
   // Asset library modal state
   const [assets, setAssets] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(false);

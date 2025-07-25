@@ -1028,6 +1028,45 @@ const PromptSupportEditor = ({
   };
 
   /**
+   * Enhanced AI assist with popup results - shows metrics and insights
+   */
+  const handleAIAssistWithPopup = async (mode = 'completion') => {
+    setAiWritingMode(true);
+    setAiActionType(mode);
+    
+    try {
+      const currentText = editorRef.current?.textContent || '';
+      const selection = window.getSelection();
+      const selectedText = selection.toString();
+      const textToProcess = selectedText || currentText;
+      
+      const suggestions = await generateAISuggestions(textToProcess, mode);
+      
+      // Calculate AI Brain metrics
+      const metrics = {
+        wordsProcessed: textToProcess.split(' ').length,
+        suggestionsGenerated: suggestions.length,
+        mode: mode,
+        processingTime: Date.now(), // Mock processing time
+        confidence: Math.random() * 30 + 70, // Mock confidence 70-100%
+        improvements: Math.floor(Math.random() * 10) + 1,
+        suggestions: suggestions,
+        originalText: selectedText,
+        processedText: textToProcess
+      };
+      
+      setAiResults(metrics);
+      setShowAiBrainModal(true);
+      
+    } catch (error) {
+      console.error('AI assistance error:', error);
+      alert('AI assistance is currently unavailable. Please try again later.');
+    } finally {
+      setAiWritingMode(false);
+    }
+  };
+
+  /**
    * Apply AI suggestion to content - Now functional
    */
   const applyAISuggestion = (suggestion) => {

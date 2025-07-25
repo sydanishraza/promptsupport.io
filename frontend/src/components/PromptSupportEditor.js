@@ -990,6 +990,7 @@ const PromptSupportEditor = ({
       </div>
 
     </motion.div>
+    </>
   );
 };
 

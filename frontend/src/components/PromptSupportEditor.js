@@ -2280,6 +2280,22 @@ const PromptSupportEditor = ({
                 {/* Phase 3: Slash Command Menu */}
                 {renderSlashMenu()}
                 
+                {/* Phase 4: Text Selection Comment Tooltip */}
+                {selectedText && isEditing && (
+                  <div className="fixed bottom-4 right-4 z-50 bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      <span className="text-sm">Selected: "{selectedText.substring(0, 30)}..."</span>
+                      <button
+                        onClick={addComment}
+                        className="ml-2 bg-blue-700 hover:bg-blue-800 px-2 py-1 rounded text-xs"
+                      >
+                        Add Comment
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Phase 3: Drag & Drop Overlay */}
                 {draggedOver && (
                   <div className="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-90 pointer-events-none">

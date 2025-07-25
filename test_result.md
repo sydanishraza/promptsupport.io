@@ -792,16 +792,19 @@
         -comment: "FIXED: Completely rewrote the handlePaste function to support both plain text and rich HTML content. Uses document.execCommand for better compatibility and cursor positioning. Includes content cleaning to remove dangerous scripts and event handlers. Added fallback method for edge cases. Paste functionality now works correctly with proper cursor positioning and content preservation."
 
   - task: "Fix Link Remove Option in Tooltip"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/PromptSupportEditor.js"
     stuck_count: 0
     priority: "critical"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: The 'Remove Link' option in the link tooltip does not work when clicked. It should properly detach the hyperlink from the selected text."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Enhanced the removeLink function with proper error handling and fallback mechanisms. Now correctly removes link elements while preserving text content, validates parent elements, and updates content state. Added comprehensive try-catch blocks with fallback methods to ensure reliability."
 
   - task: "Implement HTML View Beautification"
     implemented: false

@@ -2006,16 +2006,26 @@ const PromptSupportEditor = ({
       </div>
     );
   };
+  /**
+   * Render asset library modal for image selection with real data
+   */
   const renderAssetLibraryModal = () => {
     if (!showImageModal) return null;
     
-    // Mock assets - in real implementation, this would fetch from the asset API
-    const mockAssets = [
-      { id: 1, name: 'Sample Image 1', type: 'image', data: '/api/placeholder/400/300?text=Sample+1' },
-      { id: 2, name: 'Sample Image 2', type: 'image', data: '/api/placeholder/400/300?text=Sample+2' },
-      { id: 3, name: 'Sample Image 3', type: 'image', data: '/api/placeholder/400/300?text=Sample+3' },
-      { id: 4, name: 'Sample Image 4', type: 'image', data: '/api/placeholder/400/300?text=Sample+4' }
-    ];
+    const [assets, setAssets] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
+    
+    // Fetch assets when modal opens
+    React.useEffect(() => {
+      const loadAssets = async () => {
+        setLoading(true);
+        const fetchedAssets = await fetchAssets();
+        setAssets(fetchedAssets);
+        setLoading(false);
+      };
+      
+      loadAssets();
+    }, []);
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -2030,22 +2040,40 @@ const PromptSupportEditor = ({
             </button>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {mockAssets.map(asset => (
-              <div
-                key={asset.id}
-                onClick={() => handleAssetSelect(asset)}
-                className="cursor-pointer border border-gray-200 rounded-lg p-2 hover:border-blue-500 hover:shadow-md transition-all"
-              >
-                <img
-                  src={asset.data}
-                  alt={asset.name}
-                  className="w-full h-32 object-cover rounded mb-2"
-                />
-                <p className="text-sm text-gray-700 truncate">{asset.name}</p>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Loading assets...</span>
+            </div>
+          ) : assets.length === 0 ? (
+            <div className="text-center py-12">
+              <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No assets found in library.</p>
+              <p className="text-sm text-gray-400 mt-2">Upload images to see them here.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {assets.map(asset => (
+                <div
+                  key={asset.id}
+                  onClick={() => handleAssetSelect(asset)}
+                  className="cursor-pointer border border-gray-200 rounded-lg p-2 hover:border-blue-500 hover:shadow-md transition-all"
+                >
+                  <img
+                    src={asset.data}
+                    alt={asset.name}
+                    className="w-full h-32 object-cover rounded mb-2"
+                  />
+                  <p className="text-sm text-gray-700 truncate" title={asset.name}>
+                    {asset.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {Math.round(asset.size / 1024)}KB
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
           
           <div className="mt-4 text-center">
             <button

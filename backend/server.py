@@ -435,8 +435,8 @@ async def upload_asset(file: UploadFile = File(...)):
         async with aiofiles.open(file_path, "wb") as buffer:
             await buffer.write(file_data)
         
-        # Generate URL for the file
-        file_url = f"/static/uploads/{unique_filename}"
+        # Generate URL for the file (using /api/static prefix for proper routing)
+        file_url = f"/api/static/uploads/{unique_filename}"
         
         # Save metadata to database
         collection = db["assets"]

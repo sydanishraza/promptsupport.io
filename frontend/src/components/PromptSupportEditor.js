@@ -1727,61 +1727,38 @@ const PromptSupportEditor = ({
             </button>
           </div>
 
-          {/* Phase 4: AI & Collaboration Group */}
+          {/* Phase 4: Enhanced AI Tools Group - Direct access without flyout */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
-            <div 
-              className="relative"
-              onMouseEnter={() => handleMenuHover('ai', true)}
-              onMouseLeave={() => handleMenuHover('ai', false)}
+            <button
+              onClick={() => handleAIAssistWithPopup('completion')}
+              className={`p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-100 rounded transition-colors mr-1 ${
+                aiWritingMode ? 'animate-pulse' : ''
+              }`}
+              title="AI Complete Text"
+              disabled={aiWritingMode}
             >
-              <button
-                className={`p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors ${
-                  aiWritingMode ? 'animate-pulse' : ''
-                }`}
-                title="AI Writing Assistant"
-                disabled={aiWritingMode}
-              >
-                <Brain className="h-4 w-4" />
-              </button>
-              
-              {showAiDropdown && (
-                <div 
-                  className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max"
-                  onMouseEnter={() => handleMenuHover('ai', true)}
-                  onMouseLeave={() => handleMenuHover('ai', false)}
-                >
-                  <button
-                    onClick={() => {
-                      handleAIAssist('completion');
-                      setShowAiDropdown(false);
-                    }}
-                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                  >
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    Complete Text
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleAIAssist('improvement');
-                      setShowAiDropdown(false);
-                    }}
-                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                  >
-                    <Lightbulb className="h-4 w-4 text-yellow-600" />
-                    Improve Writing
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleAIAssist('grammar');
-                      setShowAiDropdown(false);
-                    }}
-                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                  >
-                    <CheckSquare className="h-4 w-4 text-green-600" />
-                    Grammar Check
-                  </button>
-                </div>
-              )}
+              <Sparkles className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleAIAssistWithPopup('improvement')}
+              className={`p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded transition-colors mr-1 ${
+                aiWritingMode ? 'animate-pulse' : ''
+              }`}
+              title="AI Improve Writing"
+              disabled={aiWritingMode}
+            >
+              <Lightbulb className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleAIAssistWithPopup('grammar')}
+              className={`p-2 text-green-600 hover:text-green-900 hover:bg-green-100 rounded transition-colors mr-1 ${
+                aiWritingMode ? 'animate-pulse' : ''
+              }`}
+              title="AI Grammar Check"
+              disabled={aiWritingMode}
+            >
+              <CheckSquare className="h-4 w-4" />
+            </button>
             </div>
             
             <button

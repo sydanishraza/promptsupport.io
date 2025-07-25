@@ -509,6 +509,78 @@ const ContentLibrary = () => {
         </div>
       )}
 
+      {/* Control Bar - Assets */}
+      {currentView === 'assets' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
+              {/* Search */}
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search assets, articles, or descriptions..."
+                  value={assetSearchQuery}
+                  onChange={(e) => setAssetSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
+                />
+              </div>
+
+              {/* Filter and Sort Dropdowns */}
+              <div className="flex gap-3">
+                <div className="relative">
+                  <select
+                    value={assetFilterType}
+                    onChange={(e) => setAssetFilterType(e.target.value)}
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="all">All Assets</option>
+                    <option value="image">Images</option>
+                    <option value="png">PNG</option>
+                    <option value="jpeg">JPEG</option>
+                    <option value="gif">GIF</option>
+                    <option value="svg">SVG</option>
+                    <option value="processed">AI Processed</option>
+                  </select>
+                  <Filter className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={assetSortBy}
+                    onChange={(e) => setAssetSortBy(e.target.value)}
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="dateAdded">Sort by Date Added</option>
+                    <option value="name">Sort by Name</option>
+                    <option value="size">Sort by File Size</option>
+                    <option value="format">Sort by Format</option>
+                    <option value="articleTitle">Sort by Source Article</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* View Mode Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">View:</span>
+              <div className="relative">
+                <select
+                  value={assetViewMode}
+                  onChange={(e) => setAssetViewMode(e.target.value)}
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="grid">Grid View</option>
+                  <option value="list">List View</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Content Area */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 max-h-[calc(100vh-500px)] overflow-y-auto">
         {loading ? (

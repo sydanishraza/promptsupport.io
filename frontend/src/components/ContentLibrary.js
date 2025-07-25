@@ -526,6 +526,7 @@ const ContentLibrary = () => {
           <AssetManager
             articles={articles}
             onArticleSelect={handleArticleSelect}
+            onPaginationChange={setAssetPagination}
           />
         )}
       </div>

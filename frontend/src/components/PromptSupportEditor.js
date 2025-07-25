@@ -154,8 +154,6 @@ const PromptSupportEditor = ({
   const [customModal, setCustomModal] = useState({ show: false, type: '', title: '', message: '', onConfirm: null, onCancel: null, inputValue: '', inputPlaceholder: '' });
   // Link tooltip state
   const [linkTooltip, setLinkTooltip] = useState({ show: false, x: 0, y: 0, url: '', element: null });
-  // Applied AI suggestions highlighting
-  const [appliedSuggestions, setAppliedSuggestions] = useState([]);
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,

@@ -28,12 +28,16 @@ import {
 
 import AssetModal from './AssetModal';
 
-const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
-  const [viewMode, setViewMode] = useState('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [sortBy, setSortBy] = useState('dateAdded');
-  const [sortOrder, setSortOrder] = useState('desc');
+const AssetManager = ({ 
+  articles, 
+  onArticleSelect, 
+  onPaginationChange,
+  searchQuery = '',
+  filterType = 'all',
+  sortBy = 'dateAdded',
+  sortOrder = 'desc',
+  viewMode = 'grid'
+}) => {
   const [assets, setAssets] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showModal, setShowModal] = useState(false);

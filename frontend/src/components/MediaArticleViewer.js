@@ -1156,34 +1156,38 @@ const MediaArticleViewer = ({
             )}
           </div>
         ) : viewMode === 'markdown' ? (
-          <div className="space-y-4">
+          <div className="flex-1 flex flex-col min-h-0">
             {isEditing ? (
               <textarea
                 ref={markdownEditorRef}
                 value={markdownContent}
                 onChange={(e) => handleContentChange(e.target.value, 'markdown')}
-                className="w-full h-96 p-4 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
+                className="flex-1 p-4 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
                 placeholder="Enter your content in Markdown format..."
               />
             ) : (
-              <div className="prose prose-lg max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: markdownToHtml(markdownContent) }} />
+              <div className="flex-1 overflow-y-auto">
+                <div className="prose prose-lg max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: markdownToHtml(markdownContent) }} />
+                </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex-1 flex flex-col min-h-0">
             {isEditing ? (
               <textarea
                 ref={htmlEditorRef}
                 value={htmlContent}
                 onChange={(e) => handleContentChange(e.target.value, 'html')}
-                className="w-full h-96 p-4 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
+                className="flex-1 p-4 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
                 placeholder="Enter your content in HTML format..."
               />
             ) : (
-              <div className="prose prose-lg max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+              <div className="flex-1 overflow-y-auto">
+                <div className="prose prose-lg max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                </div>
               </div>
             )}
           </div>

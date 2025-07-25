@@ -2259,25 +2259,10 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Render asset library modal for image selection with real data
+   * Render asset library modal for image selection (Fixed React hooks issue)
    */
   const renderAssetLibraryModal = () => {
     if (!showImageModal) return null;
-    
-    const [assets, setAssets] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    
-    // Fetch assets when modal opens
-    React.useEffect(() => {
-      const loadAssets = async () => {
-        setLoading(true);
-        const fetchedAssets = await fetchAssets();
-        setAssets(fetchedAssets);
-        setLoading(false);
-      };
-      
-      loadAssets();
-    }, []);
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -2292,7 +2277,7 @@ const PromptSupportEditor = ({
             </button>
           </div>
           
-          {loading ? (
+          {assetsLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">Loading assets...</span>

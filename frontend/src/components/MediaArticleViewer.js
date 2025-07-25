@@ -612,16 +612,18 @@ const MediaArticleViewer = ({
     if (editorRef.current) {
       editorRef.current.focus();
       
-      // Save cursor position before formatting
-      const savedPosition = saveCursorPosition();
-      
-      // Execute the formatting command
-      document.execCommand(command, false, value);
-      
-      // Update content and restore cursor
-      setTimeout(() => {
-        handleContentChangeWithCursor(editorRef.current.innerHTML, 'wysiwyg');
-      }, 0);
+      try {
+        // Execute the formatting command
+        document.execCommand(command, false, value);
+        
+        // Update content after a brief delay to allow DOM updates
+        setTimeout(() => {
+          const newContent = editorRef.current.innerHTML;
+          handleContentChange(newContent, 'wysiwyg');
+        }, 10);
+      } catch (error) {
+        console.error('Formatting command failed:', error);
+      }
     }
   };
 
@@ -630,14 +632,83 @@ const MediaArticleViewer = ({
     if (editorRef.current) {
       editorRef.current.focus();
       
-      // Use document.execCommand for better cursor handling
-      document.execCommand('insertHTML', false, html);
-      
-      // Update content
-      setTimeout(() => {
-        handleContentChangeWithCursor(editorRef.current.innerHTML, 'wysiwyg');
-      }, 0);
+      try {
+        // Use document.execCommand for better cursor handling
+        const success = document.execCommand('insertHTML', false, html);
+        
+        if (!success) {
+          // Fallback method for browsers that don't support insertHTML
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            
+            const fragment = range.createContextualFragment(html);
+            range.insertNode(fragment);
+            
+            // Move cursor to end of inserted content
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        }
+        
+        // Update content
+        setTimeout(() => {
+          const newContent = editorRef.current.innerHTML;
+          handleContentChange(newContent, 'wysiwyg');
+        }, 10);
+      } catch (error) {
+        console.error('Insert HTML failed:', error);
+      }
     }
+  };
+
+  // Insert structured content blocks
+  const insertContentBlock = (type) => {
+    const blocks = {
+      heading1: '<h1>Heading 1</h1>',
+      heading2: '<h2>Heading 2</h2>',
+      heading3: '<h3>Heading 3</h3>',
+      heading4: '<h4>Heading 4</h4>',
+      paragraph: '<p>New paragraph</p>',
+      bulletList: '<ul><li>List item 1</li><li>List item 2</li></ul>',
+      numberedList: '<ol><li>List item 1</li><li>List item 2</li></ol>',
+      quote: '<blockquote><p>Quote text here</p></blockquote>',
+      codeBlock: '<pre><code>// Your code here\nconsole.log("Hello, world!");</code></pre>',
+      divider: '<hr>',
+      table: `<table style="border-collapse: collapse; width: 100%;">
+        <thead>
+          <tr style="background-color: #f3f4f6;">
+            <th style="border: 1px solid #d1d5db; padding: 8px;">Header 1</th>
+            <th style="border: 1px solid #d1d5db; padding: 8px;">Header 2</th>
+            <th style="border: 1px solid #d1d5db; padding: 8px;">Header 3</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">Cell 1</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">Cell 2</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">Cell 3</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">Cell 4</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">Cell 5</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">Cell 6</td>
+          </tr>
+        </tbody>
+      </table>`,
+      tip: '<div class="callout callout-tip" style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 16px 0; border-radius: 4px;"><strong>💡 Tip:</strong> Your tip content here</div>',
+      warning: '<div class="callout callout-warning" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 16px 0; border-radius: 4px;"><strong>⚠️ Warning:</strong> Your warning content here</div>',
+      note: '<div class="callout callout-note" style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 16px 0; border-radius: 4px;"><strong>📝 Note:</strong> Your note content here</div>',
+      expandable: '<details style="margin: 16px 0; border: 1px solid #d1d5db; border-radius: 4px; padding: 8px;"><summary style="cursor: pointer; font-weight: bold; padding: 8px;">Click to expand</summary><div style="padding: 8px;">Expandable content goes here</div></details>'
+    };
+
+    if (blocks[type]) {
+      insertWysiwygHTML(blocks[type]);
+    }
+    
+    setShowSlashMenu(false);
   };
 
   // Enhanced toolbar for WYSIWYG editing

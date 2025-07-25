@@ -140,11 +140,12 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
           </div>
         ) : (
           <div className="w-full flex items-center justify-center">
-            {/* Centered Logo - Larger Size for Better Visibility */}
+            {/* Centered Logo - 35x35px for Better Visibility */}
             <img
               src="/ps-logo.png"
               alt="PromptSupport Logo"
-              className="w-10 h-10 object-contain"
+              className="object-contain"
+              style={{ width: '35px', height: '35px' }}
             />
           </div>
         )}

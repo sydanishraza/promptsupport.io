@@ -900,7 +900,7 @@
     implemented: true
     working: false
     file: "frontend/src/components/PromptSupportEditor.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
@@ -910,6 +910,9 @@
         -working: false
         -agent: "testing"
         -comment: "🔥 CRITICAL SCROLLABILITY ISSUE CONFIRMED: Comprehensive testing reveals significant problems with editor scrollability after image insertion as mentioned in the review request. ❌ OVERFLOW-Y ISSUE: Editor has overflow-y: hidden instead of auto/scroll, preventing proper scrolling functionality. ❌ SCROLLABILITY AFTER FIRST IMAGE: Editor is NOT scrollable after inserting the first image (scrollHeight: 500px = clientHeight: 500px, isScrollable: false). ❌ INCONSISTENT BEHAVIOR: Editor becomes scrollable only after inserting multiple images, indicating the fix is not working consistently. ❌ CSS STYLING PROBLEM: The overflow-y fix in the insertImage function is not being applied properly - computed style shows 'hidden' instead of 'auto' or 'scroll'. TECHNICAL DETAILS: Before insertion (scrollable: false, overflow-y: hidden), after first image (scrollable: false, overflow-y: hidden), after multiple images (scrollable: true but overflow-y still hidden). The JavaScript fix that sets editor.style.overflowY = 'auto' and editor.style.maxHeight = '500px' is not taking effect. This confirms the exact issue described in the review request - the overflow-y fix is not working correctly."
+        -working: false
+        -agent: "testing"
+        -comment: "🔥 CRITICAL FAILURE: !IMPORTANT CSS FIX NOT WORKING - Comprehensive testing of the improved scrollability fix with setProperty and !important CSS declarations reveals the fix is completely ineffective. ❌ SETPROPERTY WITH !IMPORTANT FAILED: Despite implementation using editor.style.setProperty('overflow-y', 'auto', 'important'), the computed style still shows 'hidden' instead of 'auto' or 'scroll'. ❌ ALL CRITICAL CHECKS FAILED: Only 1/5 critical checks passed (20% success rate). Editor remains non-scrollable after image insertion with scrollHeight: 400px = clientHeight: 400px. ❌ NO SCROLLING FUNCTIONALITY: Mouse wheel scrolling completely non-functional (final scroll position: 0px). ❌ CONSISTENT FAILURE: Problem persists across single and multiple image insertions. ❌ MAX-HEIGHT MAINTAINED BUT USELESS: While max-height is correctly set to 500px, the overflow-y: hidden prevents any scrolling benefit. TECHNICAL EVIDENCE: Before insertion (overflow-y: hidden, scrollable: false), After first image (overflow-y: hidden, scrollable: false), After multiple images (overflow-y: hidden, scrollable: false). The !important CSS declarations are being overridden by stronger CSS rules or the setProperty implementation is not working as expected. This is a critical failure requiring immediate investigation into CSS specificity conflicts or alternative implementation approaches."
 
   - task: "Prevent Duplicate Assets from Asset Library Selection"
     implemented: true

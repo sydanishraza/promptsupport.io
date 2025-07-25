@@ -134,17 +134,20 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center w-full space-y-1">
+          <div className="relative w-full flex items-center justify-center">
+            {/* Centered Logo - Larger Size */}
             <img
               src="/ps-logo.png"
               alt="PromptSupport Logo"
-              className="w-8 h-8 object-contain"
+              className="w-10 h-10 object-contain"
             />
+            {/* Toggle Button - Right Edge, Vertically Centered */}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className="absolute right-0 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              title="Expand Sidebar"
             >
-              <ChevronRight size={12} />
+              <ChevronRight size={14} />
             </button>
           </div>
         )}

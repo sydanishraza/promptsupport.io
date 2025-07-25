@@ -1063,8 +1063,16 @@ const MediaArticleViewer = ({
       </div>
 
       {/* Enhanced Toolbar for editing */}
-      {isEditing && viewMode === 'wysiwyg' && renderWysiwygToolbar()}
-      {isEditing && viewMode === 'markdown' && renderEnhancedToolbar()}
+      {isEditing && viewMode === 'wysiwyg' && (
+        <div className="flex-shrink-0">
+          {renderWysiwygToolbar()}
+        </div>
+      )}
+      {isEditing && viewMode === 'markdown' && (
+        <div className="flex-shrink-0">
+          {renderEnhancedToolbar()}
+        </div>
+      )}
 
       {/* Content Area */}
       <div className="p-4 flex-1 overflow-y-auto">

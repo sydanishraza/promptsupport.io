@@ -1759,7 +1759,7 @@ const PromptSupportEditor = ({
             >
               <CheckSquare className="h-4 w-4" />
             </button>
-            </div>
+          </div>
             
             <button
               onClick={() => setShowComments(!showComments)}

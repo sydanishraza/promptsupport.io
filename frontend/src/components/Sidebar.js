@@ -244,9 +244,9 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
             {/* Fly-out Menu for Expandable Items in Collapsed State */}
             {collapsed && item.expandable && showFlyout === item.id && (
               <div 
-                className="absolute left-full ml-2 top-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-48"
-                onMouseEnter={() => setShowFlyout(item.id)}
-                onMouseLeave={() => setShowFlyout(null)}
+                className="absolute left-full ml-1 top-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-48"
+                onMouseEnter={handleFlyoutMouseEnter}
+                onMouseLeave={handleFlyoutMouseLeave}
               >
                 <div className="p-2">
                   <div className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 mb-1">

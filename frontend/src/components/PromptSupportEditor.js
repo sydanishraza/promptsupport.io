@@ -2548,6 +2548,7 @@ const PromptSupportEditor = ({
       
       {/* Phase 4: Content Analysis Modal */}
       {renderContentAnalysisModal()}
+      {renderAiBrainModal()}
       
       {/* Phase 4: AI and Collaboration Panels */}
       {renderAIPanel()}

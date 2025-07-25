@@ -503,15 +503,14 @@ const PromptSupportEditor = ({
               setHasUnsavedChanges(true);
             }}
             onKeyDown={handleKeyDown}
-            className={`h-full p-6 overflow-y-auto focus:outline-none ${
-              isEditing ? 'prose prose-lg max-w-none' : 'prose prose-lg max-w-none'
-            }`}
+            className={`h-full p-6 overflow-y-auto focus:outline-none prose prose-lg max-w-none`}
             style={{
               minHeight: '400px',
               lineHeight: '1.7',
               fontSize: '16px',
               direction: 'ltr',
-              textAlign: 'left'
+              textAlign: 'left',
+              unicodeBidi: 'normal'
             }}
             dangerouslySetInnerHTML={{ __html: content }}
             suppressContentEditableWarning={true}

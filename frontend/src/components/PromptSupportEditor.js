@@ -181,10 +181,10 @@ const PromptSupportEditor = ({
     setHasUnsavedChanges(true);
   };
 
-  // === PHASE 1: KEYBOARD SHORTCUTS ===
+  // === PHASE 3: ENHANCED KEYBOARD SHORTCUTS ===
   
   /**
-   * Handle keyboard shortcuts for formatting and navigation
+   * Handle keyboard shortcuts for formatting and navigation (Enhanced)
    */
   const handleKeyDown = (e) => {
     // Prevent backspace/delete from exiting edit mode
@@ -192,7 +192,15 @@ const PromptSupportEditor = ({
       e.stopPropagation();
     }
 
-    // Keyboard shortcuts
+    // Phase 3: Slash command detection
+    if (e.key === '/') {
+      handleSlashCommand(e);
+    } else if (e.key === 'Escape') {
+      setShowSlashMenu(false);
+      setShowColorPicker(false);
+    }
+
+    // Enhanced keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
       switch (e.key.toLowerCase()) {
         case 'z':
@@ -227,6 +235,36 @@ const PromptSupportEditor = ({
           e.preventDefault();
           if (e.shiftKey) {
             handleSave();
+          }
+          break;
+        case 'e':
+          e.preventDefault();
+          handleAlignment('center');
+          break;
+        case 'l':
+          e.preventDefault();
+          handleAlignment('left');
+          break;
+        case 'r':
+          e.preventDefault();
+          handleAlignment('right');
+          break;
+        case '1':
+          if (e.altKey) {
+            e.preventDefault();
+            executeCommand('formatBlock', 'h1');
+          }
+          break;
+        case '2':
+          if (e.altKey) {
+            e.preventDefault();
+            executeCommand('formatBlock', 'h2');
+          }
+          break;
+        case '3':
+          if (e.altKey) {
+            e.preventDefault();
+            executeCommand('formatBlock', 'h3');
           }
           break;
         default:

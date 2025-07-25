@@ -1061,7 +1061,7 @@ const PromptSupportEditor = ({
       console.error('AI assistance error:', error);
       
       // Show user-friendly error message
-      alert(`AI assistance is currently unavailable: ${error.message}`);
+      showAlert(`AI assistance is currently unavailable: ${error.message}`, 'AI Error');
       
       // Fallback to mock suggestions
       const suggestions = {

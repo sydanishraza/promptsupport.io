@@ -372,10 +372,10 @@ const PromptSupportEditor = ({
     setShowTableModal(false);
   };
 
-  // === PHASE 1: TOOLBAR FRAMEWORK ===
+  // === PHASE 2: ENHANCED TOOLBAR FRAMEWORK ===
   
   /**
-   * Render the main formatting toolbar
+   * Render the enhanced formatting toolbar with Phase 2 features
    */
   const renderToolbar = () => {
     if (!isEditing) return null;
@@ -434,6 +434,81 @@ const PromptSupportEditor = ({
             </button>
           </div>
 
+          {/* Phase 2: Color and Alignment Group */}
+          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
+            <div className="relative">
+              <button
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+                title="Text Color"
+              >
+                <Palette className="h-4 w-4" />
+              </button>
+              
+              {showColorPicker && (
+                <div className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                  <div className="mb-2">
+                    <label className="text-xs font-medium text-gray-700">Text Color</label>
+                    <div className="flex gap-1 mt-1">
+                      {['#000000', '#dc2626', '#ea580c', '#d97706', '#65a30d', '#059669', '#0891b2', '#2563eb', '#7c3aed', '#be185d'].map(color => (
+                        <button
+                          key={color}
+                          onClick={() => handleColorChange(color, 'text')}
+                          className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition-transform"
+                          style={{ backgroundColor: color }}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-700">Background</label>
+                    <div className="flex gap-1 mt-1">
+                      {['transparent', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#f1f5f9', '#f9fafb'].map(color => (
+                        <button
+                          key={color}
+                          onClick={() => handleColorChange(color, 'background')}
+                          className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition-transform"
+                          style={{ backgroundColor: color === 'transparent' ? '#ffffff' : color }}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={() => handleAlignment('left')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Align Left"
+            >
+              <AlignLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleAlignment('center')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Align Center"
+            >
+              <AlignCenter className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleAlignment('right')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Align Right"
+            >
+              <AlignRight className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleAlignment('justify')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Justify"
+            >
+              <AlignJustify className="h-4 w-4" />
+            </button>
+          </div>
+
           {/* Headings Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button
@@ -481,6 +556,98 @@ const PromptSupportEditor = ({
               title="Numbered List"
             >
               <ListOrdered className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Phase 2: Advanced Blocks Group */}
+          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
+            <div className="relative group">
+              <button
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+                title="Insert Table"
+              >
+                <Table className="h-4 w-4" />
+              </button>
+              
+              <div className="absolute top-10 left-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
+                <button
+                  onClick={() => insertBlock('table2x2')}
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  2×2 Table
+                </button>
+                <button
+                  onClick={() => insertBlock('table3x3')}
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  3×3 Table
+                </button>
+                <button
+                  onClick={() => setShowTableModal(true)}
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  Custom Size...
+                </button>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => insertBlock('twoColumns')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Two Columns"
+            >
+              <Columns className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Phase 2: Callouts Group */}
+          <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
+            <div className="relative group">
+              <button
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+                title="Insert Callout"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+              
+              <div className="absolute top-10 left-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
+                <button
+                  onClick={() => insertBlock('infoCallout')}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  <Info className="h-4 w-4 text-blue-600" />
+                  Info Callout
+                </button>
+                <button
+                  onClick={() => insertBlock('warningCallout')}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  Warning Callout
+                </button>
+                <button
+                  onClick={() => insertBlock('successCallout')}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Success Callout
+                </button>
+                <button
+                  onClick={() => insertBlock('errorCallout')}
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                >
+                  <XCircle className="h-4 w-4 text-red-600" />
+                  Error Callout
+                </button>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => insertBlock('expandableSection')}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              title="Expandable Section"
+            >
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 

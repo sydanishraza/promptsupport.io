@@ -823,9 +823,9 @@
 
   - task: "Fix Image Handling - Use Proper File Formats Instead of Base64"
     implemented: true
-    working: true
+    working: false
     file: "frontend/src/components/PromptSupportEditor.js, backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "critical"
     needs_retesting: false
     status_history:
@@ -835,6 +835,9 @@
         -working: true
         -agent: "main"
         -comment: "FIXED: Completely overhauled image handling system. Backend now uses proper file storage with StaticFiles serving instead of base64. Images are saved to /static/uploads/ directory and served via URLs. Frontend updated to handle both URL-based and legacy base64 assets. Asset selection logic enhanced to determine correct image source format (URL vs base64) automatically."
+        -working: false
+        -agent: "testing"
+        -comment: "CRITICAL TESTING RESULTS: Image handling system partially working but has critical static file serving issue. ✅ PASSED: Backend saves images to proper file storage (/app/backend/static/uploads/) with correct file formats and generates proper URLs (/static/uploads/filename). ✅ PASSED: Asset system returns both new file-based assets and legacy base64 assets correctly. ❌ FAILED: Static file serving - FastAPI StaticFiles mount returns HTML content instead of image files, preventing proper image display. Files exist on disk but are not accessible via URLs. ASSESSMENT: File storage implementation correct, but static file serving configuration needs fixing for images to display properly in editor."
 
   - task: "Fix Asset Upload - Maintain Original Format and Save to Asset Library"
     implemented: true

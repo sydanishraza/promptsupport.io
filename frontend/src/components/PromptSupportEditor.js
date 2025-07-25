@@ -73,6 +73,13 @@ const PromptSupportEditor = ({
   const [editorMode, setEditorMode] = useState('wysiwyg'); // 'wysiwyg' | 'markdown' | 'html'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
+  // === PHASE 2: ADVANCED STATE ===
+  const [selectedBlock, setSelectedBlock] = useState(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [currentTextColor, setCurrentTextColor] = useState('#1f2937');
+  const [currentBgColor, setCurrentBgColor] = useState('transparent');
+  
   // === REFS ===
   const editorRef = useRef(null);
   const markdownRef = useRef(null);

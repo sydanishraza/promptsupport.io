@@ -1769,9 +1769,17 @@ const PromptSupportEditor = ({
         
         {/* Comments */}
         <div className="p-4">
-          <h4 className="font-medium text-gray-800 mb-2">Comments</h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-medium text-gray-800">Comments</h4>
+            <button
+              onClick={addComment}
+              className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+            >
+              Add Comment
+            </button>
+          </div>
           {comments.length === 0 ? (
-            <p className="text-sm text-gray-500">No comments yet</p>
+            <p className="text-sm text-gray-500">No comments yet. Select text and click "Add Comment" to start.</p>
           ) : (
             <div className="space-y-3">
               {comments.map(comment => (
@@ -1780,17 +1788,30 @@ const PromptSupportEditor = ({
                 }`}>
                   <div className="flex items-start justify-between mb-1">
                     <span className="font-medium text-sm">{comment.author}</span>
-                    <button
-                      onClick={() => toggleCommentResolution(comment.id)}
-                      className={`text-xs px-2 py-1 rounded ${
-                        comment.resolved 
-                          ? 'bg-green-200 text-green-800' 
-                          : 'bg-yellow-200 text-yellow-800'
-                      }`}
-                    >
-                      {comment.resolved ? 'Resolved' : 'Open'}
-                    </button>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => toggleCommentResolution(comment.id)}
+                        className={`text-xs px-2 py-1 rounded ${
+                          comment.resolved 
+                            ? 'bg-green-200 text-green-800' 
+                            : 'bg-yellow-200 text-yellow-800'
+                        }`}
+                      >
+                        {comment.resolved ? 'Resolved' : 'Open'}
+                      </button>
+                      <button
+                        onClick={() => removeComment(comment.id)}
+                        className="text-xs bg-red-200 text-red-800 px-2 py-1 rounded hover:bg-red-300"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
+                  {comment.selectedText && (
+                    <div className="text-xs text-gray-600 mb-1 italic">
+                      On: "{comment.selectedText.substring(0, 50)}..."
+                    </div>
+                  )}
                   <p className="text-sm text-gray-700">{comment.text}</p>
                   <span className="text-xs text-gray-500">
                     {comment.timestamp.toLocaleTimeString()}

@@ -608,6 +608,11 @@ const ContentLibrary = () => {
             articles={articles}
             onArticleSelect={handleArticleSelect}
             onPaginationChange={setAssetPagination}
+            searchQuery={assetSearchQuery}
+            filterType={assetFilterType}
+            sortBy={assetSortBy}
+            sortOrder={assetSortOrder}
+            viewMode={assetViewMode}
           />
         )}
       </div>

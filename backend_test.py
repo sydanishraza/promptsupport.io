@@ -3974,43 +3974,99 @@ This test verifies that the file upload pipeline properly triggers the Content L
             return False
 
     def run_all_tests(self):
-        """Run focused regression tests for Content Library APIs after cursor fix"""
-        print("🚀 FOCUSED REGRESSION TESTING: Content Library APIs after PromptSupportEditor cursor fix")
+        """Run comprehensive backend tests focusing on image upload and static file serving"""
+        print("🚀 COMPREHENSIVE BACKEND TESTING: Image Upload and Static File Serving Focus")
         print("=" * 80)
-        print("🎯 FOCUS: Verify backend functionality is unaffected by frontend cursor fix")
+        print("🎯 FOCUS: Image upload, static file serving, and asset management")
         print("=" * 80)
         
-        # Run the focused regression test
-        regression_results = self.test_content_library_regression_after_cursor_fix()
+        tests = [
+            # Core functionality tests
+            ("Health Check", self.test_health_check),
+            ("Status Endpoint", self.test_status_endpoint),
+            
+            # IMAGE UPLOAD AND STATIC FILE SERVING TESTS (PRIMARY FOCUS)
+            ("Asset Upload Endpoint", self.test_asset_upload_endpoint),
+            ("Static File Serving", self.test_static_file_serving),
+            ("Asset Library Endpoint", self.test_asset_library_endpoint),
+            ("External URL Access", self.test_external_url_access),
+            ("Image Upload Integration Flow", self.test_image_upload_integration_flow),
+            
+            # Content Library tests
+            ("Content Library Integration", self.test_content_library_integration),
+            ("Enhanced Content Library - Create", self.test_enhanced_content_library_create),
+            ("Enhanced Content Library - Update", self.test_enhanced_content_library_update),
+            ("Enhanced Content Library - API Integration", self.test_enhanced_content_library_api_integration),
+            
+            # Additional core tests
+            ("Content Processing", self.test_content_processing),
+            ("File Upload", self.test_file_upload),
+            ("Search Functionality", self.test_search_functionality),
+            ("AI Chat", self.test_ai_chat),
+            
+            # Enhanced features
+            ("Enhanced Assets Endpoint", self.test_enhanced_assets_endpoint),
+            ("Media Intelligence - Statistics", self.test_media_intelligence_stats),
+        ]
         
-        # Calculate results
-        passed = sum(1 for _, result in regression_results if result)
-        failed = len(regression_results) - passed
+        results = []
+        passed = 0
+        failed = 0
+        
+        for test_name, test_func in tests:
+            print(f"\n{'='*20} {test_name} {'='*20}")
+            try:
+                result = test_func()
+                if result:
+                    print(f"✅ {test_name} PASSED")
+                    passed += 1
+                else:
+                    print(f"❌ {test_name} FAILED")
+                    failed += 1
+                results.append((test_name, result))
+            except Exception as e:
+                print(f"💥 {test_name} CRASHED: {str(e)}")
+                failed += 1
+                results.append((test_name, False))
         
         # Print summary
         print("\n" + "="*80)
-        print("🎯 REGRESSION TEST SUMMARY - Content Library APIs")
+        print("🎯 COMPREHENSIVE TEST SUMMARY")
         print("="*80)
         print(f"✅ Passed: {passed}")
         print(f"❌ Failed: {failed}")
-        print(f"📊 Total: {len(regression_results)}")
-        if len(regression_results) > 0:
-            print(f"📈 Success Rate: {(passed/len(regression_results)*100):.1f}%")
+        print(f"📊 Total: {passed + failed}")
+        print(f"📈 Success Rate: {(passed/(passed+failed)*100):.1f}%")
         
-        print("\n📋 Detailed Results:")
-        for test_name, result in regression_results:
+        print("\n📋 DETAILED RESULTS:")
+        for test_name, result in results:
             status = "✅ PASS" if result else "❌ FAIL"
             print(f"  {status} - {test_name}")
         
-        print("\n🔍 REGRESSION ANALYSIS:")
-        if failed == 0:
-            print("✅ NO REGRESSIONS DETECTED: All Content Library APIs working normally")
-            print("✅ PromptSupportEditor cursor fix did not affect backend functionality")
-        else:
-            print(f"⚠️ POTENTIAL REGRESSIONS: {failed} test(s) failed")
-            print("🔍 Investigation needed to determine if issues are related to cursor fix")
+        # Focus on image upload and static file serving results
+        print("\n🖼️ IMAGE UPLOAD & STATIC FILE SERVING ANALYSIS:")
+        image_tests = [
+            "Asset Upload Endpoint",
+            "Static File Serving", 
+            "Asset Library Endpoint",
+            "External URL Access",
+            "Image Upload Integration Flow"
+        ]
         
-        return passed, failed, regression_results
+        image_results = [(name, result) for name, result in results if name in image_tests]
+        image_passed = sum(1 for _, result in image_results if result)
+        image_failed = len(image_results) - image_passed
+        
+        if image_failed == 0:
+            print("✅ ALL IMAGE UPLOAD TESTS PASSED: Static file serving working correctly")
+            print("✅ Images uploaded locally now work correctly instead of appearing broken")
+            print("✅ Static file serving uses correct /api/static/ route prefix")
+            print("✅ External URL access works properly through production domain")
+        else:
+            print(f"⚠️ IMAGE UPLOAD ISSUES: {image_failed} test(s) failed")
+            print("🔍 Investigation needed for image upload and static file serving")
+        
+        return passed, failed, results
 
     def test_asset_upload_endpoint(self):
         """Test /api/assets/upload endpoint - Upload image files and verify file system storage"""

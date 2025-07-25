@@ -537,7 +537,7 @@ const PromptSupportEditor = ({
                 dangerouslySetInnerHTML={{ __html: content || '<p>No content</p>' }} 
               />
             ) : (
-              // Edit mode: use clean contentEditable without dangerouslySetInnerHTML
+              // Edit mode: use clean contentEditable with initial content
               <div
                 ref={editorRef}
                 contentEditable={true}
@@ -556,6 +556,7 @@ const PromptSupportEditor = ({
                   outline: 'none'
                 }}
                 suppressContentEditableWarning={true}
+                dangerouslySetInnerHTML={content ? { __html: content } : { __html: '<p>Start writing your content...</p>' }}
               />
             )}
           </div>

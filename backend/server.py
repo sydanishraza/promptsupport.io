@@ -299,6 +299,79 @@ async def create_article(request: SaveArticleRequest):
         print(f"Create article error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/assets")
+async def get_assets():
+    """Get all assets from the asset library"""
+    try:
+        collection = db["content_library"]
+        
+        # Get all image assets
+        assets_cursor = collection.find({"type": {"$in": ["image", "media"]}})
+        assets_list = await assets_cursor.to_list(length=100)
+        
+        # Format assets for frontend
+        formatted_assets = []
+        for asset in assets_list:
+            if asset.get("data"):  # Has base64 image data
+                formatted_assets.append({
+                    "id": asset.get("id", str(asset.get("_id"))),
+                    "name": asset.get("title", asset.get("name", "Untitled")),
+                    "type": "image",
+                    "data": asset.get("data"),
+                    "created_at": asset.get("created_at"),
+                    "size": len(asset.get("data", "")) if asset.get("data") else 0
+                })
+        
+        return {"assets": formatted_assets, "total": len(formatted_assets)}
+        
+    except Exception as e:
+        print(f"Get assets error: {str(e)}")
+        return {"assets": [], "total": 0}
+
+@app.post("/api/assets/upload")
+async def upload_asset(file: UploadFile = File(...)):
+    """Upload an asset to the asset library"""
+    try:
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="Only image files are allowed")
+        
+        # Read file data
+        file_data = await file.read()
+        
+        # Convert to base64
+        base64_data = f"data:{file.content_type};base64,{base64.b64encode(file_data).decode()}"
+        
+        # Save to asset library
+        collection = db["content_library"]
+        
+        asset_data = {
+            "id": str(uuid.uuid4()),
+            "title": file.filename,
+            "name": file.filename,
+            "type": "image",
+            "data": base64_data,
+            "content_type": file.content_type,
+            "size": len(file_data),
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        await collection.insert_one(asset_data)
+        
+        return {
+            "success": True,
+            "asset": {
+                "id": asset_data["id"],
+                "name": asset_data["name"],
+                "type": asset_data["type"],
+                "data": asset_data["data"]
+            }
+        }
+        
+    except Exception as e:
+        print(f"Upload asset error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Health check endpoint
 @app.get("/api/health")
 async def health_check():

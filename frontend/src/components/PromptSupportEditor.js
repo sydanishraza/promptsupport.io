@@ -881,11 +881,11 @@ const PromptSupportEditor = ({
         setShowImageModal(false);
       } else {
         console.error('Asset missing data or not an image:', asset);
-        alert('Unable to insert selected asset. Please try another image.');
+        showAlert('Unable to insert selected asset. Please try another image.', 'Asset Error');
       }
     } catch (error) {
       console.error('Asset selection error:', error);
-      alert('Error inserting image. Please try again.');
+      showAlert('Error inserting image. Please try again.', 'Error');
     }
   };
 

@@ -398,7 +398,7 @@ const PromptSupportEditor = ({
       h3: '<h3>Heading 3</h3>',
       h4: '<h4>Heading 4</h4>',
       quote: '<blockquote><p>Quote text here</p></blockquote>',
-      codeBlock: '<pre><code>// Your code here</code></pre>',
+      codeBlock: '<pre style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; margin: 16px 0; overflow-x: auto;"><code style="font-family: \'Monaco\', \'Menlo\', \'Ubuntu Mono\', monospace; font-size: 14px; line-height: 1.4;">// Your code here\nfunction example() {\n  return "Hello World";\n}</code></pre>',
       hr: '<hr>',
       paragraph: '<p>New paragraph</p>',
       // Phase 2: Advanced blocks

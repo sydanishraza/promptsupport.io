@@ -98,6 +98,14 @@ const PromptSupportEditor = ({
   const [tableRows, setTableRows] = useState(3);
   const [tableCols, setTableCols] = useState(3);
   
+  // === PHASE 3: MEDIA & ADVANCED STATE ===
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [slashMenuPosition, setSlashMenuPosition] = useState({ x: 0, y: 0 });
+  const [draggedOver, setDraggedOver] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
   // === REFS ===
   const editorRef = useRef(null);
   const markdownRef = useRef(null);

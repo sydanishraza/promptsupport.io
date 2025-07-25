@@ -1195,7 +1195,7 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Insert image into editor at cursor position
+   * Insert image into editor at cursor position (with improved scrollability)
    */
   const insertImage = (src, alt = 'Image') => {
     if (!editorRef.current || editorMode !== 'wysiwyg') return;
@@ -1216,10 +1216,10 @@ const PromptSupportEditor = ({
       range.collapse(false);
     }
     
-    // Create the image HTML element
+    // Create the image HTML element with improved styling for scrollability
     const imageHTML = `
-      <figure style="margin: 16px 0; text-align: center; display: block;">
-        <img src="${src}" alt="${alt}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: block;" />
+      <figure style="margin: 16px 0; text-align: center; clear: both; max-width: 100%; overflow: hidden;">
+        <img src="${src}" alt="${alt}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: block; margin: 0 auto;" />
         <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic; text-align: center;">${alt}</figcaption>
       </figure>
     `;
@@ -1249,7 +1249,16 @@ const PromptSupportEditor = ({
       setTimeout(() => {
         setContent(editorRef.current.innerHTML);
         setHasUnsavedChanges(true);
-      }, 10);
+        
+        // Ensure editor remains scrollable by forcing a layout recalculation
+        if (editorRef.current) {
+          editorRef.current.style.overflow = 'auto';
+          editorRef.current.style.maxHeight = '500px'; // Ensure max height is maintained
+          
+          // Force a reflow to ensure proper layout
+          editorRef.current.offsetHeight;
+        }
+      }, 50);
       
     } catch (error) {
       console.error('Error inserting image:', error);

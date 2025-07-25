@@ -509,7 +509,9 @@ const PromptSupportEditor = ({
             style={{
               minHeight: '400px',
               lineHeight: '1.7',
-              fontSize: '16px'
+              fontSize: '16px',
+              direction: 'ltr',
+              textAlign: 'left'
             }}
             dangerouslySetInnerHTML={{ __html: content }}
             suppressContentEditableWarning={true}

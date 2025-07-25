@@ -42,14 +42,21 @@ import {
 } from 'lucide-react';
 
 /**
- * PromptSupport WYSIWYG Editor - Phase 1: Core Foundation
+ * PromptSupport WYSIWYG Editor - Phase 2: Structure Blocks and Layout Tools
  * 
- * Features implemented in Phase 1:
+ * Phase 1 Features (Complete):
  * - Rich text contentEditable surface with cursor stability
  * - Basic toolbar with essential formatting tools
  * - Multi-mode support (WYSIWYG, Markdown, HTML)
  * - Autosizing and proper text insertion handling
  * - Initial keyboard shortcuts and undo/redo
+ * 
+ * Phase 2 Features (Current):
+ * - Advanced block elements (tables, columns, callouts)
+ * - Block management and manipulation
+ * - Enhanced formatting options (colors, alignment)
+ * - Layout tools and spacing controls  
+ * - Drag and drop block reordering
  */
 const PromptSupportEditor = ({ 
   article, 

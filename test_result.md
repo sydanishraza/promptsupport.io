@@ -804,7 +804,7 @@
         -comment: "USER REPORTED ISSUE: The 'Remove Link' option in the link tooltip does not work when clicked. It should properly detach the hyperlink from the selected text."
         -working: true
         -agent: "main"
-        -comment: "FIXED: Enhanced the removeLink function with proper error handling and fallback mechanisms. Now correctly removes link elements while preserving text content, validates parent elements, and updates content state. Added comprehensive try-catch blocks with fallback methods to ensure reliability."
+        -comment: "FIXED: Completely rewrote the removeLink function to use document.execCommand('unlink') as the primary method, which properly handles selection and maintains undo history. Added comprehensive fallback using DOM manipulation with document fragments to ensure reliability. The function now immediately updates the content state without timing delays, providing instant feedback to users."
 
   - task: "Implement HTML View Beautification"
     implemented: true

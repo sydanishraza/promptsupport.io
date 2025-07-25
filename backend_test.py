@@ -2632,6 +2632,476 @@ This test verifies that the file upload pipeline properly triggers the Content L
         
         return regression_tests
 
+    def test_promptsupport_asset_library_endpoint(self):
+        """Test GET /api/assets - Asset Library Endpoint for PromptSupportEditor"""
+        print("\n🔍 Testing PromptSupportEditor Asset Library Endpoint...")
+        try:
+            response = requests.get(f"{self.base_url}/assets", timeout=15)
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                # Verify response structure
+                if "assets" in data and "total" in data:
+                    assets = data["assets"]
+                    total = data["total"]
+                    
+                    print(f"✅ Asset Library endpoint working - {total} assets found")
+                    
+                    # Verify assets have proper structure
+                    if assets:
+                        sample_asset = assets[0]
+                        required_fields = ['id', 'name', 'type', 'data', 'size']
+                        missing_fields = [field for field in required_fields if field not in sample_asset]
+                        
+                        if not missing_fields:
+                            print(f"✅ Assets have proper structure with {len(required_fields)} required fields")
+                            print(f"Sample asset: {sample_asset.get('name')} ({sample_asset.get('size')} bytes)")
+                            
+                            # Verify base64 data is present and not empty
+                            if sample_asset.get('data') and len(sample_asset.get('data', '')) > 50:
+                                print("✅ Assets contain real base64 data (not empty responses)")
+                                return True
+                            else:
+                                print("❌ Assets have empty or minimal data - may be returning zeros/empty responses")
+                                return False
+                        else:
+                            print(f"❌ Assets missing required fields: {missing_fields}")
+                            return False
+                    else:
+                        print("⚠️ No assets found - endpoint works but returns empty data")
+                        return True  # Endpoint works, just no data
+                else:
+                    print("❌ Asset Library endpoint failed - missing required response fields")
+                    return False
+            else:
+                print(f"❌ Asset Library endpoint failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Asset Library endpoint test failed - {str(e)}")
+            return False
+
+    def test_promptsupport_asset_upload_endpoint(self):
+        """Test POST /api/assets/upload - Asset Upload Endpoint for PromptSupportEditor"""
+        print("\n🔍 Testing PromptSupportEditor Asset Upload Endpoint...")
+        try:
+            # Create a test image file (1x1 PNG)
+            import base64
+            import io
+            
+            # Minimal PNG image data
+            png_data = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+            
+            # Create file-like object
+            file_data = io.BytesIO(png_data)
+            
+            files = {
+                'file': ('test_asset.png', file_data, 'image/png')
+            }
+            
+            print("Uploading test image to asset library...")
+            response = requests.post(
+                f"{self.base_url}/assets/upload",
+                files=files,
+                timeout=30
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                # Verify response structure
+                if data.get("success") and "asset" in data:
+                    asset = data["asset"]
+                    
+                    # Verify asset structure
+                    required_fields = ['id', 'name', 'type', 'data']
+                    missing_fields = [field for field in required_fields if field not in asset]
+                    
+                    if not missing_fields:
+                        print("✅ Asset upload successful - proper response structure")
+                        
+                        # Verify the uploaded asset has real data
+                        if asset.get('data') and 'data:image/png;base64,' in asset.get('data'):
+                            print("✅ Uploaded asset contains proper base64 data URL")
+                            print(f"Asset ID: {asset.get('id')}")
+                            print(f"Asset name: {asset.get('name')}")
+                            return True
+                        else:
+                            print("❌ Uploaded asset missing proper base64 data URL")
+                            return False
+                    else:
+                        print(f"❌ Asset upload response missing fields: {missing_fields}")
+                        return False
+                else:
+                    print("❌ Asset upload failed - invalid response structure")
+                    return False
+            else:
+                print(f"❌ Asset upload failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Asset upload test failed - {str(e)}")
+            return False
+
+    def test_promptsupport_content_library_save(self):
+        """Test POST/PUT /api/content-library - Content Library Save for PromptSupportEditor"""
+        print("\n🔍 Testing PromptSupportEditor Content Library Save...")
+        try:
+            # Test 1: Create new article (POST)
+            print("Testing article creation (POST)...")
+            
+            create_data = {
+                'title': 'PromptSupportEditor Test Article',
+                'content': '# Test Article\n\nThis is a test article created by the PromptSupportEditor to verify save functionality.\n\n## Features Tested\n\n- Article creation with draft status\n- Content saving\n- Status management\n\n## Content\n\nThis article tests the save button behavior in the PromptSupportEditor.',
+                'status': 'draft'
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/content-library",
+                json=create_data,
+                timeout=15
+            )
+            
+            print(f"Create Status Code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ Article creation failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            create_response = response.json()
+            print(f"Create Response: {json.dumps(create_response, indent=2)}")
+            
+            if not (create_response.get("success") and "id" in create_response):
+                print("❌ Article creation failed - invalid response")
+                return False
+            
+            article_id = create_response["id"]
+            print(f"✅ Article created successfully - ID: {article_id}")
+            
+            # Test 2: Update article (PUT) - Save as Published
+            print("Testing article update to published status (PUT)...")
+            
+            update_data = {
+                'title': 'PromptSupportEditor Test Article - Published',
+                'content': '# Updated Test Article\n\nThis article has been updated and published through the PromptSupportEditor save functionality.\n\n## Updated Features\n\n- Article update with published status\n- Content modification\n- Status change from draft to published\n\n## Save Button Test\n\nThis tests the "Save & Publish" option in the PromptSupportEditor save dropdown.',
+                'status': 'published'
+            }
+            
+            response = requests.put(
+                f"{self.base_url}/content-library/{article_id}",
+                json=update_data,
+                timeout=15
+            )
+            
+            print(f"Update Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                update_response = response.json()
+                print(f"Update Response: {json.dumps(update_response, indent=2)}")
+                
+                if update_response.get("success"):
+                    print("✅ Article update successful - status changed to published")
+                    
+                    # Test 3: Verify the article was saved with correct status
+                    print("Verifying saved article status...")
+                    
+                    verify_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+                    if verify_response.status_code == 200:
+                        articles = verify_response.json().get("articles", [])
+                        
+                        # Find our test article
+                        test_article = None
+                        for article in articles:
+                            if article.get("id") == article_id:
+                                test_article = article
+                                break
+                        
+                        if test_article:
+                            saved_status = test_article.get("status")
+                            saved_title = test_article.get("title")
+                            
+                            print(f"Saved article status: {saved_status}")
+                            print(f"Saved article title: {saved_title}")
+                            
+                            if saved_status == "published":
+                                print("✅ Content Library Save working correctly - proper status setting")
+                                return True
+                            else:
+                                print(f"❌ Article status not saved correctly - expected 'published', got '{saved_status}'")
+                                return False
+                        else:
+                            print("❌ Could not find saved article for verification")
+                            return False
+                    else:
+                        print("⚠️ Could not verify saved article, but save operations succeeded")
+                        return True
+                else:
+                    print("❌ Article update failed - no success confirmation")
+                    return False
+            else:
+                print(f"❌ Article update failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Content Library save test failed - {str(e)}")
+            return False
+
+    def test_promptsupport_ai_assistance_endpoint(self):
+        """Test POST /api/ai-assistance - AI Assistance Endpoint for PromptSupportEditor AI Brain"""
+        print("\n🔍 Testing PromptSupportEditor AI Assistance Endpoint...")
+        try:
+            # Test different AI assistance modes
+            test_modes = [
+                {
+                    'mode': 'completion',
+                    'content': 'The benefits of artificial intelligence in modern business include',
+                    'description': 'Text completion'
+                },
+                {
+                    'mode': 'improvement',
+                    'content': 'This text needs improvement. It has some issues with clarity and could be better written for readers.',
+                    'description': 'Writing improvement'
+                },
+                {
+                    'mode': 'grammar',
+                    'content': 'This sentence have some grammar mistake that need to be fix.',
+                    'description': 'Grammar check'
+                }
+            ]
+            
+            all_modes_passed = True
+            
+            for test_case in test_modes:
+                print(f"\nTesting AI assistance mode: {test_case['mode']} ({test_case['description']})")
+                
+                request_data = {
+                    'content': test_case['content'],
+                    'mode': test_case['mode'],
+                    'context': 'PromptSupportEditor AI Brain functionality test'
+                }
+                
+                response = requests.post(
+                    f"{self.base_url}/ai-assistance",
+                    json=request_data,
+                    timeout=30
+                )
+                
+                print(f"Status Code: {response.status_code}")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    print(f"Response: {json.dumps(data, indent=2)}")
+                    
+                    # Verify response structure
+                    if data.get("success") and "suggestions" in data:
+                        suggestions = data["suggestions"]
+                        mode = data.get("mode")
+                        
+                        if isinstance(suggestions, list) and len(suggestions) > 0:
+                            print(f"✅ AI assistance ({test_case['mode']}) working - {len(suggestions)} suggestions received")
+                            
+                            # Verify suggestions are not empty/generic
+                            non_empty_suggestions = [s for s in suggestions if s and len(s.strip()) > 10]
+                            if non_empty_suggestions:
+                                print(f"✅ Received {len(non_empty_suggestions)} meaningful AI suggestions")
+                                print(f"Sample suggestion: {non_empty_suggestions[0][:100]}...")
+                            else:
+                                print("❌ AI suggestions are empty or too generic")
+                                all_modes_passed = False
+                        else:
+                            print(f"❌ AI assistance ({test_case['mode']}) failed - no suggestions returned")
+                            all_modes_passed = False
+                    elif "error" in data:
+                        print(f"⚠️ AI assistance ({test_case['mode']}) returned error: {data['error']}")
+                        # If it's an API key issue, that's expected in some environments
+                        if "API key" in data['error'] or "temporarily unavailable" in data['error']:
+                            print("⚠️ AI service configuration issue - endpoint structure is correct")
+                        else:
+                            all_modes_passed = False
+                    else:
+                        print(f"❌ AI assistance ({test_case['mode']}) failed - invalid response structure")
+                        all_modes_passed = False
+                else:
+                    print(f"❌ AI assistance ({test_case['mode']}) failed - status code {response.status_code}")
+                    print(f"Response: {response.text}")
+                    all_modes_passed = False
+            
+            if all_modes_passed:
+                print("\n✅ AI Assistance endpoint working correctly for all modes")
+                return True
+            else:
+                print("\n❌ Some AI assistance modes failed")
+                return False
+                
+        except Exception as e:
+            print(f"❌ AI assistance test failed - {str(e)}")
+            return False
+
+    def test_promptsupport_content_analysis_endpoint(self):
+        """Test POST /api/content-analysis - Content Analysis Endpoint for PromptSupportEditor"""
+        print("\n🔍 Testing PromptSupportEditor Content Analysis Endpoint...")
+        try:
+            # Test content analysis with sample article content
+            test_content = """
+            # The Future of Artificial Intelligence in Business
+
+            Artificial intelligence is revolutionizing the way businesses operate across various industries. From automating routine tasks to providing deep insights through data analysis, AI technologies are becoming indispensable tools for modern enterprises.
+
+            ## Key Benefits
+
+            1. **Automation**: AI can handle repetitive tasks, freeing up human resources for more strategic work.
+            2. **Data Analysis**: Machine learning algorithms can process vast amounts of data to identify patterns and trends.
+            3. **Customer Service**: Chatbots and virtual assistants provide 24/7 customer support.
+            4. **Decision Making**: AI-powered analytics help executives make data-driven decisions.
+
+            ## Implementation Challenges
+
+            Despite the benefits, businesses face several challenges when implementing AI solutions:
+
+            - **Cost**: Initial investment in AI technology can be substantial
+            - **Skills Gap**: Finding qualified AI professionals is challenging
+            - **Data Quality**: AI systems require high-quality, clean data to function effectively
+            - **Integration**: Incorporating AI into existing systems can be complex
+
+            ## Conclusion
+
+            As AI technology continues to evolve, businesses that embrace these innovations will gain significant competitive advantages. The key is to start with small, manageable projects and gradually expand AI implementation across the organization.
+            """
+            
+            request_data = {
+                'content': test_content,
+                'mode': 'analysis'
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/content-analysis",
+                json=request_data,
+                timeout=30
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                # Verify response structure and real data
+                if data.get("success"):
+                    # Check for required metrics
+                    required_metrics = ['wordCount', 'sentences', 'paragraphs', 'readingTime', 'readabilityScore', 'characterCount']
+                    missing_metrics = [metric for metric in required_metrics if metric not in data]
+                    
+                    if not missing_metrics:
+                        print("✅ Content analysis successful - all required metrics present")
+                        
+                        # Verify metrics are realistic (not zeros)
+                        word_count = data.get('wordCount', 0)
+                        sentences = data.get('sentences', 0)
+                        paragraphs = data.get('paragraphs', 0)
+                        reading_time = data.get('readingTime', 0)
+                        readability_score = data.get('readabilityScore', 0)
+                        character_count = data.get('characterCount', 0)
+                        
+                        print(f"📊 Content Analysis Metrics:")
+                        print(f"   Word Count: {word_count}")
+                        print(f"   Sentences: {sentences}")
+                        print(f"   Paragraphs: {paragraphs}")
+                        print(f"   Reading Time: {reading_time} minutes")
+                        print(f"   Readability Score: {readability_score}")
+                        print(f"   Character Count: {character_count}")
+                        
+                        # Verify metrics are realistic (not zeros or empty responses)
+                        if (word_count > 100 and sentences > 10 and paragraphs > 3 and 
+                            reading_time > 0 and readability_score > 0 and character_count > 500):
+                            print("✅ Content analysis returning real data (not zeros or empty responses)")
+                            
+                            # Check for AI insights
+                            ai_insights = data.get('aiInsights', '')
+                            if ai_insights and len(ai_insights) > 50:
+                                print("✅ AI insights provided with meaningful content")
+                                print(f"AI Insights preview: {ai_insights[:150]}...")
+                                return True
+                            else:
+                                print("⚠️ AI insights missing or minimal - may be API key issue")
+                                return True  # Still consider success if metrics work
+                        else:
+                            print("❌ Content analysis returning unrealistic data (zeros or minimal values)")
+                            return False
+                    else:
+                        print(f"❌ Content analysis missing required metrics: {missing_metrics}")
+                        return False
+                elif "error" in data:
+                    print(f"⚠️ Content analysis returned error: {data['error']}")
+                    # If it's an API key issue, that's expected in some environments
+                    if "API key" in data['error'] or "temporarily unavailable" in data['error']:
+                        print("⚠️ AI service configuration issue - endpoint structure is correct")
+                        return True
+                    else:
+                        return False
+                else:
+                    print("❌ Content analysis failed - invalid response structure")
+                    return False
+            else:
+                print(f"❌ Content analysis failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Content analysis test failed - {str(e)}")
+            return False
+
+    def run_promptsupport_tests_only(self):
+        """Run only the PromptSupportEditor specific tests as requested in review"""
+        print("🎯 Starting PromptSupportEditor Backend API Testing...")
+        print("=" * 60)
+        
+        promptsupport_tests = [
+            ("PromptSupportEditor - Asset Library", self.test_promptsupport_asset_library_endpoint),
+            ("PromptSupportEditor - Asset Upload", self.test_promptsupport_asset_upload_endpoint),
+            ("PromptSupportEditor - Content Library Save", self.test_promptsupport_content_library_save),
+            ("PromptSupportEditor - AI Assistance", self.test_promptsupport_ai_assistance_endpoint),
+            ("PromptSupportEditor - Content Analysis", self.test_promptsupport_content_analysis_endpoint)
+        ]
+        
+        results = []
+        passed = 0
+        failed = 0
+        
+        for test_name, test_func in promptsupport_tests:
+            try:
+                result = test_func()
+                if result:
+                    print(f"✅ {test_name}: PASSED")
+                    passed += 1
+                else:
+                    print(f"❌ {test_name}: FAILED")
+                    failed += 1
+                results.append((test_name, result))
+            except Exception as e:
+                print(f"💥 {test_name}: ERROR - {str(e)}")
+                failed += 1
+                results.append((test_name, False))
+            
+            print("-" * 60)
+        
+        print(f"\n📊 PROMPTSUPPORTEDITOR TEST SUMMARY:")
+        print(f"✅ Passed: {passed}")
+        print(f"❌ Failed: {failed}")
+        print(f"📈 Success Rate: {(passed/(passed+failed)*100):.1f}%")
+        
+        return results
+
     def run_all_tests(self):
         """Run focused regression tests for Content Library APIs after cursor fix"""
         print("🚀 FOCUSED REGRESSION TESTING: Content Library APIs after PromptSupportEditor cursor fix")

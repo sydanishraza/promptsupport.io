@@ -807,9 +807,36 @@
         -working: false
         -agent: "main"
         -comment: "ISSUE IDENTIFIED: Clicking to add image from Asset Library currently throws an error, preventing seamless media insertion from existing assets. Need to debug and fix the asset selection and insertion workflow."
+        -working: false
+        -agent: "main"  
+        -comment: "CRITICAL REACT HOOKS ERROR IDENTIFIED: Asset library throws 'Rendered more hooks than during the previous render' error. Issue was using React.useState and React.useEffect inside renderAssetLibraryModal function, violating Rules of Hooks."
         -working: true
         -agent: "main"
-        -comment: "FIXED: Enhanced handleAssetSelect function with proper error handling and debugging. Fixed data structure validation to check for asset.data and handle both typed and untyped assets. Backend testing confirms GET /api/assets returns 41 real assets with proper base64 data structure. Asset library modal now displays real images and handles selection properly without throwing errors."
+        -comment: "COMPLETELY FIXED: 1) Fixed React hooks violation by moving asset state (assets, assetsLoading) to component top-level and updating renderAssetLibraryModal to use existing state. 2) Enhanced handleAssetSelect function with proper error handling and debugging. 3) Updated showAssetLibrary to load assets when modal opens. TESTED: Asset library modal now opens successfully without React hooks error, displays real assets (ps-logo.png, test_asset.png) with proper file sizes. Asset selection and insertion working correctly. Backend confirms 41 real assets available with proper base64 data structure."
+
+  - task: "Merge AI Brain Options into Unified Brain Icon"
+    implemented: true
+    working: true
+    file: "frontend/src/components/PromptSupportEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "COMPLETED: Merged all 3 AI brain options (Complete, Improve, Grammar Check) into single purple Brain icon button. Created handleUnifiedAIBrain function that runs all AI modes in parallel for comprehensive analysis. Enhanced AI Brain modal to display different suggestion types with color-coded icons and type labels. Modal shows unified metrics (completions count, improvements count, grammar fixes count, words analyzed) and comprehensive suggestions list. Each suggestion shows its type (completion/improvement/grammar) with appropriate icon and can be applied individually. Single brain icon provides cleaner toolbar UX while offering more comprehensive AI analysis than individual buttons."
+
+  - task: "Fix Save Button Duplicate Creation Issue"
+    implemented: true
+    working: true
+    file: "frontend/src/components/PromptSupportEditor.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "COMPLETELY FIXED: Save as Draft and Save & Publish buttons no longer create duplicate copies when clicked multiple times. SOLUTION: 1) Added isSaving state management to prevent multiple simultaneous save operations. 2) Enhanced handleSave function with proper duplicate prevention logic - ensures existing articles use PUT (update) instead of POST (create new). 3) Added save state management to store article ID after first save to prevent future duplicates. 4) Updated save buttons with loading states, disabled states during save, and visual feedback ('Saving...' text with spinner). 5) Added early return guards in handlePublish and handleSaveDraft to prevent duplicate clicks. TESTED: Save operations now properly update existing articles instead of creating duplicates, with proper loading states and user feedback."
 
   - task: "Fix Save Button Behavior - Main Save Without Exit"
     implemented: true

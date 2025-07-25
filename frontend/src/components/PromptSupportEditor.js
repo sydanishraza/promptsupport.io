@@ -49,7 +49,18 @@ import {
   Crop,
   Zap,
   Command,
-  Search
+  Search,
+  Brain,
+  MessageSquare,
+  Users,
+  Clock,
+  TrendingUp,
+  Lightbulb,
+  Wand2,
+  CheckSquare,
+  MessageCircle,
+  User,
+  Sparkles
 } from 'lucide-react';
 
 /**

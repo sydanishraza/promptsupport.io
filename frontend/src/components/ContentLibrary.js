@@ -354,11 +354,9 @@ const ContentLibrary = () => {
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Content Library</h1>
-              <span className="text-gray-400 hidden sm:inline">•</span>
-              <span className="text-gray-600 hidden sm:inline">CMS Dashboard</span>
             </div>
             <p className="text-sm lg:text-base text-gray-600 mb-3">
-              Manage AI-generated and user-edited articles, assets, and recordings with professional CMS workflows
+              Manage articles and assets.
             </p>
             <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500">
               <span>Total Articles: {articles.length}</span>

@@ -369,8 +369,18 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Insert a link with user input
+   * Insert inline code - wrap selected text or insert at cursor
    */
+  const insertInlineCode = () => {
+    const selection = window.getSelection();
+    if (selection.toString().length > 0) {
+      // Wrap selected text
+      executeCommand('insertHTML', `<code style="background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace;">${selection.toString()}</code>`);
+    } else {
+      // Insert template for typing
+      executeCommand('insertHTML', `<code style="background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace;">code</code>`);
+    }
+  };
   const insertLink = () => {
     const url = prompt('Enter link URL:');
     if (url && url.trim()) {

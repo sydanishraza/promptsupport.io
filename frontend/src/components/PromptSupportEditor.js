@@ -414,12 +414,50 @@ const PromptSupportEditor = ({
   };
 
   const removeLink = (linkElement) => {
+    if (!linkElement) return;
+    
     setLinkTooltip({ show: false, x: 0, y: 0, url: '', element: null });
-    const parent = linkElement.parentNode;
-    while (linkElement.firstChild) {
-      parent.insertBefore(linkElement.firstChild, linkElement);
+    
+    try {
+      // Store the text content of the link
+      const linkText = linkElement.textContent;
+      const parent = linkElement.parentNode;
+      
+      if (parent && editorRef.current && editorRef.current.contains(linkElement)) {
+        // Remove the link element while preserving its text content
+        const textNode = document.createTextNode(linkText);
+        parent.replaceChild(textNode, linkElement);
+        
+        // Update the content state
+        setTimeout(() => {
+          if (editorRef.current) {
+            setContent(editorRef.current.innerHTML);
+            setHasUnsavedChanges(true);
+          }
+        }, 10);
+      }
+    } catch (error) {
+      console.error('Error removing link:', error);
+      
+      // Fallback method
+      try {
+        const parent = linkElement.parentNode;
+        while (linkElement.firstChild) {
+          parent.insertBefore(linkElement.firstChild, linkElement);
+        }
+        parent.removeChild(linkElement);
+        
+        // Update content state
+        setTimeout(() => {
+          if (editorRef.current) {
+            setContent(editorRef.current.innerHTML);
+            setHasUnsavedChanges(true);
+          }
+        }, 10);
+      } catch (fallbackError) {
+        console.error('Fallback link removal also failed:', fallbackError);
+      }
     }
-    parent.removeChild(linkElement);
   };
 
   // Link hover handlers with improved timing

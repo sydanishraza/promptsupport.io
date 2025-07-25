@@ -592,6 +592,67 @@ const ContentLibrary = () => {
         </div>
       )}
 
+      {/* Assets Pagination - Show for assets when there are pages */}
+      {currentView === 'assets' && assetPagination && assetPagination.totalPages > 1 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="text-sm text-gray-500">
+              Showing {assetPagination.startIndex}-{assetPagination.endIndex} of {assetPagination.totalItems} assets
+              {assetPagination.totalPages > 1 && ` (Page ${assetPagination.currentPage} of ${assetPagination.totalPages})`}
+            </div>
+            {assetPagination.totalPages > 1 && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => assetPagination.onPageChange(assetPagination.currentPage - 1)}
+                  disabled={assetPagination.currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                <div className="flex items-center space-x-1">
+                  {[...Array(Math.min(5, assetPagination.totalPages))].map((_, index) => {
+                    let pageNum;
+                    if (assetPagination.totalPages <= 5) {
+                      pageNum = index + 1;
+                    } else if (assetPagination.currentPage <= 3) {
+                      pageNum = index + 1;
+                    } else if (assetPagination.currentPage >= assetPagination.totalPages - 2) {
+                      pageNum = assetPagination.totalPages - 4 + index;
+                    } else {
+                      pageNum = assetPagination.currentPage - 2 + index;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => assetPagination.onPageChange(pageNum)}
+                        className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                          assetPagination.currentPage === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => assetPagination.onPageChange(assetPagination.currentPage + 1)}
+                  disabled={assetPagination.currentPage === assetPagination.totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Snip and Record Modal */}
       <SnipAndRecord
         isOpen={showSnipAndRecord}

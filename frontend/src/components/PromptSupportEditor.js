@@ -1574,10 +1574,26 @@ const PromptSupportEditor = ({
               {isEditing ? 'Editing' : 'Viewing'}
             </span>
             
-            {hasUnsavedChanges && (
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                Unsaved Changes
+            {/* Phase 4: Auto-save Status */}
+            {isEditing && (
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                isAutoSaving ? 'bg-blue-100 text-blue-800' : 
+                hasUnsavedChanges ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+                {isAutoSaving ? 'Saving...' : 
+                 hasUnsavedChanges ? 'Unsaved Changes' :
+                 lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : 'Saved'}
               </span>
+            )}
+
+            {/* Phase 4: Collaboration Indicators */}
+            {collaborators.length > 0 && (
+              <div className="flex items-center space-x-1">
+                <Users className="h-4 w-4 text-gray-500" />
+                <span className="text-xs text-gray-600">
+                  {collaborators.length} online
+                </span>
+              </div>
             )}
 
             {isEditing && renderModeSelector()}

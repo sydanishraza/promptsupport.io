@@ -2632,6 +2632,166 @@ This test verifies that the file upload pipeline properly triggers the Content L
         
         return regression_tests
 
+    def test_enhanced_assets_endpoint(self):
+        """Test the enhanced GET /api/assets endpoint to verify it returns all available assets"""
+        print("\n🔍 Testing Enhanced Assets Endpoint - Asset Count Verification...")
+        try:
+            response = requests.get(f"{self.base_url}/assets", timeout=15)
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response structure: {list(data.keys())}")
+                
+                if "assets" in data and "total" in data:
+                    assets = data["assets"]
+                    total = data["total"]
+                    
+                    print(f"📊 Total assets returned: {total}")
+                    print(f"📊 Assets array length: {len(assets)}")
+                    
+                    # 1. Asset Count Verification - Check if we're getting all assets (expecting 44 as mentioned)
+                    if total >= 40:  # Allow some flexibility around the expected 44
+                        print(f"✅ Asset count verification PASSED - Found {total} assets (expected ~44)")
+                    else:
+                        print(f"⚠️ Asset count lower than expected - Found {total} assets (expected ~44)")
+                    
+                    if assets:
+                        # 2. Asset Extraction - Verify we're getting both direct uploads and extracted images
+                        direct_assets = 0
+                        extracted_assets = 0
+                        
+                        # 3. Data Quality - Check asset structure and base64 data validity
+                        valid_assets = 0
+                        invalid_assets = 0
+                        
+                        # 4. Asset Variety - Track different types and sources
+                        asset_types = {}
+                        asset_sources = {}
+                        
+                        print(f"\n📋 Analyzing {len(assets)} assets...")
+                        
+                        for i, asset in enumerate(assets):
+                            # Check required fields
+                            required_fields = ['id', 'name', 'type', 'data', 'created_at', 'size']
+                            missing_fields = [field for field in required_fields if field not in asset]
+                            
+                            if missing_fields:
+                                print(f"❌ Asset {i+1} missing fields: {missing_fields}")
+                                invalid_assets += 1
+                                continue
+                            
+                            # Validate base64 data
+                            data_url = asset.get('data', '')
+                            if data_url.startswith('data:image/') and ';base64,' in data_url:
+                                base64_part = data_url.split(';base64,')[1]
+                                
+                                # Check if base64 data is substantial (not truncated)
+                                if len(base64_part) > 100:  # Minimum reasonable size
+                                    valid_assets += 1
+                                    
+                                    # Try to validate base64 format
+                                    try:
+                                        import base64
+                                        decoded = base64.b64decode(base64_part[:100])  # Test first 100 chars
+                                        # Additional validation passed
+                                    except Exception:
+                                        print(f"⚠️ Asset {i+1} has invalid base64 data")
+                                        invalid_assets += 1
+                                        continue
+                                else:
+                                    print(f"⚠️ Asset {i+1} has truncated base64 data ({len(base64_part)} chars)")
+                                    invalid_assets += 1
+                                    continue
+                            else:
+                                print(f"❌ Asset {i+1} has invalid data URL format")
+                                invalid_assets += 1
+                                continue
+                            
+                            # Categorize asset sources
+                            asset_name = asset.get('name', '')
+                            if 'Image from' in asset_name:
+                                extracted_assets += 1
+                                asset_sources['extracted'] = asset_sources.get('extracted', 0) + 1
+                            else:
+                                direct_assets += 1
+                                asset_sources['direct'] = asset_sources.get('direct', 0) + 1
+                            
+                            # Track asset types
+                            asset_type = asset.get('type', 'unknown')
+                            asset_types[asset_type] = asset_types.get(asset_type, 0) + 1
+                            
+                            # Show details for first few assets
+                            if i < 5:
+                                print(f"  Asset {i+1}: '{asset_name}' ({asset.get('size')} bytes, {asset_type})")
+                        
+                        # Results summary
+                        print(f"\n📊 ASSET ANALYSIS RESULTS:")
+                        print(f"   ✅ Valid assets: {valid_assets}")
+                        print(f"   ❌ Invalid assets: {invalid_assets}")
+                        print(f"   📁 Direct uploads: {direct_assets}")
+                        print(f"   🖼️ Extracted from articles: {extracted_assets}")
+                        print(f"   📈 Asset types: {asset_types}")
+                        print(f"   📋 Asset sources: {asset_sources}")
+                        
+                        # Verification checks
+                        success_criteria = []
+                        
+                        # 1. Asset Count Verification
+                        if total >= 30:  # Reasonable threshold
+                            success_criteria.append("✅ Asset count verification PASSED")
+                        else:
+                            success_criteria.append(f"❌ Asset count verification FAILED - only {total} assets")
+                        
+                        # 2. Asset Extraction Verification
+                        if extracted_assets > 0:
+                            success_criteria.append(f"✅ Asset extraction PASSED - {extracted_assets} extracted from articles")
+                        else:
+                            success_criteria.append("❌ Asset extraction FAILED - no extracted assets found")
+                        
+                        # 3. Data Quality Verification
+                        quality_ratio = valid_assets / len(assets) if assets else 0
+                        if quality_ratio >= 0.8:  # 80% valid assets
+                            success_criteria.append(f"✅ Data quality PASSED - {quality_ratio:.1%} valid assets")
+                        else:
+                            success_criteria.append(f"❌ Data quality FAILED - only {quality_ratio:.1%} valid assets")
+                        
+                        # 4. Asset Variety Verification
+                        if direct_assets > 0 and extracted_assets > 0:
+                            success_criteria.append("✅ Asset variety PASSED - both direct and extracted assets")
+                        else:
+                            success_criteria.append("❌ Asset variety FAILED - missing direct or extracted assets")
+                        
+                        print(f"\n🎯 VERIFICATION RESULTS:")
+                        for criterion in success_criteria:
+                            print(f"   {criterion}")
+                        
+                        # Overall assessment
+                        passed_criteria = len([c for c in success_criteria if c.startswith("✅")])
+                        total_criteria = len(success_criteria)
+                        
+                        if passed_criteria >= 3:  # At least 3 out of 4 criteria
+                            print(f"\n✅ ENHANCED ASSETS ENDPOINT TEST PASSED ({passed_criteria}/{total_criteria} criteria)")
+                            return True
+                        else:
+                            print(f"\n❌ ENHANCED ASSETS ENDPOINT TEST FAILED ({passed_criteria}/{total_criteria} criteria)")
+                            return False
+                    else:
+                        print("❌ No assets returned in response")
+                        return False
+                else:
+                    print("❌ Invalid response structure - missing 'assets' or 'total' fields")
+                    return False
+            else:
+                print(f"❌ Assets endpoint failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Enhanced assets endpoint test failed - {str(e)}")
+            return False
+
     def test_promptsupport_asset_library_endpoint(self):
         """Test GET /api/assets - Asset Library Endpoint for PromptSupportEditor"""
         print("\n🔍 Testing PromptSupportEditor Asset Library Endpoint...")

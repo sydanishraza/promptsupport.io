@@ -4299,6 +4299,10 @@ This test verifies that the file upload pipeline properly triggers the Content L
             ("Status Endpoint", self.test_status_endpoint),
             
             # IMAGE UPLOAD AND STATIC FILE SERVING TESTS (PRIMARY FOCUS)
+            ("Image Upload Endpoint", self.test_image_upload_endpoint),
+            ("Asset Library Comprehensive", self.test_asset_library_comprehensive),
+            ("Static File Serving Comprehensive", self.test_static_file_serving_comprehensive),
+            ("Comprehensive Asset Verification", self.test_comprehensive_asset_verification),
             ("Asset Upload Endpoint", self.test_asset_upload_endpoint),
             ("Static File Serving", self.test_static_file_serving),
             ("Asset Library Endpoint", self.test_asset_library_endpoint),

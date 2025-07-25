@@ -154,6 +154,41 @@ const PromptSupportEditor = ({
     ol: false
   });
   
+  // Hover delay timers for flyout menus
+  const [hoverTimers, setHoverTimers] = useState({});
+
+  const handleMenuHover = (menuName, show) => {
+    // Clear existing timer
+    if (hoverTimers[menuName]) {
+      clearTimeout(hoverTimers[menuName]);
+    }
+
+    if (show) {
+      // Show immediately
+      switch(menuName) {
+        case 'ai': setShowAiDropdown(true); break;
+        case 'image': setShowImageDropdown(true); break;
+        case 'table': break; // Handle table menu if needed
+        case 'callout': break; // Handle callout menu if needed
+      }
+    } else {
+      // Hide with delay
+      const timer = setTimeout(() => {
+        switch(menuName) {
+          case 'ai': setShowAiDropdown(false); break;
+          case 'image': setShowImageDropdown(false); break;
+          case 'table': break;
+          case 'callout': break;
+        }
+      }, 300); // 300ms delay
+
+      setHoverTimers(prev => ({
+        ...prev,
+        [menuName]: timer
+      }));
+    }
+  };
+  
   // === REFS ===
   const editorRef = useRef(null);
   const markdownRef = useRef(null);

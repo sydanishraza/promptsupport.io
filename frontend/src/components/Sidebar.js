@@ -109,10 +109,10 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
   return (
     <motion.div
       className={`fixed left-0 top-0 h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-30 transition-all duration-300 ${
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? 'w-20' : 'w-64'
       }`}
       initial={false}
-      animate={{ width: collapsed ? 64 : 256 }}
+      animate={{ width: collapsed ? 80 : 256 }}
     >
       {/* Toggle Button - On Panel Border Edge */}
       <button

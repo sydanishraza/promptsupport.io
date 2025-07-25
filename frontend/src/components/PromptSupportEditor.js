@@ -67,33 +67,12 @@ const PromptSupportEditor = ({
   // === PHASE 1: CORE EDITABLE SURFACE ===
   
   /**
-   * Enhanced content change handler with cursor stability
-   * Prevents cursor jumping and maintains position during updates
+   * Simple content change handler - no cursor manipulation
+   * Let the browser handle cursor positioning naturally like the title input
    */
   const handleContentChange = (newContent, mode = 'wysiwyg') => {
-    // Save cursor position before update
-    const selection = window.getSelection();
-    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-    
     setContent(newContent);
     setHasUnsavedChanges(true);
-    
-    // Restore cursor position after update
-    if (range && editorRef.current && mode === 'wysiwyg') {
-      setTimeout(() => {
-        try {
-          selection.removeAllRanges();
-          selection.addRange(range);
-        } catch (e) {
-          // Fallback: place cursor at end
-          const newRange = document.createRange();
-          newRange.selectNodeContents(editorRef.current);
-          newRange.collapse(false);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        }
-      }, 0);
-    }
   };
 
   // === PHASE 1: KEYBOARD SHORTCUTS ===

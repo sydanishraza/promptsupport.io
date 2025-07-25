@@ -393,26 +393,40 @@ async def get_assets():
 
 @app.post("/api/assets/upload")
 async def upload_asset(file: UploadFile = File(...)):
-    """Upload an asset to the asset library"""
+    """Upload an asset to the asset library with proper file storage"""
     try:
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="Only image files are allowed")
         
-        # Read file data
+        # Generate unique filename
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else 'jpg'
+        unique_filename = f"{str(uuid.uuid4())}.{file_extension}"
+        file_path = f"static/uploads/{unique_filename}"
+        
+        # Ensure upload directory exists
+        os.makedirs("static/uploads", exist_ok=True)
+        
+        # Save file to disk
         file_data = await file.read()
         
-        # Convert to base64
-        base64_data = f"data:{file.content_type};base64,{base64.b64encode(file_data).decode()}"
+        async with aiofiles.open(file_path, "wb") as buffer:
+            await buffer.write(file_data)
         
-        # Save to asset library
-        collection = db["content_library"]
+        # Generate URL for the file
+        file_url = f"/static/uploads/{unique_filename}"
+        
+        # Save metadata to database
+        collection = db["assets"]
         
         asset_data = {
             "id": str(uuid.uuid4()),
+            "original_filename": file.filename,
+            "filename": unique_filename,
             "title": file.filename,
             "name": file.filename,
             "type": "image",
-            "data": base64_data,
+            "url": file_url,
+            "file_path": file_path,
             "content_type": file.content_type,
             "size": len(file_data),
             "created_at": datetime.utcnow().isoformat(),
@@ -427,7 +441,9 @@ async def upload_asset(file: UploadFile = File(...)):
                 "id": asset_data["id"],
                 "name": asset_data["name"],
                 "type": asset_data["type"],
-                "data": asset_data["data"]
+                "url": file_url,
+                "original_filename": file.filename,
+                "size": len(file_data)
             }
         }
         

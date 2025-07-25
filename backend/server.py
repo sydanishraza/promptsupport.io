@@ -86,6 +86,17 @@ class SearchRequest(BaseModel):
     limit: int = 10
     filter_metadata: Optional[Dict[str, Any]] = None
 
+class AIAssistanceRequest(BaseModel):
+    content: str
+    mode: str = "completion"  # completion, improvement, grammar, analysis
+    context: Optional[str] = None
+
+class SaveArticleRequest(BaseModel):
+    id: Optional[str] = None
+    title: str
+    content: str
+    status: str = "draft"  # draft, published
+
 # Startup event
 @app.on_event("startup")
 async def startup_event():

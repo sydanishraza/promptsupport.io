@@ -503,18 +503,22 @@ const PromptSupportEditor = ({
               setHasUnsavedChanges(true);
             }}
             onKeyDown={handleKeyDown}
-            className={`h-full p-6 overflow-y-auto focus:outline-none prose prose-lg max-w-none`}
+            className="h-full p-6 overflow-y-auto focus:outline-none prose prose-lg max-w-none"
             style={{
               minHeight: '400px',
               lineHeight: '1.7',
               fontSize: '16px',
               direction: 'ltr',
-              textAlign: 'left',
-              unicodeBidi: 'normal'
+              writingMode: 'lr-tb'
             }}
-            dangerouslySetInnerHTML={{ __html: content }}
             suppressContentEditableWarning={true}
-          />
+          >
+            {isEditing && !content ? (
+              <p style={{ color: '#9ca3af' }}>Start writing your content...</p>
+            ) : (
+              <div dangerouslySetInnerHTML={{ __html: content }} />
+            )}
+          </div>
         ) : editorMode === 'markdown' ? (
           <textarea
             ref={markdownRef}

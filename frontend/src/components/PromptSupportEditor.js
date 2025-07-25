@@ -1098,8 +1098,8 @@ const PromptSupportEditor = ({
       
       if (asset.url) {
         // File-based asset - use URL
-        if (asset.url.startsWith('/static/')) {
-          // Prepend backend URL for relative paths
+        if (asset.url.startsWith('/api/static/') || asset.url.startsWith('/static/')) {
+          // For API routes, use full backend URL
           imageSrc = `${process.env.REACT_APP_BACKEND_URL}${asset.url}`;
         } else {
           imageSrc = asset.url;
@@ -1107,7 +1107,7 @@ const PromptSupportEditor = ({
       } else if (asset.data && asset.data.startsWith('data:image')) {
         // Base64-based asset
         imageSrc = asset.data;
-      } else if (asset.data && asset.data.startsWith('/static/')) {
+      } else if (asset.data && (asset.data.startsWith('/api/static/') || asset.data.startsWith('/static/'))) {
         // Sometimes data contains URL for file-based assets
         imageSrc = `${process.env.REACT_APP_BACKEND_URL}${asset.data}`;
       } else {

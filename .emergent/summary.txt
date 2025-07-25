@@ -1,79 +1,58 @@
 <analysis>
-The AI engineer's trajectory demonstrates a highly iterative and persistent approach to enhancing the PromptSupport application's WYSIWYG editor, . Initially, the focus was on core editor functionality and general UI/UX fixes. A significant architectural decision was the abandonment of  for cursor stability, favoring a ref callback. As development progressed, the engineer meticulously addressed a long list of user-reported issues, including save mechanisms, asset library integration, AI tool functionality, and overall UI polish. Key patterns involved continuous debugging, systematic file modifications (primarily  and ), and direct user feedback loops. The work culminated in resolving complex DOM manipulation issues for link insertion and full removal of the AI Brain tool, achieving production-ready status for the editor. The process highlights resilience in re-addressing bugs until perfect resolution.
+The AI engineer's trajectory showcases a systematic and persistent approach to enhancing the PromptSupport application. Initially, the focus was on core editor functionality and general UI/UX. The user then introduced new, critical editor issues including pasting content, removing links, HTML view formatting, and image handling. The engineer methodically addressed each problem: fixing paste by simplifying , repairing link removal in , integrating  for clean HTML output, and significantly overhauling image handling. The image overhaul involved creating a backend file storage system and updating both frontend and backend to use file URLs instead of base64, supporting various image formats. This iterative process involved code modifications, dependency installations, backend static file serving configuration, and consistent testing, demonstrating adaptability and a commitment to resolving reported bugs until full functionality is achieved.
 </analysis>
 
 <product_requirements>
-PromptSupport is an AI-native web application serving as a comprehensive support stack, featuring a React frontend and FastAPI backend. The core problem addressed by the AI engineer was the refinement and overhaul of the Content Library's WYSIWYG editor.
+PromptSupport is an AI-native web application serving as a comprehensive support stack. The primary objective given to the AI engineer was the refinement and overhaul of the Content Library's WYSIWYG editor ().
 
-Explicit user requirements and problems tackled included:
-1.  **Content Library Improvements**: Fixing navigation, scrolling, asset counts, and ensuring consistent pagination/filter UI.
-2.  **General UI/UX Fixes**: Logo replacement, consistent header heights, and an enhanced collapsed sidebar with improved navigation, tooltips, and fly-out menus.
-3.  **Mobile Responsiveness**: Implementing compact UI elements and auto-collapsing sidebar for mobile.
-4.  **WYSIWYG Editor Overhaul ()**:
-    *   **Core**: Basic editing, rich text, cursor stability, comprehensive toolbar, multi-mode (WYSIWYG, Markdown, HTML), status indicators.
-    *   **Structure**: Advanced blocks (tables, columns, callouts), color/alignment tools.
-    *   **Media**: Image upload (drag & drop, asset library), video embeds.
-    *   **UX**: Keyboard shortcuts, slash commands.
-    *   **AI**: AI-powered suggestions, auto-formatting, content analytics.
-    *   **Collaboration**: Real-time save, version control, commenting.
-5.  **Specific Editor Issue Resolution**: Functional save button (draft/publish, no exit), correct WYSIWYG display, comprehensive tooltips, full asset library integration (displaying all assets, local image sync), functional AI Brain/Content Analysis (real LLM integration, real metrics, unified AI brain icon), correct inline code/code blocks, visible/nested lists, stable flyout menus, toolbar active states, clear formatting/paragraph style, replacement of browser modals with custom in-app modals, proper text overflow handling on paste, and accurate link styling and insertion (blue, underlined, clickable, replacing selected text, functional tooltips).
+The initial explicit requirements included:
+*   **Content Library**: Improvements to navigation, scrolling, asset counts, and consistent pagination/filter UI.
+*   **General UI/UX**: Logo replacement, consistent header heights, enhanced collapsed sidebar with improved navigation, tooltips, and fly-out menus.
+*   **Mobile Responsiveness**: Compact UI elements and auto-collapsing sidebar.
+*   **WYSIWYG Editor ()**: Core editing, rich text, cursor stability, comprehensive toolbar, multi-mode (WYSIWYG, Markdown, HTML), advanced blocks (tables, columns, callouts), color/alignment, image upload (drag & drop, asset library), video embeds, keyboard shortcuts, slash commands, AI-powered suggestions, content analytics, real-time save, version control, commenting.
+
+Later, the user provided additional editor issues to be addressed:
+*   **Cannot Paste Content**: Editor not allowing pasted content; nothing appears.
+*   **Link Remove Option Not Working**: The Remove Link option in the link tooltip fails to detach the hyperlink.
+*   **HTML View Cleanup**: HTML tab should display well-indented, cleaned-up, beautified HTML markup without redundant tags or inline styles.
+*   **Images as Base64 (Incorrect)**: Images are embedded as base64 data instead of actual source file format/URL (e.g., PNG, JPG).
+*   **Local Asset Upload Converts Format to Base64 (Incorrect)**: Uploaded images should retain original format, be saved to Asset Library, and embedded via file reference, not base64. Images should be stored in a proper file storage system, prioritizing generally used image formats.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS, Framer Motion,  API,  (HTML-to-Markdown),  (Markdown-to-HTML), Styled-JSX (for dynamic CSS).
--   **Backend**: FastAPI (Python), MongoDB,  (for OpenAI GPT-4o, GPT-4 Vision API).
--   **Deployment**: Kubernetes, Supervisor (for process management).
--   **Core Web APIs**: DOM Range API (, , ),  for rich text editing.
+-   **Frontend**: React.js, TailwindCSS,  API, , ,  (newly added for HTML formatting), DOM Range API, .
+-   **Backend**: FastAPI, MongoDB,  (for OpenAI GPT-4o, GPT-4 Vision API), FastAPI .
+-   **Deployment**: Kubernetes, Supervisor.
+-   **Data Handling**: File uploads, base64 encoding/decoding, UUIDs for IDs.
 </key_technical_concepts>
 
 <code_architecture>
-The application employs a React.js frontend and a FastAPI backend.
+The application comprises a React.js frontend and a FastAPI backend.
 
 
 
 -   ****:
-    -   **Importance**: Handles all backend API requests, including content library, assets, and AI assistance.
-    -   **Changes**: Updated for content library pagination. Added new API endpoints (, , , ). Crucially, the  endpoint was enhanced to extract and serve images embedded within existing article content, significantly increasing the number of available assets. Article CRUD operations (POST/PUT for ) were integrated for saving/publishing with proper status management.
+    -   **Importance**: Centralizes backend API logic for content, assets, and AI.
+    -   **Changes**: Initially updated for content pagination, AI tool endpoints, and article CRUD.
+    -   **Recent Changes**: Modified to create and serve static files from  using . The  endpoint was updated to save images to the file system and store their URLs in MongoDB. The  GET endpoint was enhanced to retrieve and return asset URLs (for file-based images) alongside existing base64 assets, now including the  in the response.
 -   ****:
-    -   **Importance**: Root component managing global layout and state.
-    -   **Changes**: Modified to pass  state and include a window resize listener for responsive sidebar management.
--   ****:
-    -   **Importance**: Top-level layout component.
-    -   **Changes**: Standardized header height, implemented responsive logic to auto-collapse sidebar on mobile.
--   ****:
-    -   **Importance**: Left navigation panel.
-    -   **Changes**: Adjusted for consistent header height. Logo replaced. Enhanced navigation with hover tooltips and fly-out menus.
--   ****:
-    -   **Importance**: Content library UI.
-    -   **Changes**: Redesigned for CMS-style interface, manages article/asset tabs, search, filters, and integrates .
--   ****:
-    -   **Importance**: **Primary WYSIWYG editor**, replacing . This file saw the most extensive and iterative modifications.
+    -   **Importance**: The core WYSIWYG editor, undergoing extensive iterative development.
     -   **Changes**:
-        *   **Core & Stability**: Established basic editable surface, rich text input, and fixed cursor stability by moving from  to a ref callback. Implemented multi-mode support (WYSIWYG, Markdown, HTML).
-        *   **UI/UX Enhancements**: Developed a comprehensive toolbar with basic and advanced formatting (headings, lists, code, tables, columns, callouts, colors, alignment).
-        *   **Media Integration**: Implemented image upload (drag & drop, base64 conversion), video embed, and full asset library integration (fetching and displaying real assets dynamically, local image sync). The  function was completely refactored for modern UI/UX, responsiveness, and proper state management (moving  calls to top-level to fix hooks violations).
-        *   **AI Integration (Iterative)**: Initially integrated AI suggestions (completion, improvement, grammar check) and content analytics. The UI was restructured from a flyout with zero metrics to a unified AI Brain icon in the toolbar. Functionality was enhanced to show all suggestion types with color-coded displays. The entire AI Brain tool and its related functions were later **completely removed** as per user feedback, streamlining the editor interface.
-        *   **Save Functionality**: Implemented robust save mechanisms (, ) ensuring correct article status (draft/published), state management (), and preventing duplicate articles on multiple clicks.
-        *   **Modal System**: Replaced all native browser , , and  calls with a custom, professional, in-app modal system (, , , ) for consistent UI/UX.
-        *   **Text Handling & Overflow**: Implemented comprehensive CSS (, , , ) and a robust  function to strip styles from pasted content, ensure clean markup, and prevent text overflow outside editor boundaries, while maintaining text selection functionality.
-        *   **Link Management**: Overhauled  to use the DOM Range API (, , ) for precise in-place text replacement. Implemented blue/underlined styling for links, made them clickable in view mode, and added a hover tooltip () with edit/remove options with improved timing.
-        *   **AI Suggestion Highlighting**: Implemented  with CSS keyframe animations for visual feedback when AI suggestions are applied, with automatic fade-out.
+        *   **Initial**: Established core editing, rich text, cursor stability (ref callback), toolbar, multi-mode support, save functionality (draft/publish), custom modal system, and text overflow handling. AI Brain tool was integrated and then completely removed.
+        *   **Recent Changes**:
+            *   ****: Simplified to ensure proper text selection after pasting, preventing text overflow issues.
+            *   ****: Fixed to properly detach hyperlinks from selected text and update editor content state.
+            *   **HTML View**: Integrated  to pretty-print HTML content displayed in the HTML mode textarea, ensuring clean and well-indented markup.
+            *   **Image Handling**:  updated to upload images as files to the backend and insert them into the editor using their generated URLs instead of base64 data.  was modified to handle both URL-based and base64-based assets from the asset library.
 -   ****:
-    -   **Importance**: Manages and displays media assets.
-    -   **Changes**: Modified to show real image thumbnails and integrate . Exposed pagination data to .
--   ****:
-    -   **Importance**: Used for selecting images from the asset library within the editor.
-    -   **Changes**: Implemented to display assets dynamically fetched from the backend. (Note: The core asset modal logic was later moved into  within  for centralized control and fixing hooks issues).
--   ****:
-    -   **Importance**: Application logo.
-    -   **Changes**: Replaced and repeatedly resized/repositioned for branding and UI consistency.
--   ****:
-    -   **Importance**: Main CSS file.
-    -   **Changes**: Enhanced with styling rules for editor components, general layout adjustments, mobile responsiveness, and new CSS for highlighting animations and text overflow prevention.
+    -   **Importance**: Manages frontend dependencies.
+    -   **Changes**:  was added as a dependency to enable HTML formatting.
+-   ****: (New Directory)
+    -   **Importance**: New directory created for storing uploaded image files.
+    -   **Changes**: Configured as a static file serving directory by FastAPI to expose uploaded images via URLs.
 </code_architecture>
 
 <pending_tasks>
-The following major features and modules were explicitly listed as pending or not worked on by the previous AI engineer after the completion of the PromptSupportEditor:
 -   Full implementation of the Enhanced Content Engine (remaining UX/UI improvements beyond the editor).
 -   Implement the Developer Docs System.
 -   Develop the AI Agent System (all 5 agents).
@@ -84,16 +63,18 @@ The following major features and modules were explicitly listed as pending or no
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was addressing a final set of critical issues within the  component, responding to direct user feedback.
+Immediately prior to this summary, the AI engineer was addressing several critical editor issues identified by the user.
 
-The most recent work focused on resolving three specific inconsistencies:
-1.  **Paste Text Selection**: The issue where pasted text stripped styles but prevented subsequent text selection was re-addressed. The  function was simplified to maintain proper DOM integrity using , ensuring that after pasting, text selection works as expected without overflow.
-2.  **Link Insertion Display**: The persistent bug where inserted links either appeared outside the editor container or failed to replace the selected text was finally resolved. The  function was redesigned, critically using  with careful preservation and recreation of the DOM selection range (storing , , ) to ensure the link replaces the selected text precisely and appears within the editor's boundaries with correct styling (blue, underlined).
-3.  **AI Brain Tool Removal**: As per user request, the entire AI Brain tool, which was deemed not to be adding value and cluttering the interface, was completely removed. This involved deleting its button from the toolbar, all associated functions (, , , etc.), and related state variables from , resulting in a cleaner, more focused editor interface.
+1.  **Paste Text Selection**: The  function in  was modified to simplify its logic, ensuring that pasted content correctly integrates without preventing subsequent text selection and without overflow issues.
+2.  **Link Remove Functionality**: The  function within  was revised and improved to correctly detach hyperlinks from selected text within the editor, ensuring the Remove Link option in the tooltip functions as expected.
+3.  **HTML View Beautification**: The engineer installed  in the frontend and integrated it into . The HTML mode's textarea now displays beautified, well-indented, and clean HTML markup, addressing the requirement for structured output.
+4.  **Image Handling (Base64 to File Storage)**: This was a major overhaul.
+    *   **Backend ()**: A  directory was created to store image files. The  endpoint was updated to save uploaded images as physical files (e.g., PNG, JPG) and store their URLs in MongoDB, replacing the previous base64 embedding. The  GET endpoint was enhanced to serve both these new file-based assets (with their URLs and ) and existing base64 assets.
+    *   **Frontend ()**: The  function was modified to send image files to the backend for storage and then insert the resulting image URL into the editor. The  function was updated to properly handle assets retrieved from the asset library, which can now include both file URLs and base64 data.
 
-The engineer performed iterative fixes and used screenshots for immediate visual verification of these changes, confirming their successful implementation. The last message from the previous AI engineer declared Mission Accomplished for the editor's functionality.
+The last reported status was that static file serving from the backend was verified as working correctly using , and the next immediate step was to re-test the asset upload endpoint.
 </current_work>
 
 <optional_next_step>
-Review the comprehensive list of pending tasks and ask the user to prioritize the next major feature or module to develop.
+Test the asset upload endpoint to confirm successful file storage and URL-based insertion into the editor.
 </optional_next_step>

@@ -424,7 +424,7 @@ const PromptSupportEditor = ({
     parent.removeChild(linkElement);
   };
 
-  // Link hover handlers
+  // Link hover handlers with improved timing
   const handleLinkHover = (e) => {
     if (e.target.tagName === 'A' && isEditing) {
       const rect = e.target.getBoundingClientRect();
@@ -440,10 +440,14 @@ const PromptSupportEditor = ({
 
   const handleLinkMouseOut = (e) => {
     if (e.target.tagName === 'A') {
-      // Add small delay to prevent flickering
+      // Improved delay to prevent flickering - only hide if not hovering over tooltip
       setTimeout(() => {
-        setLinkTooltip(prev => ({ ...prev, show: false }));
-      }, 100);
+        const tooltipElement = document.elementFromPoint(e.clientX, e.clientY);
+        const isHoveringTooltip = tooltipElement && tooltipElement.closest('.link-tooltip');
+        if (!isHoveringTooltip) {
+          setLinkTooltip(prev => ({ ...prev, show: false }));
+        }
+      }, 300);
     }
   };
 
@@ -456,6 +460,57 @@ const PromptSupportEditor = ({
         e.target.target = '_blank'; // Ensure links open in new tab
       }
     }
+  };
+
+  // Paste handler to ensure clean markup and prevent overflow
+  const handlePaste = (e) => {
+    e.preventDefault();
+    
+    // Get clipboard data
+    const clipboardData = e.clipboardData || window.clipboardData;
+    const pastedText = clipboardData.getData('text/plain');
+    
+    if (!pastedText) return;
+    
+    // Clean the pasted text - remove extra whitespace and ensure proper wrapping
+    const cleanedText = pastedText
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
+    
+    // Insert clean text without any formatting
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      
+      // Split by newlines and create proper paragraph structure
+      const lines = cleanedText.split('\n');
+      let htmlContent = '';
+      
+      lines.forEach((line, index) => {
+        if (line.trim()) {
+          htmlContent += `<p style="max-width: 100%; overflow-wrap: break-word; word-wrap: break-word; margin: 0 0 1em 0;">${line}</p>`;
+        }
+      });
+      
+      // Remove the last margin
+      htmlContent = htmlContent.replace(/margin: 0 0 1em 0;">([^<]+)<\/p>$/, 'margin: 0;">$1</p>');
+      
+      // Insert the cleaned HTML
+      executeCommand('insertHTML', htmlContent);
+    }
+    
+    // Update content state
+    setTimeout(() => {
+      if (contentRef.current) {
+        setContent(contentRef.current.innerHTML);
+        setHasUnsavedChanges(true);
+      }
+    }, 100);
   };
 
   // Highlight applied AI suggestions

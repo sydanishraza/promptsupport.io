@@ -406,9 +406,16 @@ const AssetManager = ({
                   {asset.name}
                 </h3>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full uppercase">
-                    {asset.format}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full uppercase">
+                      {asset.format}
+                    </span>
+                    {asset.isBackendAsset && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                        Library
+                      </span>
+                    )}
+                  </div>
                   <span>{formatFileSize(asset.size)}</span>
                   {asset.processed && (
                     <CheckCircle className="h-3 w-3 text-green-600" title="AI Processed" />

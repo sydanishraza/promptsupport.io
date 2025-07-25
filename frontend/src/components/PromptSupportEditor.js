@@ -876,11 +876,13 @@ const PromptSupportEditor = ({
   // === PHASE 4: AI-POWERED ENHANCEMENTS ===
   
   /**
-   * Generate AI content suggestions using real LLM API
+   * Generate AI content suggestions using real LLM API (fixed)
    */
   const generateAISuggestions = async (context, type = 'completion') => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/ai-assistance`, {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+      
+      const response = await fetch(`${backendUrl}/api/ai-assistance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -892,13 +894,23 @@ const PromptSupportEditor = ({
       });
 
       if (!response.ok) {
-        throw new Error('AI service unavailable');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
+      
+      if (data.error) {
+        console.warn('AI service error:', data.error);
+        throw new Error(data.error);
+      }
+      
       return data.suggestions || [];
     } catch (error) {
       console.error('AI assistance error:', error);
+      
+      // Show user-friendly error message
+      alert(`AI assistance is currently unavailable: ${error.message}`);
+      
       // Fallback to mock suggestions
       const suggestions = {
         completion: [
@@ -922,11 +934,13 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Get real content analysis using LLM API
+   * Get real content analysis using LLM API (fixed)
    */
   const getContentAnalysis = async (content) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/content-analysis`, {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+      
+      const response = await fetch(`${backendUrl}/api/content-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -937,13 +951,23 @@ const PromptSupportEditor = ({
       });
 
       if (!response.ok) {
-        throw new Error('Content analysis service unavailable');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
+      
+      if (data.error) {
+        console.warn('Content analysis error:', data.error);
+        throw new Error(data.error);
+      }
+      
       return data;
     } catch (error) {
       console.error('Content analysis error:', error);
+      
+      // Show user-friendly error message
+      alert(`Content analysis is currently unavailable: ${error.message}`);
+      
       // Fallback to basic analysis
       const text = content.replace(/<[^>]*>/g, '');
       const words = text.split(/\s+/).filter(word => word.length > 0);
@@ -953,7 +977,8 @@ const PromptSupportEditor = ({
         paragraphs: Math.max(content.split(/<\/p>/gi).length - 1, 1),
         readingTime: Math.ceil(words.length / 200),
         readabilityScore: 70,
-        characterCount: text.length
+        characterCount: text.length,
+        aiInsights: 'Content analysis service is currently unavailable.'
       };
     }
   };

@@ -130,6 +130,18 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]);
 
+  // Phase 2: Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowColorPicker(false);
+    };
+    
+    if (showColorPicker) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showColorPicker]);
+
   // === PHASE 1: CORE EDITABLE SURFACE ===
   
   /**

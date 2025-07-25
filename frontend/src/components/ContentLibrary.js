@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 import TinyMCEEditor from './TinyMCEEditor';
-import MediaArticleViewer from './MediaArticleViewer';
+import ModernMediaArticleViewer from './ModernMediaArticleViewer';
 import ArticleGrid from './ArticleGrid';
 import ArticleTable from './ArticleTable';
 import AssetManager from './AssetManager';

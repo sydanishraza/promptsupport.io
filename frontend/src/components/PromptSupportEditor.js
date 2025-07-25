@@ -765,17 +765,42 @@ const PromptSupportEditor = ({
   };
   const insertLink = async () => {
     const selection = window.getSelection();
-    const selectedText = selection.toString();
+    const selectedText = selection.toString().trim();
     
-    if (!selectedText.trim()) {
+    if (!selectedText) {
       showAlert('Please select some text to add a link to.');
       return;
     }
     
     const url = await showPrompt('Enter link URL:', 'https://', 'Add Link');
     if (url && url.trim()) {
-      const linkHTML = `<a href="${url}" data-url="${url}" class="text-blue-600 underline hover:text-blue-800 cursor-pointer" target="_blank">${selectedText}</a>`;
-      executeCommand('insertHTML', linkHTML);
+      // Get the current selection range
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        
+        // Create the link element
+        const linkElement = document.createElement('a');
+        linkElement.href = url.trim();
+        linkElement.setAttribute('data-url', url.trim());
+        linkElement.className = 'text-blue-600 underline hover:text-blue-800 cursor-pointer';
+        linkElement.target = '_blank';
+        linkElement.textContent = selectedText;
+        
+        // Replace the selected content with the link
+        range.deleteContents();
+        range.insertNode(linkElement);
+        
+        // Clear the selection and place cursor after the link
+        selection.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.setStartAfter(linkElement);
+        newRange.collapse(true);
+        selection.addRange(newRange);
+        
+        // Update content state
+        setContent(contentRef.current.innerHTML);
+        setHasUnsavedChanges(true);
+      }
     }
   };
 

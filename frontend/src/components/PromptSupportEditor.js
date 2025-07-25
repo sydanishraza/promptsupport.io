@@ -1368,31 +1368,42 @@ const PromptSupportEditor = ({
               onChange={(e) => handleFileUpload(e.target.files)}
               className="hidden"
             />
-            <div className="relative group">
+            <div 
+              className="relative"
+              onMouseEnter={() => setShowImageDropdown(true)}
+              onMouseLeave={() => setShowImageDropdown(false)}
+            >
               <button
-                onClick={() => fileInputRef.current?.click()}
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
-                title="Upload Image"
+                title="Insert Image"
               >
                 <Image className="h-4 w-4" />
               </button>
               
-              <div className="absolute top-10 left-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-max">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <Upload className="h-4 w-4 text-gray-600" />
-                  Upload from Computer
-                </button>
-                <button
-                  onClick={showAssetLibrary}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <ImageIcon className="h-4 w-4 text-blue-600" />
-                  Choose from Assets
-                </button>
-              </div>
+              {showImageDropdown && (
+                <div className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-max">
+                  <button
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setShowImageDropdown(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <Upload className="h-4 w-4 text-gray-600" />
+                    Upload from Computer
+                  </button>
+                  <button
+                    onClick={() => {
+                      showAssetLibrary();
+                      setShowImageDropdown(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <ImageIcon className="h-4 w-4 text-blue-600" />
+                    Choose from Assets
+                  </button>
+                </div>
+              )}
             </div>
             <button
               onClick={insertVideoEmbed}

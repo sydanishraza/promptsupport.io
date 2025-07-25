@@ -807,16 +807,19 @@
         -comment: "FIXED: Enhanced the removeLink function with proper error handling and fallback mechanisms. Now correctly removes link elements while preserving text content, validates parent elements, and updates content state. Added comprehensive try-catch blocks with fallback methods to ensure reliability."
 
   - task: "Implement HTML View Beautification"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/PromptSupportEditor.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"
         -comment: "USER REPORTED ISSUE: The HTML tab should always display well-indented, cleaned-up, beautified HTML markup. No redundant tags, inline styles, or broken structure should be present."
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Integrated js-beautify library for HTML beautification. Created beautifyHtmlContent function with proper indentation settings (2 spaces, preserve newlines, indent inner HTML). HTML textarea now displays clean, formatted markup with proper structure. Added error handling to gracefully fallback to original content if beautification fails."
 
   - task: "Fix Image Handling - Use Proper File Formats Instead of Base64"
     implemented: false

@@ -26,7 +26,7 @@ import {
 
 import AssetModal from './AssetModal';
 
-const AssetManager = ({ articles, onArticleSelect }) => {
+const AssetManager = ({ articles, onArticleSelect, onPaginationChange }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');

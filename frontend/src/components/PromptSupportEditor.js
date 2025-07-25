@@ -1229,27 +1229,47 @@ const PromptSupportEditor = ({
                 dangerouslySetInnerHTML={{ __html: content || '<p>No content</p>' }} 
               />
             ) : (
-              // Edit mode: use ref callback to avoid dangerouslySetInnerHTML issues
-              <div
-                key={`editor-${isEditing}-${article?.id}`} // Force re-render when switching modes
-                ref={contentRef}
-                contentEditable={true}
-                onInput={(e) => {
-                  setContent(e.target.innerHTML);
-                  setHasUnsavedChanges(true);
-                }}
-                onKeyDown={handleKeyDown}
-                className="h-full p-6 overflow-y-auto focus:outline-none"
-                style={{
-                  minHeight: '400px',
-                  lineHeight: '1.7',
-                  fontSize: '16px',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  color: '#1f2937',
-                  outline: 'none'
-                }}
-                suppressContentEditableWarning={true}
-              />
+              // Edit mode: Enhanced with drag & drop and slash commands
+              <div className="h-full relative">
+                <div
+                  key={`editor-${isEditing}-${article?.id}`}
+                  ref={contentRef}
+                  contentEditable={true}
+                  onInput={(e) => {
+                    setContent(e.target.innerHTML);
+                    setHasUnsavedChanges(true);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`h-full p-6 overflow-y-auto focus:outline-none transition-colors ${
+                    draggedOver ? 'bg-blue-50 border-2 border-dashed border-blue-300' : ''
+                  }`}
+                  style={{
+                    minHeight: '400px',
+                    lineHeight: '1.7',
+                    fontSize: '16px',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    color: '#1f2937',
+                    outline: 'none'
+                  }}
+                  suppressContentEditableWarning={true}
+                />
+                
+                {/* Phase 3: Slash Command Menu */}
+                {renderSlashMenu()}
+                
+                {/* Phase 3: Drag & Drop Overlay */}
+                {draggedOver && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-90 pointer-events-none">
+                    <div className="text-center">
+                      <Upload className="h-12 w-12 text-blue-500 mx-auto mb-2" />
+                      <p className="text-blue-700 font-medium">Drop images here to upload</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ) : editorMode === 'markdown' ? (

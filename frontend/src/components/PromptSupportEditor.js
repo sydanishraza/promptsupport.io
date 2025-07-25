@@ -1250,13 +1250,20 @@ const PromptSupportEditor = ({
         setContent(editorRef.current.innerHTML);
         setHasUnsavedChanges(true);
         
-        // Ensure editor remains scrollable by forcing a layout recalculation
+        // Ensure editor remains scrollable by forcing proper overflow and height
         if (editorRef.current) {
-          editorRef.current.style.overflow = 'auto';
-          editorRef.current.style.maxHeight = '500px'; // Ensure max height is maintained
+          // Set proper overflow-y and max-height for scrollability
+          editorRef.current.style.overflowY = 'auto';
+          editorRef.current.style.maxHeight = '500px';
+          editorRef.current.style.height = 'auto';
           
           // Force a reflow to ensure proper layout
           editorRef.current.offsetHeight;
+          
+          // Additional check to ensure scrollability
+          if (editorRef.current.scrollHeight > editorRef.current.clientHeight) {
+            editorRef.current.style.overflowY = 'scroll';
+          }
         }
       }, 50);
       

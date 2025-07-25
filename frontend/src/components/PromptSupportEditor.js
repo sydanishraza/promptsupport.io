@@ -1478,7 +1478,11 @@ const PromptSupportEditor = ({
 
           {/* Phase 2: Advanced Blocks Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
-            <div className="relative group">
+            <div 
+              className="relative group"
+              onMouseEnter={() => handleMenuHover('table', true)}
+              onMouseLeave={() => handleMenuHover('table', false)}
+            >
               <button
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
                 title="Insert Table"
@@ -1519,7 +1523,11 @@ const PromptSupportEditor = ({
 
           {/* Phase 2: Callouts Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
-            <div className="relative group">
+            <div 
+              className="relative group"
+              onMouseEnter={() => handleMenuHover('callout', true)}
+              onMouseLeave={() => handleMenuHover('callout', false)}
+            >
               <button
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
                 title="Insert Callout"

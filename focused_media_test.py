@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://56a71135-2a77-40db-bf8d-b03b9d2875e3.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://43a910a1-9115-4b55-a307-73a94473be5c.preview.emergentagent.com') + '/api'
 
 def test_media_extraction_capabilities():
     """Test the enhanced media extraction capabilities"""

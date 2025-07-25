@@ -1580,8 +1580,8 @@ const PromptSupportEditor = ({
             />
             <div 
               className="relative"
-              onMouseEnter={() => setShowImageDropdown(true)}
-              onMouseLeave={() => setShowImageDropdown(false)}
+              onMouseEnter={() => handleMenuHover('image', true)}
+              onMouseLeave={() => handleMenuHover('image', false)}
             >
               <button
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
@@ -1591,7 +1591,11 @@ const PromptSupportEditor = ({
               </button>
               
               {showImageDropdown && (
-                <div className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-max">
+                <div 
+                  className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-max"
+                  onMouseEnter={() => handleMenuHover('image', true)}
+                  onMouseLeave={() => handleMenuHover('image', false)}
+                >
                   <button
                     onClick={() => {
                       fileInputRef.current?.click();

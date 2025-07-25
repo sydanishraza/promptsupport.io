@@ -395,7 +395,7 @@ const PromptSupportEditor = ({
         case 's':
           e.preventDefault();
           if (e.shiftKey) {
-            handleSave();
+            handleMainSave();
           }
           break;
         case 'e':

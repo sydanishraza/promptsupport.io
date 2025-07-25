@@ -1818,37 +1818,17 @@ const PromptSupportEditor = ({
             </button>
           </div>
 
-          {/* Phase 4: Enhanced AI Tools Group - Direct access without flyout */}
+          {/* Phase 4: Unified AI Brain Tool */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <button
-              onClick={() => handleAIAssistWithPopup('completion')}
-              className={`p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-100 rounded transition-colors mr-1 ${
+              onClick={() => handleUnifiedAIBrain()}
+              className={`p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-100 rounded transition-colors ${
                 aiWritingMode ? 'animate-pulse' : ''
               }`}
-              title="AI Complete Text"
+              title="AI Brain - Suggestions & Improvements"
               disabled={aiWritingMode}
             >
-              <Sparkles className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => handleAIAssistWithPopup('improvement')}
-              className={`p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded transition-colors mr-1 ${
-                aiWritingMode ? 'animate-pulse' : ''
-              }`}
-              title="AI Improve Writing"
-              disabled={aiWritingMode}
-            >
-              <Lightbulb className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => handleAIAssistWithPopup('grammar')}
-              className={`p-2 text-green-600 hover:text-green-900 hover:bg-green-100 rounded transition-colors mr-1 ${
-                aiWritingMode ? 'animate-pulse' : ''
-              }`}
-              title="AI Grammar Check"
-              disabled={aiWritingMode}
-            >
-              <CheckSquare className="h-4 w-4" />
+              <Brain className="h-4 w-4" />
             </button>
           </div>
 

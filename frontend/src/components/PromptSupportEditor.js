@@ -729,10 +729,21 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Show asset library modal for image selection
+   * Show asset library modal for image selection (Fixed hooks issue)
    */
-  const showAssetLibrary = () => {
+  const showAssetLibrary = async () => {
     setShowImageModal(true);
+    setAssetsLoading(true);
+    
+    try {
+      const fetchedAssets = await fetchAssets();
+      setAssets(fetchedAssets);
+    } catch (error) {
+      console.error('Failed to load assets:', error);
+      setAssets([]);
+    } finally {
+      setAssetsLoading(false);
+    }
   };
 
   /**

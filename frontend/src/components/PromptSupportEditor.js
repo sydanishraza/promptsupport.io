@@ -3560,7 +3560,10 @@ const PromptSupportEditor = ({
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`wysiwyg-editor h-full p-6 overflow-y-auto focus:outline-none transition-colors ${
+                  onMouseOver={handleLinkHover}
+                  onMouseOut={handleLinkMouseOut}
+                  onClick={handleLinkClick}
+                  className={`wysiwyg-editor editor-content h-full p-6 overflow-y-auto focus:outline-none transition-colors ${
                     draggedOver ? 'bg-blue-50 border-2 border-dashed border-blue-300' : ''
                   }`}
                   style={{

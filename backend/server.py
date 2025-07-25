@@ -369,8 +369,17 @@ async def get_assets():
                                 "size": len(image_data)
                             })
         
-        # Sort by creation date (newest first)
-        formatted_assets.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        # Sort by creation date (newest first) - handle mixed datetime/string types
+        def safe_sort_key(asset):
+            created_at = asset.get('created_at', '')
+            if isinstance(created_at, str):
+                return created_at
+            elif hasattr(created_at, 'isoformat'):
+                return created_at.isoformat()
+            else:
+                return ''
+        
+        formatted_assets.sort(key=safe_sort_key, reverse=True)
         
         return {"assets": formatted_assets, "total": len(formatted_assets)}
         

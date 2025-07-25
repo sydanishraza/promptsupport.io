@@ -113,9 +113,9 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       animate={{ width: collapsed ? 64 : 256 }}
     >
       {/* Header */}
-      <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-6 h-[81px] flex items-center border-b border-gray-200 dark:border-gray-700">
         {!collapsed ? (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center space-x-3">
               <img
                 src="/ps-logo.png"
@@ -134,7 +134,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center space-y-2">
+          <div className="flex flex-col items-center justify-center w-full space-y-1">
             <img
               src="/ps-logo.png"
               alt="PromptSupport Logo"
@@ -142,9 +142,9 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
             />
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={12} />
             </button>
           </div>
         )}

@@ -95,7 +95,45 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
     }
   ];
 
-  const handleItemClick = (itemId) => {
+  const handleItemMouseEnter = (itemId, isExpandable) => {
+    if (collapsed) {
+      // Clear any existing timeout
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+        setHoverTimeout(null);
+      }
+      
+      setHoveredItem(itemId);
+      if (isExpandable) {
+        setShowFlyout(itemId);
+      }
+    }
+  };
+
+  const handleItemMouseLeave = () => {
+    if (collapsed) {
+      // Add a small delay before hiding to allow moving to flyout
+      const timeout = setTimeout(() => {
+        setHoveredItem(null);
+        setShowFlyout(null);
+      }, 150);
+      setHoverTimeout(timeout);
+    }
+  };
+
+  const handleFlyoutMouseEnter = () => {
+    // Clear the timeout when entering flyout menu
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+  };
+
+  const handleFlyoutMouseLeave = () => {
+    // Hide immediately when leaving flyout
+    setHoveredItem(null);
+    setShowFlyout(null);
+  };
     if (itemId === 'systems') {
       setSystemsExpanded(!systemsExpanded);
     } else if (itemId === 'knowledge-engine') {

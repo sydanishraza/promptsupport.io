@@ -137,6 +137,10 @@ const PromptSupportEditor = ({
   const [aiWritingMode, setAiWritingMode] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [currentSuggestion, setCurrentSuggestion] = useState(null);
+  const [showAiDropdown, setShowAiDropdown] = useState(false);
+  const [showImageDropdown, setShowImageDropdown] = useState(false);
+  const [showContentAnalysis, setShowContentAnalysis] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
   
   // === REFS ===
   const editorRef = useRef(null);

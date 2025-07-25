@@ -357,9 +357,9 @@ const ContentLibrary = () => {
   }
 
   return (
-    <div className="h-full space-y-4 max-w-full overflow-hidden pb-4">
+    <div className="h-full flex flex-col space-y-4 max-w-full overflow-hidden">
       {/* Enhanced Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 flex-shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
@@ -405,7 +405,7 @@ const ContentLibrary = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex space-x-4 lg:space-x-6 border-b border-gray-200 overflow-x-auto">
+      <div className="flex space-x-4 lg:space-x-6 border-b border-gray-200 overflow-x-auto flex-shrink-0">
         <button
           onClick={() => setCurrentView('articles')}
           className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap ${
@@ -438,7 +438,7 @@ const ContentLibrary = () => {
 
       {/* Control Bar - Articles */}
       {currentView === 'articles' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
               {/* Search */}
@@ -511,7 +511,7 @@ const ContentLibrary = () => {
 
       {/* Control Bar - Assets */}
       {currentView === 'assets' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
               {/* Search */}
@@ -582,44 +582,46 @@ const ContentLibrary = () => {
       )}
 
       {/* Content Area */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-96 max-h-[calc(100vh-500px)] overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : currentView === 'articles' ? (
-          <div className="overflow-x-auto">
-            {viewMode === 'grid' ? (
-              <ArticleGrid
-                articles={filteredAndSortedArticles}
-                onArticleSelect={handleArticleSelect}
-                onDeleteArticle={handleDeleteArticle}
-              />
-            ) : (
-              <ArticleTable
-                articles={filteredAndSortedArticles}
-                onArticleSelect={handleArticleSelect}
-                onDeleteArticle={handleDeleteArticle}
-              />
-            )}
-          </div>
-        ) : (
-          <AssetManager
-            articles={articles}
-            onArticleSelect={handleArticleSelect}
-            onPaginationChange={setAssetPagination}
-            searchQuery={assetSearchQuery}
-            filterType={assetFilterType}
-            sortBy={assetSortBy}
-            sortOrder={assetSortOrder}
-            viewMode={assetViewMode}
-          />
-        )}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : currentView === 'articles' ? (
+            <div className="overflow-x-auto">
+              {viewMode === 'grid' ? (
+                <ArticleGrid
+                  articles={filteredAndSortedArticles}
+                  onArticleSelect={handleArticleSelect}
+                  onDeleteArticle={handleDeleteArticle}
+                />
+              ) : (
+                <ArticleTable
+                  articles={filteredAndSortedArticles}
+                  onArticleSelect={handleArticleSelect}
+                  onDeleteArticle={handleDeleteArticle}
+                />
+              )}
+            </div>
+          ) : (
+            <AssetManager
+              articles={articles}
+              onArticleSelect={handleArticleSelect}
+              onPaginationChange={setAssetPagination}
+              searchQuery={assetSearchQuery}
+              filterType={assetFilterType}
+              sortBy={assetSortBy}
+              sortOrder={assetSortOrder}
+              viewMode={assetViewMode}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Pagination - Always show for articles when there are pages */}
+      {/* Pagination - Articles */}
       {currentView === 'articles' && articles.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
             <div className="text-sm text-gray-500">
               Showing {startArticle}-{endArticle} of {totalArticles} articles
@@ -678,9 +680,9 @@ const ContentLibrary = () => {
         </div>
       )}
 
-      {/* Assets Pagination - Show for assets when there are pages */}
+      {/* Pagination - Assets */}
       {currentView === 'assets' && assetPagination && assetPagination.totalPages > 1 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
             <div className="text-sm text-gray-500">
               Showing {assetPagination.startIndex}-{assetPagination.endIndex} of {assetPagination.totalItems} assets

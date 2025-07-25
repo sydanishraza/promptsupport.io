@@ -1130,16 +1130,67 @@ const PromptSupportEditor = ({
   };
 
   /**
-   * Insert image into editor
+   * Insert image into editor at cursor position
    */
   const insertImage = (src, alt = 'Image') => {
+    if (!editorRef.current || editorMode !== 'wysiwyg') return;
+    
+    // Focus the editor to ensure proper cursor position
+    editorRef.current.focus();
+    
+    // Get the current selection and range
+    const selection = window.getSelection();
+    let range;
+    
+    if (selection.rangeCount > 0) {
+      range = selection.getRangeAt(0);
+    } else {
+      // If no selection, create a range at the end of the editor
+      range = document.createRange();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+    }
+    
+    // Create the image HTML element
     const imageHTML = `
-      <figure style="margin: 16px 0; text-align: center;">
-        <img src="${src}" alt="${alt}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
-        <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic;">${alt}</figcaption>
+      <figure style="margin: 16px 0; text-align: center; display: block;">
+        <img src="${src}" alt="${alt}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: block;" />
+        <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic; text-align: center;">${alt}</figcaption>
       </figure>
     `;
-    executeCommand('insertHTML', imageHTML);
+    
+    try {
+      // Clear the selection
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // Insert the HTML at the cursor position
+      if (document.queryCommandSupported('insertHTML')) {
+        document.execCommand('insertHTML', false, imageHTML);
+      } else {
+        // Fallback method for browsers that don't support insertHTML
+        const fragment = range.createContextualFragment(imageHTML);
+        range.deleteContents();
+        range.insertNode(fragment);
+        
+        // Move the cursor after the inserted content
+        range.setStartAfter(fragment.lastChild);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      
+      // Update content state and mark as changed
+      setTimeout(() => {
+        setContent(editorRef.current.innerHTML);
+        setHasUnsavedChanges(true);
+      }, 10);
+      
+    } catch (error) {
+      console.error('Error inserting image:', error);
+      // Fallback to the old method
+      executeCommand('insertHTML', imageHTML);
+    }
   };
 
   /**

@@ -1254,6 +1254,13 @@ const PromptSupportEditor = ({
     }
   };
 
+  /**
+   * Highlight applied AI suggestion with temporary styling
+   */
+  const highlightAppliedSuggestion = (text) => {
+    return `<span style="background-color: #e0f2fe; border-bottom: 2px solid #0288d1; animation: fadeHighlight 3s ease-out forwards;">${text}</span>`;
+  };
+
   // === PHASE 3: COMMENTING & COLLABORATION ===
 
   /**

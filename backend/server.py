@@ -1241,7 +1241,7 @@ async def upload_file(
                     return media_files
                 
                 # Extract media from document
-                embedded_media = extract_media_from_docx(doc)
+                embedded_media = await extract_media_from_docx(doc, file.filename.replace('.docx', '').replace('.doc', ''))
                 print(f"🔍 DEBUG: Extracted {len(embedded_media)} media items from DOCX")
                 for i, media in enumerate(embedded_media):
                     print(f"🔍 DEBUG: Media {i+1}: {media['format']}, {media['size']} bytes, type: {media['content_type']}")

@@ -54,6 +54,12 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       ]
     },
     {
+      id: 'training',
+      label: 'Training Interface',
+      icon: Brain,
+      description: 'Train and fine-tune AI models with custom datasets'
+    },
+    {
       id: 'content-library',
       label: 'Content Library',
       icon: BookOpen,

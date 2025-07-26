@@ -885,10 +885,13 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
 
             1. **Media Preservation & Integration**:
                - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
-               - Include ALL data URLs (data:image/jpeg;base64,... or data:image/png;base64,...)
+               - Include ALL image URLs (/api/static/uploads/...) and data URLs (data:image/svg+xml;base64,...)
+               - For URL-based images: ![Alt text](/api/static/uploads/filename.ext)
+               - For SVG images: ![Alt text](data:image/svg+xml;base64,...)
                - Maintain image captions and context
                - Place images strategically within article content for maximum relevance
                - Reference images in the text when appropriate (e.g., "As illustrated in the figure below...")
+               - Ensure all images are properly linked and accessible
 
             2. **Content Enhancement & Rewriting**:
                - Completely rewrite for clarity, flow, and technical accuracy

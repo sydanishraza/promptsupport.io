@@ -344,7 +344,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 </div>
               </td>
               <td className="p-4">
-                <div className="text-sm text-gray-900">{formatDate(article.created_at)}</div>
+                <div className="text-sm text-gray-900">{formatDateWithTime(article.created_at)}</div>
                 <div className="text-xs text-gray-500">{formatRelativeTime(article.created_at)}</div>
               </td>
               <td className="p-4">

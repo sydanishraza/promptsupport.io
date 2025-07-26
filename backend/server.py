@@ -823,18 +823,21 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
     if file_extension in ['xls', 'xlsx'] and 'Sheet:' in content:
         return True
     
-    # Enhanced heading detection with more patterns
+    # Enhanced heading detection with more patterns including chapter indicators
     heading_patterns = [
-        '===', '##', '# ', '####',
-        'Chapter', 'Section', 'Part ', 'Module', 'Unit',
+        '===', '##', '# ', '####', '##### ', 
+        'Chapter', 'Section', 'Part ', 'Module', 'Unit', 'Lesson',
         'Overview', 'Introduction', 'Conclusion', 'Summary',
         'Getting Started', 'Configuration', 'Setup', 'Installation',
         'Administration', 'Management', 'Process', 'Procedure',
-        'Step ', 'Phase ', 'Stage ', 'Level ',
+        'Step ', 'Phase ', 'Stage ', 'Level ', 'Activity ',
         'Tutorial', 'Guide', 'How to', 'Instructions',
         'Requirements', 'Prerequisites', 'Implementation',
         'Architecture', 'Design', 'Structure', 'Framework',
-        'API', 'Reference', 'Documentation', 'Specification'
+        'API', 'Reference', 'Documentation', 'Specification',
+        'Fundamentals', 'Basics', 'Advanced', 'Best Practices',
+        'Tips', 'Techniques', 'Methods', 'Strategies',
+        'Analysis', 'Planning', 'Execution', 'Monitoring'
     ]
     
     heading_count = 0

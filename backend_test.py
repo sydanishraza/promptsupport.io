@@ -5634,6 +5634,645 @@ Database optimization is crucial for maintaining system performance as data volu
             print(f"❌ Clean content test failed - {str(e)}")
             return False
 
+    def test_html_output_generation(self):
+        """CRITICAL TEST: Verify AI generates HTML instead of Markdown (Previously Failed)"""
+        print("\n🔥 CRITICAL TEST: HTML Output Generation (Previously Failed)...")
+        try:
+            # Create test content that should generate HTML output
+            test_file_content = """API Integration Guide
+
+This comprehensive guide covers API integration best practices and implementation strategies.
+
+## Getting Started
+
+Before integrating with our API, ensure you have:
+- Valid API credentials
+- Understanding of REST principles
+- Basic knowledge of HTTP methods
+
+## Authentication
+
+Use Bearer token authentication:
+```
+Authorization: Bearer your-api-key-here
+```
+
+## Common Endpoints
+
+### User Management
+- GET /api/users - List all users
+- POST /api/users - Create new user
+- PUT /api/users/{id} - Update user
+
+### Data Operations
+- GET /api/data - Retrieve data
+- POST /api/data - Submit data
+
+## Best Practices
+
+1. **Rate Limiting**: Respect API rate limits
+2. **Error Handling**: Implement proper error handling
+3. **Caching**: Cache responses when appropriate
+
+## Troubleshooting
+
+Common issues and solutions:
+- 401 Unauthorized: Check your API key
+- 429 Too Many Requests: Implement backoff strategy
+- 500 Server Error: Contact support
+
+## Conclusion
+
+Following these guidelines will ensure successful API integration."""
+
+            # Upload the test file
+            file_data = io.BytesIO(test_file_content.encode('utf-8'))
+            
+            files = {
+                'file': ('api_integration_guide.txt', file_data, 'text/plain')
+            }
+            
+            form_data = {
+                'metadata': json.dumps({
+                    "source": "html_output_test",
+                    "test_type": "html_generation_verification",
+                    "document_type": "api_guide"
+                })
+            }
+            
+            print("📤 Uploading test content for HTML generation verification...")
+            response = requests.post(
+                f"{self.base_url}/content/upload",
+                files=files,
+                data=form_data,
+                timeout=45
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ File upload failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            upload_data = response.json()
+            print(f"✅ File uploaded successfully - {upload_data.get('chunks_created', 0)} chunks created")
+            
+            # Wait for AI processing to complete
+            time.sleep(5)
+            
+            # Get the generated articles from Content Library
+            response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            
+            if response.status_code != 200:
+                print(f"❌ Could not fetch Content Library articles")
+                return False
+            
+            articles = response.json().get("articles", [])
+            
+            # Find articles that match our test content
+            test_articles = []
+            for article in articles:
+                if (article.get('source_type') == 'file_upload' and 
+                    'api' in article.get('title', '').lower()):
+                    test_articles.append(article)
+            
+            if not test_articles:
+                print("❌ No test articles found in Content Library")
+                return False
+            
+            print(f"✅ Found {len(test_articles)} test articles to analyze")
+            
+            # Analyze the content for HTML vs Markdown patterns
+            html_patterns_found = 0
+            markdown_patterns_found = 0
+            total_articles_analyzed = 0
+            
+            import re
+            
+            for article in test_articles:
+                content = article.get('content', '')
+                if not content:
+                    continue
+                
+                total_articles_analyzed += 1
+                print(f"\n📄 Analyzing article: '{article.get('title')}'")
+                print(f"   Content length: {len(content)} characters")
+                
+                # Check for HTML patterns
+                html_patterns = [
+                    r'<h[1-6]>.*?</h[1-6]>',  # HTML headings
+                    r'<p>.*?</p>',             # HTML paragraphs
+                    r'<ul>.*?</ul>',           # HTML unordered lists
+                    r'<ol>.*?</ol>',           # HTML ordered lists
+                    r'<li>.*?</li>',           # HTML list items
+                    r'<strong>.*?</strong>',   # HTML bold
+                    r'<em>.*?</em>',           # HTML italic
+                    r'<blockquote>.*?</blockquote>',  # HTML blockquotes
+                    r'<code>.*?</code>',       # HTML inline code
+                    r'<pre><code>.*?</code></pre>',  # HTML code blocks
+                ]
+                
+                html_count = 0
+                for pattern in html_patterns:
+                    matches = len(re.findall(pattern, content, re.DOTALL | re.IGNORECASE))
+                    html_count += matches
+                
+                # Check for Markdown patterns (these should NOT be present)
+                markdown_patterns = [
+                    r'^#{1,6}\s+',             # Markdown headings
+                    r'\*\*.*?\*\*',            # Markdown bold
+                    r'\*.*?\*',                # Markdown italic
+                    r'```.*?```',              # Markdown code blocks
+                    r'`.*?`',                  # Markdown inline code
+                    r'^\s*[-*+]\s+',           # Markdown unordered lists
+                    r'^\s*\d+\.\s+',           # Markdown ordered lists
+                    r'^\s*>\s+',               # Markdown blockquotes
+                    r'!\[.*?\]\(.*?\)',        # Markdown images
+                    r'\[.*?\]\(.*?\)',         # Markdown links
+                ]
+                
+                markdown_count = 0
+                for pattern in markdown_patterns:
+                    matches = len(re.findall(pattern, content, re.MULTILINE))
+                    markdown_count += matches
+                
+                print(f"   HTML patterns found: {html_count}")
+                print(f"   Markdown patterns found: {markdown_count}")
+                
+                if html_count > 0:
+                    html_patterns_found += 1
+                if markdown_count > 0:
+                    markdown_patterns_found += 1
+                
+                # Show sample content for debugging
+                print(f"   Content preview: {content[:200]}...")
+            
+            print(f"\n📊 HTML OUTPUT GENERATION ANALYSIS:")
+            print(f"   Articles analyzed: {total_articles_analyzed}")
+            print(f"   Articles with HTML patterns: {html_patterns_found}")
+            print(f"   Articles with Markdown patterns: {markdown_patterns_found}")
+            
+            # Determine success criteria
+            if total_articles_analyzed == 0:
+                print("❌ CRITICAL FAILURE: No articles were generated or analyzed")
+                return False
+            
+            html_success_rate = (html_patterns_found / total_articles_analyzed) * 100
+            markdown_failure_rate = (markdown_patterns_found / total_articles_analyzed) * 100
+            
+            print(f"   HTML generation success rate: {html_success_rate:.1f}%")
+            print(f"   Markdown contamination rate: {markdown_failure_rate:.1f}%")
+            
+            # Success criteria: At least 80% of articles should have HTML patterns, less than 20% should have Markdown
+            if html_success_rate >= 80 and markdown_failure_rate <= 20:
+                print("✅ HTML OUTPUT GENERATION PASSED: AI is generating clean HTML instead of Markdown")
+                return True
+            elif html_success_rate >= 50:
+                print("⚠️ HTML OUTPUT GENERATION PARTIAL: Some HTML generation working but needs improvement")
+                print(f"   Need to improve HTML generation from {html_success_rate:.1f}% to 80%+")
+                print(f"   Need to reduce Markdown contamination from {markdown_failure_rate:.1f}% to <20%")
+                return False
+            else:
+                print("❌ HTML OUTPUT GENERATION FAILED: AI is still generating Markdown instead of HTML")
+                print("   This is the same critical issue that was failing before")
+                return False
+                
+        except Exception as e:
+            print(f"❌ HTML output generation test failed - {str(e)}")
+            return False
+
+    def test_metadata_removal(self):
+        """CRITICAL TEST: Verify articles no longer contain source metadata (Previously Failed)"""
+        print("\n🔥 CRITICAL TEST: Metadata Removal (Previously Failed)...")
+        try:
+            # Create test content with lots of metadata that should be removed
+            test_file_content = """Database Optimization Report
+
+File: database_optimization_report.pdf
+Size: 2.5 MB
+Created: 2024-01-15
+Document ID: DOC-2024-001
+Author: System Administrator
+Last Modified: 2024-01-15T10:30:00Z
+
+Document Statistics:
+- Total pages: 45
+- Character count: 125,847
+- Word count: 18,234
+- Images: 12
+- Tables: 8
+
+Media Assets:
+- Figure 1: Database schema diagram (1.2 MB)
+- Figure 2: Performance metrics chart (856 KB)
+- Figure 3: Optimization timeline (645 KB)
+
+Total extracted content: 125,847 bytes
+Processing timestamp: 2024-01-15T10:30:00Z
+
+## Executive Summary
+
+This comprehensive database optimization report analyzes current performance metrics and provides actionable recommendations for improving database efficiency.
+
+## Current Performance Analysis
+
+Our database performance analysis reveals several key areas for improvement:
+
+1. Query optimization opportunities
+2. Index restructuring needs
+3. Storage optimization potential
+
+## Optimization Strategies
+
+### Query Performance
+- Implement query caching
+- Optimize JOIN operations
+- Review slow query logs
+
+### Index Management
+- Rebuild fragmented indexes
+- Add missing indexes for frequent queries
+- Remove unused indexes
+
+### Storage Optimization
+- Archive old data
+- Implement data compression
+- Optimize table structures
+
+## Implementation Timeline
+
+Phase 1 (Weeks 1-2): Query optimization
+Phase 2 (Weeks 3-4): Index restructuring
+Phase 3 (Weeks 5-6): Storage optimization
+
+## Expected Results
+
+Following these recommendations should result in:
+- 40% improvement in query response time
+- 25% reduction in storage requirements
+- 60% improvement in overall database performance
+
+## Conclusion
+
+Implementing these database optimization strategies will significantly improve system performance and user experience.
+
+Note: This document was extracted from database_optimization_report.pdf
+Added from document assets: 12 images, 8 tables
+[Asset Library] [Fallback] Processing completed at 2024-01-15T10:30:00Z"""
+
+            # Upload the test file
+            file_data = io.BytesIO(test_file_content.encode('utf-8'))
+            
+            files = {
+                'file': ('database_optimization_report.pdf', file_data, 'text/plain')
+            }
+            
+            form_data = {
+                'metadata': json.dumps({
+                    "source": "metadata_removal_test",
+                    "test_type": "metadata_cleaning_verification",
+                    "document_type": "database_report",
+                    "original_filename": "database_optimization_report.pdf"
+                })
+            }
+            
+            print("📤 Uploading test content with metadata for cleaning verification...")
+            response = requests.post(
+                f"{self.base_url}/content/upload",
+                files=files,
+                data=form_data,
+                timeout=45
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ File upload failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            upload_data = response.json()
+            print(f"✅ File uploaded successfully - {upload_data.get('chunks_created', 0)} chunks created")
+            
+            # Wait for AI processing to complete
+            time.sleep(5)
+            
+            # Get the generated articles from Content Library
+            response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            
+            if response.status_code != 200:
+                print(f"❌ Could not fetch Content Library articles")
+                return False
+            
+            articles = response.json().get("articles", [])
+            
+            # Find articles that match our test content
+            test_articles = []
+            for article in articles:
+                if (article.get('source_type') == 'file_upload' and 
+                    ('database' in article.get('title', '').lower() or 
+                     'optimization' in article.get('title', '').lower())):
+                    test_articles.append(article)
+            
+            if not test_articles:
+                print("❌ No test articles found in Content Library")
+                return False
+            
+            print(f"✅ Found {len(test_articles)} test articles to analyze")
+            
+            # Analyze the content for metadata patterns that should be removed
+            clean_articles = 0
+            contaminated_articles = 0
+            total_articles_analyzed = 0
+            
+            import re
+            
+            # Metadata patterns that should NOT be present in clean articles
+            metadata_patterns = [
+                r'File:\s*\w+\.(pdf|docx|txt|doc)',  # File references
+                r'Size:\s*[\d.]+\s*(MB|KB|GB)',      # File sizes
+                r'Created:\s*\d{4}-\d{2}-\d{2}',     # Creation dates
+                r'Document ID:\s*\w+-\d{4}-\d{3}',   # Document IDs
+                r'Last Modified:\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', # Timestamps
+                r'Character count:\s*\d+',           # Character counts
+                r'Word count:\s*\d+',                # Word counts
+                r'Total pages:\s*\d+',               # Page counts
+                r'Processing timestamp:',            # Processing timestamps
+                r'Added from document assets',       # Asset source references
+                r'\[Asset Library\]',                # Asset library references
+                r'\[Fallback\]',                     # Fallback references
+                r'extracted from.*\.(pdf|docx)',     # Extraction references
+                r'\d+\s*bytes',                      # Byte counts
+                r'Document Statistics:',             # Statistics sections
+                r'Media Assets:',                    # Media asset sections
+                r'Total extracted content:',         # Extraction summaries
+            ]
+            
+            for article in test_articles:
+                content = article.get('content', '')
+                title = article.get('title', '')
+                
+                if not content:
+                    continue
+                
+                total_articles_analyzed += 1
+                print(f"\n📄 Analyzing article: '{title}'")
+                print(f"   Content length: {len(content)} characters")
+                
+                # Check for metadata contamination
+                metadata_found = []
+                total_metadata_matches = 0
+                
+                for pattern in metadata_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    if matches:
+                        metadata_found.append(pattern)
+                        total_metadata_matches += len(matches)
+                
+                # Check title for filename references
+                title_contaminated = False
+                if re.search(r'\.(pdf|docx|txt|doc)$', title, re.IGNORECASE):
+                    title_contaminated = True
+                    metadata_found.append("filename_in_title")
+                
+                print(f"   Metadata patterns found: {len(metadata_found)}")
+                print(f"   Total metadata matches: {total_metadata_matches}")
+                print(f"   Title contaminated: {title_contaminated}")
+                
+                if len(metadata_found) == 0:
+                    clean_articles += 1
+                    print("   ✅ Article is CLEAN - no metadata contamination")
+                else:
+                    contaminated_articles += 1
+                    print("   ❌ Article is CONTAMINATED with metadata")
+                    print(f"   Contamination patterns: {metadata_found[:5]}")  # Show first 5
+                
+                # Show sample content for debugging
+                print(f"   Content preview: {content[:300]}...")
+            
+            print(f"\n📊 METADATA REMOVAL ANALYSIS:")
+            print(f"   Articles analyzed: {total_articles_analyzed}")
+            print(f"   Clean articles (no metadata): {clean_articles}")
+            print(f"   Contaminated articles (has metadata): {contaminated_articles}")
+            
+            # Determine success criteria
+            if total_articles_analyzed == 0:
+                print("❌ CRITICAL FAILURE: No articles were generated or analyzed")
+                return False
+            
+            clean_success_rate = (clean_articles / total_articles_analyzed) * 100
+            contamination_rate = (contaminated_articles / total_articles_analyzed) * 100
+            
+            print(f"   Clean content success rate: {clean_success_rate:.1f}%")
+            print(f"   Metadata contamination rate: {contamination_rate:.1f}%")
+            
+            # Success criteria: At least 80% of articles should be clean of metadata
+            if clean_success_rate >= 80:
+                print("✅ METADATA REMOVAL PASSED: Articles are clean and professional without source metadata")
+                return True
+            elif clean_success_rate >= 50:
+                print("⚠️ METADATA REMOVAL PARTIAL: Some metadata cleaning working but needs improvement")
+                print(f"   Need to improve clean content rate from {clean_success_rate:.1f}% to 80%+")
+                return False
+            else:
+                print("❌ METADATA REMOVAL FAILED: Articles still contain significant source metadata")
+                print("   This is the same critical issue that was failing before")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Metadata removal test failed - {str(e)}")
+            return False
+
+    def test_post_processing_functions(self):
+        """TEST: Verify post-processing functions are working effectively"""
+        print("\n🔧 Testing Post-Processing Functions Effectiveness...")
+        try:
+            # Test content with mixed HTML/Markdown and metadata
+            test_content_with_issues = """
+            ## This is a Markdown Heading
+            
+            File: test_document.docx
+            Size: 1.2 MB
+            Created: 2024-01-15
+            
+            This paragraph has **bold text** and *italic text* in Markdown format.
+            
+            Document Statistics:
+            - Character count: 5,847
+            - Processing timestamp: 2024-01-15T10:30:00Z
+            
+            Here's a code block:
+            ```python
+            def test_function():
+                return "Hello World"
+            ```
+            
+            And here's an image:
+            ![Test Image](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==)
+            
+            > This is a blockquote in Markdown
+            
+            1. Numbered list item 1
+            2. Numbered list item 2
+            
+            - Bullet point 1
+            - Bullet point 2
+            
+            Added from document assets: 3 images
+            [Asset Library] Processing completed
+            """
+            
+            # Create a test article with this problematic content
+            article_data = {
+                'title': 'test_document.docx - Processing Results',
+                'content': test_content_with_issues,
+                'status': 'draft'
+            }
+            
+            print("📤 Creating test article with mixed HTML/Markdown and metadata...")
+            response = requests.post(
+                f"{self.base_url}/content-library",
+                json=article_data,
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Could not create test article - status code {response.status_code}")
+                return False
+            
+            created_article = response.json()
+            article_id = created_article.get('id')
+            
+            if not article_id:
+                print("❌ No article ID returned from creation")
+                return False
+            
+            print(f"✅ Test article created with ID: {article_id}")
+            
+            # Now retrieve the article to see if post-processing was applied
+            response = requests.get(f"{self.base_url}/content-library", timeout=10)
+            
+            if response.status_code != 200:
+                print("❌ Could not retrieve articles")
+                return False
+            
+            articles = response.json().get("articles", [])
+            
+            # Find our test article
+            test_article = None
+            for article in articles:
+                if article.get('id') == article_id:
+                    test_article = article
+                    break
+            
+            if not test_article:
+                print("❌ Could not find test article in results")
+                return False
+            
+            processed_content = test_article.get('content', '')
+            processed_title = test_article.get('title', '')
+            
+            print(f"📄 Analyzing post-processed content...")
+            print(f"   Original content length: {len(test_content_with_issues)}")
+            print(f"   Processed content length: {len(processed_content)}")
+            print(f"   Original title: '{article_data['title']}'")
+            print(f"   Processed title: '{processed_title}'")
+            
+            # Check if post-processing functions worked
+            import re
+            
+            # 1. Check if Markdown was converted to HTML
+            markdown_patterns = [
+                r'^#{1,6}\s+',             # Markdown headings
+                r'\*\*.*?\*\*',            # Markdown bold
+                r'\*(?!\*)[^*]+\*',        # Markdown italic (not bold)
+                r'```.*?```',              # Markdown code blocks
+                r'^\s*>\s+',               # Markdown blockquotes
+                r'^\s*[-*+]\s+',           # Markdown unordered lists
+                r'^\s*\d+\.\s+',           # Markdown ordered lists
+            ]
+            
+            html_patterns = [
+                r'<h[1-6]>.*?</h[1-6]>',   # HTML headings
+                r'<strong>.*?</strong>',   # HTML bold
+                r'<em>.*?</em>',           # HTML italic
+                r'<pre><code>.*?</code></pre>', # HTML code blocks
+                r'<blockquote>.*?</blockquote>', # HTML blockquotes
+                r'<ul>.*?</ul>',           # HTML unordered lists
+                r'<ol>.*?</ol>',           # HTML ordered lists
+            ]
+            
+            markdown_count = 0
+            for pattern in markdown_patterns:
+                markdown_count += len(re.findall(pattern, processed_content, re.MULTILINE | re.DOTALL))
+            
+            html_count = 0
+            for pattern in html_patterns:
+                html_count += len(re.findall(pattern, processed_content, re.DOTALL | re.IGNORECASE))
+            
+            # 2. Check if metadata was removed
+            metadata_patterns = [
+                r'File:\s*\w+\.(pdf|docx|txt)',
+                r'Size:\s*[\d.]+\s*(MB|KB)',
+                r'Created:\s*\d{4}-\d{2}-\d{2}',
+                r'Character count:\s*\d+',
+                r'Processing timestamp:',
+                r'Added from document assets',
+                r'\[Asset Library\]',
+            ]
+            
+            metadata_count = 0
+            for pattern in metadata_patterns:
+                metadata_count += len(re.findall(pattern, processed_content, re.IGNORECASE))
+            
+            # 3. Check if title was cleaned
+            title_cleaned = not re.search(r'\.(docx|pdf|txt)$', processed_title, re.IGNORECASE)
+            
+            print(f"\n📊 POST-PROCESSING ANALYSIS:")
+            print(f"   Markdown patterns remaining: {markdown_count}")
+            print(f"   HTML patterns found: {html_count}")
+            print(f"   Metadata patterns remaining: {metadata_count}")
+            print(f"   Title cleaned: {title_cleaned}")
+            
+            # Show sample of processed content
+            print(f"\n📄 Processed content preview:")
+            print(f"{processed_content[:500]}...")
+            
+            # Determine success
+            markdown_to_html_working = html_count > 0 and markdown_count < 5  # Some conversion happened
+            metadata_removal_working = metadata_count < 3  # Most metadata removed
+            title_cleaning_working = title_cleaned
+            
+            functions_working = 0
+            if markdown_to_html_working:
+                functions_working += 1
+                print("✅ Markdown-to-HTML conversion: WORKING")
+            else:
+                print("❌ Markdown-to-HTML conversion: NOT WORKING")
+            
+            if metadata_removal_working:
+                functions_working += 1
+                print("✅ Metadata removal: WORKING")
+            else:
+                print("❌ Metadata removal: NOT WORKING")
+            
+            if title_cleaning_working:
+                functions_working += 1
+                print("✅ Title cleaning: WORKING")
+            else:
+                print("❌ Title cleaning: NOT WORKING")
+            
+            success_rate = (functions_working / 3) * 100
+            print(f"\n📈 Post-processing functions success rate: {success_rate:.1f}%")
+            
+            if success_rate >= 67:  # At least 2 out of 3 functions working
+                print("✅ POST-PROCESSING FUNCTIONS: Working effectively")
+                return True
+            else:
+                print("❌ POST-PROCESSING FUNCTIONS: Need improvement")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Post-processing functions test failed - {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run all backend tests focusing on Knowledge Engine Critical Issue Fixes"""
         print("🚀 KNOWLEDGE ENGINE CRITICAL ISSUE FIXES TESTING")

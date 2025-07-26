@@ -1125,20 +1125,21 @@ async def upload_file(
                 if hasattr(doc.core_properties, 'subject') and doc.core_properties.subject:
                     extracted_content += f"**Subject:** {doc.core_properties.subject}\n\n"
                 
-                # Extract embedded images and media
-                def extract_media_from_docx(doc):
-                    """Extract embedded images from docx document"""
+                # Extract embedded images and media - IMPROVED TO SAVE AS FILES
+                async def extract_media_from_docx(doc, filename_prefix):
+                    """Extract embedded images from docx document and save as files"""
                     media_files = []
+                    saved_assets = []
+                    
                     try:
                         # Access the document's media files
+                        image_index = 0
                         for rel in doc.part.rels.values():
                             if "image" in rel.target_ref:
+                                image_index += 1
                                 # Get image data
                                 image_part = rel.target_part
                                 image_data = image_part.blob
-                                
-                                # Convert to base64 for embedding
-                                image_base64 = base64.b64encode(image_data).decode('utf-8')
                                 
                                 # Determine image format
                                 content_type = image_part.content_type
@@ -1148,21 +1149,95 @@ async def upload_file(
                                     img_format = 'jpeg'
                                 elif 'gif' in content_type:
                                     img_format = 'gif'
+                                elif 'webp' in content_type:
+                                    img_format = 'webp'
+                                elif 'svg' in content_type:
+                                    img_format = 'svg'
+                                    # Only SVG should remain base64
+                                    image_base64 = base64.b64encode(image_data).decode('utf-8')
+                                    media_files.append({
+                                        'type': 'image',
+                                        'format': img_format,
+                                        'data': f"data:{content_type};base64,{image_base64}",
+                                        'content_type': content_type,
+                                        'size': len(image_data),
+                                        'is_svg': True
+                                    })
+                                    print(f"✅ Extracted SVG image as base64: {len(image_data)} bytes")
+                                    continue
                                 else:
                                     img_format = 'png'  # default
                                 
-                                media_files.append({
-                                    'type': 'image',
-                                    'format': img_format,
-                                    'data': image_base64,
-                                    'content_type': content_type,
-                                    'size': len(image_data)
-                                })
+                                # For non-SVG images, save as files to Asset Library
+                                try:
+                                    # Generate unique filename
+                                    safe_prefix = "".join(c for c in filename_prefix if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+                                    unique_filename = f"{safe_prefix}_img_{image_index}_{str(uuid.uuid4())[:8]}.{img_format}"
+                                    file_path = f"static/uploads/{unique_filename}"
+                                    
+                                    # Ensure upload directory exists
+                                    os.makedirs("static/uploads", exist_ok=True)
+                                    
+                                    # Save file to disk
+                                    async with aiofiles.open(file_path, "wb") as buffer:
+                                        await buffer.write(image_data)
+                                    
+                                    # Generate URL for the file (using /api/static prefix)
+                                    file_url = f"/api/static/uploads/{unique_filename}"
+                                    
+                                    # Save asset metadata to database
+                                    assets_collection = db["assets"]
+                                    asset_data = {
+                                        "id": str(uuid.uuid4()),
+                                        "original_filename": f"extracted_image_{image_index}.{img_format}",
+                                        "filename": unique_filename,
+                                        "title": f"Image {image_index} from {filename_prefix}",
+                                        "name": f"Image {image_index} from {filename_prefix}",
+                                        "type": "image",
+                                        "url": file_url,
+                                        "file_path": file_path,
+                                        "content_type": content_type,
+                                        "size": len(image_data),
+                                        "source": "docx_extraction",
+                                        "source_document": filename_prefix,
+                                        "created_at": datetime.utcnow().isoformat(),
+                                        "updated_at": datetime.utcnow().isoformat()
+                                    }
+                                    
+                                    await assets_collection.insert_one(asset_data)
+                                    saved_assets.append(asset_data)
+                                    
+                                    # Store file URL instead of base64 data
+                                    media_files.append({
+                                        'type': 'image',
+                                        'format': img_format,
+                                        'url': file_url,
+                                        'content_type': content_type,
+                                        'size': len(image_data),
+                                        'is_svg': False,
+                                        'asset_id': asset_data["id"]
+                                    })
+                                    
+                                    print(f"✅ Extracted and saved image: {img_format}, {len(image_data)} bytes -> {file_url}")
                                 
-                                print(f"✅ Extracted image: {img_format}, {len(image_data)} bytes")
+                                except Exception as save_error:
+                                    print(f"⚠️ Error saving image as file: {save_error}")
+                                    # Fallback to base64 if file save fails
+                                    image_base64 = base64.b64encode(image_data).decode('utf-8')
+                                    media_files.append({
+                                        'type': 'image',
+                                        'format': img_format,
+                                        'data': f"data:{content_type};base64,{image_base64}",
+                                        'content_type': content_type,
+                                        'size': len(image_data),
+                                        'is_svg': False,
+                                        'fallback': True
+                                    })
+                                
                     except Exception as e:
                         print(f"⚠️ Media extraction error: {e}")
                     
+                    print(f"📁 Saved {len(saved_assets)} images to Asset Library")
                     return media_files
                 
                 # Extract media from document

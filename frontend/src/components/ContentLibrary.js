@@ -766,6 +766,17 @@ const ContentLibrary = () => {
         </div>
       )}
 
+      {/* Knowledge Engine Upload Modal */}
+      <KnowledgeEngineUpload
+        isOpen={showKnowledgeUpload}
+        onClose={() => setShowKnowledgeUpload(false)}
+        onUploadComplete={(results) => {
+          console.log('Upload results:', results);
+          setShowKnowledgeUpload(false);
+          fetchArticles(); // Refresh articles list
+        }}
+      />
+
       {/* Snip and Record Modal */}
       <SnipAndRecord
         isOpen={showSnipAndRecord}

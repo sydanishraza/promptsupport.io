@@ -197,11 +197,8 @@ async def startup_event():
 
 @app.post("/api/ai-assistance")
 async def ai_assistance(request: AIAssistanceRequest):
-    """Provide AI writing assistance using OpenAI"""
+    """Provide AI writing assistance using LLM with fallback"""
     try:
-        if not OPENAI_API_KEY:
-            return {"error": "OpenAI API key not configured", "suggestions": []}
-        
         # Prepare prompt based on mode
         prompts = {
             "completion": f"Continue this text naturally and coherently:\n\n{request.content}\n\nContinuation:",
@@ -211,41 +208,23 @@ async def ai_assistance(request: AIAssistanceRequest):
         }
         
         prompt = prompts.get(request.mode, prompts["completion"])
+        system_message = "You are a helpful writing assistant. Provide clear, actionable suggestions."
         
-        # Make request to OpenAI
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "gpt-4",
-                    "messages": [
-                        {"role": "system", "content": "You are a helpful writing assistant. Provide clear, actionable suggestions."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "max_tokens": 500,
-                    "temperature": 0.7
-                }
-            )
+        # Use fallback system to get AI response
+        session_id = str(uuid.uuid4())
+        ai_response = await call_llm_with_fallback(system_message, prompt, session_id)
+        
+        if ai_response:
+            # Split response into suggestions
+            suggestions = [s.strip() for s in ai_response.split('\n') if s.strip()]
             
-            if response.status_code == 200:
-                result = response.json()
-                ai_response = result["choices"][0]["message"]["content"]
-                
-                # Split response into suggestions
-                suggestions = [s.strip() for s in ai_response.split('\n') if s.strip()]
-                
-                return {
-                    "suggestions": suggestions[:3],  # Limit to 3 suggestions
-                    "mode": request.mode,
-                    "success": True
-                }
-            else:
-                print(f"OpenAI API error: {response.status_code} - {response.text}")
-                return {"error": "AI service temporarily unavailable", "suggestions": []}
+            return {
+                "suggestions": suggestions[:3],  # Limit to 3 suggestions
+                "mode": request.mode,
+                "success": True
+            }
+        else:
+            return {"error": "AI service temporarily unavailable", "suggestions": []}
                 
     except Exception as e:
         print(f"AI assistance error: {str(e)}")
@@ -253,11 +232,8 @@ async def ai_assistance(request: AIAssistanceRequest):
 
 @app.post("/api/content-analysis")
 async def content_analysis(request: AIAssistanceRequest):
-    """Analyze content for insights using OpenAI"""
+    """Analyze content for insights using LLM with fallback"""
     try:
-        if not OPENAI_API_KEY:
-            return {"error": "OpenAI API key not configured"}
-        
         # Strip HTML tags for analysis
         text_content = re.sub(r'<[^>]*>', '', request.content)
         
@@ -266,36 +242,25 @@ async def content_analysis(request: AIAssistanceRequest):
         sentences = len([s for s in re.split(r'[.!?]+', text_content) if s.strip()])
         paragraphs = len([p for p in text_content.split('\n\n') if p.strip()])
         
-        # Get AI analysis
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "gpt-4",
-                    "messages": [
-                        {"role": "system", "content": "You are a content analysis expert. Provide readability score (0-100), tone assessment, and key insights."},
-                        {"role": "user", "content": f"Analyze this content:\n\n{text_content[:1000]}"}
-                    ],
-                    "max_tokens": 300,
-                    "temperature": 0.3
-                }
-            )
+        # Get AI analysis using fallback system
+        system_message = "You are a content analysis expert. Provide readability score (0-100), tone assessment, and key insights."
+        user_message = f"Analyze this content:\n\n{text_content[:1000]}"
+        
+        session_id = str(uuid.uuid4())
+        ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+        
+        ai_insights = ""
+        readability_score = 70  # Default
+        
+        if ai_response:
+            ai_insights = ai_response
             
-            ai_insights = ""
-            readability_score = 70  # Default
-            
-            if response.status_code == 200:
-                result = response.json()
-                ai_insights = result["choices"][0]["message"]["content"]
-                
-                # Extract readability score if mentioned
-                score_match = re.search(r'readability.*?(\d+)', ai_insights, re.IGNORECASE)
-                if score_match:
-                    readability_score = int(score_match.group(1))
+            # Extract readability score if mentioned
+            score_match = re.search(r'readability.*?(\d+)', ai_insights, re.IGNORECASE)
+            if score_match:
+                readability_score = int(score_match.group(1))
+        else:
+            ai_insights = "AI analysis temporarily unavailable"
         
         return {
             "wordCount": words,

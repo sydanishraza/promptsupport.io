@@ -963,14 +963,16 @@ TRANSFORMATION REQUIREMENTS:
    - Prioritize user-friendly, digestible article lengths (600-1500 words each)
    - For documents with 6+ chapters, create 1 article per chapter plus overview/conclusion articles
 
-2. **Media Contextual Embedding & Preservation**:
-   - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
+2. **Media Contextual Embedding & Distribution**:
+   - PRESERVE and DISTRIBUTE all embedded images across ALL articles
+   - Each article MUST include 2-4 images relevant to its content
    - Place images at their ORIGINAL contextual location within the content flow
    - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
    - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
-   - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
-   - Reference images in surrounding text: "As illustrated in Figure 1 below..."
-   - Never place images at the end - embed them where they contextually belong
+   - Add proper figure captions: <p><em>Figure X: Descriptive caption explaining the image relevance</em></p>
+   - Reference images in surrounding text: "As illustrated in Figure X below..."
+   - CRITICAL: All provided images must be distributed across the complete article set
+   - Never create articles without images if images are available in the source content
 
 3. **HTML Content Formatting (NOT Markdown)**:
    - Generate clean HTML suitable for WYSIWYG editor display

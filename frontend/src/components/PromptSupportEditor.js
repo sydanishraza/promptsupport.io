@@ -3819,7 +3819,7 @@ const PromptSupportEditor = ({
                   onMouseOver={handleLinkHover}
                   onMouseOut={handleLinkMouseOut}
                   onClick={handleLinkClick}
-                  className={`wysiwyg-editor editor-content p-6 focus:outline-none transition-colors ${
+                  className={`wysiwyg-content wysiwyg-editor p-6 focus:outline-none transition-colors ${
                     draggedOver ? 'bg-blue-50 border-2 border-dashed border-blue-300' : ''
                   }`}
                   style={{

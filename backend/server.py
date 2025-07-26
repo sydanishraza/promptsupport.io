@@ -869,11 +869,12 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
     return (
         heading_count >= 2 or  # Just 2 headings needed
         has_table_of_contents or
-        (has_multiple_sections and len(content) > 1500) or  # Reduced length threshold
+        (has_multiple_sections and len(content) > 1200) or  # Further reduced length threshold  
         has_enumerated_sections or
-        transition_count >= 2 or  # Topic transitions indicate multiple topics
-        len(content) > 6000 or  # Reduced from 8000 - shorter documents should also split
-        (file_extension == 'docx' and len(content) > 3000)  # DOCX files split more aggressively
+        transition_count >= 1 or  # Single topic transition indicates multiple topics
+        len(content) > 4000 or  # Reduced from 6000 - split documents earlier
+        (file_extension == 'docx' and len(content) > 2000) or  # DOCX files split more aggressively
+        (len(content) > 8000 and heading_count >= 4)  # Rich documents with multiple headings
     )
 
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:

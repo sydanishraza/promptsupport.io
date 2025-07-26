@@ -1076,187 +1076,145 @@ Respond with JSON:
         return await create_single_article_from_content(content, metadata)
 
 async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
-    """Create a single comprehensive article from content"""
-    # Use AI to create structured article
-    if OPENAI_API_KEY:
-        try:
-            headers = {
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            
-            prompt = f"""
-            You are an expert technical writer and content strategist. Transform the following raw content into a comprehensive, production-ready knowledge base article with clean HTML formatting for immediate use in a WYSIWYG editor.
+    """Create a single comprehensive article from content using LLM with fallback"""
+    
+    system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. Respond ONLY with valid JSON."""
+    
+    user_message = f"""Transform this content into a comprehensive, production-ready knowledge base article with clean HTML formatting.
 
-            CRITICAL: This content may contain embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations within the article.
+CRITICAL: This content may contain embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations.
 
-            Original Content:
-            {content[:12000]}
+Original Content:
+{content[:12000]}
 
-            TRANSFORMATION REQUIREMENTS:
+TRANSFORMATION REQUIREMENTS:
 
-            1. **Media Contextual Embedding & Preservation**:
-               - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
-               - Place images at their ORIGINAL contextual location within the content flow
-               - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
-               - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
-               - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
-               - Reference images in surrounding text: "As illustrated in Figure 1 below..."
-               - Never place images at the end - embed them where they contextually belong
+1. **Media Contextual Embedding & Preservation**:
+   - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
+   - Place images at their ORIGINAL contextual location within the content flow
+   - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
+   - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
+   - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
+   - Reference images in surrounding text: "As illustrated in Figure 1 below..."
+   - Never place images at the end - embed them where they contextually belong
 
-            2. **HTML Content Formatting (NOT Markdown)**:
-               - Generate clean HTML suitable for WYSIWYG editor display
-               - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
-               - Format lists as <ul> and <ol> with <li> elements
-               - Use <p> tags for paragraphs with proper spacing
-               - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
-               - Use <blockquote> for callouts and important notes
-               - Add <strong> for emphasis, <em> for italics
-               - Use <code> for inline code, <pre><code> for code blocks
-               - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
+2. **HTML Content Formatting (NOT Markdown)**:
+   - Generate clean HTML suitable for WYSIWYG editor display
+   - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
+   - Format lists as <ul> and <ol> with <li> elements
+   - Use <p> tags for paragraphs with proper spacing
+   - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
+   - Use <blockquote> for callouts and important notes
+   - Add <strong> for emphasis, <em> for italics
+   - Use <code> for inline code, <pre><code> for code blocks
+   - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
 
-            3. **Content Enhancement & Professional Writing**:
-               - Completely rewrite content for clarity, flow, and technical accuracy
-               - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
-               - Add context, explanations, and helpful details where needed
-               - Improve technical language while maintaining original intent
-               - Add smooth transitions and logical connections between concepts
-               - Include troubleshooting tips, best practices, and common scenarios
+3. **Content Enhancement & Professional Writing**:
+   - Completely rewrite content for clarity, flow, and technical accuracy
+   - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
+   - Add context, explanations, and helpful details where needed
+   - Improve technical language while maintaining original intent
+   - Add smooth transitions and logical connections between concepts
+   - Include troubleshooting tips, best practices, and common scenarios
 
-            4. **Professional Article Structure**:
-               - Start with compelling <h1> title and introduction explaining purpose
-               - Include "What You'll Learn" and "Prerequisites" sections where relevant
-               - Organize content with clear heading hierarchy and logical flow
-               - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
-               - Create actionable content that users can immediately implement
+4. **Professional Article Structure**:
+   - Start with compelling <h1> title and introduction explaining purpose
+   - Include "What You'll Learn" and "Prerequisites" sections where relevant
+   - Organize content with clear heading hierarchy and logical flow
+   - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
+   - Create actionable content that users can immediately implement
 
-            5. **Clean Metadata Management**:
-               - Generate descriptive, SEO-friendly title (no filename references)
-               - Write detailed summary (3-4 sentences) explaining value proposition
-               - Create comprehensive tag list including technical terms and processes
-               - Generate practical takeaways highlighting key learning points
-               - Keep ALL source metadata OUT of article content
+5. **Clean Metadata Management**:
+   - Generate descriptive, SEO-friendly title (no filename references)
+   - Write detailed summary (3-4 sentences) explaining value proposition
+   - Create comprehensive tag list including technical terms and processes
+   - Generate practical takeaways highlighting key learning points
+   - Keep ALL source metadata OUT of article content
 
-            RESPONSE FORMAT - Return valid JSON:
-            {{
-                "title": "Professional, descriptive title focused on the content topic (no filename references)",
-                "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides",
-                "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose, scope, and importance...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context and examples...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance</em></p><p>As shown in Figure 1 above...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
-                "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
-                "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
-            }}
-
-            QUALITY STANDARDS:
-            - Article should be 800-2500 words when rendered (prefer focused, digestible content)
-            - Content should feel authoritative and professionally written
-            - Include practical examples and real-world applications
-            - Ensure content is immediately actionable and valuable
-            - Maintain consistent professional tone throughout
-            - MUST preserve all embedded media and URLs/data URLs exactly as provided
-            - Use clean HTML formatting suitable for WYSIWYG display
-            - Remove all source metadata from article content
-            - Embed images contextually, not at the end of articles
-            """
-            
-            data = {
-                "model": "gpt-4o",
-                "messages": [
-                    {"role": "system", "content": "You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. Respond ONLY with valid JSON."},
-                    {"role": "user", "content": f"""Transform this content into a single HTML article. Requirements:
-                    
 CRITICAL OUTPUT RULES:
 - Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
 - NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
 - NEVER mention filenames, dates, byte counts, or metadata
 - Images: Use <img src="URL" alt="description" style="max-width:100%;">
 
-Content to transform:
-{content[:12000]}
+RESPONSE FORMAT - Return valid JSON:
+{{
+    "title": "Professional, descriptive title focused on the content topic (no filename references)",
+    "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides",
+    "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose, scope, and importance...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context and examples...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance</em></p><p>As shown in Figure 1 above...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
+    "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
+    "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
+}}"""
 
-Respond with JSON:
-{{"title": "Clean Title", "summary": "Description", "content": "<h1>Title</h1><p>Content...</p>", "tags": ["tag1"], "takeaways": ["point1"]}}"""}
-                ],
-                "max_tokens": 6000,
-                "temperature": 0.1
+    # Try to get AI response using fallback system
+    session_id = str(uuid.uuid4())
+    ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+    
+    if ai_response:
+        try:
+            print(f"✅ AI response received: {len(ai_response)} characters")
+            
+            # Clean up AI response to extract JSON
+            import re
+            
+            # Remove any markdown code blocks
+            json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                json_str = ai_response
+            
+            # Parse JSON
+            article_data = json.loads(json_str)
+            
+            print(f"✅ Parsed article data: title='{article_data.get('title', 'N/A')}', tags={article_data.get('tags', [])}")
+            print(f"🔍 DEBUG: Article data keys: {list(article_data.keys())}")
+            print(f"🔍 DEBUG: Content field present: {'content' in article_data}")
+            print(f"🔍 DEBUG: Content preview: {article_data.get('content', 'NO CONTENT')[:100]}...")
+            
+            # Create article record with cleaned content
+            raw_title = article_data.get("title", metadata.get('original_filename', 'Processed Content'))
+            raw_content = article_data.get("content", content)
+            
+            cleaned_title = clean_article_title(raw_title)
+            cleaned_content = clean_article_content(raw_content)
+            
+            # Determine which AI model was used based on session info
+            ai_model = "gpt-4o (with claude fallback)" if OPENAI_API_KEY else "claude-3-5-sonnet"
+            
+            article_record = {
+                "id": str(uuid.uuid4()),
+                "title": cleaned_title,
+                "content": cleaned_content,
+                "summary": article_data.get("summary", "Content processed by Knowledge Engine"),
+                "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
+                "takeaways": article_data.get("takeaways", []),
+                "source_type": metadata.get('type', 'text_processing'),
+                "status": "draft",
+                "metadata": {
+                    **metadata,
+                    "ai_processed": True,
+                    "ai_model": ai_model,
+                    "processing_timestamp": datetime.utcnow().isoformat()
+                },
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
             }
             
-            print(f"🤖 Calling OpenAI GPT-4o for single article generation...")
+            print(f"🔍 DEBUG: Article record content field: {article_record.get('content', 'NO CONTENT')[:100]}...")
             
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=data,
-                timeout=45
-            )
+            return article_record
             
-            if response.status_code == 200:
-                result = response.json()
-                ai_response = result["choices"][0]["message"]["content"].strip()
-                
-                print(f"✅ OpenAI response received: {len(ai_response)} characters")
-                
-                try:
-                    # Clean up AI response to extract JSON
-                    import re
-                    
-                    # Remove any markdown code blocks
-                    json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
-                    if json_match:
-                        json_str = json_match.group(1)
-                    else:
-                        json_str = ai_response
-                    
-                    # Parse JSON
-                    article_data = json.loads(json_str)
-                    
-                    print(f"✅ Parsed article data: title='{article_data.get('title', 'N/A')}', tags={article_data.get('tags', [])}")
-                    print(f"🔍 DEBUG: Article data keys: {list(article_data.keys())}")
-                    print(f"🔍 DEBUG: Content field present: {'content' in article_data}")
-                    print(f"🔍 DEBUG: Content preview: {article_data.get('content', 'NO CONTENT')[:100]}...")
-                    
-                    # Create article record with cleaned content
-                    raw_title = article_data.get("title", metadata.get('original_filename', 'Processed Content'))
-                    raw_content = article_data.get("content", content)
-                    
-                    cleaned_title = clean_article_title(raw_title)
-                    cleaned_content = clean_article_content(raw_content)
-                    
-                    article_record = {
-                        "id": str(uuid.uuid4()),
-                        "title": cleaned_title,
-                        "content": cleaned_content,
-                        "summary": article_data.get("summary", "Content processed by Knowledge Engine"),
-                        "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
-                        "takeaways": article_data.get("takeaways", []),
-                        "source_type": metadata.get('type', 'text_processing'),
-                        "status": "draft",
-                        "metadata": {
-                            **metadata,
-                            "ai_processed": True,
-                            "ai_model": "gpt-4o",
-                            "processing_timestamp": datetime.utcnow().isoformat()
-                        },
-                        "created_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow()
-                    }
-                    
-                    print(f"🔍 DEBUG: Article record content field: {article_record.get('content', 'NO CONTENT')[:100]}...")
-                    
-                    return article_record
-                    
-                except json.JSONDecodeError as e:
-                    print(f"❌ JSON parsing error: {e}")
-                    print(f"Raw AI response: {ai_response[:500]}...")
-                    # Fallback to basic article
-                    pass
-            else:
-                print(f"❌ OpenAI API error: {response.status_code} - {response.text}")
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON parsing error: {e}")
+            print(f"Raw AI response: {ai_response[:500]}...")
         except Exception as e:
-            print(f"❌ AI article generation error: {e}")
+            print(f"❌ Error processing AI response: {e}")
     else:
-        print("⚠️ OpenAI API key not available")
+        print("❌ No AI response available from either OpenAI or Claude")
     
     # Fallback to basic article
+    print("🔄 Falling back to basic article creation...")
     return await create_basic_fallback_article(content, metadata)
 
 async def create_basic_fallback_article(content: str, metadata: Dict[str, Any]) -> List[Dict]:

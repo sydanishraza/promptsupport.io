@@ -25,6 +25,7 @@ from dotenv import load_dotenv
 import requests
 import httpx
 import re
+import markdown
 from bs4 import BeautifulSoup
 from media_intelligence import media_intelligence
 

@@ -1371,6 +1371,8 @@ async def upload_file(
                                     extracted_content += "| " + " | ".join(row) + " |\n"
                         
                         extracted_content += "\n"
+                        
+                print(f"✅ Simplified extraction: {len(extracted_content)} characters from Word document, {len(embedded_media)} images provided for AI contextual positioning")
             except ImportError:
                 print("⚠️ python-docx not available, treating as binary file")
                 extracted_content = f"Word document: {file.filename} (content extraction requires python-docx)"

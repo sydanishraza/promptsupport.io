@@ -6,7 +6,7 @@ Analyzes the original DOCX document to compare with Knowledge Engine output
 
 import os
 import sys
-from python_docx import Document
+from docx import Document
 from PIL import Image
 import io
 import requests

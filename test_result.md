@@ -135,7 +135,89 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "Phase 1 Knowledge Engine Refinement: Fix image extraction and embedding to use proper file formats instead of base64, ensure compatibility with content editor, and implement comprehensive upload interface"
+## user_problem_statement: "Critical Knowledge Engine Issues - Fix Markdown in WYSIWYG view, improve content splitting, fix image embedding contextually, and remove metadata from article content"
+
+## backend:
+  - task: "Enhanced Content Splitting Logic"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "IMPLEMENTED: Enhanced should_split_into_multiple_articles() function with more aggressive splitting logic. Reduced thresholds (800 chars minimum, 3000 for DOCX), added more heading patterns, topic transition detection, and better document structure analysis. Now prioritizes creating multiple focused articles over single long ones."
+
+  - task: "AI Prompts for HTML Output Instead of Markdown"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "IMPLEMENTED: Completely rewrote AI prompts for both multiple and single article generation to produce clean HTML instead of Markdown. Content now generates proper HTML tags (<h1>, <p>, <img>, <blockquote>, etc.) suitable for WYSIWYG display. Updated system prompts to emphasize HTML output and contextual media placement."
+
+  - task: "Simplified Image Embedding with Contextual Placement"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "IMPLEMENTED: Simplified DOCX image extraction to add all image references at the beginning of content for AI to position contextually. Removed complex heuristic-based image placement logic. AI now receives all images and places them where they belong in the content flow instead of at the end of articles."
+
+  - task: "Remove Metadata from Article Content"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "IMPLEMENTED: Removed all source metadata from article content generation. No more file statistics, byte counts, extraction summaries, or document metadata in article bodies. AI prompts now explicitly instruct to keep source metadata out of content and generate clean, professional articles without technical metadata clutter."
+
+## frontend:
+  - task: "Knowledge Engine Upload Interface"
+    implemented: true
+    working: false
+    file: "frontend/src/components/KnowledgeEngineUpload.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "IMPLEMENTED: Created comprehensive upload interface integrated into ContentLibrary. Ready for testing with improved backend processing."
+
+## metadata:
+  created_by: "main_agent"
+  version: "4.0"
+  test_sequence: 2
+  run_ui: false
+
+## test_plan:
+  current_focus:
+    - "Enhanced Content Splitting Logic"
+    - "AI Prompts for HTML Output Instead of Markdown"
+    - "Simplified Image Embedding with Contextual Placement"
+    - "Remove Metadata from Article Content"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+## agent_communication:
+    -agent: "main"
+    -message: "Fixed all 4 critical Knowledge Engine issues: 1) AI now generates HTML instead of Markdown for WYSIWYG display, 2) Enhanced content splitting logic creates more focused articles, 3) Simplified image embedding allows AI to position images contextually, 4) Removed all metadata clutter from article content. The Knowledge Engine should now produce clean, properly formatted articles with contextual image placement. Ready for comprehensive testing."
 
 ## backend:
   - task: "Enhanced Image Extraction with File Storage"

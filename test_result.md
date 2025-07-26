@@ -135,7 +135,20 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "Fixed Critical Knowledge Engine Issues - Implemented improved AI prompts and post-processing for HTML output, metadata removal, content splitting, and contextual image embedding"
+## user_problem_statement: "Implemented OpenAI-to-Claude fallback system to ensure robust Knowledge Engine functionality even during API outages or quota issues"
+
+## backend:
+  - task: "OpenAI to Claude Fallback System Implementation"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "IMPLEMENTED: Added comprehensive LLM fallback system using emergentintegrations library. Created call_llm_with_fallback() function that tries OpenAI (GPT-4o) first, then automatically switches to Claude (claude-3-5-sonnet-20241022) if OpenAI fails due to quota, rate limiting, or any other errors. Updated create_single_article_from_content(), create_multiple_articles_from_content(), ai_assistance(), content_analysis(), and chat endpoints to use the new fallback system. This ensures Knowledge Engine continues working even during OpenAI outages or quota exceeded scenarios."
 
 ## backend:
   - task: "Improved AI Prompts with Format Control"

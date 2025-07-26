@@ -1,63 +1,45 @@
 <analysis>
-The AI engineer's work trajectory demonstrates an iterative, problem-solving approach to refining the PromptSupport application's WYSIWYG editor. Initially, critical editor issues like paste functionality, link removal, HTML view formatting, and image handling were systematically addressed. The most significant overhaul involved transitioning image storage from base64 to a file-based system, requiring both backend () and frontend () modifications.
+The AI engineer's work trajectory demonstrates an iterative, problem-solving approach. Initially, the focus was on refining the PromptSupport application's WYSIWYG editor by systematically addressing critical issues such as paste functionality, link removal, HTML view formatting, and image handling. A significant overhaul involved transitioning image storage from base64 to a file-based system, requiring both backend () and frontend () modifications.
 
-Despite declaring issues fixed, several problems, particularly concerning image insertion (positioning, scrollability, duplicate assets), resurfaced or were newly identified by the user. The engineer methodically investigated each, implementing solutions such as cursor position preservation, revised image insertion logic,  enhancements to fetch backend assets, and fixing modal interaction issues. The most persistent challenge has been the editor's scrollability post-image insertion, which has undergone multiple CSS and JavaScript-based attempts, culminating in an 80% successful CSS injection fix, though mouse wheel scrolling remains an identified minor issue. The trajectory shows persistent effort to resolve reported bugs.
+Subsequently, the development shifted to the Knowledge Engine (Phase 1). This involved creating a new frontend upload interface and substantial backend modifications for AI-driven content extraction, article splitting, HTML generation from document types like DOCX, and contextual image embedding. Despite numerous code changes to implement these features and resolve issues like Markdown rendering and incorrect image placement, the system still produced basic articles. The final investigation revealed an OpenAI API quota exceeded (429) error as the root cause, indicating an environment/API issue rather than a code bug.
 </analysis>
 
 <product_requirements>
-PromptSupport is envisioned as an AI-native web application providing a comprehensive support stack. The core task involved refining and overhauling its Content Library's WYSIWYG editor ().
+The PromptSupport application is envisioned as an AI-native web application providing a comprehensive support stack, with a core focus on refining its Content Library's WYSIWYG editor. Initial requirements included UI/UX improvements, mobile responsiveness, and core editor functionalities like rich text, multi-mode editing, and advanced blocks. Explicit editor issues addressed included: inability to paste, non-functional link removal, unformatted HTML view, base64 image embedding (transitioned to file URLs), images inserting at top, editor unscrollability post-image insertion, and duplicate assets on reuse.
 
-Initial requirements for the application included:
-*   **Content Library**: Improvements in navigation, scrolling, asset counts, consistent pagination, and filter UI.
-*   **General UI/UX**: Logo, consistent headers, enhanced collapsed sidebar, tooltips, fly-out menus.
-*   **Mobile Responsiveness**: Compact UI and auto-collapsing sidebar.
-*   **WYSIWYG Editor**: Core editing, rich text, cursor stability, toolbar, multi-mode (WYSIWYG, Markdown, HTML), advanced blocks (tables, columns, callouts), color/alignment, image upload (drag & drop, asset library), video embeds, keyboard shortcuts, slash commands, AI suggestions, content analytics, real-time save, version control, commenting.
-
-Subsequent explicit issues identified for the editor specifically included:
-*   **Cannot Paste Content**: Pasted content not appearing.
-*   **Link Remove Option Not Working**: Hyperlink detachment failure.
-*   **HTML View Cleanup**: HTML tab showing unformatted, redundant, or inline-styled markup.
-*   **Images as Base64**: Images embedded as base64 instead of file URLs.
-*   **Local Asset Upload Converts Format to Base64**: Uploaded images should retain original format, be saved to Asset Library, and embedded via file reference.
-*   **Image from Asset Library Always Inserts at Top**: Images from asset library insert at line 1, not cursor.
-*   **Editor Becomes Unscrollable After Image Insertion**: Editor losing vertical scroll after image.
-*   **Duplicate Assets Created on Reuse**: Reusing existing assets creates duplicates.
+The current primary focus is the Knowledge Engine. This engine must autonomously generate, update, and scale support documentation by extracting all content and media from diverse inputs (PDF, DOCX, HTML, Images, Videos, Audio, Links), analyzing it with LLMs, regenerating improved, well-organized, and media-rich articles compatible with the PromptSupport editor, and distributing them to the Content and Asset Libraries with continuous syncing capabilities across platforms like GitHub, Notion, and Jira. Output articles must preserve all original information, be technically accurate, include contextual image embeds via file references (not base64), and avoid unnecessary metadata within the article body, ensuring 100% native rendering in the editor.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS,  API, , DOM Range API, .
--   **Backend**: FastAPI, MongoDB, FastAPI .
+-   **Frontend**: React.js, TailwindCSS,  API, DOM Range API, .
+-   **Backend**: FastAPI, MongoDB, FastAPI , Python .
 -   **Deployment**: Kubernetes, Supervisor.
--   **Data Handling**: File uploads (PNG, JPG), URL-based asset management, base64 encoding (legacy).
+-   **Data Handling**: File uploads (PNG, JPG, DOCX, PDF), URL-based asset management, LLM integration (OpenAI GPT-4o).
 </key_technical_concepts>
 
 <code_architecture>
-The application follows a standard full-stack architecture with a React.js frontend and a FastAPI backend.
-
-
 
 -   ****:
-    -   **Importance**: Handles all backend API logic including content, asset management, and static file serving.
-    -   **Changes**: Initially provided for content pagination, AI tool endpoints, and article CRUD. Recent critical changes involved configuring  to serve uploaded images from . The  endpoint was updated to save images as physical files and store their URLs in MongoDB. The  GET endpoint was enhanced to return asset URLs (for file-based images) alongside base64 assets, including . Crucially, the static file mount path was changed from  to  to resolve Kubernetes ingress routing conflicts, and all image URLs returned by the backend reflect this new prefix.
+    -   **Importance**: Handles all backend API logic for content, asset management, and static file serving. It is now central to the Knowledge Engine's AI processing and article generation.
+    -   **Changes**: Initially configured  to serve uploaded images from  with the  prefix for Kubernetes ingress. Recent extensive changes involved updating  and  to generate HTML from LLM, ensure image references are URLs, and remove metadata. Content splitting logic was enhanced. Post-processing functions (, ) were added and applied to AI-generated content for final cleanup. The  function, which orchestrates the file upload to AI processing, was a key area of investigation.
 -   ****:
-    -   **Importance**: The core WYSIWYG editor component, subject to extensive modifications.
-    -   **Changes**:
-        *   **Core functionality**: Initial setup included rich text, cursor stability, toolbar, multi-mode, save, modal system, and text overflow.
-        *   ****: Simplified to ensure correct text selection post-paste.
-        *   ****: Fixed to properly detach hyperlinks using .
-        *   **HTML View**: Integrated  for pretty-printed HTML.
-        *   **Image Handling**:  updated to send files to backend and insert URLs.  modified to handle both URL-based and base64 assets from asset library.
-        *   **Cursor Position & Scrollability**: Extensive refactoring for  and related logic. Implemented  and  to ensure images are inserted at the correct cursor location after modal interaction. Added CSS (, , ) and a  pseudo-element to maintain editor scrollability, addressing persistent layout issues.
-        *   **Asset Modal Interaction**: Modified asset display logic in the modal to correctly use  or  for image sources and removed a problematic hover overlay that prevented asset selection.
+    -   **Importance**: The core WYSIWYG editor component.
+    -   **Changes**: Refactored  and . Integrated  for pretty-printed HTML.  and  were updated for URL-based images.  and  were implemented for precise image insertion. CSS rules (, , ) and a  pseudo-element were added to maintain editor scrollability. Asset display and interaction in the modal were corrected to use .
 -   ****:
-    -   **Importance**: Manages the display and selection of assets in the Content Library's Assets tab.
-    -   **Changes**: Initially, it only extracted base64 images embedded within articles. It was later modified to explicitly fetch all available assets from the backend's  endpoint. Visual indicators (Library badge) were added to distinguish assets fetched from the backend from those extracted from article content.
+    -   **Importance**: Manages the display and selection of assets.
+    -   **Changes**: Modified to explicitly fetch all available assets from the backend's  endpoint and distinguish them visually.
 -   ****:
-    -   **Importance**: Manages frontend dependencies.
-    -   **Changes**:  was added.
+    -   **Importance**: A newly created frontend component to handle the file and URL upload interface for the Knowledge Engine.
+    -   **Changes**: This file was created to manage the user-facing upload experience.
 -   ****:
-    -   **Importance**: Newly created directory for persistent storage of uploaded image files.
+    -   **Importance**: Manages the main Content Library view.
+    -   **Changes**: Modified to integrate the  component, including adding a button to open the Knowledge Engine upload modal.
+-   ****:
+    -   **Importance**: Directory for persistent storage of uploaded image files.
     -   **Changes**: Configured by FastAPI to serve images directly via  URLs.
+-   ****:
+    -   **Importance**: Manages backend Python dependencies.
+    -   **Changes**: The  library was added to support Markdown to HTML conversion.
 </code_architecture>
 
 <pending_tasks>
@@ -72,22 +54,21 @@ The application follows a standard full-stack architecture with a React.js front
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was primarily focused on resolving persistent image handling and editor scrollability issues, as reported by the user.
+Immediately prior to this summary, the AI engineer initially focused on resolving persistent image handling and editor scrollability issues in . This included implementing  and  for accurate image insertion, enhancing , fixing asset modal interaction, and applying CSS-based scrollability fixes (achieving 80% success, though mouse wheel scrolling remained an optimization target).
 
-The work revolved around these specific problems:
-1.  **Image from Asset Library Always Inserts at Top**: This was a recurring problem where images selected from the Asset Library modal would insert at the beginning of the document instead of the cursor's current position.
-2.  **Editor Becomes Unscrollable After Image Insertion**: Another persistent issue where the editor would lose its vertical scroll functionality once an image was inserted, hindering further editing.
-3.  **Duplicate Assets Created on Reuse**: When an existing image from the Asset Library was inserted, it was incorrectly treated as a new upload, leading to duplicate entries in the asset library.
+The work then transitioned to developing Phase 1 of the Knowledge Engine to automate article generation from uploaded documents, as detailed by new product requirements.
+**Backend ():**
+-   The content splitting logic was made more aggressive to generate multiple articles from a single document.
+-   AI prompts for  and  were refined to ensure HTML generation, correct URL-based image embedding, and removal of internal metadata from the final article content.
+-   Post-processing functions (, ) were added and integrated to further clean AI-generated content.
+-   The  library was added to backend dependencies.
+**Frontend ():**
+-   A new component, , was created for file/URL uploads.
+-   This upload functionality was integrated into  via a new button and modal.
 
-The AI engineer implemented several fixes in :
-*   **Cursor Position Preservation**: Introduced  and  functions to store and restore the DOM selection range before and after the asset library modal opens, ensuring images are inserted precisely at the user's cursor.
-*   **Enhanced Image Insertion Logic**: Rewrote parts of the  function to properly handle DOM ranges and prevent layout issues.
-*   **Asset Library Modal Fixes**: Addressed a mismatch where the modal was using  for image sources while the insertion logic expected . A problematic hover overlay that interfered with asset selection in the modal was identified and removed, improving user interaction.
-*   **Scrollability Fix Attempts**: Multiple attempts were made to resolve the editor's scrollability. The final approach involved injecting CSS rules (, , ) and adding a  pseudo-element with spacing to the editor's content area to force scrollability. While programmatic scrolling works, mouse wheel scrolling was noted as needing further optimization.
-
-The last reported status indicated that while the core scrollability (overflow-y active, min-height, consistent behavior) was resolved with 80% success, the mouse wheel scrolling still required optimization. All other reported issues (insertion position, duplicate assets, hover overlay) were confirmed fixed.
+Upon testing, issues were identified: Markdown markup was rendering in WYSIWYG view, content was not splitting into multiple articles, images were appearing as plain links, and unnecessary metadata was included in articles. Investigation traced these symptoms to a core issue: an **OpenAI API quota exceeded error (429)**. This error prevented successful AI processing, causing the system to fall back to basic content creation, thus bypassing the intended HTML generation, content splitting, and image embedding logic. The problem is an API quota issue, not a code defect.
 </current_work>
 
 <optional_next_step>
-The next step is to optimize mouse wheel scrolling within the editor, which was identified as a minor remaining issue.
+The next step is to inform the user about the OpenAI API quota error, as it is blocking the Knowledge Engine's AI processing.
 </optional_next_step>

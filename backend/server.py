@@ -644,15 +644,10 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
             return await create_basic_fallback_article(full_content, metadata)
 
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
-    """Determine if content should be split into multiple articles"""
-    # Enhanced rules for splitting - more permissive to enable better content generation
-    # 1. Documents with clear sections (even if shorter)
-    # 2. Documents with multiple headings
-    # 3. Presentations (each slide becomes an article)
-    # 4. Spreadsheets with multiple sheets
-    # 5. Documents with distinct topics or chapters
+    """Determine if content should be split into multiple articles - Enhanced for better topic separation"""
     
-    if len(content) < 1000:  # Lowered threshold
+    # Make splitting more aggressive for better content organization
+    if len(content) < 800:  # Further lowered threshold
         return False
     
     # Always split presentations
@@ -663,14 +658,18 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
     if file_extension in ['xls', 'xlsx'] and 'Sheet:' in content:
         return True
     
-    # Check for multiple headings/sections (more comprehensive patterns)
+    # Enhanced heading detection with more patterns
     heading_patterns = [
-        '===', '##', '# ', 
-        'Chapter', 'Section', 'Part ', 'Module',
-        'Overview', 'Introduction', 'Conclusion',
-        'Getting Started', 'Configuration', 'Setup',
-        'Administration', 'Management', 'Process',
-        'Step ', 'Phase ', 'Stage '
+        '===', '##', '# ', '####',
+        'Chapter', 'Section', 'Part ', 'Module', 'Unit',
+        'Overview', 'Introduction', 'Conclusion', 'Summary',
+        'Getting Started', 'Configuration', 'Setup', 'Installation',
+        'Administration', 'Management', 'Process', 'Procedure',
+        'Step ', 'Phase ', 'Stage ', 'Level ',
+        'Tutorial', 'Guide', 'How to', 'Instructions',
+        'Requirements', 'Prerequisites', 'Implementation',
+        'Architecture', 'Design', 'Structure', 'Framework',
+        'API', 'Reference', 'Documentation', 'Specification'
     ]
     
     heading_count = 0
@@ -679,18 +678,34 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
     for pattern in heading_patterns:
         heading_count += content_lower.count(pattern.lower())
     
-    # Check for document structure indicators
-    has_table_of_contents = any(toc in content_lower for toc in ['table of contents', 'contents:', 'index:'])
-    has_multiple_sections = content.count('\n\n') > 10  # Multiple paragraph breaks
-    has_enumerated_sections = len([line for line in content.split('\n') if line.strip().startswith(('1.', '2.', '3.', '4.', '5.'))]) > 3
+    # Check for document structure indicators (more comprehensive)
+    has_table_of_contents = any(toc in content_lower for toc in [
+        'table of contents', 'contents:', 'index:', 'toc', 
+        'outline:', 'structure:', 'agenda:'
+    ])
     
-    # More permissive splitting logic
+    has_multiple_sections = content.count('\n\n') > 5  # Reduced threshold
+    has_enumerated_sections = len([line for line in content.split('\n') 
+                                 if line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.'))]) > 2
+    
+    # Check for topic transitions (common transitional phrases)
+    topic_transitions = [
+        'moving on to', 'next topic', 'another important', 'in addition',
+        'furthermore', 'meanwhile', 'on the other hand', 'alternatively',
+        'let\'s discuss', 'now we\'ll cover', 'another aspect', 'different approach'
+    ]
+    
+    transition_count = sum(content_lower.count(phrase) for phrase in topic_transitions)
+    
+    # More aggressive splitting logic - prioritize multiple focused articles
     return (
         heading_count >= 2 or  # Just 2 headings needed
         has_table_of_contents or
-        (has_multiple_sections and len(content) > 2000) or
+        (has_multiple_sections and len(content) > 1500) or  # Reduced length threshold
         has_enumerated_sections or
-        len(content) > 8000  # Very long documents should always be split
+        transition_count >= 2 or  # Topic transitions indicate multiple topics
+        len(content) > 6000 or  # Reduced from 8000 - shorter documents should also split
+        (file_extension == 'docx' and len(content) > 3000)  # DOCX files split more aggressively
     )
 
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:

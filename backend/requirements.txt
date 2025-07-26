@@ -29,3 +29,4 @@ python-pptx==0.6.23
 moviepy==1.0.3
 opencv-python==4.8.1.78
 pytesseract==0.3.10
+markdown==3.6

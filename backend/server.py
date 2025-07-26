@@ -1629,11 +1629,8 @@ async def chat_with_ai(
     model_provider: str = Form("openai"),
     model_name: str = Form("gpt-4o")
 ):
-    """Chat with AI using processed content as context"""
+    """Chat with AI using processed content as context and LLM fallback"""
     try:
-        if not OPENAI_API_KEY and model_provider == "openai":
-            raise HTTPException(status_code=400, detail="OpenAI API key not configured")
-        
         # Get relevant chunks for context (simple implementation)
         context_chunks = []
         async for chunk in db.document_chunks.find(
@@ -1650,48 +1647,19 @@ Context:
 
 If the context doesn't contain relevant information, provide general assistance."""
 
-        response_text = ""
+        # Use fallback system to get AI response
+        ai_response = await call_llm_with_fallback(system_message, message, session_id)
         
-        if model_provider == "openai" and OPENAI_API_KEY:
-            # Direct OpenAI API call
-            headers = {
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            
-            data = {
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": message}
-                ],
-                "max_tokens": 1000,
-                "temperature": 0.7
-            }
-            
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=data,
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                response_text = result["choices"][0]["message"]["content"]
-            else:
-                raise HTTPException(status_code=500, detail=f"OpenAI API error: {response.text}")
-                
-        else:
-            raise HTTPException(status_code=400, detail="AI provider not configured or invalid")
+        if not ai_response:
+            raise HTTPException(status_code=500, detail="AI service temporarily unavailable")
         
         # Store conversation in database
         conversation_record = {
             "session_id": session_id,
             "user_message": message,
-            "ai_response": response_text,
-            "model_provider": model_provider,
-            "model_name": model_name,
+            "ai_response": ai_response,
+            "model_provider": "openai_claude_fallback",
+            "model_name": "gpt-4o/claude-3-5-sonnet",
             "context_used": len(context_chunks),
             "timestamp": datetime.utcnow()
         }
@@ -1699,7 +1667,7 @@ If the context doesn't contain relevant information, provide general assistance.
         await db.conversations.insert_one(conversation_record)
         
         return {
-            "response": response_text,
+            "response": ai_response,
             "session_id": session_id,
             "context_chunks_used": len(context_chunks)
         }

@@ -644,6 +644,110 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
             # Fallback: Create basic article without AI enhancement
             return await create_basic_fallback_article(full_content, metadata)
 
+def clean_article_content(content: str) -> str:
+    """Post-process article content to ensure HTML format and remove metadata"""
+    if not content:
+        return content
+    
+    # Remove common metadata patterns
+    metadata_patterns = [
+        r'\*\*Document Statistics:\*\*.*?(?=\n\n|\n#|\Z)',  # Document statistics sections
+        r'\*\*Media Assets.*?(?=\n\n|\n#|\Z)',  # Media asset summaries
+        r'\*\*Total.*?(?=\n\n|\n#|\Z)',  # Total counts
+        r'\*Figure \d+:.*?\d+ bytes.*?\n',  # Image metadata with byte counts
+        r'\- \*\*Image \d+\*\*:.*?bytes.*?\n',  # Image lists with metadata
+        r'\*\*Note:\*\*.*?extracted.*?\n',  # Extraction notes
+        r'\*.*?\d+ bytes.*?\*',  # Any text with byte counts
+        r'\.docx|\.pdf|\.txt|\.doc|\.xlsx',  # File extensions
+        r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}',  # ISO timestamps
+        r'Character count: \d+',  # Character counts
+        r'Added from document assets',  # Asset source references
+        r'\[Asset Library\]|\[Fallback\]',  # Asset source indicators
+    ]
+    
+    for pattern in metadata_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL)
+    
+    # Convert common Markdown to HTML if still present
+    markdown_to_html_patterns = [
+        # Headers
+        (r'^#{6}\s+(.+)$', r'<h6>\1</h6>'),
+        (r'^#{5}\s+(.+)$', r'<h5>\1</h5>'),
+        (r'^#{4}\s+(.+)$', r'<h4>\1</h4>'),
+        (r'^#{3}\s+(.+)$', r'<h3>\1</h3>'),
+        (r'^#{2}\s+(.+)$', r'<h2>\1</h2>'),
+        (r'^#{1}\s+(.+)$', r'<h1>\1</h1>'),
+        
+        # Bold and italic
+        (r'\*\*(.+?)\*\*', r'<strong>\1</strong>'),
+        (r'\*(.+?)\*', r'<em>\1</em>'),
+        
+        # Code blocks
+        (r'```[\w]*\n(.*?)\n```', r'<pre><code>\1</code></pre>'),
+        (r'`(.+?)`', r'<code>\1</code>'),
+        
+        # Links (markdown style) to HTML
+        (r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>'),
+        
+        # Images (markdown style) to HTML
+        (r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" style="max-width: 100%; height: auto;">'),
+    ]
+    
+    for pattern, replacement in markdown_to_html_patterns:
+        content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+    
+    # Clean up extra whitespace and newlines
+    content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Multiple newlines to double
+    content = re.sub(r'^\s+|\s+$', '', content)  # Trim whitespace
+    
+    # Ensure paragraphs are properly wrapped in <p> tags if not already
+    lines = content.split('\n\n')
+    processed_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Skip if already has HTML tags or is a list item
+        if (line.startswith(('<', '-', '*', '1.', '2.', '3.', '4.', '5.')) or 
+            '<' in line or
+            line.startswith('•')):
+            processed_lines.append(line)
+        else:
+            # Wrap plain text in paragraph tags
+            processed_lines.append(f'<p>{line}</p>')
+    
+    return '\n\n'.join(processed_lines)
+
+def clean_article_title(title: str) -> str:
+    """Clean article title to remove filename references and metadata"""
+    if not title:
+        return title
+    
+    # Remove file extensions and common filename patterns
+    title = re.sub(r'\.(docx|pdf|txt|doc|xlsx|pptx|md)$', '', title, flags=re.IGNORECASE)
+    title = re.sub(r'_+|-+', ' ', title)  # Replace underscores/dashes with spaces
+    title = re.sub(r'\s+', ' ', title).strip()  # Normalize whitespace
+    
+    # Remove common metadata prefixes
+    metadata_prefixes = [
+        r'^Document:\s*',
+        r'^File:\s*',
+        r'^Article:\s*',
+        r'^Content:\s*',
+        r'^\d+\.\s*',  # Numbered prefixes
+    ]
+    
+    for prefix in metadata_prefixes:
+        title = re.sub(prefix, '', title, flags=re.IGNORECASE)
+    
+    # Capitalize properly
+    title = title.title()
+    
+    return title.strip()
+
+
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
     """Determine if content should be split into multiple articles - Enhanced for better topic separation"""
     

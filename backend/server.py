@@ -871,209 +871,158 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
     )
 
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:
-    """Create multiple structured articles from content"""
-    if not OPENAI_API_KEY:
-        return await create_basic_fallback_article(content, metadata)
+    """Create multiple structured articles from content using LLM with fallback"""
     
-    try:
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        # Enhanced prompt for comprehensive article generation with HTML output
-        prompt = f"""
-        You are an expert technical writer and content strategist creating a comprehensive knowledge base from this document. Your goal is to transform the raw content into multiple, well-structured, production-ready articles with clean HTML formatting for immediate use in a WYSIWYG editor.
+    system_message = """You are a professional technical content writer creating a comprehensive knowledge base. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. Respond ONLY with valid JSON."""
+    
+    user_message = f"""Transform this content into multiple, well-structured, production-ready articles with clean HTML formatting for WYSIWYG editor.
 
-        CRITICAL: This content contains embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations within the articles.
+CRITICAL: This content contains embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations.
 
-        Original Content:
-        {content[:15000]}
+Original Content:
+{content[:15000]}
 
-        TRANSFORMATION REQUIREMENTS:
+TRANSFORMATION REQUIREMENTS:
 
-        1. **Content Analysis & Intelligent Splitting**:
-           - Identify ALL distinct topics, chapters, sections, or processes
-           - Create 4-10 focused articles (prefer more specific articles over long ones)
-           - Each article should cover ONE specific topic/process in depth
-           - Split by logical boundaries: procedures, concepts, features, components
-           - Prioritize user-friendly, digestible article lengths (800-2000 words each)
+1. **Content Analysis & Intelligent Splitting**:
+   - Identify ALL distinct topics, chapters, sections, or processes
+   - Create 4-10 focused articles (prefer more specific articles over long ones)
+   - Each article should cover ONE specific topic/process in depth
+   - Split by logical boundaries: procedures, concepts, features, components
+   - Prioritize user-friendly, digestible article lengths (800-2000 words each)
 
-        2. **Media Contextual Embedding & Preservation**:
-           - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
-           - Place images at their ORIGINAL contextual location within the content flow
-           - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
-           - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
-           - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
-           - Reference images in surrounding text: "As illustrated in Figure 1 below..."
-           - Never place images at the end - embed them where they contextually belong
+2. **Media Contextual Embedding & Preservation**:
+   - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
+   - Place images at their ORIGINAL contextual location within the content flow
+   - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
+   - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
+   - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
+   - Reference images in surrounding text: "As illustrated in Figure 1 below..."
+   - Never place images at the end - embed them where they contextually belong
 
-        3. **HTML Content Formatting (NOT Markdown)**:
-           - Generate clean HTML suitable for WYSIWYG editor display
-           - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
-           - Format lists as <ul> and <ol> with <li> elements
-           - Use <p> tags for paragraphs with proper spacing
-           - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
-           - Use <blockquote> for callouts and important notes
-           - Add <strong> for emphasis, <em> for italics
-           - Use <code> for inline code, <pre><code> for code blocks
-           - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
+3. **HTML Content Formatting (NOT Markdown)**:
+   - Generate clean HTML suitable for WYSIWYG editor display
+   - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
+   - Format lists as <ul> and <ol> with <li> elements
+   - Use <p> tags for paragraphs with proper spacing
+   - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
+   - Use <blockquote> for callouts and important notes
+   - Add <strong> for emphasis, <em> for italics
+   - Use <code> for inline code, <pre><code> for code blocks
+   - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
 
-        4. **Content Enhancement & Professional Writing**:
-           - Completely rewrite content for clarity, flow, and technical accuracy
-           - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
-           - Add context, explanations, and helpful details where needed
-           - Improve technical language while maintaining original intent
-           - Add smooth transitions and logical connections between concepts
-           - Include troubleshooting tips, best practices, and common scenarios
+4. **Content Enhancement & Professional Writing**:
+   - Completely rewrite content for clarity, flow, and technical accuracy
+   - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
+   - Add context, explanations, and helpful details where needed
+   - Improve technical language while maintaining original intent
+   - Add smooth transitions and logical connections between concepts
+   - Include troubleshooting tips, best practices, and common scenarios
 
-        5. **Professional Article Structure**:
-           - Start with compelling <h1> title and introduction explaining purpose
-           - Include "What You'll Learn" and "Prerequisites" sections where relevant
-           - Organize content with clear heading hierarchy and logical flow
-           - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
-           - Create actionable content that users can immediately implement
-           - Cross-reference related topics without hardcoded links
+5. **Professional Article Structure**:
+   - Start with compelling <h1> title and introduction explaining purpose
+   - Include "What You'll Learn" and "Prerequisites" sections where relevant
+   - Organize content with clear heading hierarchy and logical flow
+   - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
+   - Create actionable content that users can immediately implement
+   - Cross-reference related topics without hardcoded links
 
-        6. **Clean Metadata Management**:
-           - Generate descriptive, SEO-friendly titles (no filename references)
-           - Write detailed summaries (3-4 sentences) explaining value proposition
-           - Create comprehensive tag lists including technical terms, processes, categories
-           - Generate practical takeaways that highlight key learning points
-           - Keep ALL source metadata OUT of article content
+6. **Clean Metadata Management**:
+   - Generate descriptive, SEO-friendly titles (no filename references)
+   - Write detailed summaries (3-4 sentences) explaining value proposition
+   - Create comprehensive tag lists including technical terms, processes, categories
+   - Generate practical takeaways that highlight key learning points
+   - Keep ALL source metadata OUT of article content
 
-        RESPONSE FORMAT - Return valid JSON:
-        {{
-            "articles": [
-                {{
-                    "title": "Professional, descriptive title focused on the specific topic (no filename references)",
-                    "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides",
-                    "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose and scope...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance and content</em></p><p>As shown in Figure 1 above, the process demonstrates...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
-                    "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
-                    "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
-                }}
-            ]
-        }}
-                {{
-                    "title": "Comprehensive, descriptive title that clearly indicates the specific topic",
-                    "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides to the reader",
-                    "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance of this topic...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context...\\n\\n![Image Description](/api/static/uploads/image.png)\\n\\n*Figure 1: Caption describing the image and its relevance*\\n\\n#### Subsection 1.1\\n\\nSpecific details and examples...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Add helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a\\n   - Sub-step b\\n\\n2. **Step 2**: More details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations\\n\\n- Issue 1 and solution\\n- Issue 2 and solution\\n\\n## Key Takeaways\\n\\n- Takeaway 1\\n- Takeaway 2\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Related Articles\\n\\n- Link to related article 1\\n- Link to related article 2",
-                    "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name", "user-type"],
-                    "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
-                }}
-            ]
-        }}
-
-        QUALITY STANDARDS:
-        - Each article should be 800-2000 words when rendered (prefer focused, digestible content)
-        - Content should feel authoritative and professionally written
-        - Include practical examples and real-world applications  
-        - Maintain consistency in tone and style across all articles
-        - Ensure content is immediately actionable and valuable
-        - MUST preserve all embedded media and URLs/data URLs exactly as provided
-        - Use clean HTML formatting suitable for WYSIWYG display
-        - Remove all source metadata from article content
-        - Embed images contextually, not at the end of articles
-        """
-        
-        data = {
-            "model": "gpt-4o",
-            "messages": [
-                {"role": "system", "content": "You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. Respond ONLY with valid JSON."},
-                {"role": "user", "content": f"""Transform this content into multiple HTML articles. Requirements:
-                
 CRITICAL OUTPUT RULES:
 - Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
 - NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
 - NEVER mention filenames, dates, byte counts, or metadata
 - Images: Use <img src="URL" alt="description" style="max-width:100%;">
 
-Content to transform:
-{content[:15000]}
+RESPONSE FORMAT - Return valid JSON:
+{{
+    "articles": [
+        {{
+            "title": "Professional, descriptive title focused on the specific topic (no filename references)",
+            "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides",
+            "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose and scope...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance and content</em></p><p>As shown in Figure 1 above, the process demonstrates...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
+            "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
+            "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
+        }}
+    ]
+}}"""
 
-Respond with JSON:
-{{"articles": [{{"title": "Clean Title", "summary": "Description", "content": "<h1>Title</h1><p>Content...</p>", "tags": ["tag1"], "takeaways": ["point1"]}}]}}"""}
-            ],
-            "max_tokens": 8000,
-            "temperature": 0.1
-        }
-        
-        print(f"🤖 Calling OpenAI GPT-4o for multiple article generation...")
-        
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=60
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            ai_response = result["choices"][0]["message"]["content"].strip()
+    # Try to get AI response using fallback system
+    session_id = str(uuid.uuid4())
+    ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+    
+    if ai_response:
+        try:
+            print(f"✅ AI response received: {len(ai_response)} characters")
             
-            print(f"✅ OpenAI response received: {len(ai_response)} characters")
+            # Clean up AI response to extract JSON
+            import re
             
-            try:
-                # Clean up AI response to extract JSON
-                import re
-                
-                # Remove any markdown code blocks
-                json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
-                if json_match:
-                    json_str = json_match.group(1)
-                else:
-                    json_str = ai_response
-                
-                # Parse JSON
-                articles_data = json.loads(json_str)
-                
-                # Create article records
-                articles = []
-                for i, article_info in enumerate(articles_data.get('articles', [])):
-                    # Clean title and content using post-processing functions
-                    raw_title = article_info.get("title", f"Article {i+1}")
-                    raw_content = article_info.get("content", "Content not available")
-                    
-                    cleaned_title = clean_article_title(raw_title)
-                    cleaned_content = clean_article_content(raw_content)
-                    
-                    article_record = {
-                        "id": str(uuid.uuid4()),
-                        "title": cleaned_title,
-                        "content": cleaned_content,
-                        "summary": article_info.get("summary", "Generated from uploaded content"),
-                        "tags": article_info.get("tags", [metadata.get('type', 'upload')]),
-                        "takeaways": article_info.get("takeaways", []),
-                        "source_type": metadata.get('type', 'text_processing'),
-                        "status": "draft",
-                        "metadata": {
-                            **metadata,
-                            "ai_processed": True,
-                            "ai_model": "gpt-4o",
-                            "article_index": i + 1,
-                            "total_articles": len(articles_data.get('articles', [])),
-                            "processing_timestamp": datetime.utcnow().isoformat()
-                        },
-                        "created_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow()
-                    }
-                    articles.append(article_record)
-                
-                print(f"✅ Generated {len(articles)} articles from content")
-                return articles
-                
-            except json.JSONDecodeError as e:
-                print(f"❌ JSON parsing error: {e}")
-                print(f"Raw AI response: {ai_response[:500]}...")
-                # Fallback to single article
-                return await create_single_article_from_content(content, metadata)
-        else:
-            print(f"❌ OpenAI API error: {response.status_code} - {response.text}")
-            return await create_single_article_from_content(content, metadata)
+            # Remove any markdown code blocks
+            json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                json_str = ai_response
             
-    except Exception as e:
-        print(f"❌ Multiple articles generation error: {e}")
-        return await create_single_article_from_content(content, metadata)
+            # Parse JSON
+            articles_data = json.loads(json_str)
+            
+            # Create article records
+            articles = []
+            for i, article_info in enumerate(articles_data.get('articles', [])):
+                # Clean title and content using post-processing functions
+                raw_title = article_info.get("title", f"Article {i+1}")
+                raw_content = article_info.get("content", "Content not available")
+                
+                cleaned_title = clean_article_title(raw_title)
+                cleaned_content = clean_article_content(raw_content)
+                
+                # Determine which AI model was used
+                ai_model = "gpt-4o (with claude fallback)" if OPENAI_API_KEY else "claude-3-5-sonnet"
+                
+                article_record = {
+                    "id": str(uuid.uuid4()),
+                    "title": cleaned_title,
+                    "content": cleaned_content,
+                    "summary": article_info.get("summary", "Generated from uploaded content"),
+                    "tags": article_info.get("tags", [metadata.get('type', 'upload')]),
+                    "takeaways": article_info.get("takeaways", []),
+                    "source_type": metadata.get('type', 'text_processing'),
+                    "status": "draft",
+                    "metadata": {
+                        **metadata,
+                        "ai_processed": True,
+                        "ai_model": ai_model,
+                        "article_index": i + 1,
+                        "total_articles": len(articles_data.get('articles', [])),
+                        "processing_timestamp": datetime.utcnow().isoformat()
+                    },
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                articles.append(article_record)
+            
+            print(f"✅ Generated {len(articles)} articles from content")
+            return articles
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON parsing error: {e}")
+            print(f"Raw AI response: {ai_response[:500]}...")
+        except Exception as e:
+            print(f"❌ Error processing AI response: {e}")
+    else:
+        print("❌ No AI response available from either OpenAI or Claude")
+    
+    # Fallback to single article
+    print("🔄 Falling back to single article creation...")
+    return [await create_single_article_from_content(content, metadata)]
 
 async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
     """Create a single comprehensive article from content using LLM with fallback"""

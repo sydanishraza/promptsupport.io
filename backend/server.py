@@ -107,6 +107,62 @@ class SaveArticleRequest(BaseModel):
     content: str
     status: str = "draft"  # draft, published
 
+async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
+    """
+    Call LLM with OpenAI first, fallback to Claude if OpenAI fails
+    Returns the response text or None if both fail
+    """
+    if session_id is None:
+        session_id = str(uuid.uuid4())
+    
+    # Try OpenAI first
+    if OPENAI_API_KEY:
+        try:
+            print("🤖 Attempting OpenAI (GPT-4o) call...")
+            openai_chat = LlmChat(
+                api_key=OPENAI_API_KEY,
+                session_id=f"openai-{session_id}",
+                system_message=system_message
+            ).with_model("openai", "gpt-4o").with_max_tokens(6000)
+            
+            user_msg = UserMessage(text=user_message)
+            response = await openai_chat.send_message(user_msg)
+            
+            print(f"✅ OpenAI response successful: {len(response)} characters")
+            return response
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            print(f"❌ OpenAI failed: {e}")
+            
+            # Check if it's a quota/rate limit error
+            if "429" in error_msg or "quota" in error_msg or "rate" in error_msg:
+                print("🔄 OpenAI quota/rate limit exceeded, switching to Claude...")
+            else:
+                print("🔄 OpenAI error detected, switching to Claude...")
+    
+    # Try Claude as fallback
+    if ANTHROPIC_API_KEY:
+        try:
+            print("🤖 Attempting Claude fallback call...")
+            claude_chat = LlmChat(
+                api_key=ANTHROPIC_API_KEY,
+                session_id=f"claude-{session_id}",
+                system_message=system_message
+            ).with_model("anthropic", "claude-3-5-sonnet-20241022").with_max_tokens(6000)
+            
+            user_msg = UserMessage(text=user_message)
+            response = await claude_chat.send_message(user_msg)
+            
+            print(f"✅ Claude response successful: {len(response)} characters")
+            return response
+            
+        except Exception as e:
+            print(f"❌ Claude also failed: {e}")
+    
+    print("❌ Both OpenAI and Claude failed - no LLM response available")
+    return None
+
 # Startup event
 @app.on_event("startup")
 async def startup_event():

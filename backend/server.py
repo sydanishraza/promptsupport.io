@@ -1499,7 +1499,7 @@ CRITICAL IMAGE DISTRIBUTION REQUIREMENTS:
 """
                 
                 # Process document content cleanly without metadata
-                extracted_content = f"# {file.filename}\n\n{image_references}\n\n"
+                extracted_content = f"# {file.filename}\n\n{image_distribution_info}\n\n{image_references}\n\n"
                 
                 # Process document elements in order - simplified for cleaner content
                 def iter_block_items(parent):

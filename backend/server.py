@@ -817,7 +817,7 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         data = {
             "model": "gpt-4o",
             "messages": [
-                {"role": "system", "content": "You are an expert technical writer and content strategist creating comprehensive knowledge base articles. Always respond with valid JSON containing multiple focused, production-ready articles. CRITICAL: Generate clean HTML content suitable for WYSIWYG display (NO MARKDOWN), preserve ALL embedded media at contextually appropriate locations, and remove all source metadata from article content."},
+                {"role": "system", "content": "You are an expert technical writer and content strategist creating comprehensive knowledge base articles. Always respond with valid JSON containing focused, production-ready articles. CRITICAL: Generate clean HTML content suitable for WYSIWYG display (NO MARKDOWN), preserve ALL embedded media at contextually appropriate locations, and remove all source metadata from article content."},
                 {"role": "user", "content": prompt}
             ],
             "max_tokens": 8000,

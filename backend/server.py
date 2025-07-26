@@ -1308,7 +1308,7 @@ async def upload_file(
                 # Process document content cleanly without metadata
                 extracted_content = f"# {file.filename}\n\n{image_references}\n\n"
                 
-                # Process document elements in order
+                # Process document elements in order - simplified for cleaner content
                 def iter_block_items(parent):
                     """Generate a reference to each paragraph and table child within parent, in document order."""
                     if isinstance(parent, DocxDocument):
@@ -1323,10 +1323,6 @@ async def upload_file(
                             yield Paragraph(child, parent)
                         elif isinstance(child, CT_Tbl):
                             yield Table(child, parent)
-                
-                table_count = 0
-                image_count = 0
-                media_index = 0  # Track which embedded media to use next
                 
                 for block in iter_block_items(doc):
                     if isinstance(block, Paragraph):
@@ -1352,54 +1348,9 @@ async def upload_file(
                                 extracted_content += f"{text}\n"
                             else:
                                 extracted_content += f"{text}\n\n"
-                            
-                            # Check for images in paragraph using multiple methods
-                            has_image_in_paragraph = False
-                            
-                            # Method 1: Check for drawing objects (shapes/images)
-                            for run in block.runs:
-                                # Check for inline shapes (images)
-                                if hasattr(run, '_element') and run._element.xpath('.//a:blip'):
-                                    has_image_in_paragraph = True
-                                    break
-                                # Check for drawing elements
-                                if hasattr(run, '_element') and run._element.xpath('.//w:drawing'):
-                                    has_image_in_paragraph = True
-                                    break
-                            
-                            # Method 2: If paragraph is very short and we have unused embedded media, assume it contains an image
-                            if not has_image_in_paragraph and len(text.strip()) < 50 and media_index < len(embedded_media):
-                                # Check if this looks like an image caption or placeholder
-                                image_keywords = ['figure', 'image', 'diagram', 'chart', 'graph', 'screenshot', 'photo']
-                                if any(keyword in text.lower() for keyword in image_keywords) or text.strip() == '':
-                                    has_image_in_paragraph = True
-                            
-                            # If we found an image reference and have embedded media available
-                            if has_image_in_paragraph and media_index < len(embedded_media):
-                                media_item = embedded_media[media_index]
-                                media_index += 1
-                                image_count += 1
-                                
-                                # Embed image using URL reference (for non-SVG) or base64 (for SVG)
-                                if media_item.get('is_svg', False):
-                                    # SVG images remain as base64
-                                    extracted_content += f"\n![Image {image_count}]({media_item['data']})\n\n"
-                                    extracted_content += f"*Figure {image_count}: SVG vector image ({media_item['size']} bytes)*\n\n"
-                                    print(f"🔍 DEBUG: Successfully embedded SVG image {image_count} as base64")
-                                elif media_item.get('url'):
-                                    # Non-SVG images use file URL references
-                                    extracted_content += f"\n![Image {image_count}]({media_item['url']})\n\n"
-                                    extracted_content += f"*Figure {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes) - [Asset Library]*\n\n"
-                                    print(f"🔍 DEBUG: Successfully embedded image {image_count} via URL reference: {media_item['url']}")
-                                else:
-                                    # Fallback for base64 data
-                                    extracted_content += f"\n![Image {image_count}]({media_item['data']})\n\n"
-                                    extracted_content += f"*Figure {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes) - [Fallback]*\n\n"
-                                    print(f"🔍 DEBUG: Embedded image {image_count} using base64 fallback")
                     
                     elif isinstance(block, Table):
-                        table_count += 1
-                        extracted_content += f"\n## Table {table_count}\n\n"
+                        extracted_content += f"\n## Table\n\n"
                         
                         # Extract table headers if first row looks like headers
                         rows = [[cell.text.strip() for cell in row.cells] for row in block.rows]
@@ -1420,54 +1371,6 @@ async def upload_file(
                                     extracted_content += "| " + " | ".join(row) + " |\n"
                         
                         extracted_content += "\n"
-                
-                # If we still have unused embedded media, add them at the end
-                while media_index < len(embedded_media):
-                    media_item = embedded_media[media_index]
-                    media_index += 1
-                    image_count += 1
-                    
-                    # Use URL reference for non-SVG images, base64 for SVG
-                    if media_item.get('is_svg', False):
-                        # SVG images remain as base64
-                        extracted_content += f"\n![Image {image_count}]({media_item['data']})\n\n"
-                        extracted_content += f"*Figure {image_count}: SVG vector image ({media_item['size']} bytes) - Added from document assets*\n\n"
-                        print(f"🔍 DEBUG: Added remaining SVG image {image_count} as base64")
-                    elif media_item.get('url'):
-                        # Non-SVG images use file URL references
-                        extracted_content += f"\n![Image {image_count}]({media_item['url']})\n\n"
-                        extracted_content += f"*Figure {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes) - Added from document assets [Asset Library]*\n\n"
-                        print(f"🔍 DEBUG: Added remaining image {image_count} via URL reference: {media_item['url']}")
-                    else:
-                        # Fallback for base64 data
-                        extracted_content += f"\n![Image {image_count}]({media_item['data']})\n\n"
-                        extracted_content += f"*Figure {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes) - Added from document assets [Fallback]*\n\n"
-                        print(f"🔍 DEBUG: Added remaining image {image_count} using base64 fallback")
-                    
-                # Add comprehensive media summary
-                if len(embedded_media) > 0:
-                    extracted_content += f"\n---\n\n**Media Assets Extracted and Embedded:**\n\n"
-                    for i, media in enumerate(embedded_media, 1):
-                        extracted_content += f"- **Image {i}**: {media['format'].upper()} format, {media['size']} bytes\n"
-                    extracted_content += f"\n**Total Images Embedded:** {len(embedded_media)}\n\n"
-                    
-                if image_count > len(embedded_media):
-                    missed_images = image_count - len(embedded_media)
-                    extracted_content += f"**Note:** {missed_images} additional image(s) referenced but not extracted\n\n"
-                    
-                if table_count > 0:
-                    extracted_content += f"**Structured Data:** {table_count} tables with detailed information\n\n"
-                    extracted_content += f"**Structured Data:** {table_count} tables with detailed information\n\n"
-                
-                # Add document statistics
-                total_paragraphs = len([p for p in doc.paragraphs if p.text.strip()])
-                extracted_content += f"**Document Statistics:**\n"
-                extracted_content += f"- Total paragraphs: {total_paragraphs}\n"
-                extracted_content += f"- Tables: {table_count}\n"
-                extracted_content += f"- Images/Diagrams: {image_count}\n"
-                extracted_content += f"- Character count: {len(extracted_content)}\n\n"
-                        
-                print(f"✅ Enhanced extraction: {len(extracted_content)} characters, {table_count} tables, {image_count} images from Word document")
             except ImportError:
                 print("⚠️ python-docx not available, treating as binary file")
                 extracted_content = f"Word document: {file.filename} (content extraction requires python-docx)"

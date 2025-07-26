@@ -1113,12 +1113,13 @@ Original Content:
 TRANSFORMATION REQUIREMENTS:
 
 1. **Media Contextual Embedding & Preservation**:
-   - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
-   - Place images at their ORIGINAL contextual location within the content flow
+   - PRESERVE and EMBED all available images, charts, diagrams, and media
+   - Distribute images throughout the article at contextually appropriate locations
    - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
    - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
-   - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
-   - Reference images in surrounding text: "As illustrated in Figure 1 below..."
+   - Add proper figure captions: <p><em>Figure X: Descriptive caption explaining the image relevance</em></p>
+   - Reference images in surrounding text: "As illustrated in Figure X below..."
+   - CRITICAL: Use ALL provided images in the article - do not skip any images
    - Never place images at the end - embed them where they contextually belong
 
 2. **HTML Content Formatting (NOT Markdown)**:

@@ -973,10 +973,17 @@ Respond with JSON:
                 # Create article records
                 articles = []
                 for i, article_info in enumerate(articles_data.get('articles', [])):
+                    # Clean title and content using post-processing functions
+                    raw_title = article_info.get("title", f"Article {i+1}")
+                    raw_content = article_info.get("content", "Content not available")
+                    
+                    cleaned_title = clean_article_title(raw_title)
+                    cleaned_content = clean_article_content(raw_content)
+                    
                     article_record = {
                         "id": str(uuid.uuid4()),
-                        "title": article_info.get("title", f"Article {i+1} from {metadata.get('original_filename', 'Upload')}"),
-                        "content": article_info.get("content", "Content not available"),
+                        "title": cleaned_title,
+                        "content": cleaned_content,
                         "summary": article_info.get("summary", "Generated from uploaded content"),
                         "tags": article_info.get("tags", [metadata.get('type', 'upload')]),
                         "takeaways": article_info.get("takeaways", []),

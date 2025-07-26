@@ -803,13 +803,15 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         }}
 
         QUALITY STANDARDS:
-        - Each article should be 1000-3000 words when rendered
+        - Each article should be 800-2000 words when rendered (prefer focused, digestible content)
         - Content should feel authoritative and professionally written
-        - Include practical examples and real-world applications
+        - Include practical examples and real-world applications  
         - Maintain consistency in tone and style across all articles
         - Ensure content is immediately actionable and valuable
         - MUST preserve all embedded media and URLs/data URLs exactly as provided
-        - Use /api/static/uploads/ URLs for saved images, data: URLs only for SVG
+        - Use clean HTML formatting suitable for WYSIWYG display
+        - Remove all source metadata from article content
+        - Embed images contextually, not at the end of articles
         """
         
         data = {

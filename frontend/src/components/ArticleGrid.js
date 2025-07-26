@@ -92,6 +92,26 @@ const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle }) => {
     });
   };
 
+  // Format date with timestamp
+  const formatDateWithTime = (dateString) => {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    
+    const dateStr = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    return `${dateStr} at ${timeStr}`;
+  };
+
   // Calculate word count
   const getWordCount = (content) => {
     if (!content) return 0;

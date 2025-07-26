@@ -45,6 +45,7 @@ const ContentLibrary = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSnipAndRecord, setShowSnipAndRecord] = useState(false);
+  const [showKnowledgeUpload, setShowKnowledgeUpload] = useState(false);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterState, setFilterState] = useState(null); // For context preservation

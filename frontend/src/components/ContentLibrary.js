@@ -32,6 +32,7 @@ import ArticleGrid from './ArticleGrid';
 import ArticleTable from './ArticleTable';
 import AssetManager from './AssetManager';
 import SnipAndRecord from './SnipAndRecord';
+import KnowledgeEngineUpload from './KnowledgeEngineUpload';
 
 const ContentLibrary = () => {
   // State management

@@ -386,6 +386,13 @@ const ContentLibrary = () => {
                 <span className="hidden xs:inline">Refresh</span>
               </button>
               <button
+                onClick={() => setShowKnowledgeUpload(true)}
+                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
+              >
+                <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Upload</span>
+              </button>
+              <button
                 onClick={() => setShowSnipAndRecord(true)}
                 className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-green-600 hover:bg-green-700 text-white rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
               >

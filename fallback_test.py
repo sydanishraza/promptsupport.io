@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://84975626-e0f7-4754-af73-70ea901c0d52.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://02b8ea03-1c23-443e-b037-f8d2c8e69def.preview.emergentagent.com') + '/api'
 
 class FallbackSystemTest:
     def __init__(self):

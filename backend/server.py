@@ -1403,21 +1403,21 @@ async def upload_file(
                 embedded_media = await extract_media_from_docx(doc, file.filename.replace('.docx', '').replace('.doc', ''))
                 print(f"🔍 DEBUG: Extracted {len(embedded_media)} media items from DOCX")
                 
-                # Add all images at the beginning of content for AI to position contextually
+                # Add all images at the beginning of content for AI to position contextually - USE HTML FORMAT
                 image_references = ""
                 for i, media in enumerate(embedded_media, 1):
                     if media.get('is_svg', False):
                         # SVG images remain as base64
-                        image_references += f"\n![Figure {i}]({media['data']})\n"
-                        print(f"🔍 DEBUG: Added SVG image {i} reference for AI positioning")
+                        image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                        print(f"🔍 DEBUG: Added SVG image {i} HTML reference for AI positioning")
                     elif media.get('url'):
                         # Non-SVG images use file URL references
-                        image_references += f"\n![Figure {i}]({media['url']})\n"
-                        print(f"🔍 DEBUG: Added image {i} URL reference for AI positioning: {media['url']}")
+                        image_references += f'\n<img src="{media["url"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                        print(f"🔍 DEBUG: Added image {i} URL HTML reference for AI positioning: {media['url']}")
                     else:
                         # Fallback for base64 data
-                        image_references += f"\n![Figure {i}]({media['data']})\n"
-                        print(f"🔍 DEBUG: Added image {i} base64 reference for AI positioning")
+                        image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                        print(f"🔍 DEBUG: Added image {i} base64 HTML reference for AI positioning")
                 
                 # Process document content cleanly without metadata
                 extracted_content = f"# {file.filename}\n\n{image_references}\n\n"

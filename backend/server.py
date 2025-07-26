@@ -883,7 +883,7 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
 CRITICAL: This content contains embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations.
 
 Original Content:
-{content[:15000]}
+{content[:25000]}
 
 TRANSFORMATION REQUIREMENTS:
 

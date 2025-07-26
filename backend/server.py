@@ -1157,11 +1157,17 @@ Respond with JSON:
                     print(f"🔍 DEBUG: Content field present: {'content' in article_data}")
                     print(f"🔍 DEBUG: Content preview: {article_data.get('content', 'NO CONTENT')[:100]}...")
                     
-                    # Create article record
+                    # Create article record with cleaned content
+                    raw_title = article_data.get("title", metadata.get('original_filename', 'Processed Content'))
+                    raw_content = article_data.get("content", content)
+                    
+                    cleaned_title = clean_article_title(raw_title)
+                    cleaned_content = clean_article_content(raw_content)
+                    
                     article_record = {
                         "id": str(uuid.uuid4()),
-                        "title": article_data.get("title", metadata.get('original_filename', 'Processed Content')),
-                        "content": article_data.get("content", content),
+                        "title": cleaned_title,
+                        "content": cleaned_content,
                         "summary": article_data.get("summary", "Content processed by Knowledge Engine"),
                         "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
                         "takeaways": article_data.get("takeaways", []),

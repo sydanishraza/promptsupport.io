@@ -28,6 +28,7 @@ import re
 import markdown
 from bs4 import BeautifulSoup
 from media_intelligence import media_intelligence
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 # Load environment variables
 load_dotenv()

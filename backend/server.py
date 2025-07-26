@@ -681,7 +681,7 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     source_type = metadata.get('type', 'text_processing')
     file_extension = metadata.get('file_extension', '')
     
-    # Determine if we should create multiple articles based on content structure
+    # Determine content splitting strategy with document isolation
     should_create_multiple = await should_split_into_multiple_articles(full_content, file_extension)
     
     if should_create_multiple:

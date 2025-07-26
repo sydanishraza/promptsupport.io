@@ -6526,6 +6526,325 @@ Added from document assets: 12 images, 8 tables
             print(f"❌ Post-processing functions test failed - {str(e)}")
             return False
 
+    def test_training_templates(self):
+        """Test GET /api/training/templates endpoint"""
+        print("\n🔍 Testing Training Templates Endpoint...")
+        try:
+            response = requests.get(f"{self.base_url}/training/templates", timeout=10)
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if "templates" in data and "total" in data:
+                    templates = data["templates"]
+                    total = data["total"]
+                    
+                    print(f"✅ Training templates endpoint working - {total} templates found")
+                    
+                    # Check if we have any templates
+                    if templates:
+                        sample_template = templates[0]
+                        print(f"Sample template keys: {list(sample_template.keys())}")
+                    
+                    return True
+                else:
+                    print("❌ Training templates failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training templates failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training templates failed - {str(e)}")
+            return False
+
+    def test_training_sessions(self):
+        """Test GET /api/training/sessions endpoint"""
+        print("\n🔍 Testing Training Sessions Endpoint...")
+        try:
+            response = requests.get(f"{self.base_url}/training/sessions", timeout=10)
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if "sessions" in data and "total" in data:
+                    sessions = data["sessions"]
+                    total = data["total"]
+                    
+                    print(f"✅ Training sessions endpoint working - {total} sessions found")
+                    
+                    # Check if we have any sessions
+                    if sessions:
+                        sample_session = sessions[0]
+                        print(f"Sample session keys: {list(sample_session.keys())}")
+                        
+                        # Verify session structure
+                        required_fields = ["session_id", "template_id", "filename", "timestamp"]
+                        missing_fields = [field for field in required_fields if field not in sample_session]
+                        
+                        if not missing_fields:
+                            print("✅ Training session structure is correct")
+                        else:
+                            print(f"⚠️ Training session missing fields: {missing_fields}")
+                    
+                    return True
+                else:
+                    print("❌ Training sessions failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training sessions failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training sessions failed - {str(e)}")
+            return False
+
+    def test_training_process_docx(self):
+        """Test POST /api/training/process with DOCX file upload"""
+        print("\n🔍 Testing Training Process with DOCX Upload...")
+        try:
+            # Create a test text file that simulates DOCX content for training
+            test_content = """Phase 1 Engine-Level Training Test Document
+
+This document is designed to test the Training Interface backend endpoints for Phase 1 Engine-Level Training implementation.
+
+Key Training Objectives:
+1. Template-based document processing
+2. Multi-article generation from uploaded documents  
+3. Image extraction and contextual placement
+4. Training session creation and storage
+5. Evaluation system for accept/reject feedback
+
+Document Processing Requirements:
+- Extract all text content from uploaded document
+- Identify distinct topics and sections for article splitting
+- Generate multiple focused articles based on content complexity
+- Apply contextual image placement within articles
+- Ensure professional formatting and structure
+
+Quality Benchmarks:
+- Content completeness and accuracy
+- No duplication between articles
+- Proper HTML formatting
+- Professional presentation
+- Contextual image placement
+
+This content should be processed by the training system to create multiple articles that demonstrate the Knowledge Engine's ability to replace human technical writers through iterative prompt refinement and document processing templates."""
+            
+            # Create template data for Phase 1 training
+            template_data = {
+                "template_id": "phase1_document_processing",
+                "name": "Phase 1: Document Upload Processing",
+                "description": "Template for processing uploaded documents with multi-article generation",
+                "processing_instructions": [
+                    "Extract all text content from uploaded document",
+                    "Identify distinct topics and sections for article splitting",
+                    "Extract and preserve all embedded images",
+                    "Generate multiple focused articles based on content complexity",
+                    "Apply contextual image placement within articles",
+                    "Ensure professional formatting and structure"
+                ],
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 10,
+                    "include_images": True,
+                    "quality_benchmarks": [
+                        "Content completeness and accuracy",
+                        "No duplication between articles", 
+                        "Proper HTML formatting",
+                        "Professional presentation",
+                        "Contextual image placement"
+                    ]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "preserve_format": True,
+                    "contextual_placement": True
+                }
+            }
+            
+            # Create a text file (since creating a real DOCX is complex)
+            file_data = io.BytesIO(test_content.encode('utf-8'))
+            
+            # Prepare multipart form data
+            files = {
+                'file': ('test_training_document.txt', file_data, 'text/plain')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            print("Uploading document for training processing...")
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=60  # Longer timeout for document processing
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                # Verify training processing response
+                if (data.get("success") and "session_id" in data and 
+                    "articles" in data and "template_applied" in data):
+                    
+                    session_id = data["session_id"]
+                    articles = data["articles"]
+                    template_applied = data["template_applied"]
+                    
+                    print(f"✅ Training processing successful!")
+                    print(f"   Session ID: {session_id}")
+                    print(f"   Articles generated: {len(articles)}")
+                    print(f"   Template applied: {template_applied}")
+                    print(f"   Images processed: {data.get('images_processed', 0)}")
+                    
+                    # Store session ID for evaluation test
+                    self.training_session_id = session_id
+                    
+                    # Verify article structure
+                    if articles:
+                        sample_article = articles[0]
+                        required_fields = ["id", "title", "content", "status", "template_id", "session_id"]
+                        missing_fields = [field for field in required_fields if field not in sample_article]
+                        
+                        if not missing_fields:
+                            print("✅ Generated articles have proper structure")
+                        else:
+                            print(f"⚠️ Articles missing fields: {missing_fields}")
+                        
+                        # Check if articles are marked as training mode
+                        if sample_article.get("training_mode"):
+                            print("✅ Articles properly marked as training mode")
+                        else:
+                            print("⚠️ Articles not marked as training mode")
+                    
+                    return True
+                else:
+                    print("❌ Training processing failed - invalid response format")
+                    print(f"Available keys: {list(data.keys())}")
+                    return False
+            else:
+                print(f"❌ Training processing failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training processing failed - {str(e)}")
+            return False
+
+    def test_training_evaluate(self):
+        """Test POST /api/training/evaluate endpoint"""
+        print("\n🔍 Testing Training Evaluation Endpoint...")
+        try:
+            # Use session ID from previous test if available
+            session_id = getattr(self, 'training_session_id', 'test_session_123')
+            
+            evaluation_data = {
+                "session_id": session_id,
+                "result_id": "test_result_456",
+                "evaluation": "accepted",
+                "feedback": "The generated articles demonstrate excellent content structure and proper image placement. The multi-article generation successfully split the content into focused, digestible sections. Quality benchmarks were met with professional formatting and no content duplication."
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/evaluate",
+                json=evaluation_data,
+                timeout=15
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if (data.get("success") and "evaluation_id" in data and 
+                    "message" in data):
+                    
+                    evaluation_id = data["evaluation_id"]
+                    message = data["message"]
+                    
+                    print(f"✅ Training evaluation successful!")
+                    print(f"   Evaluation ID: {evaluation_id}")
+                    print(f"   Message: {message}")
+                    
+                    return True
+                else:
+                    print("❌ Training evaluation failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training evaluation failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training evaluation failed - {str(e)}")
+            return False
+
+    def run_training_tests(self):
+        """Run focused training interface backend tests"""
+        print("🚀 TRAINING INTERFACE BACKEND TESTING")
+        print("=" * 80)
+        print("🎯 FOCUS: Phase 1 Engine-Level Training Implementation")
+        print("=" * 80)
+        
+        training_tests = [
+            ("Training Templates Endpoint", self.test_training_templates),
+            ("Training Sessions Endpoint", self.test_training_sessions),
+            ("Training Process with Document Upload", self.test_training_process_docx),
+            ("Training Result Evaluation", self.test_training_evaluate)
+        ]
+        
+        results = []
+        passed = 0
+        failed = 0
+        
+        for test_name, test_func in training_tests:
+            print(f"\n{'='*20} {test_name} {'='*20}")
+            try:
+                result = test_func()
+                if result:
+                    print(f"✅ {test_name} PASSED")
+                    passed += 1
+                else:
+                    print(f"❌ {test_name} FAILED")
+                    failed += 1
+                results.append((test_name, result))
+            except Exception as e:
+                print(f"💥 {test_name} CRASHED: {str(e)}")
+                failed += 1
+                results.append((test_name, False))
+        
+        # Print summary
+        print("\n" + "="*80)
+        print("🎯 TRAINING INTERFACE TEST SUMMARY")
+        print("="*80)
+        print(f"✅ PASSED: {passed}")
+        print(f"❌ FAILED: {failed}")
+        print(f"📊 SUCCESS RATE: {(passed/(passed+failed)*100):.1f}%")
+        
+        # Detailed results
+        print("\n📋 DETAILED RESULTS:")
+        for test_name, result in results:
+            status = "✅ PASS" if result else "❌ FAIL"
+            print(f"   {status} - {test_name}")
+        
+        return results
+
     def run_all_tests(self):
         """Run all backend tests focusing on Knowledge Engine Critical Issue Fixes"""
         print("🚀 KNOWLEDGE ENGINE CRITICAL ISSUE FIXES TESTING")

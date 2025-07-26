@@ -5038,32 +5038,28 @@ This test verifies that the file upload pipeline properly triggers the Content L
         print("=" * 80)
         
         tests = [
-            # Core functionality tests
+            # Core system tests
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
             
-            # ASSET MANAGEMENT TESTS (PRIMARY FOCUS FOR THIS REVIEW)
-            ("Asset Upload Endpoint", self.test_asset_upload_endpoint),
-            ("Asset Library Endpoint", self.test_asset_library_endpoint),
+            # Knowledge Engine Phase 1 specific tests
+            ("DOCX Image Extraction", self.test_knowledge_engine_docx_image_extraction),
             ("Static File Serving", self.test_static_file_serving),
-            ("Database Asset Integrity", self.test_database_asset_integrity),
-            ("Asset Selection No Duplicates", self.test_asset_selection_no_duplicates),
+            ("Asset Library Integration", self.test_asset_library_endpoint),
+            ("Content Processing with Images", self.test_content_processing_with_images),
+            ("Image Format Compliance", self.test_image_format_compliance),
             
-            # Content Library tests
+            # Supporting functionality tests
+            ("File Upload Processing", self.test_file_upload),
             ("Content Library Integration", self.test_content_library_integration),
-            ("Enhanced Content Library - Create", self.test_enhanced_content_library_create),
-            ("Enhanced Content Library - Update", self.test_enhanced_content_library_update),
-            ("Enhanced Content Library - API Integration", self.test_enhanced_content_library_api_integration),
+            ("Enhanced Assets Endpoint", self.test_enhanced_assets_endpoint),
+            ("Asset Upload Endpoint", self.test_asset_upload_endpoint),
             
-            # Additional core tests
+            # Additional verification tests
             ("Content Processing", self.test_content_processing),
-            ("File Upload", self.test_file_upload),
             ("Search Functionality", self.test_search_functionality),
             ("AI Chat", self.test_ai_chat),
-            
-            # Enhanced features
-            ("Enhanced Assets Endpoint", self.test_enhanced_assets_endpoint),
-            ("Media Intelligence - Statistics", self.test_media_intelligence_stats),
+            ("Database Asset Integrity", self.test_database_asset_integrity)
         ]
         
         results = []

@@ -572,6 +572,349 @@ async def get_status():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Training endpoints
+@app.post("/api/training/process")
+async def training_process_document(
+    file: UploadFile = File(...),
+    template_id: str = Form(...),
+    training_mode: str = Form(default="true"),
+    template_instructions: str = Form(default="{}")
+):
+    """Process document with specific training template"""
+    try:
+        # Parse template instructions
+        template_data = json.loads(template_instructions)
+        
+        # Create training session metadata
+        training_session = {
+            "session_id": str(uuid.uuid4()),
+            "template_id": template_id,
+            "filename": file.filename,
+            "training_mode": training_mode == "true",
+            "timestamp": datetime.utcnow().isoformat(),
+            "template_data": template_data
+        }
+        
+        # Process the uploaded file
+        file_content = await file.read()
+        
+        # Save file temporarily for processing
+        temp_file_path = f"temp_uploads/{file.filename}"
+        os.makedirs("temp_uploads", exist_ok=True)
+        
+        with open(temp_file_path, "wb") as temp_file:
+            temp_file.write(file_content)
+        
+        # Process based on file type
+        if file.filename.lower().endswith('.docx'):
+            articles = await process_docx_with_template(temp_file_path, template_data, training_session)
+        elif file.filename.lower().endswith('.pdf'):
+            articles = await process_pdf_with_template(temp_file_path, template_data, training_session)
+        else:
+            # Default text processing
+            content = file_content.decode('utf-8')
+            articles = await process_text_with_template(content, template_data, training_session)
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_file_path)
+        except:
+            pass
+        
+        # Store training session in database
+        await db.training_sessions.insert_one(training_session)
+        
+        return {
+            "success": True,
+            "session_id": training_session["session_id"],
+            "articles": articles,
+            "images_processed": sum(article.get("image_count", 0) for article in articles),
+            "processing_time": 0,  # TODO: Add actual timing
+            "template_applied": template_id
+        }
+        
+    except Exception as e:
+        print(f"Training processing error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/training/evaluate")
+async def training_evaluate_result(request: dict):
+    """Evaluate training result"""
+    try:
+        session_id = request.get("session_id")
+        result_id = request.get("result_id")
+        evaluation = request.get("evaluation")
+        feedback = request.get("feedback", "")
+        
+        # Store evaluation in database
+        evaluation_data = {
+            "id": str(uuid.uuid4()),
+            "session_id": session_id,
+            "result_id": result_id,
+            "evaluation": evaluation,
+            "feedback": feedback,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        await db.training_evaluations.insert_one(evaluation_data)
+        
+        return {
+            "success": True,
+            "evaluation_id": evaluation_data["id"],
+            "message": f"Result {evaluation} successfully"
+        }
+        
+    except Exception as e:
+        print(f"Training evaluation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/training/templates")
+async def get_training_templates():
+    """Get all training templates"""
+    try:
+        templates_cursor = db.training_templates.find({})
+        templates = await templates_cursor.to_list(length=100)
+        
+        return {
+            "templates": templates,
+            "total": len(templates)
+        }
+        
+    except Exception as e:
+        print(f"Get training templates error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/training/sessions")
+async def get_training_sessions():
+    """Get training session history"""
+    try:
+        sessions_cursor = db.training_sessions.find({}).sort("timestamp", -1)
+        sessions = await sessions_cursor.to_list(length=100)
+        
+        return {
+            "sessions": sessions,
+            "total": len(sessions)
+        }
+        
+    except Exception as e:
+        print(f"Get training sessions error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def process_docx_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process DOCX file with training template"""
+    try:
+        # Import docx processing (you'll need to install python-docx)
+        try:
+            from docx import Document
+            from docx.shared import Inches
+            import zipfile
+            from xml.etree import ElementTree as ET
+        except ImportError:
+            print("python-docx not installed, using fallback processing")
+            return await process_text_with_template("", template_data, training_session)
+        
+        # Read DOCX content
+        doc = Document(file_path)
+        
+        # Extract text content
+        full_text = ""
+        for paragraph in doc.paragraphs:
+            full_text += paragraph.text + "\n"
+        
+        # Extract images
+        images = []
+        try:
+            # Extract images from DOCX
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                for file_info in zip_ref.filelist:
+                    if file_info.filename.startswith('word/media/'):
+                        image_data = zip_ref.read(file_info.filename)
+                        images.append({
+                            "filename": file_info.filename.split('/')[-1],
+                            "data": base64.b64encode(image_data).decode('utf-8'),
+                            "size": len(image_data)
+                        })
+        except Exception as e:
+            print(f"Error extracting images: {e}")
+        
+        # Process with template
+        articles = await create_articles_with_template(full_text, images, template_data, training_session)
+        
+        return articles
+        
+    except Exception as e:
+        print(f"DOCX processing error: {e}")
+        return []
+
+async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process PDF file with training template"""
+    try:
+        # Simple PDF processing (you could use PyPDF2 or pdfplumber)
+        with open(file_path, 'rb') as file:
+            # For now, just return empty - would need PDF processing library
+            return []
+    except Exception as e:
+        print(f"PDF processing error: {e}")
+        return []
+
+async def process_text_with_template(content: str, template_data: dict, training_session: dict) -> list:
+    """Process text content with training template"""
+    try:
+        # Apply template processing instructions
+        processing_instructions = template_data.get("processing_instructions", [])
+        
+        # Generate articles based on template
+        articles = await create_articles_with_template(content, [], template_data, training_session)
+        
+        return articles
+        
+    except Exception as e:
+        print(f"Text processing error: {e}")
+        return []
+
+async def create_articles_with_template(content: str, images: list, template_data: dict, training_session: dict) -> list:
+    """Create articles using template specifications"""
+    try:
+        # Check if should split into multiple articles
+        should_split = len(content) > 1000  # Simple logic for now
+        
+        articles = []
+        
+        if should_split:
+            # Split into multiple articles
+            sections = content.split('\n\n')
+            current_section = ""
+            section_count = 0
+            
+            for section in sections:
+                if len(current_section + section) > 800 and current_section:
+                    # Create article from current section
+                    article = await create_single_article_with_template(
+                        current_section, 
+                        images[section_count:section_count+2] if section_count < len(images) else [],
+                        template_data, 
+                        training_session,
+                        section_count + 1
+                    )
+                    articles.append(article)
+                    current_section = section
+                    section_count += 1
+                else:
+                    current_section += "\n\n" + section
+            
+            # Handle remaining content
+            if current_section.strip():
+                article = await create_single_article_with_template(
+                    current_section, 
+                    images[section_count:],
+                    template_data, 
+                    training_session,
+                    section_count + 1
+                )
+                articles.append(article)
+        else:
+            # Single article
+            article = await create_single_article_with_template(
+                content, 
+                images,
+                template_data, 
+                training_session,
+                1
+            )
+            articles.append(article)
+        
+        return articles
+        
+    except Exception as e:
+        print(f"Article creation error: {e}")
+        return []
+
+async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int) -> dict:
+    """Create a single article using template specifications"""
+    try:
+        # Generate title
+        title = f"Article {article_number} from {training_session['filename']}"
+        
+        # Generate content using LLM with template instructions
+        system_message = f"""You are an expert technical writer. Process the following content according to these template specifications:
+
+TEMPLATE INSTRUCTIONS:
+{json.dumps(template_data, indent=2)}
+
+Your task is to:
+1. Follow the processing instructions exactly
+2. Generate content that meets the output requirements
+3. Apply the specified formatting and structure
+4. Ensure quality benchmarks are met
+
+Generate clean, professional content suitable for a knowledge base."""
+        
+        user_message = f"""Please process this content according to the template:
+
+CONTENT:
+{content}
+
+AVAILABLE IMAGES: {len(images)} images
+{[img['filename'] for img in images]}
+
+Generate a properly structured article following the template specifications."""
+        
+        # Use LLM to generate content
+        ai_content = await call_llm_with_fallback(system_message, user_message)
+        
+        if not ai_content:
+            ai_content = f"<h1>{title}</h1>\n<p>{content}</p>"
+        
+        # Embed images if available
+        if images:
+            # Insert images contextually
+            for i, image in enumerate(images):
+                image_html = f'<img src="data:image/png;base64,{image["data"]}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
+                ai_content = ai_content.replace(f"{{image_{i+1}}}", image_html)
+        
+        # Clean and format content
+        formatted_content = clean_article_content(ai_content)
+        
+        # Create article object
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": clean_article_title(title),
+            "content": formatted_content,
+            "status": "training",
+            "template_id": training_session["template_id"],
+            "session_id": training_session["session_id"],
+            "word_count": len(formatted_content.split()),
+            "image_count": len(images),
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": True,
+            "ai_model": "gpt-4o (with claude fallback)",
+            "training_mode": True,
+            "metadata": {
+                "article_number": article_number,
+                "source_filename": training_session["filename"],
+                "template_applied": training_session["template_id"]
+            }
+        }
+        
+        return article
+        
+    except Exception as e:
+        print(f"Single article creation error: {e}")
+        return {
+            "id": str(uuid.uuid4()),
+            "title": f"Error Article {article_number}",
+            "content": f"<p>Error processing content: {str(e)}</p>",
+            "status": "error",
+            "template_id": training_session["template_id"],
+            "session_id": training_session["session_id"],
+            "word_count": 0,
+            "image_count": 0,
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "training_mode": True
+        }
+
 # Content processing endpoint
 @app.post("/api/content/process")
 async def process_content(request: ContentProcessRequest):

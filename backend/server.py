@@ -933,7 +933,8 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
             - Include practical examples and real-world applications
             - Ensure content is immediately actionable and valuable
             - Maintain consistent professional tone throughout
-            - MUST preserve all embedded media and data URLs exactly as provided
+            - MUST preserve all embedded media and URLs/data URLs exactly as provided
+            - Use /api/static/uploads/ URLs for saved images, data: URLs only for SVG
             """
             
             data = {

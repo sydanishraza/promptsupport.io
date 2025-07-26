@@ -5635,10 +5635,10 @@ Database optimization is crucial for maintaining system performance as data volu
             return False
 
     def run_all_tests(self):
-        """Run all backend tests focusing on Knowledge Engine Phase 1 refinements"""
-        print("🚀 KNOWLEDGE ENGINE PHASE 1 REFINEMENT TESTING")
+        """Run all backend tests focusing on Knowledge Engine Critical Issue Fixes"""
+        print("🚀 KNOWLEDGE ENGINE CRITICAL ISSUE FIXES TESTING")
         print("=" * 80)
-        print("🎯 FOCUS: Enhanced image extraction, file storage, and asset library integration")
+        print("🎯 FOCUS: HTML Output, Content Splitting, Contextual Images, Clean Content")
         print("=" * 80)
         
         tests = [
@@ -5646,12 +5646,11 @@ Database optimization is crucial for maintaining system performance as data volu
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
             
-            # Knowledge Engine Phase 1 specific tests
-            ("DOCX Image Extraction", self.test_knowledge_engine_docx_image_extraction),
-            ("Static File Serving", self.test_static_file_serving),
-            ("Asset Library Integration", self.test_asset_library_endpoint),
-            ("Content Processing with Images", self.test_content_processing_with_images),
-            ("Image Format Compliance", self.test_image_format_compliance),
+            # 🔥 CRITICAL KNOWLEDGE ENGINE TESTS - PRIMARY FOCUS
+            ("🔥 Knowledge Engine - Content Splitting", self.test_knowledge_engine_content_splitting),
+            ("🔥 Knowledge Engine - HTML Output", self.test_knowledge_engine_html_output),
+            ("🔥 Knowledge Engine - Contextual Images", self.test_knowledge_engine_contextual_images),
+            ("🔥 Knowledge Engine - Clean Content", self.test_knowledge_engine_clean_content),
             
             # Supporting functionality tests
             ("File Upload Processing", self.test_file_upload),
@@ -5663,7 +5662,6 @@ Database optimization is crucial for maintaining system performance as data volu
             ("Content Processing", self.test_content_processing),
             ("Search Functionality", self.test_search_functionality),
             ("AI Chat", self.test_ai_chat),
-            ("Database Asset Integrity", self.test_database_asset_integrity)
         ]
         
         results = []

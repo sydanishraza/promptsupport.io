@@ -88,7 +88,7 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
     }
   };
 
-  // Format date
+  // Format date with timestamp
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -96,6 +96,26 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  // Format date with timestamp
+  const formatDateWithTime = (dateString) => {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    
+    const dateStr = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    return `${dateStr} at ${timeStr}`;
   };
 
   // Format relative time

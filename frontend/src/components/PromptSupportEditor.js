@@ -3755,18 +3755,50 @@ const PromptSupportEditor = ({
 
       {/* Content Area */}
       <div className="flex-1 overflow-hidden">
+        {/* Global styles for both edit and view modes */}
+        <style jsx>{`
+          .wysiwyg-content h1 { font-size: 2rem; font-weight: bold; margin: 1rem 0; line-height: 1.2; color: #1f2937; }
+          .wysiwyg-content h2 { font-size: 1.75rem; font-weight: bold; margin: 0.875rem 0; line-height: 1.3; color: #1f2937; }
+          .wysiwyg-content h3 { font-size: 1.5rem; font-weight: bold; margin: 0.75rem 0; line-height: 1.4; color: #374151; }
+          .wysiwyg-content h4 { font-size: 1.25rem; font-weight: bold; margin: 0.625rem 0; line-height: 1.4; color: #374151; }
+          .wysiwyg-content h5 { font-size: 1.125rem; font-weight: bold; margin: 0.5rem 0; line-height: 1.4; color: #4b5563; }
+          .wysiwyg-content h6 { font-size: 1rem; font-weight: bold; margin: 0.5rem 0; line-height: 1.4; color: #4b5563; }
+          .wysiwyg-content p { margin: 0.75rem 0; line-height: 1.6; color: #374151; }
+          .wysiwyg-content ul { margin: 0.75rem 0; padding-left: 1.5rem; list-style-type: disc; }
+          .wysiwyg-content ol { margin: 0.75rem 0; padding-left: 1.5rem; list-style-type: decimal; }
+          .wysiwyg-content ul ul { list-style-type: circle; margin: 0.25rem 0; }
+          .wysiwyg-content ul ul ul { list-style-type: square; }
+          .wysiwyg-content ol ol { list-style-type: lower-alpha; margin: 0.25rem 0; }
+          .wysiwyg-content ol ol ol { list-style-type: lower-roman; }
+          .wysiwyg-content li { margin: 0.25rem 0; display: list-item; line-height: 1.5; color: #374151; }
+          .wysiwyg-content blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; margin: 1rem 0; font-style: italic; color: #6b7280; background: #f8fafc; border-radius: 4px; padding: 1rem; }
+          .wysiwyg-content code { background-color: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.875em; color: #be185d; }
+          .wysiwyg-content pre { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; margin: 16px 0; overflow-x: auto; }
+          .wysiwyg-content pre code { background: none; padding: 0; color: #374151; }
+          .wysiwyg-content strong, .wysiwyg-content b { font-weight: 600; }
+          .wysiwyg-content em, .wysiwyg-content i { font-style: italic; }
+          .wysiwyg-content u { text-decoration: underline; }
+          .wysiwyg-content a { color: #3b82f6; text-decoration: underline; }
+          .wysiwyg-content a:hover { color: #1d4ed8; }
+          .wysiwyg-content table { border-collapse: collapse; width: 100%; margin: 16px 0; border-radius: 6px; overflow: hidden; }
+          .wysiwyg-content td { border: 1px solid #e5e7eb; padding: 12px; }
+          .wysiwyg-content th { border: 1px solid #e5e7eb; padding: 12px; background: #f9fafb; font-weight: 600; }
+          .wysiwyg-content img { max-width: 100%; height: auto; margin: 1rem 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+          .wysiwyg-content hr { border: none; border-top: 2px solid #e5e7eb; margin: 2rem 0; }
+        `}</style>
+        
         {editorMode === 'wysiwyg' ? (
           <div className="h-full relative">
             {!isEditing ? (
-              // View mode: safely render HTML content
+              // View mode: safely render HTML content with proper styling
               <div 
-                className="h-full p-6 overflow-y-auto prose prose-lg max-w-none"
+                className="h-full p-6 overflow-y-auto wysiwyg-content max-w-none"
                 style={{
                   minHeight: '400px',
                   lineHeight: '1.7',
                   fontSize: '16px'
                 }}
-                dangerouslySetInnerHTML={{ __html: content || '<p>No content</p>' }} 
+                dangerouslySetInnerHTML={{ __html: content || '<p>No content available</p>' }} 
               />
             ) : (
               // Edit mode: Enhanced with drag & drop and slash commands

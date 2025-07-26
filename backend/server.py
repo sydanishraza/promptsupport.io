@@ -905,24 +905,34 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
             }
             
             prompt = f"""
-            You are an expert technical writer and content strategist. Transform the following raw content into a comprehensive, production-ready knowledge base article that feels professionally written and immediately actionable.
+            You are an expert technical writer and content strategist. Transform the following raw content into a comprehensive, production-ready knowledge base article with clean HTML formatting for immediate use in a WYSIWYG editor.
 
-            IMPORTANT: This content may contain embedded media (images, diagrams, charts) that MUST be preserved and included in the generated article.
+            CRITICAL: This content may contain embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations within the article.
 
             Original Content:
             {content[:12000]}
 
             TRANSFORMATION REQUIREMENTS:
 
-            1. **Media Preservation & Integration**:
+            1. **Media Contextual Embedding & Preservation**:
                - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
-               - Include ALL image URLs (/api/static/uploads/...) and data URLs (data:image/svg+xml;base64,...)
-               - For URL-based images: ![Alt text](/api/static/uploads/filename.ext)
-               - For SVG images: ![Alt text](data:image/svg+xml;base64,...)
-               - Maintain image captions and context
-               - Place images strategically within article content for maximum relevance
-               - Reference images in the text when appropriate (e.g., "As illustrated in the figure below...")
-               - Ensure all images are properly linked and accessible
+               - Place images at their ORIGINAL contextual location within the content flow
+               - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
+               - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
+               - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
+               - Reference images in surrounding text: "As illustrated in Figure 1 below..."
+               - Never place images at the end - embed them where they contextually belong
+
+            2. **HTML Content Formatting (NOT Markdown)**:
+               - Generate clean HTML suitable for WYSIWYG editor display
+               - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
+               - Format lists as <ul> and <ol> with <li> elements
+               - Use <p> tags for paragraphs with proper spacing
+               - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
+               - Use <blockquote> for callouts and important notes
+               - Add <strong> for emphasis, <em> for italics
+               - Use <code> for inline code, <pre><code> for code blocks
+               - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
 
             2. **Content Enhancement & Rewriting**:
                - Completely rewrite for clarity, flow, and technical accuracy

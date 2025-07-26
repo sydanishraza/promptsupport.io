@@ -6285,11 +6285,10 @@ Added from document assets: 12 images, 8 tables
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
             
-            # 🔥 CRITICAL KNOWLEDGE ENGINE TESTS - PRIMARY FOCUS
-            ("🔥 Knowledge Engine - Content Splitting", self.test_knowledge_engine_content_splitting),
-            ("🔥 Knowledge Engine - HTML Output", self.test_knowledge_engine_html_output),
-            ("🔥 Knowledge Engine - Contextual Images", self.test_knowledge_engine_contextual_images),
-            ("🔥 Knowledge Engine - Clean Content", self.test_knowledge_engine_clean_content),
+            # 🔥 CRITICAL KNOWLEDGE ENGINE TESTS - PRIMARY FOCUS (Previously Failed)
+            ("🔥 CRITICAL: HTML Output Generation", self.test_html_output_generation),
+            ("🔥 CRITICAL: Metadata Removal", self.test_metadata_removal),
+            ("🔧 Post-Processing Functions", self.test_post_processing_functions),
             
             # Supporting functionality tests
             ("File Upload Processing", self.test_file_upload),

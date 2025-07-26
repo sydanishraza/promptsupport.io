@@ -1467,21 +1467,36 @@ async def upload_file(
                 embedded_media = await extract_media_from_docx(doc, file.filename.replace('.docx', '').replace('.doc', ''))
                 print(f"🔍 DEBUG: Extracted {len(embedded_media)} media items from DOCX")
                 
-                # Add all images at the beginning of content for AI to position contextually - USE HTML FORMAT
+                # Improve image distribution across articles by including image references in prompts
                 image_references = ""
-                for i, media in enumerate(embedded_media, 1):
-                    if media.get('is_svg', False):
-                        # SVG images remain as base64
-                        image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
-                        print(f"🔍 DEBUG: Added SVG image {i} HTML reference for AI positioning")
-                    elif media.get('url'):
-                        # Non-SVG images use file URL references
-                        image_references += f'\n<img src="{media["url"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
-                        print(f"🔍 DEBUG: Added image {i} URL HTML reference for AI positioning: {media['url']}")
-                    else:
-                        # Fallback for base64 data
-                        image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
-                        print(f"🔍 DEBUG: Added image {i} base64 HTML reference for AI positioning")
+                image_distribution_info = ""
+                
+                if embedded_media:
+                    print(f"🔍 DEBUG: Processing {len(embedded_media)} images for distribution")
+                    
+                    for i, media in enumerate(embedded_media, 1):
+                        if media.get('is_svg', False):
+                            # SVG images remain as base64
+                            image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                            print(f"🔍 DEBUG: Added SVG image {i} HTML reference for AI positioning")
+                        elif media.get('url'):
+                            # Non-SVG images use file URL references
+                            image_references += f'\n<img src="{media["url"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                            print(f"🔍 DEBUG: Added image {i} URL HTML reference for AI positioning: {media['url']}")
+                        else:
+                            # Fallback for base64 data
+                            image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                            print(f"🔍 DEBUG: Added image {i} base64 HTML reference for AI positioning")
+                    
+                    # Create distribution instructions for AI
+                    image_distribution_info = f"""
+CRITICAL IMAGE DISTRIBUTION REQUIREMENTS:
+- This document contains {len(embedded_media)} images that MUST be distributed across ALL articles
+- Each article should include 2-4 images contextually relevant to its topic
+- Images should be embedded using the exact HTML format provided above
+- Do not create articles without images unless absolutely necessary
+- Ensure all {len(embedded_media)} images are used across the complete set of articles
+"""
                 
                 # Process document content cleanly without metadata
                 extracted_content = f"# {file.filename}\n\n{image_references}\n\n"

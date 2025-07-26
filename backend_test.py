@@ -228,20 +228,18 @@ This document contains multiple paragraphs to test the chunking algorithm effect
             return False
     
     def test_ai_chat(self):
-        """Test the /api/chat endpoint"""
-        print("\n🔍 Testing AI Chat...")
+        """Test the /api/chat endpoint with fallback system"""
+        print("\n🔍 Testing AI Chat with OpenAI-to-Claude Fallback...")
         try:
             chat_data = {
-                'message': 'What is the Enhanced Content Engine?',
-                'session_id': 'test_session_123',
-                'model_provider': 'openai',
-                'model_name': 'gpt-4o'
+                'message': 'What is the Enhanced Content Engine and how does it work?',
+                'session_id': 'test_session_fallback_123'
             }
             
             response = requests.post(
                 f"{self.base_url}/chat",
                 data=chat_data,
-                timeout=30
+                timeout=45  # Longer timeout for fallback
             )
             
             print(f"Status Code: {response.status_code}")
@@ -252,7 +250,8 @@ This document contains multiple paragraphs to test the chunking algorithm effect
                 
                 if ("response" in data and "session_id" in data and 
                     len(data["response"]) > 0):
-                    print("✅ AI Chat successful")
+                    print("✅ AI Chat with fallback system successful")
+                    print(f"Response length: {len(data['response'])} characters")
                     return True
                 else:
                     print("❌ AI Chat failed - invalid response format")
@@ -260,10 +259,6 @@ This document contains multiple paragraphs to test the chunking algorithm effect
             else:
                 print(f"❌ AI Chat failed - status code {response.status_code}")
                 print(f"Response: {response.text}")
-                # This might fail if OpenAI API key is not working, but that's not critical
-                if "OpenAI API key not configured" in response.text:
-                    print("⚠️ OpenAI API key issue - endpoint structure is correct")
-                    return True
                 return False
                 
         except Exception as e:

@@ -3803,29 +3803,6 @@ const PromptSupportEditor = ({
             ) : (
               // Edit mode: Enhanced with drag & drop and slash commands
               <div className="h-full relative">
-                <style jsx>{`
-                  .wysiwyg-editor h1 { font-size: 2rem; font-weight: bold; margin: 1rem 0; line-height: 1.2; }
-                  .wysiwyg-editor h2 { font-size: 1.75rem; font-weight: bold; margin: 0.875rem 0; line-height: 1.3; }
-                  .wysiwyg-editor h3 { font-size: 1.5rem; font-weight: bold; margin: 0.75rem 0; line-height: 1.4; }
-                  .wysiwyg-editor h4 { font-size: 1.25rem; font-weight: bold; margin: 0.625rem 0; line-height: 1.4; }
-                  .wysiwyg-editor p { margin: 0.5rem 0; }
-                  .wysiwyg-editor ul { margin: 0.5rem 0; padding-left: 1.5rem; list-style-type: disc; }
-                  .wysiwyg-editor ol { margin: 0.5rem 0; padding-left: 1.5rem; list-style-type: decimal; }
-                  .wysiwyg-editor ul ul { list-style-type: circle; margin: 0.25rem 0; }
-                  .wysiwyg-editor ul ul ul { list-style-type: square; }
-                  .wysiwyg-editor ol ol { list-style-type: lower-alpha; margin: 0.25rem 0; }
-                  .wysiwyg-editor ol ol ol { list-style-type: lower-roman; }
-                  .wysiwyg-editor li { margin: 0.25rem 0; display: list-item; }
-                  .wysiwyg-editor blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; color: #6b7280; background: #f9fafb; }
-                  .wysiwyg-editor code { background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em; }
-                  .wysiwyg-editor pre { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; margin: 16px 0; overflow-x: auto; }
-                  .wysiwyg-editor strong, .wysiwyg-editor b { font-weight: bold; }
-                  .wysiwyg-editor em, .wysiwyg-editor i { font-style: italic; }
-                  .wysiwyg-editor u { text-decoration: underline; }
-                  .wysiwyg-editor table { border-collapse: collapse; width: 100%; margin: 16px 0; }
-                  .wysiwyg-editor td { border: 1px solid #e5e7eb; padding: 8px; }
-                  .wysiwyg-editor th { border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb; font-weight: 600; }
-                `}</style>
                 <div
                   key={`editor-${isEditing}-${article?.id}`}
                   ref={contentRef}

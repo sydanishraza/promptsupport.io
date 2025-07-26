@@ -210,7 +210,7 @@ const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle }) => {
                 <span>Date added</span>
                 <div className="flex items-center space-x-1">
                   <Calendar className="h-3 w-3" />
-                  <span>{formatDate(article.created_at)}</span>
+                  <span>{formatDateWithTime(article.created_at)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-gray-500">

@@ -779,7 +779,8 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         - Include practical examples and real-world applications
         - Maintain consistency in tone and style across all articles
         - Ensure content is immediately actionable and valuable
-        - MUST preserve all embedded media and data URLs exactly as provided
+        - MUST preserve all embedded media and URLs/data URLs exactly as provided
+        - Use /api/static/uploads/ URLs for saved images, data: URLs only for SVG
         """
         
         data = {

@@ -980,7 +980,7 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
             data = {
                 "model": "gpt-4o",
                 "messages": [
-                    {"role": "system", "content": "You are an expert technical writer and content strategist. Transform raw content into comprehensive, production-ready knowledge base articles. Always respond with valid JSON only. CRITICAL: Preserve ALL embedded media including full base64 data URLs exactly as provided."},
+                    {"role": "system", "content": "You are an expert technical writer and content strategist creating comprehensive knowledge base articles. Always respond with valid JSON containing focused, production-ready articles. CRITICAL: Generate clean HTML content suitable for WYSIWYG display (NO MARKDOWN), preserve ALL embedded media at contextually appropriate locations, and remove all source metadata from article content."},
                     {"role": "user", "content": prompt}
                 ],
                 "max_tokens": 6000,

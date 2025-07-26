@@ -1285,11 +1285,28 @@ async def upload_file(
                     print(f"📁 Saved {len(saved_assets)} images to Asset Library")
                     return media_files
                 
-                # Extract media from document
+                # Extract media from document - simplified approach for better AI processing
                 embedded_media = await extract_media_from_docx(doc, file.filename.replace('.docx', '').replace('.doc', ''))
                 print(f"🔍 DEBUG: Extracted {len(embedded_media)} media items from DOCX")
-                for i, media in enumerate(embedded_media):
-                    print(f"🔍 DEBUG: Media {i+1}: {media['format']}, {media['size']} bytes, type: {media['content_type']}")
+                
+                # Add all images at the beginning of content for AI to position contextually
+                image_references = ""
+                for i, media in enumerate(embedded_media, 1):
+                    if media.get('is_svg', False):
+                        # SVG images remain as base64
+                        image_references += f"\n![Figure {i}]({media['data']})\n"
+                        print(f"🔍 DEBUG: Added SVG image {i} reference for AI positioning")
+                    elif media.get('url'):
+                        # Non-SVG images use file URL references
+                        image_references += f"\n![Figure {i}]({media['url']})\n"
+                        print(f"🔍 DEBUG: Added image {i} URL reference for AI positioning: {media['url']}")
+                    else:
+                        # Fallback for base64 data
+                        image_references += f"\n![Figure {i}]({media['data']})\n"
+                        print(f"🔍 DEBUG: Added image {i} base64 reference for AI positioning")
+                
+                # Process document content cleanly without metadata
+                extracted_content = f"# {file.filename}\n\n{image_references}\n\n"
                 
                 # Process document elements in order
                 def iter_block_items(parent):

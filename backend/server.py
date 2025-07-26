@@ -934,51 +934,47 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
                - Use <code> for inline code, <pre><code> for code blocks
                - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
 
-            2. **Content Enhancement & Rewriting**:
-               - Completely rewrite for clarity, flow, and technical accuracy
-               - Add context, explanations, and helpful details
+            3. **Content Enhancement & Professional Writing**:
+               - Completely rewrite content for clarity, flow, and technical accuracy
+               - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
+               - Add context, explanations, and helpful details where needed
                - Improve technical language while maintaining original intent
-               - Add transitions and logical connections between concepts
+               - Add smooth transitions and logical connections between concepts
                - Include troubleshooting tips, best practices, and common scenarios
 
-            3. **Professional Structure & Formatting**:
-               - Use comprehensive markdown formatting with proper heading hierarchy
-               - Create detailed outline with multiple heading levels (H1, H2, H3, H4)
-               - Add bullet points, numbered lists, and checklists
-               - Include tables for data presentation when relevant
-               - Add callouts, notes, warnings, and tips using blockquotes
-               - Create step-by-step procedures with clear numbering
+            4. **Professional Article Structure**:
+               - Start with compelling <h1> title and introduction explaining purpose
+               - Include "What You'll Learn" and "Prerequisites" sections where relevant
+               - Organize content with clear heading hierarchy and logical flow
+               - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
+               - Create actionable content that users can immediately implement
 
-            4. **Production-Ready Features**:
-               - Write compelling introduction explaining purpose and scope
-               - Add comprehensive conclusion with next steps
-               - Include "Prerequisites", "What You'll Learn", and "Key Takeaways" sections
-               - Add practical examples and real-world applications
-               - Create actionable content users can immediately implement
-
-            5. **Metadata & SEO**:
-               - Generate descriptive, SEO-friendly title
+            5. **Clean Metadata Management**:
+               - Generate descriptive, SEO-friendly title (no filename references)
                - Write detailed summary (3-4 sentences) explaining value proposition
                - Create comprehensive tag list including technical terms and processes
                - Generate practical takeaways highlighting key learning points
+               - Keep ALL source metadata OUT of article content
 
             RESPONSE FORMAT - Return valid JSON:
             {{
-                "title": "Comprehensive, descriptive title that clearly indicates the specific topic and value",
-                "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides to the reader",
-                "content": "# Article Title\\n\\n## Overview\\n\\nDetailed introduction explaining the purpose, scope, and importance...\\n\\n## Prerequisites\\n\\n- Requirement 1\\n- Requirement 2\\n\\n## What You'll Learn\\n\\n- Learning objective 1\\n- Learning objective 2\\n\\n## Main Content\\n\\n### Section 1\\n\\nDetailed explanation with context and examples...\\n\\n![Image Description](/api/static/uploads/image.png)\\n\\n*Figure 1: Caption describing the image and its relevance*\\n\\n#### Subsection 1.1\\n\\nSpecific implementation details...\\n\\n### Section 2\\n\\n> **💡 Pro Tip:** Include helpful insights and best practices\\n\\nStep-by-step procedures:\\n\\n1. **Step 1**: Detailed explanation\\n   - Sub-step a with specifics\\n   - Sub-step b with examples\\n\\n2. **Step 2**: More comprehensive details\\n\\n### Common Issues & Troubleshooting\\n\\n> **⚠️ Warning:** Important considerations and limitations\\n\\n- Common issue 1 and detailed solution\\n- Common issue 2 and prevention tips\\n\\n## Key Takeaways\\n\\n- Specific, actionable takeaway 1\\n- Practical insight 2\\n- Best practice 3\\n\\n## Next Steps\\n\\n- Recommended follow-up actions\\n- Related topics to explore\\n\\n## Additional Resources\\n\\n- Relevant documentation links\\n- Related processes or tools",
-                "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name", "user-type", "difficulty-level"],
-                "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4", "Implementation tip 5"]
+                "title": "Professional, descriptive title focused on the content topic (no filename references)",
+                "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides",
+                "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose, scope, and importance...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context and examples...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance</em></p><p>As shown in Figure 1 above...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
+                "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
+                "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
             }}
 
             QUALITY STANDARDS:
-            - Article should be 800-2500 words when rendered
+            - Article should be 800-2500 words when rendered (prefer focused, digestible content)
             - Content should feel authoritative and professionally written
             - Include practical examples and real-world applications
             - Ensure content is immediately actionable and valuable
             - Maintain consistent professional tone throughout
             - MUST preserve all embedded media and URLs/data URLs exactly as provided
-            - Use /api/static/uploads/ URLs for saved images, data: URLs only for SVG
+            - Use clean HTML formatting suitable for WYSIWYG display
+            - Remove all source metadata from article content
+            - Embed images contextually, not at the end of articles
             """
             
             data = {

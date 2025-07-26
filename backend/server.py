@@ -730,7 +730,7 @@ def clean_article_content(content: str) -> str:
     
     # Convert common Markdown to HTML if still present
     markdown_to_html_patterns = [
-        # Headers
+        # Headers (process in reverse order to avoid conflicts)
         (r'^#{6}\s+(.+)$', r'<h6>\1</h6>'),
         (r'^#{5}\s+(.+)$', r'<h5>\1</h5>'),
         (r'^#{4}\s+(.+)$', r'<h4>\1</h4>'),
@@ -751,10 +751,74 @@ def clean_article_content(content: str) -> str:
         
         # Images (markdown style) to HTML
         (r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" style="max-width: 100%; height: auto;">'),
+        
+        # Blockquotes
+        (r'^>\s*(.+)$', r'<blockquote>\1</blockquote>'),
+        
+        # Horizontal rules
+        (r'^---+$', r'<hr>'),
     ]
     
     for pattern, replacement in markdown_to_html_patterns:
         content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+    
+    # Handle unordered lists (bullet points)
+    def process_unordered_lists(text):
+        lines = text.split('\n')
+        processed_lines = []
+        in_list = False
+        
+        for line in lines:
+            # Check if line is a list item (starts with -, *, or •)
+            if re.match(r'^[-*•]\s+', line.strip()):
+                if not in_list:
+                    processed_lines.append('<ul>')
+                    in_list = True
+                # Convert to HTML list item
+                item_text = re.sub(r'^[-*•]\s+', '', line.strip())
+                processed_lines.append(f'<li>{item_text}</li>')
+            else:
+                if in_list:
+                    processed_lines.append('</ul>')
+                    in_list = False
+                processed_lines.append(line)
+        
+        # Close list if we end while still in one
+        if in_list:
+            processed_lines.append('</ul>')
+        
+        return '\n'.join(processed_lines)
+    
+    # Handle ordered lists (numbered)
+    def process_ordered_lists(text):
+        lines = text.split('\n')
+        processed_lines = []
+        in_list = False
+        
+        for line in lines:
+            # Check if line is a numbered list item
+            if re.match(r'^\d+\.\s+', line.strip()):
+                if not in_list:
+                    processed_lines.append('<ol>')
+                    in_list = True
+                # Convert to HTML list item
+                item_text = re.sub(r'^\d+\.\s+', '', line.strip())
+                processed_lines.append(f'<li>{item_text}</li>')
+            else:
+                if in_list:
+                    processed_lines.append('</ol>')
+                    in_list = False
+                processed_lines.append(line)
+        
+        # Close list if we end while still in one
+        if in_list:
+            processed_lines.append('</ol>')
+        
+        return '\n'.join(processed_lines)
+    
+    # Apply list processing
+    content = process_unordered_lists(content)
+    content = process_ordered_lists(content)
     
     # Clean up extra whitespace and newlines
     content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Multiple newlines to double

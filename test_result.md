@@ -222,6 +222,8 @@
 ## agent_communication:
     -agent: "main"
     -message: "Implemented comprehensive fixes using research-based prompt engineering: 1) Rewrote AI prompts with explicit format control and constraints, 2) Added post-processing functions to clean remaining Markdown/metadata patterns, 3) Applied cleaning functions to all article creation workflows, 4) Added markdown library for HTML conversion. The two critical failures (HTML output and metadata removal) should now be resolved through dual approach - better prompts + post-processing cleanup."
+    -agent: "testing"
+    -message: "🚨 CRITICAL DISCOVERY: The two main issues (HTML Output Generation and Metadata Removal) are STILL FAILING because the root problem is deeper than the AI prompts. File upload processing is NOT triggering AI generation at all - it's using basic text processing (ai_processed: false) instead of invoking the improved AI prompts. The system is bypassing the entire AI pipeline and creating simple text-based articles. This means: 1) The improved AI prompts are never being called, 2) Post-processing functions are never being applied, 3) Articles are created with basic metadata extraction instead of AI enhancement. The main agent needs to investigate why file uploads are not triggering AI article generation and ensure the AI processing pipeline is properly invoked."
 
 ## backend:
   - task: "Enhanced Content Splitting Logic"

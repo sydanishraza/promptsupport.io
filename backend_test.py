@@ -7742,22 +7742,50 @@ This content should be processed by the training system to create multiple artic
 if __name__ == "__main__":
     tester = EnhancedContentEngineTest()
     
-    # Check if we should run only critical editor tests
+    # Check command line arguments
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "--critical":
-        results = tester.run_critical_editor_tests()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--critical":
+            results = tester.run_critical_editor_tests()
+            passed = sum(1 for _, result in results if result)
+            total = len(results)
+            
+            print(f"\n🎯 CRITICAL TESTS SUMMARY: {passed}/{total} tests passed ({(passed/total*100):.1f}%)")
+            
+            if passed == total:
+                print("🎉 ALL CRITICAL TESTS PASSED!")
+            else:
+                failed_tests = [name for name, result in results if not result]
+                print(f"❌ Failed tests: {', '.join(failed_tests)}")
+            
+            exit(0 if passed == total else 1)
+        elif sys.argv[1] == "--training":
+            # Run focused training interface tests
+            results = tester.run_training_tests()
+            passed = sum(1 for _, result in results if result)
+            total = len(results)
+            
+            print(f"\n🎯 TRAINING TESTS SUMMARY: {passed}/{total} tests passed ({(passed/total*100):.1f}%)")
+            
+            if passed == total:
+                print("🎉 ALL TRAINING TESTS PASSED!")
+            else:
+                failed_tests = [name for name, result in results if not result]
+                print(f"❌ Failed tests: {', '.join(failed_tests)}")
+            
+            exit(0 if passed == total else 1)
+    else:
+        # Default: run training tests as requested in the review
+        results = tester.run_training_tests()
         passed = sum(1 for _, result in results if result)
         total = len(results)
         
-        print(f"\n🎯 CRITICAL TESTS SUMMARY: {passed}/{total} tests passed ({(passed/total*100):.1f}%)")
+        print(f"\n🎯 TRAINING INTERFACE TESTING COMPLETE: {passed}/{total} tests passed ({(passed/total*100):.1f}%)")
         
         if passed == total:
-            print("🎉 ALL CRITICAL TESTS PASSED!")
+            print("🎉 ALL TRAINING INTERFACE TESTS PASSED!")
         else:
             failed_tests = [name for name, result in results if not result]
             print(f"❌ Failed tests: {', '.join(failed_tests)}")
         
         exit(0 if passed == total else 1)
-    else:
-        success = tester.run_all_tests()
-        exit(0 if success else 1)

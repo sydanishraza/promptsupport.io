@@ -817,11 +817,23 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         data = {
             "model": "gpt-4o",
             "messages": [
-                {"role": "system", "content": "You are an expert technical writer and content strategist creating comprehensive knowledge base articles. Always respond with valid JSON containing focused, production-ready articles. CRITICAL: Generate clean HTML content suitable for WYSIWYG display (NO MARKDOWN), preserve ALL embedded media at contextually appropriate locations, and remove all source metadata from article content."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": "You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. Respond ONLY with valid JSON."},
+                {"role": "user", "content": f"""Transform this content into multiple HTML articles. Requirements:
+                
+CRITICAL OUTPUT RULES:
+- Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
+- NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
+- NEVER mention filenames, dates, byte counts, or metadata
+- Images: Use <img src="URL" alt="description" style="max-width:100%;">
+
+Content to transform:
+{content[:15000]}
+
+Respond with JSON:
+{{"articles": [{{"title": "Clean Title", "summary": "Description", "content": "<h1>Title</h1><p>Content...</p>", "tags": ["tag1"], "takeaways": ["point1"]}}]}}"""}
             ],
             "max_tokens": 8000,
-            "temperature": 0.3
+            "temperature": 0.1
         }
         
         print(f"🤖 Calling OpenAI GPT-4o for multiple article generation...")

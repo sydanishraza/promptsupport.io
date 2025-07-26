@@ -719,65 +719,79 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
             "Content-Type": "application/json"
         }
         
-        # Enhanced prompt for comprehensive article generation
+        # Enhanced prompt for comprehensive article generation with HTML output
         prompt = f"""
-        You are an expert technical writer and content strategist creating a comprehensive knowledge base from this document. Your goal is to transform the raw content into multiple, well-structured, production-ready articles that feel like they were written by a professional technical writer.
+        You are an expert technical writer and content strategist creating a comprehensive knowledge base from this document. Your goal is to transform the raw content into multiple, well-structured, production-ready articles with clean HTML formatting for immediate use in a WYSIWYG editor.
 
-        IMPORTANT: This content contains embedded media (images, diagrams, charts) that MUST be preserved and included in the generated articles.
+        CRITICAL: This content contains embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations within the articles.
 
         Original Content:
         {content[:15000]}
 
         TRANSFORMATION REQUIREMENTS:
 
-        1. **Content Analysis & Splitting**:
-           - Identify all distinct topics, chapters, sections, or processes
-           - Create 3-8 focused articles (depending on content richness)
+        1. **Content Analysis & Intelligent Splitting**:
+           - Identify ALL distinct topics, chapters, sections, or processes
+           - Create 4-10 focused articles (prefer more specific articles over long ones)
            - Each article should cover ONE specific topic/process in depth
-           - Split logically by function, process, or conceptual area
+           - Split by logical boundaries: procedures, concepts, features, components
+           - Prioritize user-friendly, digestible article lengths (800-2000 words each)
 
-        2. **Media Preservation & Integration**:
+        2. **Media Contextual Embedding & Preservation**:
            - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear
-           - Include ALL image URLs (/api/static/uploads/...) and data URLs (data:image/svg+xml;base64,...)
-           - For URL-based images: ![Alt text](/api/static/uploads/filename.ext)
-           - For SVG images: ![Alt text](data:image/svg+xml;base64,...)
-           - Maintain image captions and context
-           - Place images strategically within article content for maximum relevance
-           - Reference images in the text when appropriate (e.g., "As shown in the diagram below...")
-           - Ensure all images are properly linked and accessible
+           - Place images at their ORIGINAL contextual location within the content flow
+           - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
+           - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
+           - Add proper figure captions: <p><em>Figure 1: Descriptive caption explaining the image relevance</em></p>
+           - Reference images in surrounding text: "As illustrated in Figure 1 below..."
+           - Never place images at the end - embed them where they contextually belong
 
-        3. **Content Enhancement & Rewriting**:
+        3. **HTML Content Formatting (NOT Markdown)**:
+           - Generate clean HTML suitable for WYSIWYG editor display
+           - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
+           - Format lists as <ul> and <ol> with <li> elements
+           - Use <p> tags for paragraphs with proper spacing
+           - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
+           - Use <blockquote> for callouts and important notes
+           - Add <strong> for emphasis, <em> for italics
+           - Use <code> for inline code, <pre><code> for code blocks
+           - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
+
+        4. **Content Enhancement & Professional Writing**:
            - Completely rewrite content for clarity, flow, and technical accuracy
+           - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
            - Add context, explanations, and helpful details where needed
            - Improve technical language while maintaining original intent
-           - Add transitions and logical connections between concepts
+           - Add smooth transitions and logical connections between concepts
            - Include troubleshooting tips, best practices, and common scenarios
 
-        4. **Professional Structure & Formatting**:
-           - Use comprehensive markdown formatting with proper headings hierarchy
-           - Create detailed outlines with multiple heading levels (H1, H2, H3, H4)
-           - Add bullet points, numbered lists, and checklists where appropriate
-           - Include tables for data presentation when relevant
-           - Add callouts, notes, warnings, and tips using markdown blockquotes
-           - Create step-by-step procedures with clear numbering
-           - Add code blocks or configuration examples where applicable
-
-        5. **Production-Ready Features**:
-           - Write compelling introductions that explain purpose and scope
-           - Add comprehensive conclusions with next steps and related topics
-           - Include "Prerequisites", "What You'll Learn", and "Key Takeaways" sections
-           - Add cross-references to related articles/topics
+        5. **Professional Article Structure**:
+           - Start with compelling <h1> title and introduction explaining purpose
+           - Include "What You'll Learn" and "Prerequisites" sections where relevant
+           - Organize content with clear heading hierarchy and logical flow
+           - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
            - Create actionable content that users can immediately implement
+           - Cross-reference related topics without hardcoded links
 
-        6. **Metadata & SEO**:
-           - Generate descriptive, SEO-friendly titles
+        6. **Clean Metadata Management**:
+           - Generate descriptive, SEO-friendly titles (no filename references)
            - Write detailed summaries (3-4 sentences) explaining value proposition
-           - Create comprehensive tag lists including technical terms, processes, and categories
+           - Create comprehensive tag lists including technical terms, processes, categories
            - Generate practical takeaways that highlight key learning points
+           - Keep ALL source metadata OUT of article content
 
         RESPONSE FORMAT - Return valid JSON:
         {{
             "articles": [
+                {{
+                    "title": "Professional, descriptive title focused on the specific topic (no filename references)",
+                    "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides",
+                    "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose and scope...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance and content</em></p><p>As shown in Figure 1 above, the process demonstrates...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
+                    "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
+                    "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
+                }}
+            ]
+        }}
                 {{
                     "title": "Comprehensive, descriptive title that clearly indicates the specific topic",
                     "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides to the reader",

@@ -889,10 +889,11 @@ TRANSFORMATION REQUIREMENTS:
 
 1. **Content Analysis & Intelligent Splitting**:
    - Identify ALL distinct topics, chapters, sections, or processes
-   - Create 4-10 focused articles (prefer more specific articles over long ones)
+   - Create 6-15 focused articles for rich documents (prefer more specific articles over long ones)
    - Each article should cover ONE specific topic/process in depth
-   - Split by logical boundaries: procedures, concepts, features, components
-   - Prioritize user-friendly, digestible article lengths (800-2000 words each)
+   - Split by logical boundaries: procedures, concepts, features, components, chapters
+   - Prioritize user-friendly, digestible article lengths (600-1500 words each)
+   - For documents with 6+ chapters, create 1 article per chapter plus overview/conclusion articles
 
 2. **Media Contextual Embedding & Preservation**:
    - PRESERVE all embedded images, charts, diagrams, and media exactly as they appear

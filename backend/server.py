@@ -1318,11 +1318,22 @@ async def upload_file(
                                 media_index += 1
                                 image_count += 1
                                 
-                                # Embed image as base64 data URL
-                                data_url = f"data:{media_item['content_type']};base64,{media_item['data']}"
-                                extracted_content += f"\n![Image {image_count}]({data_url})\n\n"
-                                extracted_content += f"*Image {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes)*\n\n"
-                                print(f"🔍 DEBUG: Successfully embedded image {image_count} as base64 data URL (length: {len(data_url)})")
+                                # Embed image using URL reference (for non-SVG) or base64 (for SVG)
+                                if media_item.get('is_svg', False):
+                                    # SVG images remain as base64
+                                    extracted_content += f"\n![Image {image_count}]({media_item['data']})\n\n"
+                                    extracted_content += f"*Figure {image_count}: SVG vector image ({media_item['size']} bytes)*\n\n"
+                                    print(f"🔍 DEBUG: Successfully embedded SVG image {image_count} as base64")
+                                elif media_item.get('url'):
+                                    # Non-SVG images use file URL references
+                                    extracted_content += f"\n![Image {image_count}]({media_item['url']})\n\n"
+                                    extracted_content += f"*Figure {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes) - [Asset Library]*\n\n"
+                                    print(f"🔍 DEBUG: Successfully embedded image {image_count} via URL reference: {media_item['url']}")
+                                else:
+                                    # Fallback for base64 data
+                                    extracted_content += f"\n![Image {image_count}]({media_item['data']})\n\n"
+                                    extracted_content += f"*Figure {image_count}: {media_item['format'].upper()} image ({media_item['size']} bytes) - [Fallback]*\n\n"
+                                    print(f"🔍 DEBUG: Embedded image {image_count} using base64 fallback")
                     
                     elif isinstance(block, Table):
                         table_count += 1

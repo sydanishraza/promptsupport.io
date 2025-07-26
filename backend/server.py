@@ -110,10 +110,95 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
     """
     Call LLM with OpenAI first, fallback to Claude if OpenAI fails
     Returns the response text or None if both fail
-    
-    NOTE: LLM functionality has been disabled due to missing dependencies.
     """
-    print("❌ LLM functionality is currently disabled - emergentintegrations.llm.chat not available")
+    if session_id is None:
+        session_id = str(uuid.uuid4())
+    
+    # Try OpenAI first
+    if OPENAI_API_KEY:
+        try:
+            print("🤖 Attempting OpenAI (GPT-4o) call...")
+            
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_message}
+                ],
+                "max_tokens": 6000,
+                "temperature": 0.1
+            }
+            
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=45
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                print(f"✅ OpenAI response successful: {len(ai_response)} characters")
+                return ai_response
+            else:
+                error_msg = str(response.status_code) + " " + response.text
+                print(f"❌ OpenAI failed: {error_msg}")
+                
+                # Check if it's a quota/rate limit error
+                if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
+                    print("🔄 OpenAI quota/rate limit exceeded, switching to Claude...")
+                else:
+                    print("🔄 OpenAI error detected, switching to Claude...")
+                    
+        except Exception as e:
+            print(f"❌ OpenAI failed with exception: {e}")
+            print("🔄 Switching to Claude...")
+    
+    # Try Claude as fallback
+    if ANTHROPIC_API_KEY:
+        try:
+            print("🤖 Attempting Claude fallback call...")
+            
+            headers = {
+                "x-api-key": ANTHROPIC_API_KEY,
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
+            }
+            
+            data = {
+                "model": "claude-3-5-sonnet-20241022",
+                "max_tokens": 6000,
+                "system": system_message,
+                "messages": [
+                    {"role": "user", "content": user_message}
+                ]
+            }
+            
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=headers,
+                json=data,
+                timeout=45
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["content"][0]["text"]
+                print(f"✅ Claude response successful: {len(ai_response)} characters")
+                return ai_response
+            else:
+                print(f"❌ Claude also failed: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            print(f"❌ Claude also failed with exception: {e}")
+    
+    print("❌ Both OpenAI and Claude failed - no LLM response available")
     return None
 
 # Startup event

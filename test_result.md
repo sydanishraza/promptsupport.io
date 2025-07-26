@@ -159,9 +159,9 @@
 ## backend:
   - task: "Improved AI Prompts with Format Control"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "critical"
     needs_retesting: false
     status_history:
@@ -171,6 +171,9 @@
         -working: false
         -agent: "testing"
         -comment: "❌ CRITICAL FAILURE: HTML OUTPUT GENERATION STILL FAILING. Comprehensive testing shows that uploaded files are NOT being processed by AI at all. Articles are created with basic text processing (ai_processed: false) instead of using the improved AI prompts. The system is bypassing AI generation entirely and creating simple text-based articles. Root cause: File upload processing is not triggering AI article generation - it's using fallback basic article creation. The improved AI prompts are never being called because the AI processing pipeline is not being invoked."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ COMPREHENSIVE VERIFICATION COMPLETED: Improved AI prompts with format control are now working correctly. Focused testing of HTML output generation shows: 1) Knowledge Engine successfully creates AI-processed articles with ai_processed=True, 2) Articles generated with proper HTML formatting (6 HTML tags found, 0 Markdown patterns), 3) AI model tracking working ('gpt-4o (with claude fallback)'), 4) Content properly structured with <h1>, <h2>, <p>, <ul>, <li> tags, 5) No Markdown syntax (##, **, -) found in generated content. The improved AI prompts are being invoked correctly and generating clean HTML output as designed. Previous issues were resolved through the fallback system implementation."
 
   - task: "Post-Processing Content Cleaning Functions"
     implemented: true

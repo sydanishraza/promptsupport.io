@@ -6845,6 +6845,436 @@ This content should be processed by the training system to create multiple artic
         
         return results
 
+    def test_training_interface_templates(self):
+        """Test GET /api/training/templates endpoint"""
+        print("\n🔍 Testing Training Interface - Get Templates...")
+        try:
+            response = requests.get(f"{self.base_url}/training/templates", timeout=10)
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if "templates" in data and "total" in data:
+                    print(f"✅ Training templates endpoint working - {data['total']} templates found")
+                    return True
+                else:
+                    print("❌ Training templates failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training templates failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training templates failed - {str(e)}")
+            return False
+
+    def test_training_interface_sessions(self):
+        """Test GET /api/training/sessions endpoint with ObjectId serialization fix"""
+        print("\n🔍 Testing Training Interface - Get Sessions (ObjectId Fix)...")
+        try:
+            response = requests.get(f"{self.base_url}/training/sessions", timeout=10)
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if "sessions" in data and "total" in data:
+                    print(f"✅ Training sessions endpoint working - {data['total']} sessions found")
+                    return True
+                else:
+                    print("❌ Training sessions failed - invalid response format")
+                    return False
+            elif response.status_code == 500:
+                print("❌ Training sessions failed with 500 error - likely ObjectId serialization issue")
+                print(f"Response: {response.text}")
+                return False
+            else:
+                print(f"❌ Training sessions failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training sessions failed - {str(e)}")
+            return False
+
+    def test_training_interface_docx_processing(self):
+        """Test DOCX processing with enhanced debugging and image embedding"""
+        print("\n🔍 Testing Training Interface - DOCX Processing with Debug Logging...")
+        try:
+            # Create a simulated DOCX file content (text-based for testing)
+            docx_content = """Enhanced Training Interface DOCX Test Document
+
+This is a comprehensive test document designed to verify DOCX processing capabilities with image embedding and template-based article generation.
+
+Chapter 1: Introduction to Training Interface
+The Training Interface is designed to process various document formats including DOCX files with embedded images. This system should extract both text content and images, then generate structured articles using AI processing.
+
+Chapter 2: Image Processing Capabilities
+The system should be able to:
+1. Extract images from DOCX files
+2. Save images to the Asset Library
+3. Embed images contextually in generated articles
+4. Maintain proper image references and metadata
+
+Chapter 3: Template-Based Processing
+Template-based processing applies specific instructions to document content:
+- Content splitting based on document structure
+- Image placement optimization
+- Quality benchmarks enforcement
+- Professional formatting standards
+
+Chapter 4: Debug Logging Verification
+This test should generate detailed debug logs showing:
+- File processing steps
+- Image extraction progress
+- Article generation with image counts
+- Template application verification
+- Training session storage confirmation
+
+Conclusion:
+This document tests the complete DOCX processing pipeline with enhanced debugging to identify why previous tests showed empty articles arrays."""
+
+            # Create file-like object simulating DOCX
+            file_data = io.BytesIO(docx_content.encode('utf-8'))
+            
+            # Template data for Phase 1 Document Upload Processing
+            template_data = {
+                "template_id": "phase1_document_upload",
+                "name": "Phase 1: Document Upload Processing",
+                "version": "1.0",
+                "processing_instructions": [
+                    "Extract all text content from uploaded document",
+                    "Identify and extract embedded images",
+                    "Apply content splitting logic for multiple articles",
+                    "Generate professional HTML formatting",
+                    "Embed images contextually within content"
+                ],
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 5,
+                    "quality_benchmarks": [
+                        "Content completeness",
+                        "No duplication",
+                        "Proper formatting",
+                        "Professional presentation"
+                    ]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "embed_contextually": True,
+                    "save_to_asset_library": True
+                }
+            }
+            
+            files = {
+                'file': ('training_docx_test.docx', file_data, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_upload',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            print("🚀 Processing DOCX file with template-based processing...")
+            print(f"📋 Template: {template_data['name']}")
+            print(f"🔧 Processing Instructions: {len(template_data['processing_instructions'])} steps")
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=60  # Longer timeout for processing
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                # Check for successful processing
+                if data.get("success"):
+                    session_id = data.get("session_id")
+                    articles = data.get("articles", [])
+                    images_processed = data.get("images_processed", 0)
+                    
+                    print(f"✅ DOCX processing successful!")
+                    print(f"📝 Session ID: {session_id}")
+                    print(f"📚 Articles generated: {len(articles)}")
+                    print(f"🖼️ Images processed: {images_processed}")
+                    
+                    if len(articles) > 0:
+                        print("✅ Articles generated successfully!")
+                        
+                        # Verify article structure
+                        for i, article in enumerate(articles, 1):
+                            print(f"\n📄 Article {i}:")
+                            print(f"   Title: {article.get('title', 'N/A')}")
+                            print(f"   Word Count: {article.get('word_count', 0)}")
+                            print(f"   Image Count: {article.get('image_count', 0)}")
+                            print(f"   AI Processed: {article.get('ai_processed', False)}")
+                            print(f"   Training Mode: {article.get('training_mode', False)}")
+                            
+                            # Check content quality
+                            content = article.get('content', '')
+                            if content:
+                                print(f"   Content Length: {len(content)} characters")
+                                # Check for HTML formatting
+                                html_tags = content.count('<') + content.count('>')
+                                print(f"   HTML Tags: {html_tags}")
+                            else:
+                                print("   ❌ No content in article!")
+                        
+                        return True
+                    else:
+                        print("❌ CRITICAL: No articles generated despite success=true")
+                        print("This indicates the DOCX processing functions are not working properly")
+                        return False
+                else:
+                    print(f"❌ DOCX processing failed: {data}")
+                    return False
+            else:
+                print(f"❌ DOCX processing failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ DOCX processing test failed - {str(e)}")
+            return False
+
+    def test_training_interface_pdf_processing(self):
+        """Test PDF processing with enhanced debugging"""
+        print("\n🔍 Testing Training Interface - PDF Processing...")
+        try:
+            # Create simulated PDF content (text-based for testing)
+            pdf_content = """Enhanced Training Interface PDF Test Document
+
+=== Page 1 ===
+PDF Processing Verification Test
+
+This document tests the PDF processing capabilities of the Training Interface with template-based article generation.
+
+=== Page 2 ===
+Key Features Being Tested:
+1. PDF text extraction
+2. Multi-page content processing
+3. Template application
+4. Article generation with proper structure
+
+=== Page 3 ===
+Expected Results:
+- Successful PDF content extraction
+- Template-based processing applied
+- Multiple articles generated if content warrants
+- Proper HTML formatting in output
+- Training session creation and storage
+
+=== Document Information ===
+Title: PDF Processing Test
+Author: Testing Agent
+Subject: Training Interface Verification
+Creator: Backend Test Suite"""
+
+            # Create file-like object simulating PDF
+            file_data = io.BytesIO(pdf_content.encode('utf-8'))
+            
+            # Template data
+            template_data = {
+                "template_id": "phase1_document_upload",
+                "name": "Phase 1: Document Upload Processing",
+                "processing_instructions": [
+                    "Extract text from all PDF pages",
+                    "Process document metadata",
+                    "Apply content splitting logic",
+                    "Generate structured articles"
+                ],
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 3
+                }
+            }
+            
+            files = {
+                'file': ('training_pdf_test.pdf', file_data, 'application/pdf')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_upload',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            print("🚀 Processing PDF file with template-based processing...")
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=60
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if data.get("success"):
+                    articles = data.get("articles", [])
+                    session_id = data.get("session_id")
+                    
+                    print(f"✅ PDF processing successful!")
+                    print(f"📝 Session ID: {session_id}")
+                    print(f"📚 Articles generated: {len(articles)}")
+                    
+                    if len(articles) > 0:
+                        print("✅ PDF articles generated successfully!")
+                        return True
+                    else:
+                        print("❌ CRITICAL: PDF processing returned empty articles array")
+                        return False
+                else:
+                    print(f"❌ PDF processing failed: {data}")
+                    return False
+            else:
+                print(f"❌ PDF processing failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ PDF processing test failed - {str(e)}")
+            return False
+
+    def test_training_interface_text_processing(self):
+        """Test text file processing (should work as baseline)"""
+        print("\n🔍 Testing Training Interface - Text File Processing (Baseline)...")
+        try:
+            # Create text content that should definitely work
+            text_content = """Training Interface Text Processing Test
+
+This is a baseline test to verify that text file processing works correctly in the Training Interface.
+
+Section 1: Basic Functionality
+Text files should be processed successfully and generate articles with proper structure and content.
+
+Section 2: Template Application
+The template-based processing should apply all specified instructions to create well-formatted articles.
+
+Section 3: Quality Verification
+Generated articles should meet all quality benchmarks including proper HTML formatting and professional presentation."""
+
+            file_data = io.BytesIO(text_content.encode('utf-8'))
+            
+            template_data = {
+                "template_id": "phase1_document_upload",
+                "name": "Phase 1: Document Upload Processing",
+                "processing_instructions": [
+                    "Process text content",
+                    "Apply template formatting",
+                    "Generate structured articles"
+                ],
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 2
+                }
+            }
+            
+            files = {
+                'file': ('training_text_test.txt', file_data, 'text/plain')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_upload',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            print("🚀 Processing text file (baseline test)...")
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=30
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if data.get("success"):
+                    articles = data.get("articles", [])
+                    
+                    print(f"✅ Text processing successful!")
+                    print(f"📚 Articles generated: {len(articles)}")
+                    
+                    if len(articles) > 0:
+                        print("✅ Text file processing working as baseline!")
+                        return True
+                    else:
+                        print("❌ Even text processing failed - critical system issue")
+                        return False
+                else:
+                    print(f"❌ Text processing failed: {data}")
+                    return False
+            else:
+                print(f"❌ Text processing failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Text processing test failed - {str(e)}")
+            return False
+
+    def test_training_interface_evaluation(self):
+        """Test POST /api/training/evaluate endpoint"""
+        print("\n🔍 Testing Training Interface - Evaluation System...")
+        try:
+            evaluation_data = {
+                "session_id": "test_session_123",
+                "result_id": "test_result_456",
+                "evaluation": "accepted",
+                "feedback": "Article generated successfully with proper structure and content quality."
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/evaluate",
+                json=evaluation_data,
+                timeout=15
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if (data.get("success") and "evaluation_id" in data and 
+                    "message" in data):
+                    print(f"✅ Training evaluation successful - ID: {data['evaluation_id']}")
+                    return True
+                else:
+                    print("❌ Training evaluation failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training evaluation failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training evaluation failed - {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run all backend tests focusing on Knowledge Engine Critical Issue Fixes"""
         print("🚀 KNOWLEDGE ENGINE CRITICAL ISSUE FIXES TESTING")

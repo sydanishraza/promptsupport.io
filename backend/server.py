@@ -594,8 +594,11 @@ async def training_process_document(
 ):
     """Process document with specific training template"""
     try:
+        print(f"🚀 Starting training process for {file.filename}")
+        
         # Parse template instructions
         template_data = json.loads(template_instructions)
+        print(f"📋 Template data parsed: {len(template_data)} keys")
         
         # Create training session metadata
         training_session = {
@@ -607,8 +610,11 @@ async def training_process_document(
             "template_data": template_data
         }
         
+        print(f"📝 Created training session: {training_session['session_id']}")
+        
         # Process the uploaded file
         file_content = await file.read()
+        print(f"📄 File content read: {len(file_content)} bytes")
         
         # Save file temporarily for processing
         temp_file_path = f"temp_uploads/{file.filename}"
@@ -617,19 +623,26 @@ async def training_process_document(
         with open(temp_file_path, "wb") as temp_file:
             temp_file.write(file_content)
         
+        print(f"💾 Temporary file saved: {temp_file_path}")
+        
         # Process based on file type
         if file.filename.lower().endswith('.docx'):
+            print("🔍 Processing DOCX file")
             articles = await process_docx_with_template(temp_file_path, template_data, training_session)
         elif file.filename.lower().endswith('.pdf'):
+            print("🔍 Processing PDF file")
             articles = await process_pdf_with_template(temp_file_path, template_data, training_session)
         elif file.filename.lower().endswith(('.ppt', '.pptx')):
+            print("🔍 Processing PowerPoint file")
             articles = await process_ppt_with_template(temp_file_path, template_data, training_session)
         elif file.filename.lower().endswith(('.txt', '.md')):
+            print("🔍 Processing text file")
             # Read text content
             with open(temp_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             articles = await process_text_with_template(content, template_data, training_session)
         else:
+            print("🔍 Processing as default text file")
             # Default text processing
             try:
                 with open(temp_file_path, 'r', encoding='utf-8') as f:
@@ -639,26 +652,36 @@ async def training_process_document(
                 content = f"Binary file: {file.filename} - content extraction not supported"
             articles = await process_text_with_template(content, template_data, training_session)
         
+        print(f"📚 Processing complete: {len(articles)} articles generated")
+        
         # Clean up temp file
         try:
             os.remove(temp_file_path)
-        except:
-            pass
+            print(f"🧹 Cleaned up temp file: {temp_file_path}")
+        except Exception as cleanup_error:
+            print(f"⚠️ Cleanup error: {cleanup_error}")
         
         # Store training session in database
         await db.training_sessions.insert_one(training_session)
+        print(f"💾 Training session stored in database")
+        
+        # Calculate images processed
+        total_images = sum(article.get("image_count", 0) for article in articles)
+        print(f"🖼️ Total images processed: {total_images}")
         
         return {
             "success": True,
             "session_id": training_session["session_id"],
             "articles": articles,
-            "images_processed": sum(article.get("image_count", 0) for article in articles),
+            "images_processed": total_images,
             "processing_time": 0,  # TODO: Add actual timing
             "template_applied": template_id
         }
         
     except Exception as e:
-        print(f"Training processing error: {str(e)}")
+        print(f"❌ Training processing error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/training/evaluate")

@@ -918,46 +918,6 @@ async def process_ppt_with_template(file_path: str, template_data: dict, trainin
         print(f"PowerPoint processing error: {e}")
         return []
 
-async def process_ppt_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
-    """Process PowerPoint file with training template"""
-    try:
-        # Import PowerPoint processing library
-        try:
-            from pptx import Presentation
-        except ImportError:
-            print("python-pptx not installed, using fallback processing")
-            return await process_text_with_template("", template_data, training_session)
-        
-        # Read PowerPoint content
-        prs = Presentation(file_path)
-        
-        # Extract text content from all slides
-        full_text = ""
-        slide_count = 0
-        
-        for slide_num, slide in enumerate(prs.slides):
-            slide_text = f"\n\n=== Slide {slide_num + 1} ===\n"
-            slide_count += 1
-            
-            # Extract text from all shapes in the slide
-            for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text.strip():
-                    slide_text += shape.text + "\n"
-            
-            if slide_text.strip() != f"=== Slide {slide_num + 1} ===":
-                full_text += slide_text
-        
-        print(f"✅ Extracted {len(full_text)} characters from PowerPoint with {slide_count} slides")
-        
-        # Process with template (no images for now - PowerPoint image extraction is complex)
-        articles = await create_articles_with_template(full_text, [], template_data, training_session)
-        
-        return articles
-        
-    except Exception as e:
-        print(f"PowerPoint processing error: {e}")
-        return []
-
 async def process_text_with_template(content: str, template_data: dict, training_session: dict) -> list:
     """Process text content with training template"""
     try:

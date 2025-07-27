@@ -756,13 +756,58 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
                 for file_info in zip_ref.filelist:
                     if file_info.filename.startswith('word/media/'):
                         image_data = zip_ref.read(file_info.filename)
-                        images.append({
-                            "filename": file_info.filename.split('/')[-1],
-                            "data": base64.b64encode(image_data).decode('utf-8'),
-                            "size": len(image_data)
-                        })
+                        filename = file_info.filename.split('/')[-1]
+                        
+                        # Determine if it's SVG or other format
+                        if filename.lower().endswith('.svg'):
+                            # SVG images remain as base64 data URLs
+                            images.append({
+                                "filename": filename,
+                                "data": f"data:image/svg+xml;base64,{base64.b64encode(image_data).decode('utf-8')}",
+                                "size": len(image_data),
+                                "is_svg": True
+                            })
+                        else:
+                            # For other formats, save as file and provide URL
+                            try:
+                                # Generate unique filename
+                                safe_prefix = "".join(c for c in training_session.get('filename', 'doc') if c.isalnum())[:10]
+                                unique_filename = f"{safe_prefix}_{filename}_{str(uuid.uuid4())[:8]}"
+                                file_path_static = f"static/uploads/{unique_filename}"
+                                
+                                # Ensure upload directory exists
+                                os.makedirs("static/uploads", exist_ok=True)
+                                
+                                # Save file to disk
+                                with open(file_path_static, "wb") as f:
+                                    f.write(image_data)
+                                
+                                # Generate URL
+                                file_url = f"/api/static/uploads/{unique_filename}"
+                                
+                                images.append({
+                                    "filename": filename,
+                                    "url": file_url,
+                                    "size": len(image_data),
+                                    "is_svg": False
+                                })
+                                
+                                print(f"✅ Saved DOCX image: {filename} -> {file_url}")
+                                
+                            except Exception as save_error:
+                                print(f"⚠️ Error saving DOCX image: {save_error}")
+                                # Fallback to base64 for non-SVG
+                                images.append({
+                                    "filename": filename,
+                                    "data": f"data:image/png;base64,{base64.b64encode(image_data).decode('utf-8')}",
+                                    "size": len(image_data),
+                                    "is_svg": False
+                                })
+                                
         except Exception as e:
             print(f"Error extracting images: {e}")
+        
+        print(f"✅ DOCX processing: {len(full_text)} characters, {len(images)} images")
         
         # Process with template
         articles = await create_articles_with_template(full_text, images, template_data, training_session)

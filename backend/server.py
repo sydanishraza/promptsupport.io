@@ -12,6 +12,7 @@ from typing import List, Optional, Dict, Any
 import json
 import io
 import base64
+from bson import ObjectId
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Header, Request
 from fastapi.responses import JSONResponse
@@ -31,6 +32,17 @@ from media_intelligence import media_intelligence
 
 # Load environment variables
 load_dotenv()
+
+# Helper function to convert ObjectId to string for JSON serialization
+def objectid_to_str(data):
+    """Convert ObjectId to string for JSON serialization"""
+    if isinstance(data, ObjectId):
+        return str(data)
+    elif isinstance(data, dict):
+        return {key: objectid_to_str(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [objectid_to_str(item) for item in data]
+    return data
 
 # Configuration
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")

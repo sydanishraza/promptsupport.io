@@ -610,9 +610,21 @@ async def training_process_document(
             articles = await process_docx_with_template(temp_file_path, template_data, training_session)
         elif file.filename.lower().endswith('.pdf'):
             articles = await process_pdf_with_template(temp_file_path, template_data, training_session)
+        elif file.filename.lower().endswith(('.ppt', '.pptx')):
+            articles = await process_ppt_with_template(temp_file_path, template_data, training_session)
+        elif file.filename.lower().endswith(('.txt', '.md')):
+            # Read text content
+            with open(temp_file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            articles = await process_text_with_template(content, template_data, training_session)
         else:
             # Default text processing
-            content = file_content.decode('utf-8')
+            try:
+                with open(temp_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                # Handle binary files
+                content = f"Binary file: {file.filename} - content extraction not supported"
             articles = await process_text_with_template(content, template_data, training_session)
         
         # Clean up temp file

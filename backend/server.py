@@ -749,10 +749,52 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
 async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
     """Process PDF file with training template"""
     try:
-        # Simple PDF processing (you could use PyPDF2 or pdfplumber)
+        # Import PDF processing library
+        try:
+            import PyPDF2
+        except ImportError:
+            print("PyPDF2 not installed, using fallback processing")
+            return await process_text_with_template("", template_data, training_session)
+        
+        # Read PDF content
         with open(file_path, 'rb') as file:
-            # For now, just return empty - would need PDF processing library
-            return []
+            pdf_reader = PyPDF2.PdfReader(file)
+            
+            # Extract text from all pages
+            full_text = ""
+            for page_num, page in enumerate(pdf_reader.pages):
+                try:
+                    page_text = page.extract_text()
+                    if page_text.strip():
+                        full_text += f"\n\n=== Page {page_num + 1} ===\n{page_text}\n"
+                except Exception as e:
+                    print(f"Error extracting text from page {page_num + 1}: {e}")
+                    continue
+            
+            # Basic PDF metadata
+            try:
+                pdf_info = pdf_reader.metadata
+                if pdf_info:
+                    metadata_text = "\n\n=== Document Information ===\n"
+                    if pdf_info.get('/Title'):
+                        metadata_text += f"Title: {pdf_info['/Title']}\n"
+                    if pdf_info.get('/Author'):
+                        metadata_text += f"Author: {pdf_info['/Author']}\n"
+                    if pdf_info.get('/Subject'):
+                        metadata_text += f"Subject: {pdf_info['/Subject']}\n"
+                    if pdf_info.get('/Creator'):
+                        metadata_text += f"Creator: {pdf_info['/Creator']}\n"
+                    full_text = metadata_text + full_text
+            except Exception as e:
+                print(f"Error extracting PDF metadata: {e}")
+        
+        print(f"✅ Extracted {len(full_text)} characters from PDF with {len(pdf_reader.pages)} pages")
+        
+        # Process with template (no images for now - PDF image extraction is complex)
+        articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        
+        return articles
+        
     except Exception as e:
         print(f"PDF processing error: {e}")
         return []

@@ -862,8 +862,15 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
         
         print(f"✅ Extracted {len(full_text)} characters from PDF with {len(pdf_reader.pages)} pages")
         
+        # Check if we have meaningful content
+        if not full_text.strip():
+            print("⚠️ No text content extracted from PDF")
+            return []
+        
         # Process with template (no images for now - PDF image extraction is complex)
         articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        
+        print(f"✅ PDF processing generated {len(articles)} articles")
         
         return articles
         

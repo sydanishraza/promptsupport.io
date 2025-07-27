@@ -140,9 +140,9 @@
 ## backend:
   - task: "Training Interface Backend API Implementation"
     implemented: true
-    working: true
+    working: false
     file: "backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "critical"
     needs_retesting: false
     status_history:
@@ -152,6 +152,9 @@
         -working: true
         -agent: "testing"
         -comment: "✅ COMPREHENSIVE TRAINING INTERFACE TESTING COMPLETED: All 4/4 training endpoints passed (100% success rate). DETAILED FINDINGS: 1) GET /api/training/templates working correctly - returns proper JSON structure with templates array and total count (0 templates found, which is expected for fresh system), 2) GET /api/training/sessions working correctly - returns proper JSON structure with sessions array and total count (0 sessions initially), 3) POST /api/training/process working excellently - successfully processes uploaded documents with template-based processing, generates multiple articles (2 articles created from test document), applies Phase 1 template specifications, creates proper training sessions with unique session IDs, generates articles with proper structure including all required fields (id, title, content, status, template_id, session_id, training_mode), articles properly marked as training_mode=true and ai_processed=true with ai_model='gpt-4o (with claude fallback)', 4) POST /api/training/evaluate working perfectly - accepts evaluation data and returns proper response with evaluation_id and success message. The training system successfully demonstrates template-based document processing, multi-article generation, training session management, and evaluation workflow as designed for Phase 1 Engine-Level Training."
+        -working: false
+        -agent: "testing"
+        -comment: "❌ CRITICAL ISSUES FOUND IN ENHANCED TRAINING INTERFACE: Comprehensive testing of enhanced format support revealed significant problems. RESULTS: 5/9 tests passed (55.6% success rate). MAJOR FAILURES: 1) GET /api/training/sessions endpoint failing with 500 Internal Server Error due to MongoDB ObjectId serialization issues, 2) DOCX processing with image embedding not generating articles (returns empty articles array despite success=true), 3) PDF processing not generating articles (returns empty articles array), 4) PowerPoint processing not generating articles (returns empty articles array). WORKING FEATURES: 1) GET /api/training/templates working correctly, 2) Text file processing (TXT/MD) working and generating articles successfully, 3) HTML output formatting working correctly with proper HTML tags vs Markdown patterns, 4) Error handling working appropriately for unsupported files, 5) POST /api/training/evaluate working perfectly. ROOT CAUSE: The enhanced format processing functions (process_docx_with_template, process_pdf_with_template, process_ppt_with_template) are not generating articles properly, likely due to missing dependencies (python-docx, PyPDF2, python-pptx) or implementation issues. The training sessions endpoint has MongoDB serialization problems with ObjectId handling."
 
   - task: "Template-Based Document Processing System"
     implemented: true

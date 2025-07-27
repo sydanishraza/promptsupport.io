@@ -8169,6 +8169,102 @@ Generated articles should meet all quality benchmarks including proper HTML form
         return results
 
 
+    def run_training_tests(self):
+        """Run Enhanced Training Interface Backend Tests with Debug Logging"""
+        print("🚀 ENHANCED TRAINING INTERFACE BACKEND TESTING")
+        print("=" * 80)
+        print("🎯 FOCUS: DOCX Processing, PDF Processing, Image Embedding, Template Processing")
+        print("=" * 80)
+        
+        tests = [
+            # Core system tests
+            ("Health Check", self.test_health_check),
+            ("Status Endpoint", self.test_status_endpoint),
+            
+            # 🔥 TRAINING INTERFACE TESTS - PRIMARY FOCUS
+            ("🔥 Training Interface - Templates", self.test_training_interface_templates),
+            ("🔥 Training Interface - Sessions", self.test_training_interface_sessions),
+            ("🔥 Training Interface - Text Processing (Baseline)", self.test_training_interface_text_processing),
+            ("🔥 Training Interface - DOCX Processing", self.test_training_interface_docx_processing),
+            ("🔥 Training Interface - PDF Processing", self.test_training_interface_pdf_processing),
+            ("🔥 Training Interface - Evaluation", self.test_training_interface_evaluation),
+            
+            # Supporting functionality tests
+            ("Content Processing", self.test_content_processing),
+            ("File Upload", self.test_file_upload),
+            ("Search Functionality", self.test_search_functionality),
+            ("AI Assistance with Fallback", self.test_ai_assistance_fallback),
+            ("Content Analysis with Fallback", self.test_content_analysis_fallback),
+            ("Content Library Integration", self.test_content_library_integration),
+        ]
+        
+        results = []
+        passed = 0
+        failed = 0
+        
+        for test_name, test_func in tests:
+            print(f"\n{'='*20} {test_name} {'='*20}")
+            try:
+                result = test_func()
+                if result:
+                    print(f"✅ {test_name} PASSED")
+                    passed += 1
+                else:
+                    print(f"❌ {test_name} FAILED")
+                    failed += 1
+                results.append((test_name, result))
+            except Exception as e:
+                print(f"💥 {test_name} CRASHED: {str(e)}")
+                failed += 1
+                results.append((test_name, False))
+        
+        # Print summary
+        print("\n" + "="*80)
+        print("🎯 ENHANCED TRAINING INTERFACE TEST SUMMARY")
+        print("="*80)
+        print(f"✅ Passed: {passed}")
+        print(f"❌ Failed: {failed}")
+        print(f"📊 Total: {passed + failed}")
+        print(f"📈 Success Rate: {(passed/(passed+failed)*100):.1f}%")
+        
+        print("\n📋 DETAILED RESULTS:")
+        for test_name, result in results:
+            status = "✅ PASS" if result else "❌ FAIL"
+            print(f"  {status} - {test_name}")
+        
+        # Focus on training interface results
+        print("\n🎓 TRAINING INTERFACE ANALYSIS:")
+        training_tests = [
+            "Training Interface - Templates",
+            "Training Interface - Sessions", 
+            "Training Interface - Text Processing (Baseline)",
+            "Training Interface - DOCX Processing",
+            "Training Interface - PDF Processing",
+            "Training Interface - Evaluation"
+        ]
+        
+        training_passed = 0
+        training_total = 0
+        
+        for test_name, result in results:
+            if any(training_test in test_name for training_test in training_tests):
+                training_total += 1
+                if result:
+                    training_passed += 1
+        
+        if training_total > 0:
+            training_success_rate = (training_passed / training_total) * 100
+            print(f"🎓 Training Interface Success Rate: {training_success_rate:.1f}% ({training_passed}/{training_total})")
+            
+            if training_success_rate >= 80:
+                print("✅ Training Interface is working well!")
+            elif training_success_rate >= 60:
+                print("⚠️ Training Interface has some issues but core functionality works")
+            else:
+                print("❌ Training Interface has significant issues requiring attention")
+        
+        return results
+
 if __name__ == "__main__":
     tester = EnhancedContentEngineTest()
     

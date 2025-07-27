@@ -1004,6 +1004,8 @@ async def create_articles_with_template(content: str, images: list, template_dat
 async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int) -> dict:
     """Create a single article using template specifications"""
     try:
+        print(f"🔍 Creating article {article_number} with {len(images)} images")
+        
         # Generate title
         title = f"Article {article_number} from {training_session['filename']}"
         
@@ -1046,35 +1048,49 @@ Generate a properly structured article following the template specifications."""
         ai_content = await call_llm_with_fallback(system_message, user_message)
         
         if not ai_content:
+            print("⚠️ No AI content generated, using fallback")
             ai_content = f"<h1>{title}</h1>\n<p>{content}</p>"
+        
+        print(f"✅ AI content generated: {len(ai_content)} characters")
         
         # Embed images if available
         if images:
+            print(f"🖼️ Processing {len(images)} images for embedding")
             # Insert images contextually
             for i, image in enumerate(images):
+                print(f"🔍 Processing image {i+1}: {image.get('filename', 'unknown')}")
+                
                 if image.get('is_svg', False):
                     # SVG images use base64 data URLs
                     image_html = f'<img src="{image["data"]}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
+                    print(f"✅ SVG image embedded: {len(image['data'])} characters")
                 else:
                     # Non-SVG images use file URLs
                     image_url = image.get('url', '')
                     if image_url:
                         image_html = f'<img src="{image_url}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
+                        print(f"✅ Image URL embedded: {image_url}")
                     else:
                         # Fallback for missing URLs
                         image_html = f'<p>[Image {i+1} - Processing Error]</p>'
+                        print(f"❌ Image missing URL: {image}")
                 
                 # Replace placeholder or append to content
                 if f"{{image_{i+1}}}" in ai_content:
                     ai_content = ai_content.replace(f"{{image_{i+1}}}", image_html)
+                    print(f"✅ Replaced placeholder {{image_{i+1}}} with image HTML")
                 else:
                     # If no placeholder, insert contextually in the content
                     # Insert after first paragraph or at beginning if no paragraphs
                     if '<p>' in ai_content:
                         first_p_end = ai_content.find('</p>') + 4
                         ai_content = ai_content[:first_p_end] + f'\n\n{image_html}\n\n' + ai_content[first_p_end:]
+                        print(f"✅ Inserted image {i+1} after first paragraph")
                     else:
                         ai_content = f'{image_html}\n\n' + ai_content
+                        print(f"✅ Prepended image {i+1} to content")
+        else:
+            print("ℹ️ No images to embed")
         
         # Clean and format content
         formatted_content = clean_article_content(ai_content)
@@ -1101,10 +1117,12 @@ Generate a properly structured article following the template specifications."""
             }
         }
         
+        print(f"✅ Article created: {article['title']}, {article['word_count']} words, {article['image_count']} images")
+        
         return article
         
     except Exception as e:
-        print(f"Single article creation error: {e}")
+        print(f"❌ Single article creation error: {e}")
         return {
             "id": str(uuid.uuid4()),
             "title": f"Error Article {article_number}",

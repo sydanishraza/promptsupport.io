@@ -715,9 +715,12 @@ async def get_training_sessions():
         sessions_cursor = db.training_sessions.find({}).sort("timestamp", -1)
         sessions = await sessions_cursor.to_list(length=100)
         
+        # Convert ObjectId to string for JSON serialization
+        clean_sessions = objectid_to_str(sessions)
+        
         return {
-            "sessions": sessions,
-            "total": len(sessions)
+            "sessions": clean_sessions,
+            "total": len(clean_sessions)
         }
         
     except Exception as e:

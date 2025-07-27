@@ -909,8 +909,15 @@ async def process_ppt_with_template(file_path: str, template_data: dict, trainin
         
         print(f"✅ Extracted {len(full_text)} characters from PowerPoint with {slide_count} slides")
         
+        # Check if we have meaningful content
+        if not full_text.strip():
+            print("⚠️ No text content extracted from PowerPoint")
+            return []
+        
         # Process with template (no images for now - PowerPoint image extraction is complex)
         articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        
+        print(f"✅ PowerPoint processing generated {len(articles)} articles")
         
         return articles
         

@@ -888,6 +888,10 @@ Your task is to:
 2. Generate content that meets the output requirements
 3. Apply the specified formatting and structure
 4. Ensure quality benchmarks are met
+5. Generate clean HTML output suitable for a WYSIWYG editor
+
+IMPORTANT: Output clean HTML with proper tags like <h1>, <h2>, <p>, <ul>, <ol>, <li>, <strong>, <em>, etc.
+DO NOT use Markdown syntax (##, **, *, etc.) - use HTML tags only.
 
 Generate clean, professional content suitable for a knowledge base."""
         
@@ -897,7 +901,14 @@ CONTENT:
 {content}
 
 AVAILABLE IMAGES: {len(images)} images
-{[img['filename'] for img in images]}
+{[img.get('filename', f'image_{i+1}') for i, img in enumerate(images)]}
+
+INSTRUCTIONS:
+1. Generate well-structured HTML content with proper headings, paragraphs, and lists
+2. Create multiple sections if the content warrants it
+3. Include placeholders like {{image_1}}, {{image_2}}, etc. where images should be contextually placed
+4. Ensure the content is informative, well-organized, and professionally written
+5. Use proper HTML formatting throughout
 
 Generate a properly structured article following the template specifications."""
         

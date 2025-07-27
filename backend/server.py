@@ -805,6 +805,10 @@ async def process_text_with_template(content: str, template_data: dict, training
         # Apply template processing instructions
         processing_instructions = template_data.get("processing_instructions", [])
         
+        # For plain text files, let's add some structure
+        if not content.strip():
+            content = f"Text content from {training_session.get('filename', 'unknown file')}"
+        
         # Generate articles based on template
         articles = await create_articles_with_template(content, [], template_data, training_session)
         

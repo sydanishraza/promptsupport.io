@@ -869,8 +869,29 @@ Generate a properly structured article following the template specifications."""
         if images:
             # Insert images contextually
             for i, image in enumerate(images):
-                image_html = f'<img src="data:image/png;base64,{image["data"]}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
-                ai_content = ai_content.replace(f"{{image_{i+1}}}", image_html)
+                if image.get('is_svg', False):
+                    # SVG images use base64 data URLs
+                    image_html = f'<img src="{image["data"]}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
+                else:
+                    # Non-SVG images use file URLs
+                    image_url = image.get('url', '')
+                    if image_url:
+                        image_html = f'<img src="{image_url}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
+                    else:
+                        # Fallback for missing URLs
+                        image_html = f'<p>[Image {i+1} - Processing Error]</p>'
+                
+                # Replace placeholder or append to content
+                if f"{{image_{i+1}}}" in ai_content:
+                    ai_content = ai_content.replace(f"{{image_{i+1}}}", image_html)
+                else:
+                    # If no placeholder, insert contextually in the content
+                    # Insert after first paragraph or at beginning if no paragraphs
+                    if '<p>' in ai_content:
+                        first_p_end = ai_content.find('</p>') + 4
+                        ai_content = ai_content[:first_p_end] + f'\n\n{image_html}\n\n' + ai_content[first_p_end:]
+                    else:
+                        ai_content = f'{image_html}\n\n' + ai_content
         
         # Clean and format content
         formatted_content = clean_article_content(ai_content)

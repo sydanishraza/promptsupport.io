@@ -55,12 +55,6 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       ]
     },
     {
-      id: 'training',
-      label: 'Training Interface',
-      icon: Brain,
-      description: 'Train and fine-tune AI models with custom datasets'
-    },
-    {
       id: 'content-library',
       label: 'Content Library',
       icon: BookOpen,
@@ -99,6 +93,12 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       label: 'Admin Console',
       icon: Settings,
       description: 'Org settings, users, domains, API keys, integrations'
+    },
+    {
+      id: 'training',
+      label: 'Training Interface',
+      icon: FlaskConical,
+      description: 'Internal tool for PromptSupport team to train and improve AI models'
     }
   ];
 

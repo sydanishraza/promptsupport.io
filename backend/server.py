@@ -1137,6 +1137,152 @@ async def process_text_with_template(content: str, template_data: dict, training
         print(f"Text processing error: {e}")
         return []
 
+async def process_doc_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process DOC file with training template"""
+    try:
+        # Import doc processing (you'll need to install python-docx2txt or similar)
+        try:
+            import docx2txt
+        except ImportError:
+            print("docx2txt not installed, using fallback processing")
+            return await process_text_with_template("", template_data, training_session)
+        
+        # Extract text content from DOC file
+        try:
+            full_text = docx2txt.process(file_path)
+        except Exception as e:
+            print(f"Error extracting DOC content: {e}")
+            full_text = f"Error processing DOC file: {training_session.get('filename', 'unknown')}"
+        
+        print(f"✅ DOC processing: {len(full_text)} characters")
+        
+        # Process with template (DOC files typically don't have embedded images accessible via docx2txt)
+        articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        
+        return articles
+        
+    except Exception as e:
+        print(f"DOC processing error: {e}")
+        return []
+
+async def process_excel_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process Excel file with training template"""
+    try:
+        # Import Excel processing libraries
+        try:
+            import pandas as pd
+            import openpyxl
+        except ImportError:
+            print("pandas/openpyxl not installed, using fallback processing")
+            return await process_text_with_template("", template_data, training_session)
+        
+        # Read Excel file
+        try:
+            # Try to read all sheets
+            excel_file = pd.ExcelFile(file_path)
+            full_text = ""
+            
+            for sheet_name in excel_file.sheet_names:
+                df = pd.read_excel(file_path, sheet_name=sheet_name)
+                full_text += f"\n\n=== Sheet: {sheet_name} ===\n"
+                
+                # Convert DataFrame to readable text
+                if not df.empty:
+                    # Add column headers
+                    full_text += "Columns: " + ", ".join(df.columns.astype(str)) + "\n\n"
+                    
+                    # Add data rows (limit to first 100 rows to avoid huge content)
+                    for idx, row in df.head(100).iterrows():
+                        row_text = " | ".join([f"{col}: {val}" for col, val in row.items() if pd.notna(val)])
+                        if row_text.strip():
+                            full_text += row_text + "\n"
+                    
+                    if len(df) > 100:
+                        full_text += f"\n... and {len(df) - 100} more rows\n"
+                else:
+                    full_text += "Empty sheet\n"
+                    
+        except Exception as e:
+            print(f"Error reading Excel file: {e}")
+            full_text = f"Error processing Excel file: {training_session.get('filename', 'unknown')}"
+        
+        print(f"✅ Excel processing: {len(full_text)} characters")
+        
+        # Process with template
+        articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        
+        return articles
+        
+    except Exception as e:
+        print(f"Excel processing error: {e}")
+        return []
+
+async def process_html_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process HTML file with training template"""
+    try:
+        # Read HTML content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Parse HTML and extract text content
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            # Extract text content
+            full_text = soup.get_text()
+            
+            # Clean up whitespace
+            lines = (line.strip() for line in full_text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            full_text = ' '.join(chunk for chunk in chunks if chunk)
+            
+            # Extract images
+            images = []
+            img_tags = soup.find_all('img')
+            for i, img in enumerate(img_tags):
+                src = img.get('src', '')
+                alt = img.get('alt', f'Image {i+1}')
+                
+                if src.startswith('data:image'):
+                    # Base64 embedded image
+                    images.append({
+                        "filename": f"html_image_{i+1}",
+                        "data": src,
+                        "size": len(src),
+                        "is_svg": 'svg' in src,
+                        "alt": alt
+                    })
+                elif src.startswith('http') or src.startswith('/'):
+                    # External or relative URL - we'll note it but can't embed
+                    full_text += f"\n[Referenced image: {src} - Alt: {alt}]\n"
+            
+        except ImportError:
+            print("BeautifulSoup not available, using basic text extraction")
+            # Fallback: basic HTML tag removal
+            import re
+            full_text = re.sub(r'<[^>]+>', '', html_content)
+            images = []
+        except Exception as e:
+            print(f"Error parsing HTML: {e}")
+            full_text = html_content
+            images = []
+        
+        print(f"✅ HTML processing: {len(full_text)} characters, {len(images)} images")
+        
+        # Process with template
+        articles = await create_articles_with_template(full_text, images, template_data, training_session)
+        
+        return articles
+        
+    except Exception as e:
+        print(f"HTML processing error: {e}")
+        return []
+
 async def create_articles_with_template(content: str, images: list, template_data: dict, training_session: dict) -> list:
     """Create articles using template specifications"""
     try:

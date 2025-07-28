@@ -593,6 +593,8 @@ async def training_process_document(
     template_instructions: str = Form(default="{}")
 ):
     """Process document with specific training template"""
+    start_time = datetime.utcnow()
+    
     try:
         print(f"🚀 Starting training process for {file.filename}")
         
@@ -615,6 +617,14 @@ async def training_process_document(
         # Process the uploaded file
         file_content = await file.read()
         print(f"📄 File content read: {len(file_content)} bytes")
+        
+        # Add file size check to prevent excessive processing
+        max_file_size = 50 * 1024 * 1024  # 50MB limit
+        if len(file_content) > max_file_size:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File too large ({len(file_content)} bytes). Maximum size: {max_file_size} bytes"
+            )
         
         # Save file temporarily for processing
         temp_file_path = f"temp_uploads/{file.filename}"

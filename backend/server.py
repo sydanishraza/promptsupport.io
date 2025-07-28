@@ -2248,10 +2248,10 @@ Return only the HTML article content - no explanations or meta-commentary."""
                 
                 # Strategy 1: Replace explicit placeholders first
                 placeholder_patterns = [
-                    f"{{image_{i+1}}}",
-                    f"{{IMAGE_{i+1}}}",
                     f"[image_{i+1}]",
                     f"[IMAGE_{i+1}]",
+                    f"{{image_{i+1}}}",
+                    f"{{IMAGE_{i+1}}}",
                     f"{{img_{i+1}}}",
                     f"{{IMG_{i+1}}}"
                 ]
@@ -2283,6 +2283,8 @@ Return only the HTML article content - no explanations or meta-commentary."""
             # Reconstruct content if we modified sections
             if '</p>' in ai_content and len(content_sections) > 1:
                 ai_content = '</p>'.join(content_sections)
+        else:
+            print("ℹ️ No images to embed")
         
         # Ensure the article has sufficient text content
         final_text = ''.join(c for c in ai_content if c.isalnum() or c.isspace())
@@ -2292,8 +2294,6 @@ Return only the HTML article content - no explanations or meta-commentary."""
             print(f"⚠️ Article has only {final_word_count} words, enhancing with additional content")
             # Add more descriptive content to avoid image-heavy articles
             ai_content += f"\n\n<section><h3>Additional Context</h3><p>This section provides comprehensive coverage of the topic with detailed explanations and analysis relevant to the content above.</p></section>"
-        else:
-            print("ℹ️ No images to embed")
         
         # Clean and format content
         formatted_content = clean_article_content(ai_content)

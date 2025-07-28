@@ -629,12 +629,21 @@ async def training_process_document(
         if file.filename.lower().endswith('.docx'):
             print("🔍 Processing DOCX file")
             articles = await process_docx_with_template(temp_file_path, template_data, training_session)
+        elif file.filename.lower().endswith('.doc'):
+            print("🔍 Processing DOC file")
+            articles = await process_doc_with_template(temp_file_path, template_data, training_session)
         elif file.filename.lower().endswith('.pdf'):
             print("🔍 Processing PDF file")
             articles = await process_pdf_with_template(temp_file_path, template_data, training_session)
         elif file.filename.lower().endswith(('.ppt', '.pptx')):
             print("🔍 Processing PowerPoint file")
             articles = await process_ppt_with_template(temp_file_path, template_data, training_session)
+        elif file.filename.lower().endswith(('.xls', '.xlsx')):
+            print("🔍 Processing Excel file")
+            articles = await process_excel_with_template(temp_file_path, template_data, training_session)
+        elif file.filename.lower().endswith(('.html', '.htm')):
+            print("🔍 Processing HTML file")
+            articles = await process_html_with_template(temp_file_path, template_data, training_session)
         elif file.filename.lower().endswith(('.txt', '.md')):
             print("🔍 Processing text file")
             # Read text content

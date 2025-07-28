@@ -2171,10 +2171,12 @@ REQUIREMENTS:
 2. Structure content with proper HTML headings and sections
 3. Include bullet points, numbered lists, and formatting as appropriate
 4. Write in a professional, informative tone suitable for a knowledge base
-5. If images are available, include placeholder markers like [IMAGE_1], [IMAGE_2] where they should be placed contextually
+5. If images are available ({len(images)} images), include specific placeholder markers [IMAGE_1], [IMAGE_2], [IMAGE_3], etc. where they should be placed contextually within the content flow
 6. Ensure content flows logically and is easy to understand
+7. Place image placeholders near relevant sections, not all at the end
 
 Available images: {len(images)}
+{[f"IMAGE_{i+1}" for i in range(len(images))]}
 
 Return only the HTML article content - no explanations or meta-commentary."""
         

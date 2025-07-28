@@ -890,17 +890,49 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
             if page_text.strip():
                 full_text += f"\n\n=== Page {page_num + 1} ===\n{page_text}\n"
             
-            # Extract images from page
+            # Extract images from page with filtering
             image_list = page.get_images(full=True)
+            page_rect = page.rect
             
             for img_index, img in enumerate(image_list):
                 try:
-                    # Get image data
+                    # Get image data and properties
                     xref = img[0]
                     pix = fitz.Pixmap(doc, xref)
                     
-                    # Skip if image is too small or invalid
-                    if pix.width < 50 or pix.height < 50:
+                    # Get image position on page
+                    img_rects = page.get_image_rects(xref)
+                    
+                    # Filter out header/footer images and small decorative elements
+                    should_include = True
+                    
+                    if img_rects:
+                        for rect in img_rects:
+                            # Check if image is in header (top 15% of page)
+                            if rect.y1 < page_rect.height * 0.15:
+                                print(f"🚫 Skipping header image on page {page_num + 1}")
+                                should_include = False
+                                break
+                            # Check if image is in footer (bottom 15% of page)  
+                            elif rect.y0 > page_rect.height * 0.85:
+                                print(f"🚫 Skipping footer image on page {page_num + 1}")
+                                should_include = False
+                                break
+                            # Check if image is very small (likely decorative)
+                            elif rect.width < 100 or rect.height < 100:
+                                print(f"🚫 Skipping small decorative image on page {page_num + 1}")
+                                should_include = False
+                                break
+                    
+                    # Skip if image is too small in actual pixels or filtered out
+                    if not should_include or pix.width < 100 or pix.height < 100:
+                        pix = None
+                        continue
+                    
+                    # Skip if image appears to be a logo (very wide and short, or very narrow and tall)
+                    aspect_ratio = pix.width / pix.height
+                    if aspect_ratio > 5 or aspect_ratio < 0.2:
+                        print(f"🚫 Skipping logo-like image (aspect ratio: {aspect_ratio:.2f}) on page {page_num + 1}")
                         pix = None
                         continue
                     

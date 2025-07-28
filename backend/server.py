@@ -842,63 +842,128 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
         return []
 
 async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
-    """Process PDF file with training template"""
+    """Process PDF file with comprehensive text and image extraction"""
     try:
-        # Import PDF processing library
+        print(f"🔍 Starting comprehensive PDF processing: {file_path}")
+        
+        # Import PDF processing libraries
         try:
             import PyPDF2
+            import fitz  # PyMuPDF for image extraction
         except ImportError:
-            print("PyPDF2 not installed, using fallback processing")
+            print("⚠️ PDF processing libraries not fully available, using fallback")
             return await process_text_with_template("", template_data, training_session)
         
-        # Read PDF content
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            
-            # Extract text from all pages
-            full_text = ""
-            for page_num, page in enumerate(pdf_reader.pages):
-                try:
-                    page_text = page.extract_text()
-                    if page_text.strip():
-                        full_text += f"\n\n=== Page {page_num + 1} ===\n{page_text}\n"
-                except Exception as e:
-                    print(f"Error extracting text from page {page_num + 1}: {e}")
-                    continue
-            
-            # Basic PDF metadata
-            try:
-                pdf_info = pdf_reader.metadata
-                if pdf_info:
-                    metadata_text = "\n\n=== Document Information ===\n"
-                    if pdf_info.get('/Title'):
-                        metadata_text += f"Title: {pdf_info['/Title']}\n"
-                    if pdf_info.get('/Author'):
-                        metadata_text += f"Author: {pdf_info['/Author']}\n"
-                    if pdf_info.get('/Subject'):
-                        metadata_text += f"Subject: {pdf_info['/Subject']}\n"
-                    if pdf_info.get('/Creator'):
-                        metadata_text += f"Creator: {pdf_info['/Creator']}\n"
-                    full_text = metadata_text + full_text
-            except Exception as e:
-                print(f"Error extracting PDF metadata: {e}")
+        # Open PDF with PyMuPDF for comprehensive extraction
+        doc = fitz.open(file_path)
         
-        print(f"✅ Extracted {len(full_text)} characters from PDF with {len(pdf_reader.pages)} pages")
+        # Extract text and images with contextual positioning
+        full_text = ""
+        all_images = []
+        
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            
+            # Extract text from page
+            page_text = page.get_text()
+            if page_text.strip():
+                full_text += f"\n\n=== Page {page_num + 1} ===\n{page_text}\n"
+            
+            # Extract images from page
+            image_list = page.get_images(full=True)
+            
+            for img_index, img in enumerate(image_list):
+                try:
+                    # Get image data
+                    xref = img[0]
+                    pix = fitz.Pixmap(doc, xref)
+                    
+                    # Skip if image is too small or invalid
+                    if pix.width < 50 or pix.height < 50:
+                        pix = None
+                        continue
+                    
+                    # Convert to RGB if CMYK
+                    if pix.n - pix.alpha < 4:
+                        img_data = pix.tobytes("png")
+                    else:
+                        pix1 = fitz.Pixmap(fitz.csRGB, pix)
+                        img_data = pix1.tobytes("png")
+                        pix1 = None
+                    
+                    # Generate unique filename
+                    safe_prefix = "".join(c for c in training_session.get('filename', 'pdf') if c.isalnum())[:10]
+                    unique_filename = f"{safe_prefix}_page{page_num + 1}_img{img_index + 1}_{str(uuid.uuid4())[:8]}.png"
+                    file_path_static = f"static/uploads/{unique_filename}"
+                    
+                    # Ensure upload directory exists
+                    os.makedirs("static/uploads", exist_ok=True)
+                    
+                    # Save image to disk
+                    with open(file_path_static, "wb") as f:
+                        f.write(img_data)
+                    
+                    # Generate URL
+                    image_url = f"/api/static/uploads/{unique_filename}"
+                    
+                    # Store image info with contextual position
+                    all_images.append({
+                        "filename": unique_filename,
+                        "url": image_url,
+                        "page": page_num + 1,
+                        "position": img_index + 1,
+                        "width": pix.width,
+                        "height": pix.height,
+                        "size": len(img_data),
+                        "is_svg": False
+                    })
+                    
+                    print(f"✅ Extracted PDF image: Page {page_num + 1}, Image {img_index + 1} -> {image_url}")
+                    
+                    pix = None
+                    
+                except Exception as img_error:
+                    print(f"⚠️ Error extracting image {img_index + 1} from page {page_num + 1}: {img_error}")
+                    continue
+        
+        doc.close()
+        
+        # Basic PDF metadata
+        try:
+            pdf_file = open(file_path, 'rb')
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            pdf_info = pdf_reader.metadata
+            if pdf_info:
+                metadata_text = "\n\n=== Document Information ===\n"
+                if pdf_info.get('/Title'):
+                    metadata_text += f"Title: {pdf_info['/Title']}\n"
+                if pdf_info.get('/Author'):
+                    metadata_text += f"Author: {pdf_info['/Author']}\n"
+                if pdf_info.get('/Subject'):
+                    metadata_text += f"Subject: {pdf_info['/Subject']}\n"
+                full_text = metadata_text + full_text
+            pdf_file.close()
+        except Exception as e:
+            print(f"⚠️ Error extracting PDF metadata: {e}")
+        
+        print(f"✅ PDF extraction complete: {len(full_text)} characters, {len(all_images)} images")
         
         # Check if we have meaningful content
         if not full_text.strip():
             print("⚠️ No text content extracted from PDF")
             return []
         
-        # Process with template (no images for now - PDF image extraction is complex)
-        articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        # Process with template including images
+        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
         
         print(f"✅ PDF processing generated {len(articles)} articles")
         
         return articles
         
     except Exception as e:
-        print(f"PDF processing error: {e}")
+        print(f"❌ PDF processing error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 async def process_ppt_with_template(file_path: str, template_data: dict, training_session: dict) -> list:

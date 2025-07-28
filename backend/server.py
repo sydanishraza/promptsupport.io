@@ -1460,47 +1460,78 @@ async def process_html_with_template(file_path: str, template_data: dict, traini
         return []
 
 async def create_articles_with_template(content: str, images: list, template_data: dict, training_session: dict) -> list:
-    """Create articles using template specifications"""
+    """Create articles using template specifications with intelligent limits"""
     try:
-        # Check if should split into multiple articles
-        should_split = len(content) > 1000  # Simple logic for now
+        # Enhanced logic to prevent infinite processing
+        content_length = len(content)
+        image_count = len(images)
+        
+        print(f"📊 Content analysis: {content_length} chars, {image_count} images")
+        
+        # Determine splitting strategy based on content size and image count
+        # For documents with many images, limit splitting to prevent excessive processing time
+        max_articles = 3  # Default maximum
+        
+        if image_count > 50:
+            # Large image documents: create fewer articles to speed up processing
+            max_articles = 2
+            print(f"🚀 Large image document detected ({image_count} images), limiting to {max_articles} articles")
+        elif image_count > 20:
+            max_articles = 3
+        elif content_length > 5000:
+            max_articles = 4
+        
+        should_split = content_length > 2000 and max_articles > 1
         
         articles = []
         
         if should_split:
-            # Split into multiple articles
+            # Split content intelligently based on max_articles limit
             sections = content.split('\n\n')
-            current_section = ""
-            section_count = 0
+            total_sections = len(sections)
             
-            for section in sections:
-                if len(current_section + section) > 800 and current_section:
-                    # Create article from current section
-                    article = await create_single_article_with_template(
-                        current_section, 
-                        images[section_count:section_count+2] if section_count < len(images) else [],
-                        template_data, 
-                        training_session,
-                        section_count + 1
-                    )
-                    articles.append(article)
-                    current_section = section
-                    section_count += 1
-                else:
-                    current_section += "\n\n" + section
-            
-            # Handle remaining content
-            if current_section.strip():
-                article = await create_single_article_with_template(
-                    current_section, 
-                    images[section_count:],
-                    template_data, 
-                    training_session,
-                    section_count + 1
-                )
-                articles.append(article)
+            if total_sections <= max_articles:
+                # Few sections, process each as separate article
+                for i, section in enumerate(sections):
+                    if section.strip():
+                        images_for_section = images[i*2:(i+1)*2] if i*2 < len(images) else []
+                        article = await create_single_article_with_template(
+                            section, 
+                            images_for_section,
+                            template_data, 
+                            training_session,
+                            i + 1
+                        )
+                        articles.append(article)
+            else:
+                # Many sections, group them into max_articles
+                sections_per_article = max(1, total_sections // max_articles)
+                current_section = ""
+                article_count = 0
+                
+                for i, section in enumerate(sections):
+                    current_section += section + "\n\n"
+                    
+                    # Create article when we've accumulated enough sections or reached the end
+                    if (i + 1) % sections_per_article == 0 or i == total_sections - 1:
+                        if current_section.strip() and article_count < max_articles:
+                            images_start = article_count * (image_count // max_articles)
+                            images_end = (article_count + 1) * (image_count // max_articles)
+                            images_for_article = images[images_start:images_end]
+                            
+                            article = await create_single_article_with_template(
+                                current_section.strip(), 
+                                images_for_article,
+                                template_data, 
+                                training_session,
+                                article_count + 1
+                            )
+                            articles.append(article)
+                            current_section = ""
+                            article_count += 1
         else:
-            # Single article
+            # Single article for smaller content
+            print(f"📄 Creating single article with all {image_count} images")
             article = await create_single_article_with_template(
                 content, 
                 images,
@@ -1510,10 +1541,13 @@ async def create_articles_with_template(content: str, images: list, template_dat
             )
             articles.append(article)
         
+        print(f"✅ Created {len(articles)} articles from {content_length} chars and {image_count} images")
         return articles
         
     except Exception as e:
-        print(f"Article creation error: {e}")
+        print(f"❌ Article creation error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int) -> dict:

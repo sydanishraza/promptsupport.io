@@ -75,6 +75,314 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# === DOCUMENT PROCESSING HELPER FUNCTIONS ===
+
+def is_table_of_contents(text: str, position: int = 0) -> bool:
+    """Detect Table of Contents sections"""
+    toc_indicators = [
+        'table of contents',
+        'contents',
+        'index',
+        '...........',  # Dotted lines common in TOCs
+    ]
+    
+    text_lower = text.lower()
+    
+    # Check for TOC title
+    if any(indicator in text_lower for indicator in toc_indicators[:3]):
+        return True
+        
+    # Check for dotted lines or page numbers (TOC formatting)
+    if ('.' * 5 in text) or (re.search(r'\d+$', text.strip())):
+        return True
+        
+    # Check if this looks like a TOC entry (short line with numbers)
+    if len(text) < 100 and re.search(r'^\w.*\d+$', text.strip()):
+        return True
+        
+    return False
+
+def is_header_footer_or_page_number(text: str) -> bool:
+    """Detect headers, footers, and page numbers"""
+    # Page numbers (just numbers or "Page X")
+    if re.match(r'^(page\s+)?\d+$', text.lower().strip()):
+        return True
+        
+    # Very short text that might be headers/footers
+    if len(text.strip()) < 10 and not any(c.isalpha() for c in text):
+        return True
+        
+    # Common header/footer patterns
+    header_footer_patterns = [
+        r'^\d+$',  # Just numbers
+        r'^page \d+',  # Page numbers
+        r'confidential',
+        r'proprietary',
+        r'draft',
+        r'version \d+',
+    ]
+    
+    return any(re.search(pattern, text.lower()) for pattern in header_footer_patterns)
+
+def is_legal_disclaimer(text: str) -> bool:
+    """Detect legal disclaimers and copyright notices"""
+    legal_patterns = [
+        r'copyright',
+        r'©',
+        r'all rights reserved',
+        r'proprietary and confidential',
+        r'trademark',
+        r'disclaimer',
+        r'terms of use',
+        r'privacy policy',
+        r'legal notice'
+    ]
+    
+    text_lower = text.lower()
+    return any(re.search(pattern, text_lower) for pattern in legal_patterns)
+
+def is_cover_page(paragraphs_sample: list) -> bool:
+    """Detect if the first few paragraphs constitute a cover page"""
+    if not paragraphs_sample:
+        return False
+        
+    first_page_text = '\n'.join([p.text for p in paragraphs_sample[:5] if hasattr(p, 'text')])
+    
+    cover_indicators = [
+        len(first_page_text.split('\n')) <= 5 and any(word in first_page_text.upper() for word in ['GUIDE', 'MANUAL', 'DOCUMENT', 'REPORT']),
+        first_page_text.count('\n') <= 3 and len(first_page_text) < 200,
+        any(pattern in first_page_text.upper() for pattern in ['COPYRIGHT', '©', 'ALL RIGHTS RESERVED'])
+    ]
+    
+    return any(cover_indicators)
+
+def detect_heading_level_from_text(text: str) -> int:
+    """Detect heading level from text patterns"""
+    text = text.strip()
+    
+    # Check for numbered headings
+    if re.match(r'^\d+\.?\s+', text):
+        return 2
+    if re.match(r'^\d+\.\d+\.?\s+', text):
+        return 3
+    if re.match(r'^\d+\.\d+\.\d+\.?\s+', text):
+        return 4
+        
+    # Check for text patterns that suggest headings
+    if text.isupper() and len(text) < 100:
+        return 1
+    if text.endswith(':') and len(text) < 80:
+        return 3
+        
+    return None
+
+async def regenerate_articles_with_enhanced_context(extracted_content: dict, contextual_images: list, template_data: dict, training_session: dict) -> list:
+    """Phase 2: Enhanced article regeneration with contextual analysis"""
+    try:
+        print(f"🪄 Phase 2: Starting enhanced article regeneration")
+        
+        # Analyze content structure for semantic splitting
+        articles_data = []
+        current_article = {
+            "content_blocks": [],
+            "images": [],
+            "headings": [],
+            "title": ""
+        }
+        
+        h1_count = 0
+        
+        for block in extracted_content['structure']:
+            block_type = block['type']
+            content = block['content']
+            
+            # Major heading changes trigger new articles
+            if block_type == 'h1':
+                # Save current article if it has content
+                if current_article['content_blocks']:
+                    articles_data.append(current_article)
+                
+                # Start new article
+                h1_count += 1
+                current_article = {
+                    "content_blocks": [block],
+                    "images": [],
+                    "headings": [content],
+                    "title": content or f"Article {h1_count}"
+                }
+            elif block_type == 'h2' and len(current_article['content_blocks']) > 0:
+                # H2 might trigger new article if current is getting long
+                current_word_count = sum(len(b['content'].split()) for b in current_article['content_blocks'])
+                if current_word_count > 800:  # Max words per article
+                    # Save current article and start new one
+                    articles_data.append(current_article)
+                    current_article = {
+                        "content_blocks": [block],
+                        "images": [],
+                        "headings": [content],
+                        "title": content or f"Article {len(articles_data) + 1}"
+                    }
+                else:
+                    current_article['content_blocks'].append(block)
+                    current_article['headings'].append(content)
+            else:
+                current_article['content_blocks'].append(block)
+        
+        # Add final article
+        if current_article['content_blocks']:
+            articles_data.append(current_article)
+        
+        # Distribute images across articles based on context
+        images_per_article = len(contextual_images) // max(1, len(articles_data))
+        for i, article_data in enumerate(articles_data):
+            start_idx = i * images_per_article
+            end_idx = start_idx + images_per_article if i < len(articles_data) - 1 else len(contextual_images)
+            article_data['images'] = contextual_images[start_idx:end_idx]
+        
+        # Generate final articles
+        final_articles = []
+        
+        for i, article_data in enumerate(articles_data):
+            # Create structured content
+            html_content = await generate_enhanced_html_content(article_data, template_data)
+            markdown_content = await generate_enhanced_markdown_content(article_data, template_data)
+            
+            # Create media array with placement info
+            media_array = []
+            for img in article_data['images']:
+                media_array.append({
+                    "url": img['url'],
+                    "alt": img['alt_text'],
+                    "caption": img.get('caption', ''),
+                    "placement": img.get('placement', 'inline'),
+                    "filename": img['filename']
+                })
+            
+            article = {
+                "id": str(uuid.uuid4()),
+                "title": f"Article {i+1} From {training_session['filename']}" if not article_data['title'] else article_data['title'],
+                "html": html_content,
+                "markdown": markdown_content,
+                "content": html_content,  # For backward compatibility
+                "media": media_array,
+                "tags": ["extracted", "generated", "enhanced"],
+                "status": "training",
+                "template_id": training_session['template_id'],
+                "session_id": training_session['session_id'],
+                "word_count": len(html_content.split()),
+                "image_count": len(media_array),
+                "format": "html",
+                "created_at": datetime.utcnow().isoformat(),
+                "ai_processed": True,
+                "ai_model": "gpt-4o (with claude fallback)",
+                "training_mode": True,
+                "metadata": {
+                    "article_number": i + 1,
+                    "source_filename": training_session['filename'],
+                    "template_applied": training_session['template_id'],
+                    "phase": "enhanced_extraction"
+                }
+            }
+            
+            final_articles.append(article)
+            print(f"📄 Generated enhanced article {i+1}: {len(html_content)} chars, {len(media_array)} images")
+        
+        print(f"✅ Phase 2 Complete: Generated {len(final_articles)} enhanced articles")
+        return final_articles
+        
+    except Exception as e:
+        print(f"❌ Enhanced regeneration error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def generate_enhanced_html_content(article_data: dict, template_data: dict) -> str:
+    """Generate HTML content for an article"""
+    html_parts = []
+    
+    # Add title
+    if article_data['title']:
+        html_parts.append(f"<h1>{article_data['title']}</h1>")
+    
+    # Process content blocks
+    image_index = 0
+    
+    for block in article_data['content_blocks']:
+        block_type = block['type']
+        content = block['content']
+        
+        if block_type.startswith('h'):
+            level = block_type[1]
+            html_parts.append(f"<{block_type}>{content}</{block_type}>")
+        elif block_type == 'paragraph':
+            html_parts.append(f"<p>{content}</p>")
+            
+            # Insert image after some paragraphs
+            if image_index < len(article_data['images']) and len(html_parts) % 3 == 0:
+                img = article_data['images'][image_index]
+                img_html = f'<figure class="embedded-image"><img src="{img["url"]}" alt="{img["alt_text"]}" style="max-width: 100%; height: auto; margin: 1rem 0;"><figcaption>{img.get("caption", f"Figure {image_index + 1}")}</figcaption></figure>'
+                html_parts.append(img_html)
+                image_index += 1
+    
+    # Add remaining images at the end
+    while image_index < len(article_data['images']):
+        img = article_data['images'][image_index]
+        img_html = f'<figure class="embedded-image"><img src="{img["url"]}" alt="{img["alt_text"]}" style="max-width: 100%; height: auto; margin: 1rem 0;"><figcaption>{img.get("caption", f"Figure {image_index + 1}")}</figcaption></figure>'
+        html_parts.append(img_html)
+        image_index += 1
+    
+    return '\n\n'.join(html_parts)
+
+async def generate_enhanced_markdown_content(article_data: dict, template_data: dict) -> str:
+    """Generate Markdown content for an article"""
+    md_parts = []
+    
+    # Add title
+    if article_data['title']:
+        md_parts.append(f"# {article_data['title']}")
+    
+    # Process content blocks
+    image_index = 0
+    
+    for block in article_data['content_blocks']:
+        block_type = block['type']
+        content = block['content']
+        
+        if block_type == 'h1':
+            md_parts.append(f"# {content}")
+        elif block_type == 'h2':
+            md_parts.append(f"## {content}")
+        elif block_type == 'h3':
+            md_parts.append(f"### {content}")
+        elif block_type == 'h4':
+            md_parts.append(f"#### {content}")
+        elif block_type == 'paragraph':
+            # Convert HTML formatting to Markdown
+            md_content = content.replace('<strong>', '**').replace('</strong>', '**')
+            md_content = md_content.replace('<em>', '*').replace('</em>', '*')
+            md_content = md_content.replace('<u>', '_').replace('</u>', '_')
+            md_parts.append(md_content)
+            
+            # Insert image after some paragraphs
+            if image_index < len(article_data['images']) and len(md_parts) % 3 == 0:
+                img = article_data['images'][image_index]
+                md_parts.append(f"![{img['alt_text']}]({img['url']})")
+                if img.get('caption'):
+                    md_parts.append(f"*{img['caption']}*")
+                image_index += 1
+    
+    # Add remaining images at the end
+    while image_index < len(article_data['images']):
+        img = article_data['images'][image_index]
+        md_parts.append(f"![{img['alt_text']}]({img['url']})")
+        if img.get('caption'):
+            md_parts.append(f"*{img['caption']}*")
+        image_index += 1
+    
+    return '\n\n'.join(md_parts)
+
+# === END HELPER FUNCTIONS ===
+
 # Global clients
 mongo_client = None
 db = None

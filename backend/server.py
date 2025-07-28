@@ -1351,10 +1351,29 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
             import fitz  # PyMuPDF for image extraction
         except ImportError:
             print("⚠️ PDF processing libraries not fully available, using fallback")
-            return await process_text_with_template("", template_data, training_session)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except:
+                return []
         
-        # Open PDF with PyMuPDF for comprehensive extraction
-        doc = fitz.open(file_path)
+        # Try to process as actual PDF file
+        try:
+            # Open PDF with PyMuPDF for comprehensive extraction
+            doc = fitz.open(file_path)
+            print(f"✅ Successfully loaded PDF file with {len(doc)} pages")
+        except Exception as pdf_error:
+            print(f"⚠️ Failed to load as PDF file: {pdf_error}")
+            print(f"🔄 Falling back to text processing")
+            # If it's not a valid PDF file, treat it as text
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except Exception as text_error:
+                print(f"❌ Text fallback also failed: {text_error}")
+                return []
         
         # Extract text and images with contextual positioning
         full_text = ""

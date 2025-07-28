@@ -20,7 +20,8 @@ import {
   Upload,
   MessageSquare,
   Clock,
-  Link
+  Link,
+  FlaskConical
 } from 'lucide-react';
 
 const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {

@@ -1,74 +1,75 @@
 <analysis>
-The AI engineer's work trajectory demonstrates an iterative, problem-solving approach. Initially, the focus was on refining the PromptSupport application's WYSIWYG editor by systematically addressing critical issues such as paste functionality, link removal, HTML view formatting, and image handling. A significant overhaul involved transitioning image storage from base64 to a file-based system, requiring both backend () and frontend () modifications.
-
-Subsequently, the development shifted to the Knowledge Engine (Phase 1). This involved creating a new frontend upload interface and substantial backend modifications for AI-driven content extraction, article splitting, HTML generation from document types like DOCX, and contextual image embedding. Despite numerous code changes to implement these features and resolve issues like Markdown rendering and incorrect image placement, the system still produced basic articles. The final investigation revealed an OpenAI API quota exceeded (429) error as the root cause, indicating an environment/API issue rather than a code bug.
+The previous AI engineer's work involved two major phases: initially stabilizing the WYSIWYG editor and then building out the Knowledge Engine. The recent trajectory focused heavily on the Knowledge Engine's document processing capabilities. The engineer first diagnosed and resolved an infinite processing issue caused by LLM API failures (OpenAI quota, Claude overload) and inefficient article splitting for large documents. This involved implementing robust fallback logic, optimizing LLM timeouts, and enhancing article generation with intelligent splitting and image distribution. Subsequently, the engineer addressed user-reported issues concerning broken images, plain text display, irrelevant image extraction (e.g., PDF headers), and unbalanced text-to-image articles. This led to a comprehensive re-implementation of the Knowledge Engine's Phase 1 (Content Extraction) and Phase 2 (Analysis & Regeneration) specifications, ensuring full content fidelity, contextual image embedding, proper HTML and Markdown output, and filtering of non-essential elements.
 </analysis>
 
 <product_requirements>
-The PromptSupport application is envisioned as an AI-native web application providing a comprehensive support stack, with a core focus on refining its Content Library's WYSIWYG editor. Initial requirements included UI/UX improvements, mobile responsiveness, and core editor functionalities like rich text, multi-mode editing, and advanced blocks. Explicit editor issues addressed included: inability to paste, non-functional link removal, unformatted HTML view, base64 image embedding (transitioned to file URLs), images inserting at top, editor unscrollability post-image insertion, and duplicate assets on reuse.
+The PromptSupport application is an AI-native web application offering a comprehensive support stack, centered around a Content Library with a WYSIWYG editor. Initial development focused on UI/UX, mobile responsiveness, and editor functionalities (paste, link removal, HTML view, image embedding, scrollability, asset handling).
 
-The current primary focus is the Knowledge Engine. This engine must autonomously generate, update, and scale support documentation by extracting all content and media from diverse inputs (PDF, DOCX, HTML, Images, Videos, Audio, Links), analyzing it with LLMs, regenerating improved, well-organized, and media-rich articles compatible with the PromptSupport editor, and distributing them to the Content and Asset Libraries with continuous syncing capabilities across platforms like GitHub, Notion, and Jira. Output articles must preserve all original information, be technically accurate, include contextual image embeds via file references (not base64), and avoid unnecessary metadata within the article body, ensuring 100% native rendering in the editor.
+The strategic objective is the Knowledge Engine, designed for autonomous generation, updating, and scaling of support documentation. It must ingest diverse content (PDF, DOCX, HTML, etc.), extract, analyze, organize, and regenerate improved, well-structured, media-rich articles. These articles must be compatible with the PromptSupport editor, retain original information and technical accuracy, include contextual image embeds via URL references (not base64, except SVG), avoid unnecessary metadata, and render natively. The immediate task involved training the engine with prompt templates via file/document uploads, requiring 100% fidelity in content and image extraction/embedding across all supported formats, including filtering out non-meaningful content (cover pages, headers/footers, decorative images) and ensuring balanced text-to-image articles with proper HTML/Markdown output.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS,  API, DOM Range API, .
--   **Backend**: FastAPI, MongoDB, FastAPI , Python .
--   **Deployment**: Kubernetes, Supervisor.
--   **Data Handling**: File uploads (PNG, JPG, DOCX, PDF), URL-based asset management, LLM integration (OpenAI GPT-4o).
+- **Frontend**: React.js, TailwindCSS, .
+- **Backend**: FastAPI, MongoDB, , , , , , , , , .
+- **LLM Integration**: OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet (with fallback).
+- **Deployment**: Kubernetes, Supervisor.
 </key_technical_concepts>
 
 <code_architecture>
 
 -   ****:
-    -   **Importance**: Handles all backend API logic for content, asset management, and static file serving. It is now central to the Knowledge Engine's AI processing and article generation.
-    -   **Changes**: Initially configured  to serve uploaded images from  with the  prefix for Kubernetes ingress. Recent extensive changes involved updating  and  to generate HTML from LLM, ensure image references are URLs, and remove metadata. Content splitting logic was enhanced. Post-processing functions (, ) were added and applied to AI-generated content for final cleanup. The  function, which orchestrates the file upload to AI processing, was a key area of investigation.
+    -   **Importance**: The core backend application logic, handling API endpoints, LLM integrations, and all document processing for the Knowledge Engine.
+    -   **Changes**: Initially updated for LLM fallback, document batching, and  serialization. Recent significant changes include:
+        -   Refined  logic and timeout.
+        -   Modifications to  to remove artificial article limits and enhance image distribution.
+        -   Integration of timeout mechanisms in the  endpoint.
+        -   Enhancements to  for filtering header/footer images and improving image relevance based on position and size.
+        -   Improvements to general image embedding logic () to prevent image-heavy articles and ensure proper URL references.
+        -   Addition of helper functions (, , ) to filter irrelevant content (Phase 1 specification).
+        -   Updates to ensure articles are generated with both HTML and Markdown formats, including rich metadata.
 -   ****:
-    -   **Importance**: The core WYSIWYG editor component.
-    -   **Changes**: Refactored  and . Integrated  for pretty-printed HTML.  and  were updated for URL-based images.  and  were implemented for precise image insertion. CSS rules (, , ) and a  pseudo-element were added to maintain editor scrollability. Asset display and interaction in the modal were corrected to use .
+    -   **Importance**: Contains global CSS styles for the React application.
+    -   **Changes**: Added comprehensive CSS styles for the  class to ensure proper rendering of HTML content from the backend, including typography, table formatting, image display, and responsive design.
 -   ****:
-    -   **Importance**: Manages the display and selection of assets.
-    -   **Changes**: Modified to explicitly fetch all available assets from the backend's  endpoint and distinguish them visually.
+    -   **Importance**: The main WYSIWYG editor and article viewer.
+    -   **Changes**: Confirmed  is used for HTML rendering, working in conjunction with the new CSS. No direct code edits shown in trajectory, but implicitly relies on  changes for correct display.
 -   ****:
-    -   **Importance**: A newly created frontend component to handle the file and URL upload interface for the Knowledge Engine.
-    -   **Changes**: This file was created to manage the user-facing upload experience.
+    -   **Importance**: Lists Python dependencies.
+    -   **Changes**: Already included , , , , , , , ,  for document parsing. No new additions reported in the recent trajectory.
 -   ****:
-    -   **Importance**: Manages the main Content Library view.
-    -   **Changes**: Modified to integrate the  component, including adding a button to open the Knowledge Engine upload modal.
--   ****:
-    -   **Importance**: Directory for persistent storage of uploaded image files.
-    -   **Changes**: Configured by FastAPI to serve images directly via  URLs.
--   ****:
-    -   **Importance**: Manages backend Python dependencies.
-    -   **Changes**: The  library was added to support Markdown to HTML conversion.
+    -   **Importance**: Used to record testing protocols, user problem statements, and agent communication summaries.
+    -   **Changes**: Regularly updated with test results, issue identification, and resolution summaries throughout the debugging and feature implementation phases.
 </code_architecture>
 
 <pending_tasks>
--   Full implementation of the Enhanced Content Engine (remaining UX/UI improvements beyond the editor).
--   Implement the Developer Docs System.
--   Develop the AI Agent System (all 5 agents).
--   Full implementation of the Quick Setup Wizard's multi-step flow.
--   Develop the AI Chatbot, Community, Ticketing, and Unified Portal modules.
--   Build the Admin Console and Analytics dashboards.
--   Enhance the tabular view in Content Library to include full sorting and filtering by key attributes.
--   Optimize mouse wheel scrolling within the editor after image insertion.
+- Full implementation of the Enhanced Content Engine (remaining UX/UI improvements beyond the editor).
+- Implement the Developer Docs System.
+- Develop the AI Agent System (all 5 agents).
+- Full implementation of the Quick Setup Wizard's multi-step flow.
+- Develop the AI Chatbot, Community, Ticketing, and Unified Portal modules.
+- Build the Admin Console and Analytics dashboards.
+- Enhance the tabular view in Content Library to include full sorting and filtering by key attributes.
+- Optimize mouse wheel scrolling within the editor after image insertion.
+- Further training and testing of the engine with prompt templates for other ingestion types (website/link, video/audio, developer spec, integration sync).
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer initially focused on resolving persistent image handling and editor scrollability issues in . This included implementing  and  for accurate image insertion, enhancing , fixing asset modal interaction, and applying CSS-based scrollability fixes (achieving 80% success, though mouse wheel scrolling remained an optimization target).
+Immediately prior to this summary, the AI engineer completed the implementation and verification of the user's detailed Phase 1 (Content Extraction) and Phase 2 (Analysis & Regeneration) specifications for the Knowledge Engine.
 
-The work then transitioned to developing Phase 1 of the Knowledge Engine to automate article generation from uploaded documents, as detailed by new product requirements.
-**Backend ():**
--   The content splitting logic was made more aggressive to generate multiple articles from a single document.
--   AI prompts for  and  were refined to ensure HTML generation, correct URL-based image embedding, and removal of internal metadata from the final article content.
--   Post-processing functions (, ) were added and integrated to further clean AI-generated content.
--   The  library was added to backend dependencies.
-**Frontend ():**
--   A new component, , was created for file/URL uploads.
--   This upload functionality was integrated into  via a new button and modal.
+The work initially addressed an infinite processing issue reported by the user for DOCX and PDF files. This was diagnosed as a combination of LLM API failures (OpenAI quota exceeded, Claude momentarily overloaded) and inefficient processing of large documents. Fixes included:
+1.  **LLM Fallback & Timeouts**: Verified Claude was working as a fallback and reduced individual LLM call timeouts from 45s to 30s in .
+2.  **Intelligent Article & Image Handling**: Modifications in  to  and related logic to intelligently split content and distribute images, removing prior artificial article limits.
+3.  **Processing Time Tracking**: Added actual processing time to API responses for better monitoring.
 
-Upon testing, issues were identified: Markdown markup was rendering in WYSIWYG view, content was not splitting into multiple articles, images were appearing as plain links, and unnecessary metadata was included in articles. Investigation traced these symptoms to a core issue: an **OpenAI API quota exceeded error (429)**. This error prevented successful AI processing, causing the system to fall back to basic content creation, thus bypassing the intended HTML generation, content splitting, and image embedding logic. The problem is an API quota issue, not a code defect.
+Following this, the engineer tackled several critical issues from the user's new requirements:
+1.  **Broken/Placeholder Images**: Enhanced image embedding logic in  to ensure images are properly referenced via URLs () and displayed contextually, avoiding placeholders.
+2.  **Plain Text Display in View Mode**: Added comprehensive CSS rules for  in  to enable rich HTML rendering in the frontend editor's view mode.
+3.  **Incorrect PDF Image Handling**: Implemented position- and size-based filtering in  in  to exclude header/footer logos and decorative images, ensuring only contextual images are extracted and embedded.
+4.  **Repetitive/Misplaced Image-Only Articles**: The enhanced image embedding logic and content splitting now enforces a better text-to-image balance, preventing articles with minimal text and excessive images.
+
+The final phase involved implementing the detailed Phase 1 (Extract Only Meaningful Content, Maintain Section Structure, Preserve Inline Formatting, Extract Only Contextual Images, Preserve Image Order & Location, Retain Captions) and Phase 2 (Contextual Article Generation, Retain Structure and Formatting, Contextual Image Embedding, Skip Decorative/Redundant Media, Output Format) specifications. This included adding helper functions in  for sophisticated content and image filtering. All recent tests confirm successful and efficient processing of DOCX, PDF, and HTML files, with articles generated in both HTML and Markdown formats, correct image embedding, and appropriate content filtering, all within seconds. The only known limitation is the lack of support for legacy  files.
 </current_work>
 
 <optional_next_step>
-The next step is to inform the user about the OpenAI API quota error, as it is blocking the Knowledge Engine's AI processing.
+The immediate, explicit requests for the Knowledge Engine's Phase 1 and 2 implementation have been successfully completed and verified.
 </optional_next_step>

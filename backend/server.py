@@ -2188,8 +2188,76 @@ Return only the HTML article content - no explanations or meta-commentary."""
         print(f"🔍 DEBUG - LLM response length: {len(ai_content) if ai_content else 0}")
         
         if not ai_content:
-            print("⚠️ No AI content generated, using fallback")
-            ai_content = f"<h1>{title}</h1>\n<p>{content}</p>"
+            print("⚠️ No AI content generated, creating structured fallback")
+            
+            # Create a better fallback with contextual title and clean structure
+            lines = content.strip().split('\n')
+            
+            # Extract a contextual title from the first meaningful line
+            contextual_title = title  # Default fallback
+            for line in lines:
+                line = line.strip()
+                if line and len(line) > 10 and not line.lower().startswith(('table of contents', 'toc', '===', '---')):
+                    # Remove common prefixes and clean up
+                    contextual_title = line.replace('=', '').replace('#', '').strip()
+                    if len(contextual_title) > 5:
+                        break
+            
+            # Create structured HTML content
+            ai_content = f"<h1>{contextual_title}</h1>\n"
+            
+            current_section = []
+            in_list = False
+            
+            for line in lines[1:]:  # Skip first line since we used it as title
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Skip table of contents
+                if line.lower().startswith(('table of contents', 'toc')):
+                    continue
+                    
+                # Check if it's a heading (starts with Chapter, or numbered section)
+                if (line.startswith(('Chapter', 'Section')) or 
+                    (len(line) < 100 and any(line.startswith(str(i)) for i in range(1, 20)))):
+                    # Close any open paragraph
+                    if current_section:
+                        ai_content += f"<p>{''.join(current_section)}</p>\n"
+                        current_section = []
+                    ai_content += f"<h2>{line}</h2>\n"
+                # Check if it's a list item
+                elif line.startswith(('- ', '• ', '* ')) or (len(line) < 80 and line[0].isdigit() and '. ' in line):
+                    if not in_list:
+                        if current_section:
+                            ai_content += f"<p>{''.join(current_section)}</p>\n"
+                            current_section = []
+                        ai_content += "<ul>\n" if line.startswith(('- ', '• ', '* ')) else "<ol>\n"
+                        in_list = True
+                    
+                    list_content = line.lstrip('- • * ').split('. ', 1)[-1] if '. ' in line else line.lstrip('- • * ')
+                    ai_content += f"<li>{list_content}</li>\n"
+                else:
+                    # Close list if we were in one
+                    if in_list:
+                        ai_content += "</ul>\n" if "</ol>" not in ai_content[-10:] else "</ol>\n"
+                        in_list = False
+                    
+                    # Add to current paragraph
+                    current_section.append(line + ' ')
+                    
+                    # If section is getting long, close it
+                    if len(' '.join(current_section)) > 300:
+                        ai_content += f"<p>{' '.join(current_section).strip()}</p>\n"
+                        current_section = []
+            
+            # Close any remaining content
+            if current_section:
+                ai_content += f"<p>{' '.join(current_section).strip()}</p>\n"
+            if in_list:
+                ai_content += "</ul>\n"
+            
+            print(f"✅ Created structured fallback content: {len(ai_content)} characters")
         
         # Extract title from the HTML content if it contains an h1 tag
         contextual_title = title  # fallback

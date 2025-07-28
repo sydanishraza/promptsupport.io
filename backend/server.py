@@ -1559,7 +1559,7 @@ INSTRUCTIONS:
 
 Generate a properly structured article following the template specifications."""
         
-        # Use LLM to generate content
+        # Use LLM to generate content with better image placement instructions
         ai_content = await call_llm_with_fallback(system_message, user_message)
         
         if not ai_content:
@@ -1568,42 +1568,82 @@ Generate a properly structured article following the template specifications."""
         
         print(f"✅ AI content generated: {len(ai_content)} characters")
         
-        # Embed images if available
+        # Enhanced image embedding with contextual placement
         if images:
-            print(f"🖼️ Processing {len(images)} images for embedding")
-            # Insert images contextually
+            print(f"🖼️ Processing {len(images)} images for contextual embedding")
+            
+            # Split content into sections for better image placement
+            sections = ai_content.split('</h2>')
+            embedded_images = 0
+            
             for i, image in enumerate(images):
                 print(f"🔍 Processing image {i+1}: {image.get('filename', 'unknown')}")
                 
+                # Generate image HTML
                 if image.get('is_svg', False):
-                    # SVG images use base64 data URLs
-                    image_html = f'<img src="{image["data"]}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
+                    image_html = f'<figure><img src="{image["data"]}" alt="Image {i+1}" style="max-width: 100%; height: auto;"><figcaption>Image {i+1}</figcaption></figure>'
                     print(f"✅ SVG image embedded: {len(image['data'])} characters")
                 else:
-                    # Non-SVG images use file URLs
                     image_url = image.get('url', '')
                     if image_url:
-                        image_html = f'<img src="{image_url}" alt="Image {i+1}" style="max-width: 100%; height: auto;">'
+                        image_html = f'<figure><img src="{image_url}" alt="Image {i+1}" style="max-width: 100%; height: auto;"><figcaption>Image {i+1}</figcaption></figure>'
                         print(f"✅ Image URL embedded: {image_url}")
                     else:
-                        # Fallback for missing URLs
-                        image_html = f'<p>[Image {i+1} - Processing Error]</p>'
+                        image_html = f'<div class="image-placeholder"><p>[Image {i+1} - Processing Error]</p></div>'
                         print(f"❌ Image missing URL: {image}")
                 
-                # Replace placeholder or append to content
-                if f"{{image_{i+1}}}" in ai_content:
-                    ai_content = ai_content.replace(f"{{image_{i+1}}}", image_html)
-                    print(f"✅ Replaced placeholder {{image_{i+1}}} with image HTML")
-                else:
-                    # If no placeholder, insert contextually in the content
-                    # Insert after first paragraph or at beginning if no paragraphs
-                    if '<p>' in ai_content:
-                        first_p_end = ai_content.find('</p>') + 4
-                        ai_content = ai_content[:first_p_end] + f'\n\n{image_html}\n\n' + ai_content[first_p_end:]
-                        print(f"✅ Inserted image {i+1} after first paragraph")
-                    else:
-                        ai_content = f'{image_html}\n\n' + ai_content
-                        print(f"✅ Prepended image {i+1} to content")
+                # Smart placement strategies
+                placed = False
+                
+                # Strategy 1: Replace explicit placeholders
+                placeholder_patterns = [
+                    f"{{image_{i+1}}}",
+                    f"{{IMAGE_{i+1}}}",
+                    f"[image_{i+1}]",
+                    f"[IMAGE_{i+1}]"
+                ]
+                
+                for pattern in placeholder_patterns:
+                    if pattern in ai_content:
+                        ai_content = ai_content.replace(pattern, image_html)
+                        print(f"✅ Replaced placeholder {pattern} with image HTML")
+                        placed = True
+                        embedded_images += 1
+                        break
+                
+                # Strategy 2: Place after relevant sections
+                if not placed and len(sections) > 1:
+                    # Find best section to place image (distribute evenly)
+                    section_index = min(i % len(sections), len(sections) - 1)
+                    if section_index < len(sections) - 1:
+                        sections[section_index] = sections[section_index] + '</h2>\n\n' + image_html + '\n\n'
+                        print(f"✅ Placed image {i+1} after section {section_index + 1}")
+                        placed = True
+                        embedded_images += 1
+                
+                # Strategy 3: Place contextually in paragraphs
+                if not placed:
+                    paragraphs = ai_content.split('</p>')
+                    if len(paragraphs) > 1:
+                        # Place image after first paragraph or distribute evenly
+                        para_index = min(i + 1, len(paragraphs) - 1)
+                        paragraphs[para_index] = paragraphs[para_index] + '</p>\n\n' + image_html + '\n\n'
+                        ai_content = '</p>'.join(paragraphs)
+                        print(f"✅ Placed image {i+1} after paragraph {para_index + 1}")
+                        placed = True
+                        embedded_images += 1
+                
+                # Strategy 4: Fallback - append to end
+                if not placed:
+                    ai_content += f'\n\n{image_html}\n\n'
+                    print(f"✅ Appended image {i+1} to end of content")
+                    embedded_images += 1
+            
+            # Reassemble content if we used section-based placement
+            if len(sections) > 1:
+                ai_content = '</h2>'.join(sections)
+            
+            print(f"✅ Successfully embedded {embedded_images}/{len(images)} images")
         else:
             print("ℹ️ No images to embed")
         

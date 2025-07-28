@@ -2167,17 +2167,19 @@ OUTPUT FORMAT: Clean HTML only - no meta-text or commentary."""
 
 {content}
 
-REQUIREMENTS:
+IMPORTANT INSTRUCTIONS:
 1. Generate a contextual title that reflects the main topic (not filename-based)
 2. Structure content with proper HTML headings and sections
 3. Include bullet points, numbered lists, and formatting as appropriate
 4. Write in a professional, informative tone suitable for a knowledge base
-5. If images are available ({len(images)} images), include specific placeholder markers [IMAGE_1], [IMAGE_2], [IMAGE_3], etc. where they should be placed contextually within the content flow
-6. Ensure content flows logically and is easy to understand
-7. Place image placeholders near relevant sections, not all at the end
+5. DO NOT include image placeholders like [IMAGE_1], [IMAGE_2] unless you have confirmed images available
+6. If the source content mentions images but no actual images are provided, describe what the image would show instead
+7. Ensure content flows logically and is easy to understand
 
 Available images: {len(images)}
-{[f"IMAGE_{i+1}" for i in range(len(images))]}
+{[f"IMAGE_{i+1}: {img.get('filename', 'unknown')}" for i, img in enumerate(images)] if images else "No images available - focus on text content only"}
+
+CRITICAL: Only include image placeholders if you have actual images to reference. If no images are available, provide descriptive text instead of placeholders.
 
 Return only the HTML article content - no explanations or meta-commentary."""
         

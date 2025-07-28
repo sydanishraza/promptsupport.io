@@ -139,7 +139,7 @@ def test_knowledge_engine_processing(docx_path):
     print(f"\n🧪 TESTING KNOWLEDGE ENGINE PROCESSING")
     print("=" * 60)
     
-    backend_url = "https://02b8ea03-1c23-443e-b037-f8d2c8e69def.preview.emergentagent.com/api"
+    backend_url = "https://edd0bce6-8cb2-49cc-af7f-eaf249c3fad5.preview.emergentagent.com/api"
     
     try:
         # Upload the document

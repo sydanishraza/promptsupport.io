@@ -967,50 +967,155 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
         return []
 
 async def process_ppt_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
-    """Process PowerPoint file with training template"""
+    """Process PowerPoint file with comprehensive text and image extraction"""
     try:
+        print(f"🔍 Starting comprehensive PowerPoint processing: {file_path}")
+        
         # Import PowerPoint processing library
         try:
             from pptx import Presentation
+            from pptx.enum.shapes import MSO_SHAPE_TYPE
         except ImportError:
-            print("python-pptx not installed, using fallback processing")
+            print("⚠️ python-pptx not installed, using fallback processing")
             return await process_text_with_template("", template_data, training_session)
         
         # Read PowerPoint content
         prs = Presentation(file_path)
         
-        # Extract text content from all slides
+        # Extract text content and images from all slides
         full_text = ""
+        all_images = []
         slide_count = 0
         
         for slide_num, slide in enumerate(prs.slides):
             slide_text = f"\n\n=== Slide {slide_num + 1} ===\n"
             slide_count += 1
             
-            # Extract text from all shapes in the slide
-            for shape in slide.shapes:
+            # Extract text and images from all shapes in the slide
+            for shape_index, shape in enumerate(slide.shapes):
+                # Extract text from shape
                 if hasattr(shape, "text") and shape.text.strip():
                     slide_text += shape.text + "\n"
+                
+                # Extract images from shape
+                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                    try:
+                        # Get image data
+                        image = shape.image
+                        image_bytes = image.blob
+                        
+                        # Skip if image is too small
+                        if len(image_bytes) < 1000:
+                            continue
+                        
+                        # Determine image format
+                        image_ext = image.ext
+                        if not image_ext:
+                            image_ext = "png"  # Default to PNG
+                        
+                        # Generate unique filename
+                        safe_prefix = "".join(c for c in training_session.get('filename', 'ppt') if c.isalnum())[:10]
+                        unique_filename = f"{safe_prefix}_slide{slide_num + 1}_shape{shape_index + 1}_{str(uuid.uuid4())[:8]}.{image_ext}"
+                        file_path_static = f"static/uploads/{unique_filename}"
+                        
+                        # Ensure upload directory exists
+                        os.makedirs("static/uploads", exist_ok=True)
+                        
+                        # Save image to disk
+                        with open(file_path_static, "wb") as f:
+                            f.write(image_bytes)
+                        
+                        # Generate URL
+                        image_url = f"/api/static/uploads/{unique_filename}"
+                        
+                        # Store image info with contextual position
+                        all_images.append({
+                            "filename": unique_filename,
+                            "url": image_url,
+                            "slide": slide_num + 1,
+                            "shape_index": shape_index + 1,
+                            "format": image_ext,
+                            "size": len(image_bytes),
+                            "is_svg": False
+                        })
+                        
+                        print(f"✅ Extracted PPT image: Slide {slide_num + 1}, Shape {shape_index + 1} -> {image_url}")
+                        
+                    except Exception as img_error:
+                        print(f"⚠️ Error extracting image from slide {slide_num + 1}, shape {shape_index + 1}: {img_error}")
+                        continue
+                
+                # Extract images from grouped shapes
+                elif hasattr(shape, "shapes"):
+                    for sub_shape in shape.shapes:
+                        if sub_shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                            try:
+                                # Get image data
+                                image = sub_shape.image
+                                image_bytes = image.blob
+                                
+                                # Skip if image is too small
+                                if len(image_bytes) < 1000:
+                                    continue
+                                
+                                # Determine image format
+                                image_ext = image.ext
+                                if not image_ext:
+                                    image_ext = "png"
+                                
+                                # Generate unique filename
+                                safe_prefix = "".join(c for c in training_session.get('filename', 'ppt') if c.isalnum())[:10]
+                                unique_filename = f"{safe_prefix}_slide{slide_num + 1}_subshape_{str(uuid.uuid4())[:8]}.{image_ext}"
+                                file_path_static = f"static/uploads/{unique_filename}"
+                                
+                                # Ensure upload directory exists
+                                os.makedirs("static/uploads", exist_ok=True)
+                                
+                                # Save image to disk
+                                with open(file_path_static, "wb") as f:
+                                    f.write(image_bytes)
+                                
+                                # Generate URL
+                                image_url = f"/api/static/uploads/{unique_filename}"
+                                
+                                # Store image info
+                                all_images.append({
+                                    "filename": unique_filename,
+                                    "url": image_url,
+                                    "slide": slide_num + 1,
+                                    "format": image_ext,
+                                    "size": len(image_bytes),
+                                    "is_svg": False
+                                })
+                                
+                                print(f"✅ Extracted PPT grouped image: Slide {slide_num + 1} -> {image_url}")
+                                
+                            except Exception as img_error:
+                                print(f"⚠️ Error extracting grouped image from slide {slide_num + 1}: {img_error}")
+                                continue
             
+            # Add slide text if it has content
             if slide_text.strip() != f"=== Slide {slide_num + 1} ===":
                 full_text += slide_text
         
-        print(f"✅ Extracted {len(full_text)} characters from PowerPoint with {slide_count} slides")
+        print(f"✅ PowerPoint extraction complete: {len(full_text)} characters, {len(all_images)} images from {slide_count} slides")
         
         # Check if we have meaningful content
         if not full_text.strip():
             print("⚠️ No text content extracted from PowerPoint")
             return []
         
-        # Process with template (no images for now - PowerPoint image extraction is complex)
-        articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        # Process with template including images
+        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
         
         print(f"✅ PowerPoint processing generated {len(articles)} articles")
         
         return articles
         
     except Exception as e:
-        print(f"PowerPoint processing error: {e}")
+        print(f"❌ PowerPoint processing error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 async def process_text_with_template(content: str, template_data: dict, training_session: dict) -> list:

@@ -2425,6 +2425,27 @@ Return only the HTML article content - no explanations or meta-commentary."""
         else:
             print("ℹ️ No images to embed")
         
+        # Clean up any remaining image placeholders when no images are available
+        if not images:
+            placeholder_patterns_cleanup = [
+                r'\[IMAGE_\d+\]', r'\[image_\d+\]', r'\[Image_\d+\]', r'\[IMG_\d+\]', r'\[img_\d+\]',
+                r'\{IMAGE_\d+\}', r'\{image_\d+\}', r'\{IMG_\d+\}', r'\{img_\d+\}'
+            ]
+            
+            import re
+            original_length = len(ai_content)
+            
+            for pattern in placeholder_patterns_cleanup:
+                # Replace placeholders with descriptive text
+                def replace_placeholder(match):
+                    placeholder = match.group(0)
+                    return f'<p><em>[Visual diagram would be displayed here showing relevant system components and relationships]</em></p>'
+                
+                ai_content = re.sub(pattern, replace_placeholder, ai_content)
+            
+            if len(ai_content) != original_length:
+                print(f"🧹 Cleaned up image placeholders in content without actual images")
+        
         # Ensure the article has sufficient text content
         final_text = ''.join(c for c in ai_content if c.isalnum() or c.isspace())
         final_word_count = len(final_text.split())

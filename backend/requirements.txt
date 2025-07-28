@@ -34,9 +34,5 @@ markdown==3.6
 # Enhanced image and text extraction libraries
 PyMuPDF==1.23.24
 pdfplumber==0.10.3
-python-docx2txt==0.8
 xlrd==2.0.1
 html5lib==1.1
-Pillow==10.1.0
-fitz==0.0.1.dev2
-extractimage==0.1.0

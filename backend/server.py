@@ -2131,7 +2131,11 @@ INSTRUCTIONS:
 Generate a properly structured article following the template specifications."""
         
         # Use LLM to generate content with better image placement instructions
+        print(f"🤖 Calling LLM for article generation...")
         ai_content = await call_llm_with_fallback(system_message, user_message)
+        
+        print(f"🔍 DEBUG - LLM response received: {ai_content is not None}")
+        print(f"🔍 DEBUG - LLM response length: {len(ai_content) if ai_content else 0}")
         
         if not ai_content:
             print("⚠️ No AI content generated, using fallback")

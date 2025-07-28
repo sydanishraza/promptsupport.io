@@ -1975,7 +1975,15 @@ async def create_articles_with_template(content: str, images: list, template_dat
         image_count = len(images)
         
         print(f"📊 Content analysis: {content_length} chars, {image_count} images")
+        print(f"🔍 DEBUG - Template data keys: {list(template_data.keys())}")
+        print(f"🔍 DEBUG - Training session keys: {list(training_session.keys())}")
+        print(f"🔍 DEBUG - Content preview: {content[:200]}...")
         
+        # Check if content is empty
+        if not content or not content.strip():
+            print("❌ DEBUG - Content is empty or only whitespace")
+            return []
+            
         # Remove artificial limits and process full content
         # Use natural content structure to determine article splitting
         articles = []

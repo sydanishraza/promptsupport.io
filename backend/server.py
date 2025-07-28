@@ -493,7 +493,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
             
             data = {
                 "model": "claude-3-5-sonnet-20241022",
-                "max_tokens": 6000,
+                "max_tokens": 8000,  # Increased from 6000 to 8000
                 "system": system_message,
                 "messages": [
                     {"role": "user", "content": user_message}
@@ -504,7 +504,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
                 "https://api.anthropic.com/v1/messages",
                 headers=headers,
                 json=data,
-                timeout=30  # Reduced from 45 to 30 seconds
+                timeout=60  # Increased from 30 to 60 seconds
             )
             
             if response.status_code == 200:

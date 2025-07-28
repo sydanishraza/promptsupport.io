@@ -1472,86 +1472,106 @@ async def process_html_with_template(file_path: str, template_data: dict, traini
         return []
 
 async def create_articles_with_template(content: str, images: list, template_data: dict, training_session: dict) -> list:
-    """Create articles using template specifications with intelligent limits"""
+    """Create articles using template specifications - processing full content without artificial limits"""
     try:
-        # Enhanced logic to prevent infinite processing
         content_length = len(content)
         image_count = len(images)
         
         print(f"📊 Content analysis: {content_length} chars, {image_count} images")
         
-        # Determine splitting strategy based on content size and image count
-        # For documents with many images, limit splitting to prevent excessive processing time
-        max_articles = 3  # Default maximum
-        
-        if image_count > 50:
-            # Large image documents: create fewer articles to speed up processing
-            max_articles = 2
-            print(f"🚀 Large image document detected ({image_count} images), limiting to {max_articles} articles")
-        elif image_count > 20:
-            max_articles = 3
-        elif content_length > 5000:
-            max_articles = 4
-        
-        should_split = content_length > 2000 and max_articles > 1
-        
+        # Remove artificial limits and process full content
+        # Use natural content structure to determine article splitting
         articles = []
         
-        if should_split:
-            # Split content intelligently based on max_articles limit
-            sections = content.split('\n\n')
-            total_sections = len(sections)
+        # Analyze content for natural breaking points
+        natural_sections = []
+        
+        # Look for major headings and section breaks
+        if '<h1>' in content or '<h2>' in content or '\n\n' in content:
+            # Content has structure, split intelligently
             
-            if total_sections <= max_articles:
-                # Few sections, process each as separate article
+            # First try splitting on major headings
+            if '<h1>' in content:
+                sections = content.split('<h1>')
                 for i, section in enumerate(sections):
                     if section.strip():
-                        images_for_section = images[i*2:(i+1)*2] if i*2 < len(images) else []
-                        article = await create_single_article_with_template(
-                            section, 
-                            images_for_section,
-                            template_data, 
-                            training_session,
-                            i + 1
-                        )
-                        articles.append(article)
-            else:
-                # Many sections, group them into max_articles
-                sections_per_article = max(1, total_sections // max_articles)
-                current_section = ""
-                article_count = 0
-                
+                        if i > 0:  # Add back the h1 tag
+                            section = '<h1>' + section
+                        natural_sections.append(section)
+            elif '<h2>' in content:
+                sections = content.split('<h2>')
                 for i, section in enumerate(sections):
-                    current_section += section + "\n\n"
-                    
-                    # Create article when we've accumulated enough sections or reached the end
-                    if (i + 1) % sections_per_article == 0 or i == total_sections - 1:
-                        if current_section.strip() and article_count < max_articles:
-                            images_start = article_count * (image_count // max_articles)
-                            images_end = (article_count + 1) * (image_count // max_articles)
-                            images_for_article = images[images_start:images_end]
-                            
-                            article = await create_single_article_with_template(
-                                current_section.strip(), 
-                                images_for_article,
-                                template_data, 
-                                training_session,
-                                article_count + 1
-                            )
-                            articles.append(article)
-                            current_section = ""
-                            article_count += 1
+                    if section.strip():
+                        if i > 0:  # Add back the h2 tag
+                            section = '<h2>' + section
+                        natural_sections.append(section)
+            else:
+                # Split on double line breaks for paragraph-based content
+                sections = content.split('\n\n')
+                current_section = ""
+                
+                for section in sections:
+                    # Aim for sections of reasonable length (2000-8000 chars)
+                    if len(current_section + section) > 8000 and current_section:
+                        natural_sections.append(current_section.strip())
+                        current_section = section
+                    else:
+                        current_section += "\n\n" + section if current_section else section
+                
+                if current_section.strip():
+                    natural_sections.append(current_section.strip())
         else:
-            # Single article for smaller content
-            print(f"📄 Creating single article with all {image_count} images")
-            article = await create_single_article_with_template(
-                content, 
-                images,
-                template_data, 
-                training_session,
-                1
-            )
-            articles.append(article)
+            # No clear structure, treat as single section
+            natural_sections = [content]
+        
+        # Filter out very small sections and merge with adjacent ones
+        filtered_sections = []
+        for i, section in enumerate(natural_sections):
+            if len(section.strip()) < 500 and i < len(natural_sections) - 1:
+                # Merge small section with next one
+                natural_sections[i + 1] = section + "\n\n" + natural_sections[i + 1]
+            elif len(section.strip()) >= 100:  # Only include sections with substantial content
+                filtered_sections.append(section)
+        
+        natural_sections = filtered_sections if filtered_sections else [content]
+        
+        print(f"📝 Identified {len(natural_sections)} natural content sections")
+        
+        # Distribute images across sections based on content relevance and context
+        images_per_section = []
+        if images:
+            base_images_per_section = max(1, len(images) // len(natural_sections))
+            remaining_images = len(images) % len(natural_sections)
+            
+            for i in range(len(natural_sections)):
+                section_image_count = base_images_per_section
+                if i < remaining_images:
+                    section_image_count += 1
+                images_per_section.append(section_image_count)
+        else:
+            images_per_section = [0] * len(natural_sections)
+        
+        # Create articles from natural sections
+        image_index = 0
+        for i, section in enumerate(natural_sections):
+            if section.strip():
+                # Get images for this section
+                section_images = []
+                for j in range(images_per_section[i]):
+                    if image_index < len(images):
+                        section_images.append(images[image_index])
+                        image_index += 1
+                
+                print(f"📄 Creating article {i+1} with {len(section_images)} images")
+                
+                article = await create_single_article_with_template(
+                    section, 
+                    section_images,
+                    template_data, 
+                    training_session,
+                    i + 1
+                )
+                articles.append(article)
         
         print(f"✅ Created {len(articles)} articles from {content_length} chars and {image_count} images")
         return articles

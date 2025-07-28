@@ -1527,10 +1527,28 @@ async def process_ppt_with_template(file_path: str, template_data: dict, trainin
             from pptx.enum.shapes import MSO_SHAPE_TYPE
         except ImportError:
             print("⚠️ python-pptx not installed, using fallback processing")
-            return await process_text_with_template("", template_data, training_session)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except:
+                return []
         
-        # Read PowerPoint content
-        prs = Presentation(file_path)
+        # Try to process as actual PowerPoint file
+        try:
+            prs = Presentation(file_path)
+            print(f"✅ Successfully loaded PowerPoint file with {len(prs.slides)} slides")
+        except Exception as ppt_error:
+            print(f"⚠️ Failed to load as PowerPoint file: {ppt_error}")
+            print(f"🔄 Falling back to text processing")
+            # If it's not a valid PowerPoint file, treat it as text
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except Exception as text_error:
+                print(f"❌ Text fallback also failed: {text_error}")
+                return []
         
         # Extract text content and images from all slides
         full_text = ""

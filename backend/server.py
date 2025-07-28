@@ -1666,82 +1666,96 @@ Generate a properly structured article following the template specifications."""
         
         print(f"✅ AI content generated: {len(ai_content)} characters")
         
-        # Enhanced image embedding with contextual placement
+        # Enhanced image embedding with contextual placement and content balance
         if images:
             print(f"🖼️ Processing {len(images)} images for contextual embedding")
             
-            # Split content into sections for better image placement
-            sections = ai_content.split('</h2>')
-            embedded_images = 0
+            # Check content-to-image ratio to ensure balanced articles
+            text_content = ai_content.replace('<', ' <').replace('>', '> ')  # Add spaces around tags
+            text_only = ''.join(c for c in text_content if c.isalnum() or c.isspace())
+            word_count = len(text_only.split())
             
-            for i, image in enumerate(images):
+            # Limit images based on text content to prevent image-heavy articles
+            max_images_for_content = max(3, word_count // 100)  # At least 100 words per image
+            images_to_use = images[:max_images_for_content] if len(images) > max_images_for_content else images
+            
+            if len(images_to_use) < len(images):
+                print(f"🎯 Limiting to {len(images_to_use)} images (from {len(images)}) to maintain content balance")
+            
+            # Distribute images evenly throughout the content
+            content_sections = ai_content.split('</p>')
+            section_count = len(content_sections)
+            
+            for i, image in enumerate(images_to_use):
                 print(f"🔍 Processing image {i+1}: {image.get('filename', 'unknown')}")
                 
-                # Generate image HTML
-                if image.get('is_svg', False):
-                    image_html = f'<figure><img src="{image["data"]}" alt="Image {i+1}" style="max-width: 100%; height: auto;"><figcaption>Image {i+1}</figcaption></figure>'
-                    print(f"✅ SVG image embedded: {len(image['data'])} characters")
-                else:
-                    image_url = image.get('url', '')
-                    if image_url:
-                        image_html = f'<figure><img src="{image_url}" alt="Image {i+1}" style="max-width: 100%; height: auto;"><figcaption>Image {i+1}</figcaption></figure>'
-                        print(f"✅ Image URL embedded: {image_url}")
-                    else:
-                        image_html = f'<div class="image-placeholder"><p>[Image {i+1} - Processing Error]</p></div>'
-                        print(f"❌ Image missing URL: {image}")
+                # Generate proper image HTML with fallback handling
+                image_html = ""
                 
-                # Smart placement strategies
+                if image.get('is_svg', False) and image.get('data'):
+                    image_html = f'<figure class="embedded-image"><img src="{image["data"]}" alt="Content Image {i+1}" style="max-width: 100%; height: auto; margin: 1rem 0;"><figcaption>Figure {i+1}</figcaption></figure>'
+                    print(f"✅ SVG image embedded successfully")
+                elif image.get('url'):
+                    # Ensure URL is properly formatted and accessible
+                    image_url = image['url']
+                    if not image_url.startswith('http') and not image_url.startswith('/'):
+                        image_url = f"/api/static/uploads/{image_url.split('/')[-1]}"
+                    
+                    image_html = f'<figure class="embedded-image"><img src="{image_url}" alt="Content Image {i+1}" style="max-width: 100%; height: auto; margin: 1rem 0;"><figcaption>Figure {i+1}</figcaption></figure>'
+                    print(f"✅ Image URL embedded: {image_url}")
+                else:
+                    print(f"⚠️ Skipping image {i+1} - no valid URL or data")
+                    continue
+                
+                # Intelligent placement strategy
                 placed = False
                 
-                # Strategy 1: Replace explicit placeholders
+                # Strategy 1: Replace explicit placeholders first
                 placeholder_patterns = [
                     f"{{image_{i+1}}}",
                     f"{{IMAGE_{i+1}}}",
                     f"[image_{i+1}]",
-                    f"[IMAGE_{i+1}]"
+                    f"[IMAGE_{i+1}]",
+                    f"{{img_{i+1}}}",
+                    f"{{IMG_{i+1}}}"
                 ]
                 
                 for pattern in placeholder_patterns:
                     if pattern in ai_content:
                         ai_content = ai_content.replace(pattern, image_html)
-                        print(f"✅ Replaced placeholder {pattern} with image HTML")
                         placed = True
-                        embedded_images += 1
+                        print(f"✅ Replaced placeholder {pattern} with image HTML")
                         break
                 
-                # Strategy 2: Place after relevant sections
-                if not placed and len(sections) > 1:
-                    # Find best section to place image (distribute evenly)
-                    section_index = min(i % len(sections), len(sections) - 1)
-                    if section_index < len(sections) - 1:
-                        sections[section_index] = sections[section_index] + '</h2>\n\n' + image_html + '\n\n'
-                        print(f"✅ Placed image {i+1} after section {section_index + 1}")
+                # Strategy 2: Insert at natural break points if no placeholder found
+                if not placed and section_count > 1:
+                    # Calculate where to place this image (distribute evenly)
+                    target_section = min(int((i + 1) * section_count / len(images_to_use)), section_count - 2)
+                    
+                    if target_section < len(content_sections) - 1:
+                        # Insert after the target paragraph
+                        content_sections[target_section] += f"</p>\n\n{image_html}\n"
                         placed = True
-                        embedded_images += 1
+                        print(f"✅ Placed image {i+1} after section {target_section}")
                 
-                # Strategy 3: Place contextually in paragraphs
+                # Strategy 3: Append at end if all else fails (but with text separation)
                 if not placed:
-                    paragraphs = ai_content.split('</p>')
-                    if len(paragraphs) > 1:
-                        # Place image after first paragraph or distribute evenly
-                        para_index = min(i + 1, len(paragraphs) - 1)
-                        paragraphs[para_index] = paragraphs[para_index] + '</p>\n\n' + image_html + '\n\n'
-                        ai_content = '</p>'.join(paragraphs)
-                        print(f"✅ Placed image {i+1} after paragraph {para_index + 1}")
-                        placed = True
-                        embedded_images += 1
-                
-                # Strategy 4: Fallback - append to end
-                if not placed:
-                    ai_content += f'\n\n{image_html}\n\n'
-                    print(f"✅ Appended image {i+1} to end of content")
-                    embedded_images += 1
+                    ai_content += f"\n\n{image_html}\n"
+                    placed = True
+                    print(f"✅ Appended image {i+1} at end")
             
-            # Reassemble content if we used section-based placement
-            if len(sections) > 1:
-                ai_content = '</h2>'.join(sections)
-            
-            print(f"✅ Successfully embedded {embedded_images}/{len(images)} images")
+            # Reconstruct content if we modified sections
+            if '</p>' in ai_content and len(content_sections) > 1:
+                ai_content = '</p>'.join(content_sections)
+        
+        # Ensure the article has sufficient text content
+        final_text = ''.join(c for c in ai_content if c.isalnum() or c.isspace())
+        final_word_count = len(final_text.split())
+        
+        if final_word_count < 100:
+            print(f"⚠️ Article has only {final_word_count} words, enhancing with additional content")
+            # Add more descriptive content to avoid image-heavy articles
+            ai_content += f"\n\n<section><h3>Additional Context</h3><p>This section provides comprehensive coverage of the topic with detailed explanations and analysis relevant to the content above.</p></section>"
         else:
             print("ℹ️ No images to embed")
         

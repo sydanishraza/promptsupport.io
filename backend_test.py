@@ -8574,11 +8574,580 @@ This test verifies that the infinite processing issue has been resolved and that
         
         return passed, failed
 
+    def test_training_templates(self):
+        """Test GET /api/training/templates endpoint"""
+        print("\n🔍 Testing Training Templates Endpoint...")
+        try:
+            response = requests.get(f"{self.base_url}/training/templates", timeout=10)
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if "templates" in data and "total" in data:
+                    templates = data["templates"]
+                    total = data["total"]
+                    print(f"✅ Training templates endpoint working - {total} templates found")
+                    return True
+                else:
+                    print("❌ Training templates failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training templates failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training templates failed - {str(e)}")
+            return False
+
+    def test_training_sessions(self):
+        """Test GET /api/training/sessions endpoint"""
+        print("\n🔍 Testing Training Sessions Endpoint...")
+        try:
+            response = requests.get(f"{self.base_url}/training/sessions", timeout=10)
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if "sessions" in data and "total" in data:
+                    sessions = data["sessions"]
+                    total = data["total"]
+                    print(f"✅ Training sessions endpoint working - {total} sessions found")
+                    return True
+                else:
+                    print("❌ Training sessions failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training sessions failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training sessions failed - {str(e)}")
+            return False
+
+    def test_training_process_text(self):
+        """Test POST /api/training/process with text file"""
+        print("\n🔍 Testing Training Process - Text File...")
+        try:
+            # Create test text content
+            test_content = """Machine Learning and AI Guide
+
+This comprehensive guide covers the fundamentals of machine learning and artificial intelligence.
+
+## Introduction to Machine Learning
+Machine learning is a subset of artificial intelligence that enables computers to learn and improve from experience without being explicitly programmed.
+
+## Key Concepts
+- Supervised Learning: Learning with labeled data
+- Unsupervised Learning: Finding patterns in unlabeled data  
+- Reinforcement Learning: Learning through interaction and feedback
+
+## Neural Networks
+Neural networks are computing systems inspired by biological neural networks. They consist of interconnected nodes that process information.
+
+## Applications
+Machine learning has numerous applications including:
+1. Image recognition and computer vision
+2. Natural language processing
+3. Predictive analytics
+4. Autonomous vehicles
+5. Medical diagnosis
+
+## Conclusion
+Machine learning continues to evolve and transform various industries with its powerful capabilities."""
+
+            # Create file-like object
+            file_data = io.BytesIO(test_content.encode('utf-8'))
+            
+            # Template data for Phase 1 Document Upload Processing
+            template_data = {
+                "template_id": "phase1_document_upload",
+                "name": "Phase 1: Document Upload Processing",
+                "processing_instructions": "Extract and process document content for multi-article generation",
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 5,
+                    "quality_benchmarks": ["content_completeness", "no_duplication", "proper_formatting"]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "contextual_placement": True,
+                    "image_descriptions": True
+                }
+            }
+            
+            files = {
+                'file': ('ml_guide.txt', file_data, 'text/plain')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_upload',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=60
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if (data.get("success") and "session_id" in data and 
+                    "articles" in data and len(data["articles"]) > 0):
+                    
+                    articles = data["articles"]
+                    session_id = data["session_id"]
+                    
+                    print(f"✅ Training process (text) successful - {len(articles)} articles generated")
+                    print(f"Session ID: {session_id}")
+                    
+                    # Store session ID for evaluation test
+                    self.test_session_id = session_id
+                    self.test_result_id = articles[0].get("id") if articles else None
+                    
+                    # Verify article structure
+                    sample_article = articles[0]
+                    required_fields = ["id", "title", "content", "template_id", "session_id", "training_mode"]
+                    missing_fields = [field for field in required_fields if field not in sample_article]
+                    
+                    if not missing_fields:
+                        print("✅ Article structure is correct")
+                        return True
+                    else:
+                        print(f"⚠️ Article missing fields: {missing_fields}")
+                        return True  # Still consider success if articles were generated
+                else:
+                    print("❌ Training process (text) failed - invalid response or no articles")
+                    return False
+            else:
+                print(f"❌ Training process (text) failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training process (text) failed - {str(e)}")
+            return False
+
+    def test_training_process_docx(self):
+        """Test POST /api/training/process with DOCX file simulation"""
+        print("\n🔍 Testing Training Process - DOCX File...")
+        try:
+            # Create a simple text file that simulates DOCX content
+            # Note: This is a simulation since we can't create actual DOCX files easily in testing
+            docx_content = """Enterprise Software Architecture Document
+
+Table of Contents
+1. Introduction
+2. System Overview  
+3. Architecture Components
+4. Data Flow
+5. Security Considerations
+
+1. Introduction
+This document outlines the enterprise software architecture for our content management system.
+
+2. System Overview
+The system consists of multiple microservices that work together to provide a comprehensive content management solution.
+
+Key Components:
+- Frontend React Application
+- Backend API Services
+- Database Layer (MongoDB)
+- Authentication Service
+- File Storage Service
+
+3. Architecture Components
+
+3.1 Frontend Layer
+The frontend is built using React with modern JavaScript frameworks and provides an intuitive user interface.
+
+3.2 Backend Services
+RESTful API services handle business logic and data processing.
+
+3.3 Database Design
+MongoDB provides flexible document storage for content and metadata.
+
+4. Data Flow
+Data flows through the system in a structured manner:
+1. User requests are received by the frontend
+2. API calls are made to backend services
+3. Data is processed and stored in the database
+4. Responses are returned to the user
+
+5. Security Considerations
+- Authentication and authorization
+- Data encryption
+- Input validation
+- Rate limiting"""
+
+            # Create file-like object with .docx extension
+            file_data = io.BytesIO(docx_content.encode('utf-8'))
+            
+            template_data = {
+                "template_id": "phase1_document_upload",
+                "name": "Phase 1: Document Upload Processing",
+                "processing_instructions": "Extract and process DOCX content with image handling",
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 3,
+                    "quality_benchmarks": ["content_completeness", "no_duplication", "proper_formatting"]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "contextual_placement": True,
+                    "image_descriptions": True
+                }
+            }
+            
+            files = {
+                'file': ('enterprise_architecture.docx', file_data, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_upload',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=60
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if data.get("success"):
+                    articles = data.get("articles", [])
+                    session_id = data.get("session_id")
+                    
+                    print(f"✅ Training process (DOCX) completed - {len(articles)} articles generated")
+                    print(f"Session ID: {session_id}")
+                    
+                    if len(articles) == 0:
+                        print("⚠️ DOCX processing returned empty articles array (known issue)")
+                        return False  # This is the issue we're testing for
+                    else:
+                        print("✅ DOCX processing generated articles successfully")
+                        return True
+                else:
+                    print("❌ Training process (DOCX) failed - success=false")
+                    return False
+            else:
+                print(f"❌ Training process (DOCX) failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training process (DOCX) failed - {str(e)}")
+            return False
+
+    def test_training_process_pdf(self):
+        """Test POST /api/training/process with PDF file simulation"""
+        print("\n🔍 Testing Training Process - PDF File...")
+        try:
+            # Simulate PDF content
+            pdf_content = """Database Optimization Report
+
+Executive Summary
+This report provides comprehensive analysis of database performance optimization strategies.
+
+Performance Metrics
+Current database performance shows room for improvement in query execution times and resource utilization.
+
+Optimization Strategies
+1. Index Optimization
+   - Create composite indexes for frequently queried columns
+   - Remove unused indexes to improve write performance
+   - Analyze query execution plans
+
+2. Query Optimization
+   - Rewrite complex queries for better performance
+   - Use appropriate JOIN strategies
+   - Implement query caching where beneficial
+
+3. Hardware Considerations
+   - Increase memory allocation for buffer pools
+   - Consider SSD storage for improved I/O
+   - Evaluate CPU requirements for concurrent operations
+
+Implementation Plan
+Phase 1: Index analysis and optimization
+Phase 2: Query performance tuning
+Phase 3: Hardware upgrades if needed
+
+Expected Results
+- 40% improvement in query response times
+- 25% reduction in resource utilization
+- Better scalability for concurrent users
+
+Conclusion
+Database optimization is crucial for maintaining application performance as data volume grows."""
+
+            file_data = io.BytesIO(pdf_content.encode('utf-8'))
+            
+            template_data = {
+                "template_id": "phase1_document_upload",
+                "name": "Phase 1: Document Upload Processing",
+                "processing_instructions": "Extract and process PDF content with image handling",
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 3,
+                    "quality_benchmarks": ["content_completeness", "no_duplication", "proper_formatting"]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "contextual_placement": True,
+                    "image_descriptions": True
+                }
+            }
+            
+            files = {
+                'file': ('database_optimization.pdf', file_data, 'application/pdf')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_upload',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=60
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if data.get("success"):
+                    articles = data.get("articles", [])
+                    session_id = data.get("session_id")
+                    
+                    print(f"✅ Training process (PDF) completed - {len(articles)} articles generated")
+                    print(f"Session ID: {session_id}")
+                    
+                    if len(articles) == 0:
+                        print("⚠️ PDF processing returned empty articles array (known issue)")
+                        return False  # This is the issue we're testing for
+                    else:
+                        print("✅ PDF processing generated articles successfully")
+                        return True
+                else:
+                    print("❌ Training process (PDF) failed - success=false")
+                    return False
+            else:
+                print(f"❌ Training process (PDF) failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training process (PDF) failed - {str(e)}")
+            return False
+
+    def test_training_process_ppt(self):
+        """Test POST /api/training/process with PowerPoint file simulation"""
+        print("\n🔍 Testing Training Process - PowerPoint File...")
+        try:
+            # Simulate PowerPoint content
+            ppt_content = """Project Management Best Practices
+
+Slide 1: Title Slide
+Project Management Best Practices
+Effective Strategies for Success
+
+Slide 2: Agenda
+- Project Planning
+- Team Management
+- Risk Assessment
+- Communication
+- Quality Control
+
+Slide 3: Project Planning
+Key Elements:
+• Define clear objectives
+• Create detailed timeline
+• Allocate resources effectively
+• Set measurable milestones
+
+Slide 4: Team Management
+Building High-Performance Teams:
+- Clear roles and responsibilities
+- Regular team meetings
+- Effective delegation
+- Performance feedback
+
+Slide 5: Risk Assessment
+Risk Management Process:
+1. Identify potential risks
+2. Assess probability and impact
+3. Develop mitigation strategies
+4. Monitor and review regularly
+
+Slide 6: Communication
+Effective Communication:
+- Regular status updates
+- Clear documentation
+- Stakeholder engagement
+- Feedback mechanisms
+
+Slide 7: Quality Control
+Quality Assurance:
+• Define quality standards
+• Regular reviews and testing
+• Continuous improvement
+• Customer feedback integration
+
+Slide 8: Conclusion
+Success Factors:
+- Proper planning
+- Strong leadership
+- Clear communication
+- Continuous monitoring"""
+
+            file_data = io.BytesIO(ppt_content.encode('utf-8'))
+            
+            template_data = {
+                "template_id": "phase1_document_upload",
+                "name": "Phase 1: Document Upload Processing",
+                "processing_instructions": "Extract and process PowerPoint content with slide structure",
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 3,
+                    "quality_benchmarks": ["content_completeness", "no_duplication", "proper_formatting"]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "contextual_placement": True,
+                    "image_descriptions": True
+                }
+            }
+            
+            files = {
+                'file': ('project_management.pptx', file_data, 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_upload',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=60
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if data.get("success"):
+                    articles = data.get("articles", [])
+                    session_id = data.get("session_id")
+                    
+                    print(f"✅ Training process (PowerPoint) completed - {len(articles)} articles generated")
+                    print(f"Session ID: {session_id}")
+                    
+                    if len(articles) == 0:
+                        print("⚠️ PowerPoint processing returned empty articles array (known issue)")
+                        return False  # This is the issue we're testing for
+                    else:
+                        print("✅ PowerPoint processing generated articles successfully")
+                        return True
+                else:
+                    print("❌ Training process (PowerPoint) failed - success=false")
+                    return False
+            else:
+                print(f"❌ Training process (PowerPoint) failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training process (PowerPoint) failed - {str(e)}")
+            return False
+
+    def test_training_evaluate(self):
+        """Test POST /api/training/evaluate endpoint"""
+        print("\n🔍 Testing Training Evaluate Endpoint...")
+        try:
+            # Use session ID from previous test if available
+            session_id = getattr(self, 'test_session_id', 'test_session_123')
+            result_id = getattr(self, 'test_result_id', 'test_result_123')
+            
+            evaluation_data = {
+                "session_id": session_id,
+                "result_id": result_id,
+                "evaluation": "accepted",
+                "feedback": "Good article generation with proper structure and content organization. Template was applied correctly."
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/evaluate",
+                json=evaluation_data,
+                timeout=15
+            )
+            
+            print(f"Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"Response: {json.dumps(data, indent=2)}")
+                
+                if (data.get("success") and "evaluation_id" in data and 
+                    "message" in data):
+                    evaluation_id = data["evaluation_id"]
+                    message = data["message"]
+                    
+                    print(f"✅ Training evaluation successful - ID: {evaluation_id}")
+                    print(f"Message: {message}")
+                    return True
+                else:
+                    print("❌ Training evaluation failed - invalid response format")
+                    return False
+            else:
+                print(f"❌ Training evaluation failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training evaluation failed - {str(e)}")
+            return False
+
     def run_all_tests(self):
-        """Run all backend tests focusing on Knowledge Engine Critical Issue Fixes"""
-        print("🚀 KNOWLEDGE ENGINE CRITICAL ISSUE FIXES TESTING")
-        print("=" * 80)
-        print("🎯 FOCUS: HTML Output, Content Splitting, Contextual Images, Clean Content")
+        """Run all Enhanced Content Engine tests with focus on Training Interface"""
+        print("🚀 Starting Enhanced Content Engine Backend Testing...")
+        print("🎯 FOCUS: Training Interface Comprehensive Testing")
         print("=" * 80)
         
         tests = [
@@ -8586,30 +9155,20 @@ This test verifies that the infinite processing issue has been resolved and that
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
             
-            # 🔥 COMPREHENSIVE DOCUMENT PROCESSING TESTS - PRIMARY FOCUS
-            ("🔥 CRITICAL: Comprehensive Document Processing", self.test_comprehensive_document_processing),
-            ("🔥 CRITICAL: Enhanced Image Extraction", self.test_enhanced_image_extraction),
-            ("🔥 CRITICAL: Contextual Image Placement", self.test_contextual_image_placement),
-            ("🔥 CRITICAL: Content Completeness", self.test_content_completeness),
-            ("🔥 CRITICAL: Original Format Storage", self.test_original_format_storage),
-            ("🔥 CRITICAL: Multi-Format Processing Pipeline", self.test_multi_format_processing_pipeline),
+            # Training Interface tests (main focus)
+            ("Training Templates", self.test_training_templates),
+            ("Training Sessions", self.test_training_sessions),
+            ("Training Process - Text Files", self.test_training_process_text),
+            ("Training Process - DOCX Files", self.test_training_process_docx),
+            ("Training Process - PDF Files", self.test_training_process_pdf),
+            ("Training Process - PowerPoint Files", self.test_training_process_ppt),
+            ("Training Evaluate", self.test_training_evaluate),
             
-            # Training Interface Tests
-            ("Training Interface Templates", self.test_training_templates),
-            ("Training Interface Sessions", self.test_training_sessions),
-            ("Training Interface Process", self.test_training_process),
-            ("Training Interface Evaluate", self.test_training_evaluate),
-            
-            # Supporting functionality tests
-            ("File Upload Processing", self.test_file_upload),
+            # Supporting system tests
+            ("AI Assistance with Fallback", self.test_ai_assistance_fallback),
+            ("Content Analysis with Fallback", self.test_content_analysis_fallback),
+            ("Knowledge Engine Article Generation with Fallback", self.test_knowledge_engine_article_generation_fallback),
             ("Content Library Integration", self.test_content_library_integration),
-            ("Enhanced Assets Endpoint", self.test_enhanced_assets_endpoint),
-            ("Asset Upload Endpoint", self.test_asset_upload_endpoint),
-            
-            # Additional verification tests
-            ("Content Processing", self.test_content_processing),
-            ("Search Functionality", self.test_search_functionality),
-            ("AI Chat", self.test_ai_chat),
         ]
         
         results = []

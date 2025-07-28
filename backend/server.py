@@ -1080,9 +1080,9 @@ async def get_training_sessions():
         raise HTTPException(status_code=500, detail=str(e))
 
 async def process_docx_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
-    """Process DOCX file with training template"""
+    """Enhanced DOCX processing with Phase 1 content extraction specification"""
     try:
-        # Import docx processing (you'll need to install python-docx)
+        # Import docx processing libraries
         try:
             from docx import Document
             from docx.shared import Inches
@@ -1092,83 +1092,224 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
             print("python-docx not installed, using fallback processing")
             return await process_text_with_template("", template_data, training_session)
         
+        print(f"🔍 Phase 1: Starting enhanced DOCX content extraction")
+        
         # Read DOCX content
         doc = Document(file_path)
         
-        # Extract text content
-        full_text = ""
-        for paragraph in doc.paragraphs:
-            full_text += paragraph.text + "\n"
+        # Phase 1: Enhanced Text Extraction
+        extracted_content = {
+            "body_text": "",
+            "headings": [],
+            "tables": [],
+            "lists": [],
+            "structure": [],
+            "inline_formatting": []
+        }
         
-        # Extract images
-        images = []
+        # Skip cover page detection
+        skip_first_page = is_cover_page(doc.paragraphs[:5])
+        if skip_first_page:
+            print(f"🚫 Detected and skipping cover page")
+        
+        # Extract meaningful content with structure preservation
+        paragraph_start = 1 if skip_first_page else 0
+        
+        for i, paragraph in enumerate(doc.paragraphs[paragraph_start:], paragraph_start):
+            text = paragraph.text.strip()
+            if not text:
+                continue
+                
+            # Skip Table of Contents detection
+            if is_table_of_contents(text, i):
+                print(f"🚫 Skipping Table of Contents at paragraph {i}")
+                continue
+                
+            # Skip page numbers and headers/footers
+            if is_header_footer_or_page_number(text):
+                print(f"🚫 Skipping header/footer/page number: {text[:50]}...")
+                continue
+                
+            # Skip legal disclaimers
+            if is_legal_disclaimer(text):
+                print(f"🚫 Skipping legal disclaimer: {text[:50]}...")
+                continue
+            
+            # Detect heading levels
+            heading_level = detect_heading_level_from_text(text)
+            if not heading_level:
+                # Try to detect from style
+                style_name = paragraph.style.name.lower()
+                if 'heading 1' in style_name or 'title' in style_name:
+                    heading_level = 1
+                elif 'heading 2' in style_name:
+                    heading_level = 2
+                elif 'heading 3' in style_name:
+                    heading_level = 3
+                elif 'heading 4' in style_name:
+                    heading_level = 4
+            
+            if heading_level:
+                extracted_content["headings"].append({
+                    "level": heading_level,
+                    "text": text,
+                    "position": i
+                })
+                extracted_content["structure"].append({
+                    "type": f"h{heading_level}",
+                    "content": text,
+                    "position": i
+                })
+                print(f"📋 Heading H{heading_level}: {text[:50]}...")
+            else:
+                # Regular body text with inline formatting preservation
+                formatted_text = preserve_inline_formatting(paragraph)
+                extracted_content["body_text"] += formatted_text + "\n\n"
+                extracted_content["structure"].append({
+                    "type": "paragraph",
+                    "content": formatted_text,
+                    "position": i
+                })
+        
+        # Extract tables
+        for i, table in enumerate(doc.tables):
+            table_data = extract_table_data(table)
+            extracted_content["tables"].append({
+                "index": i,
+                "data": table_data,
+                "html": table_to_html(table_data)
+            })
+            print(f"📊 Extracted table {i+1} with {len(table_data)} rows")
+        
+        # Phase 1: Enhanced Image Extraction
+        contextual_images = []
         try:
-            # Extract images from DOCX
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 for file_info in zip_ref.filelist:
                     if file_info.filename.startswith('word/media/'):
-                        image_data = zip_ref.read(file_info.filename)
-                        filename = file_info.filename.split('/')[-1]
+                        # Check if image is contextual (not decorative)
+                        filename = file_info.filename.split('/')[-1].lower()
                         
-                        # Determine if it's SVG or other format
-                        if filename.lower().endswith('.svg'):
-                            # SVG images remain as base64 data URLs
-                            images.append({
-                                "filename": filename,
-                                "data": f"data:image/svg+xml;base64,{base64.b64encode(image_data).decode('utf-8')}",
-                                "size": len(image_data),
-                                "is_svg": True
-                            })
-                        else:
-                            # For other formats, save as file and provide URL
-                            try:
-                                # Generate unique filename
-                                safe_prefix = "".join(c for c in training_session.get('filename', 'doc') if c.isalnum())[:10]
-                                unique_filename = f"{safe_prefix}_{filename}_{str(uuid.uuid4())[:8]}"
-                                file_path_static = f"static/uploads/{unique_filename}"
-                                
-                                # Ensure upload directory exists
-                                os.makedirs("static/uploads", exist_ok=True)
-                                
-                                # Save file to disk
-                                with open(file_path_static, "wb") as f:
-                                    f.write(image_data)
-                                
-                                # Generate URL
-                                file_url = f"/api/static/uploads/{unique_filename}"
-                                
-                                images.append({
-                                    "filename": filename,
-                                    "url": file_url,
-                                    "size": len(image_data),
-                                    "is_svg": False
-                                })
-                                
-                                print(f"✅ Saved DOCX image: {filename} -> {file_url}")
-                                
-                            except Exception as save_error:
-                                print(f"⚠️ Error saving DOCX image: {save_error}")
-                                # Fallback to base64 for non-SVG
-                                images.append({
-                                    "filename": filename,
-                                    "data": f"data:image/png;base64,{base64.b64encode(image_data).decode('utf-8')}",
-                                    "size": len(image_data),
-                                    "is_svg": False
-                                })
-                                
+                        # Skip logos and decorative elements
+                        skip_patterns = ['logo', 'header', 'footer', 'watermark', 'background', 'banner']
+                        if any(pattern in filename for pattern in skip_patterns):
+                            print(f"🚫 Skipping decorative image: {filename}")
+                            continue
+                        
+                        image_data = zip_ref.read(file_info.filename)
+                        
+                        # Generate meaningful filename
+                        safe_prefix = "".join(c for c in training_session.get('filename', 'doc') if c.isalnum())[:10]
+                        unique_filename = f"{safe_prefix}_{filename}_{str(uuid.uuid4())[:8]}"
+                        file_path_static = f"static/uploads/{unique_filename}"
+                        
+                        # Ensure upload directory exists
+                        os.makedirs("static/uploads", exist_ok=True)
+                        
+                        # Save image file
+                        with open(file_path_static, "wb") as f:
+                            f.write(image_data)
+                        
+                        # Generate URL
+                        file_url = f"/api/static/uploads/{unique_filename}"
+                        
+                        contextual_images.append({
+                            "filename": unique_filename,
+                            "url": file_url,
+                            "size": len(image_data),
+                            "is_svg": filename.endswith('.svg'),
+                            "caption": f"Document image {len(contextual_images) + 1}",
+                            "placement": "contextual",
+                            "alt_text": f"Figure {len(contextual_images) + 1}: Content illustration"
+                        })
+                        
+                        print(f"🖼️ Extracted contextual image: {unique_filename}")
+                        
         except Exception as e:
-            print(f"Error extracting images: {e}")
+            print(f"⚠️ Image extraction error: {e}")
         
-        print(f"✅ DOCX processing: {len(full_text)} characters, {len(images)} images")
+        print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")
         
-        # Process with template
-        articles = await create_articles_with_template(full_text, images, template_data, training_session)
+        # Phase 2: Analysis & Regeneration
+        articles = await regenerate_articles_with_enhanced_context(
+            extracted_content, 
+            contextual_images, 
+            template_data, 
+            training_session
+        )
         
         return articles
         
     except Exception as e:
-        print(f"DOCX processing error: {e}")
+        print(f"❌ Enhanced DOCX processing error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
+
+def preserve_inline_formatting(paragraph) -> str:
+    """Extract text with inline formatting preserved as HTML"""
+    html_text = ""
+    
+    try:
+        for run in paragraph.runs:
+            text = run.text
+            if not text:
+                continue
+                
+            # Apply formatting
+            if run.bold:
+                text = f"<strong>{text}</strong>"
+            if run.italic:
+                text = f"<em>{text}</em>"
+            if run.underline:
+                text = f"<u>{text}</u>"
+                
+            html_text += text
+    except:
+        # Fallback to plain text
+        return paragraph.text
+        
+    return html_text if html_text else paragraph.text
+
+def extract_table_data(table) -> list:
+    """Extract table data as list of lists"""
+    data = []
+    try:
+        for row in table.rows:
+            row_data = []
+            for cell in row.cells:
+                row_data.append(cell.text.strip())
+            data.append(row_data)
+    except:
+        pass
+    return data
+
+def table_to_html(table_data: list) -> str:
+    """Convert table data to HTML"""
+    if not table_data:
+        return ""
+        
+    html = "<table>"
+    
+    # First row as header
+    if table_data:
+        html += "<thead><tr>"
+        for cell in table_data[0]:
+            html += f"<th>{cell}</th>"
+        html += "</tr></thead>"
+    
+    # Rest as body
+    if len(table_data) > 1:
+        html += "<tbody>"
+        for row in table_data[1:]:
+            html += "<tr>"
+            for cell in row:
+                html += f"<td>{cell}</td>"
+            html += "</tr>"
+        html += "</tbody>"
+        
+    html += "</table>"
+    return html
 
 async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
     """Process PDF file with comprehensive text and image extraction"""

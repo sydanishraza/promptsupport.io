@@ -2296,10 +2296,10 @@ Return only the HTML article content - no explanations or meta-commentary."""
         # Clean and format content
         formatted_content = clean_article_content(ai_content)
         
-        # Create article object
+        # Create article object with contextual title
         article = {
             "id": str(uuid.uuid4()),
-            "title": clean_article_title(title),
+            "title": clean_article_title(contextual_title),  # Use contextual title instead of generic one
             "content": formatted_content,
             "status": "training",
             "template_id": training_session["template_id"],

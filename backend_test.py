@@ -7813,10 +7813,19 @@ This is the final section to ensure all content is processed completely."""
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
             
-            # 🔥 CRITICAL KNOWLEDGE ENGINE TESTS - PRIMARY FOCUS (Previously Failed)
-            ("🔥 CRITICAL: HTML Output Generation", self.test_html_output_generation),
-            ("🔥 CRITICAL: Metadata Removal", self.test_metadata_removal),
-            ("🔧 Post-Processing Functions", self.test_post_processing_functions),
+            # 🔥 COMPREHENSIVE DOCUMENT PROCESSING TESTS - PRIMARY FOCUS
+            ("🔥 CRITICAL: Comprehensive Document Processing", self.test_comprehensive_document_processing),
+            ("🔥 CRITICAL: Enhanced Image Extraction", self.test_enhanced_image_extraction),
+            ("🔥 CRITICAL: Contextual Image Placement", self.test_contextual_image_placement),
+            ("🔥 CRITICAL: Content Completeness", self.test_content_completeness),
+            ("🔥 CRITICAL: Original Format Storage", self.test_original_format_storage),
+            ("🔥 CRITICAL: Multi-Format Processing Pipeline", self.test_multi_format_processing_pipeline),
+            
+            # Training Interface Tests
+            ("Training Interface Templates", self.test_training_templates),
+            ("Training Interface Sessions", self.test_training_sessions),
+            ("Training Interface Process", self.test_training_process),
+            ("Training Interface Evaluate", self.test_training_evaluate),
             
             # Supporting functionality tests
             ("File Upload Processing", self.test_file_upload),

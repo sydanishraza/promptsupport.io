@@ -1230,15 +1230,31 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
         
         print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")
         
-        # Phase 2: Analysis & Regeneration
-        articles = await regenerate_articles_with_enhanced_context(
-            extracted_content, 
-            contextual_images, 
-            template_data, 
-            training_session
-        )
-        
-        return articles
+        # Fallback to simplified processing if enhanced fails
+        try:
+            # Convert extracted structure to simple text content for fallback
+            fallback_content = extracted_content.get("body_text", "")
+            
+            # Add headings to content
+            for heading in extracted_content.get("headings", []):
+                if heading.get("text"):
+                    fallback_content += f"\n\n{'#' * heading.get('level', 1)} {heading['text']}\n"
+            
+            # Add table content
+            for table in extracted_content.get("tables", []):
+                if table.get("html"):
+                    fallback_content += f"\n\n{table['html']}\n"
+            
+            print(f"🔄 Using simplified processing for DOCX: {len(fallback_content)} chars")
+            
+            # Use the working template-based processing
+            articles = await create_articles_with_template(fallback_content, contextual_images, template_data, training_session)
+            
+            return articles
+            
+        except Exception as fallback_error:
+            print(f"❌ Fallback processing failed: {fallback_error}")
+            return []
         
     except Exception as e:
         print(f"❌ Enhanced DOCX processing error: {e}")

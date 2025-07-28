@@ -9488,30 +9488,31 @@ This test document verifies that the recent fixes to PDF processing are working 
             return False
 
     def run_all_tests(self):
-        """Run all Enhanced Content Engine tests with focus on Training Interface"""
+        """Run all Enhanced Content Engine tests with focus on DOCX/PDF processing fixes"""
         print("🚀 Starting Enhanced Content Engine Backend Testing...")
-        print("🎯 FOCUS: Training Interface Comprehensive Testing")
+        print("🎯 FOCUSED TESTING: DOCX and PDF Processing Fixes")
         print("=" * 80)
         
         tests = [
-            # Core system tests
+            # PRIORITY TESTS - DOCX and PDF Processing Fixes
+            ("🎯 DOCX Processing Fix", self.test_training_docx_processing),
+            ("🎯 PDF Processing Fix", self.test_training_pdf_processing),
+            ("Training Templates Endpoint", self.test_training_templates_endpoint),
+            ("Training Sessions Endpoint", self.test_training_sessions_endpoint),
+            
+            # Core System Tests
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
-            
-            # Training Interface tests (main focus)
-            ("Training Templates", self.test_training_templates),
-            ("Training Sessions", self.test_training_sessions),
-            ("Training Process - Text Files", self.test_training_process_text),
-            ("Training Process - DOCX Files", self.test_training_process_docx),
-            ("Training Process - PDF Files", self.test_training_process_pdf),
-            ("Training Process - PowerPoint Files", self.test_training_process_ppt),
-            ("Training Evaluate", self.test_training_evaluate),
-            
-            # Supporting system tests
+            ("Content Processing", self.test_content_processing),
+            ("File Upload", self.test_file_upload),
+            ("Search Functionality", self.test_search_functionality),
+            ("Job Status Tracking", self.test_job_status),
+            ("AI Chat with Fallback", self.test_ai_chat),
             ("AI Assistance with Fallback", self.test_ai_assistance_fallback),
             ("Content Analysis with Fallback", self.test_content_analysis_fallback),
-            ("Knowledge Engine Article Generation with Fallback", self.test_knowledge_engine_article_generation_fallback),
+            ("Knowledge Engine Article Generation", self.test_knowledge_engine_article_generation_fallback),
             ("Content Library Integration", self.test_content_library_integration),
+            ("File Upload Content Library Integration", self.test_file_upload_content_library_integration),
         ]
         
         results = []
@@ -9519,53 +9520,42 @@ This test document verifies that the recent fixes to PDF processing are working 
         failed = 0
         
         for test_name, test_func in tests:
+            print(f"\n{'='*20} {test_name} {'='*20}")
             try:
-                print(f"\n{'='*20} {test_name} {'='*20}")
                 result = test_func()
                 results.append((test_name, result))
                 if result:
                     passed += 1
-                    print(f"✅ {test_name}: PASSED")
+                    print(f"✅ {test_name} PASSED")
                 else:
                     failed += 1
-                    print(f"❌ {test_name}: FAILED")
+                    print(f"❌ {test_name} FAILED")
             except Exception as e:
                 failed += 1
                 results.append((test_name, False))
-                print(f"❌ {test_name}: FAILED with exception - {str(e)}")
+                print(f"❌ {test_name} FAILED with exception: {str(e)}")
         
         # Print summary
         print("\n" + "="*80)
-        print("🎯 TRAINING INTERFACE TEST SUMMARY")
+        print("🏁 ENHANCED CONTENT ENGINE TESTING SUMMARY")
         print("="*80)
         print(f"✅ Passed: {passed}")
         print(f"❌ Failed: {failed}")
         print(f"📊 Success Rate: {(passed/(passed+failed)*100):.1f}%")
         
-        print("\n📋 Detailed Results:")
+        print("\n🎯 PRIORITY TEST RESULTS (DOCX/PDF Processing):")
+        if len(results) >= 2:
+            priority_tests = [("🎯 DOCX Processing Fix", results[0][1]), ("🎯 PDF Processing Fix", results[1][1])]
+            for test_name, result in priority_tests:
+                status = "✅ PASS" if result else "❌ FAIL"
+                print(f"  {status} - {test_name}")
+        
+        print("\nDetailed Results:")
         for test_name, result in results:
             status = "✅ PASS" if result else "❌ FAIL"
-            print(f"  {status}: {test_name}")
+            print(f"  {status} - {test_name}")
         
-        # Training Interface specific summary
-        training_tests = [
-            ("Training Templates", results[2][1] if len(results) > 2 else False),
-            ("Training Sessions", results[3][1] if len(results) > 3 else False),
-            ("Training Process - Text Files", results[4][1] if len(results) > 4 else False),
-            ("Training Process - DOCX Files", results[5][1] if len(results) > 5 else False),
-            ("Training Process - PDF Files", results[6][1] if len(results) > 6 else False),
-            ("Training Process - PowerPoint Files", results[7][1] if len(results) > 7 else False),
-            ("Training Evaluate", results[8][1] if len(results) > 8 else False),
-        ]
-        
-        training_passed = sum(1 for _, result in training_tests if result)
-        training_total = len(training_tests)
-        
-        print(f"\n🧠 TRAINING INTERFACE SPECIFIC RESULTS:")
-        print(f"   Training Tests Passed: {training_passed}/{training_total}")
-        print(f"   Training Success Rate: {(training_passed/training_total*100):.1f}%")
-        
-        return passed, failed, results
+        return passed, failed
 
     def test_asset_upload_endpoint(self):
         """Test /api/assets/upload endpoint - Upload image files and verify file system storage"""

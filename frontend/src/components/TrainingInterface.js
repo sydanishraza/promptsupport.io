@@ -571,7 +571,7 @@ const TrainingInterface = () => {
                 </button>
               </div>
               
-              <div className="prose prose-sm max-w-none">
+              <div className="wysiwyg-content max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: selectedResult.content || 'No content available' }} />
               </div>
               

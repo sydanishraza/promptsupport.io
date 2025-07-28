@@ -684,16 +684,18 @@ async def training_process_document(
         await db.training_sessions.insert_one(training_session)
         print(f"💾 Training session stored in database")
         
-        # Calculate images processed
+        # Calculate images processed and processing time
         total_images = sum(article.get("image_count", 0) for article in articles)
+        processing_time = (datetime.utcnow() - start_time).total_seconds()
         print(f"🖼️ Total images processed: {total_images}")
+        print(f"⏱️ Processing completed in {processing_time:.2f} seconds")
         
         return {
             "success": True,
             "session_id": training_session["session_id"],
             "articles": articles,
             "images_processed": total_images,
-            "processing_time": 0,  # TODO: Add actual timing
+            "processing_time": round(processing_time, 2),
             "template_applied": template_id
         }
         

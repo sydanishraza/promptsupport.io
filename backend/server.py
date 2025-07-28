@@ -2189,7 +2189,16 @@ Return only the HTML article content - no explanations or meta-commentary."""
             print("⚠️ No AI content generated, using fallback")
             ai_content = f"<h1>{title}</h1>\n<p>{content}</p>"
         
-        print(f"✅ AI content generated: {len(ai_content)} characters")
+        # Extract title from the HTML content if it contains an h1 tag
+        contextual_title = title  # fallback
+        if '<h1>' in ai_content:
+            import re
+            h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', ai_content, re.IGNORECASE | re.DOTALL)
+            if h1_match:
+                contextual_title = h1_match.group(1).strip()
+                print(f"✅ Extracted contextual title: {contextual_title}")
+        
+        print(f"✅ AI content generated: {len(ai_content)} characters, title: {contextual_title}")
         
         # Enhanced image embedding with contextual placement and content balance
         if images:

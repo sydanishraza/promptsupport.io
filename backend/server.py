@@ -1147,95 +1147,208 @@ async def process_text_with_template(content: str, template_data: dict, training
         return []
 
 async def process_doc_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
-    """Process DOC file with training template"""
+    """Process DOC file with comprehensive text extraction"""
     try:
-        # Import doc processing (you'll need to install python-docx2txt or similar)
+        print(f"🔍 Starting DOC processing: {file_path}")
+        
+        # Import doc processing libraries
         try:
-            import docx2txt
+            import subprocess
+            import os
         except ImportError:
-            print("docx2txt not installed, using fallback processing")
+            print("⚠️ Required libraries not available, using fallback processing")
             return await process_text_with_template("", template_data, training_session)
         
-        # Extract text content from DOC file
+        # Try to extract text using antiword (if available)
         try:
-            full_text = docx2txt.process(file_path)
-        except Exception as e:
-            print(f"Error extracting DOC content: {e}")
-            full_text = f"Error processing DOC file: {training_session.get('filename', 'unknown')}"
+            result = subprocess.run(['antiword', file_path], 
+                                  capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                full_text = result.stdout
+                print(f"✅ DOC text extracted using antiword: {len(full_text)} characters")
+            else:
+                raise Exception("antiword failed")
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            # Fallback: read as binary and extract readable text
+            try:
+                with open(file_path, 'rb') as f:
+                    content = f.read()
+                
+                # Basic text extraction from DOC binary
+                # DOC files contain text mixed with binary data
+                text_parts = []
+                current_text = ""
+                
+                for byte in content:
+                    if 32 <= byte <= 126:  # Printable ASCII
+                        current_text += chr(byte)
+                    else:
+                        if len(current_text) > 3:  # Only keep meaningful text chunks
+                            text_parts.append(current_text)
+                        current_text = ""
+                
+                if current_text:
+                    text_parts.append(current_text)
+                
+                full_text = " ".join(text_parts)
+                print(f"✅ DOC text extracted using binary parsing: {len(full_text)} characters")
+                
+            except Exception as e:
+                print(f"⚠️ Error extracting DOC content: {e}")
+                full_text = f"Error processing DOC file: {training_session.get('filename', 'unknown')}"
         
-        print(f"✅ DOC processing: {len(full_text)} characters")
-        
-        # Process with template (DOC files typically don't have embedded images accessible via docx2txt)
+        # Process with template (DOC files typically don't have easily accessible embedded images)
         articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        
+        print(f"✅ DOC processing generated {len(articles)} articles")
         
         return articles
         
     except Exception as e:
-        print(f"DOC processing error: {e}")
+        print(f"❌ DOC processing error: {e}")
         return []
 
 async def process_excel_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
-    """Process Excel file with training template"""
+    """Process Excel file with comprehensive text and image extraction"""
     try:
+        print(f"🔍 Starting comprehensive Excel processing: {file_path}")
+        
         # Import Excel processing libraries
         try:
+            from openpyxl import load_workbook
+            from openpyxl.drawing.image import Image as OpenpyxlImage
             import pandas as pd
-            import openpyxl
         except ImportError:
-            print("pandas/openpyxl not installed, using fallback processing")
+            print("⚠️ openpyxl/pandas not installed, using fallback processing")
             return await process_text_with_template("", template_data, training_session)
         
-        # Read Excel file
+        # Read Excel file with openpyxl for comprehensive extraction
         try:
-            # Try to read all sheets
-            excel_file = pd.ExcelFile(file_path)
+            workbook = load_workbook(file_path)
             full_text = ""
+            all_images = []
             
-            for sheet_name in excel_file.sheet_names:
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
+            for sheet_name in workbook.sheetnames:
+                sheet = workbook[sheet_name]
                 full_text += f"\n\n=== Sheet: {sheet_name} ===\n"
                 
-                # Convert DataFrame to readable text
-                if not df.empty:
-                    # Add column headers
-                    full_text += "Columns: " + ", ".join(df.columns.astype(str)) + "\n\n"
-                    
-                    # Add data rows (limit to first 100 rows to avoid huge content)
-                    for idx, row in df.head(100).iterrows():
-                        row_text = " | ".join([f"{col}: {val}" for col, val in row.items() if pd.notna(val)])
-                        if row_text.strip():
-                            full_text += row_text + "\n"
-                    
-                    if len(df) > 100:
-                        full_text += f"\n... and {len(df) - 100} more rows\n"
-                else:
-                    full_text += "Empty sheet\n"
-                    
+                # Extract text content from cells
+                for row in sheet.iter_rows(values_only=True):
+                    row_text = " | ".join([str(cell) for cell in row if cell is not None])
+                    if row_text.strip():
+                        full_text += row_text + "\n"
+                
+                # Extract images from sheet
+                if hasattr(sheet, '_images'):
+                    for img_index, img in enumerate(sheet._images):
+                        try:
+                            # Get image data
+                            image_data = img.ref
+                            
+                            # Skip if no image data
+                            if not hasattr(image_data, 'read'):
+                                continue
+                            
+                            image_bytes = image_data.read()
+                            
+                            # Skip if image is too small
+                            if len(image_bytes) < 1000:
+                                continue
+                            
+                            # Generate unique filename
+                            safe_prefix = "".join(c for c in training_session.get('filename', 'excel') if c.isalnum())[:10]
+                            unique_filename = f"{safe_prefix}_{sheet_name}_img{img_index + 1}_{str(uuid.uuid4())[:8]}.png"
+                            file_path_static = f"static/uploads/{unique_filename}"
+                            
+                            # Ensure upload directory exists
+                            os.makedirs("static/uploads", exist_ok=True)
+                            
+                            # Save image to disk
+                            with open(file_path_static, "wb") as f:
+                                f.write(image_bytes)
+                            
+                            # Generate URL
+                            image_url = f"/api/static/uploads/{unique_filename}"
+                            
+                            # Store image info
+                            all_images.append({
+                                "filename": unique_filename,
+                                "url": image_url,
+                                "sheet": sheet_name,
+                                "size": len(image_bytes),
+                                "is_svg": False
+                            })
+                            
+                            print(f"✅ Extracted Excel image: {sheet_name} -> {image_url}")
+                            
+                        except Exception as img_error:
+                            print(f"⚠️ Error extracting image from sheet {sheet_name}: {img_error}")
+                            continue
+                
+            workbook.close()
+            
         except Exception as e:
-            print(f"Error reading Excel file: {e}")
-            full_text = f"Error processing Excel file: {training_session.get('filename', 'unknown')}"
+            print(f"⚠️ Error reading Excel file with openpyxl: {e}")
+            
+            # Fallback with pandas
+            try:
+                excel_file = pd.ExcelFile(file_path)
+                full_text = ""
+                
+                for sheet_name in excel_file.sheet_names:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    full_text += f"\n\n=== Sheet: {sheet_name} ===\n"
+                    
+                    if not df.empty:
+                        # Add column headers
+                        full_text += "Columns: " + ", ".join(df.columns.astype(str)) + "\n\n"
+                        
+                        # Add data rows (limit to first 100 rows)
+                        for idx, row in df.head(100).iterrows():
+                            row_text = " | ".join([f"{col}: {val}" for col, val in row.items() if pd.notna(val)])
+                            if row_text.strip():
+                                full_text += row_text + "\n"
+                        
+                        if len(df) > 100:
+                            full_text += f"\n... and {len(df) - 100} more rows\n"
+                    else:
+                        full_text += "Empty sheet\n"
+                
+                all_images = []  # No image extraction in pandas fallback
+                
+            except Exception as pandas_error:
+                print(f"⚠️ Error with pandas fallback: {pandas_error}")
+                full_text = f"Error processing Excel file: {training_session.get('filename', 'unknown')}"
+                all_images = []
         
-        print(f"✅ Excel processing: {len(full_text)} characters")
+        print(f"✅ Excel extraction complete: {len(full_text)} characters, {len(all_images)} images")
         
         # Process with template
-        articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
+        
+        print(f"✅ Excel processing generated {len(articles)} articles")
         
         return articles
         
     except Exception as e:
-        print(f"Excel processing error: {e}")
+        print(f"❌ Excel processing error: {e}")
         return []
 
 async def process_html_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
-    """Process HTML file with training template"""
+    """Process HTML file with comprehensive text and image extraction"""
     try:
+        print(f"🔍 Starting comprehensive HTML processing: {file_path}")
+        
         # Read HTML content
         with open(file_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        # Parse HTML and extract text content
+        # Parse HTML and extract text content and images
         try:
             from bs4 import BeautifulSoup
+            import requests
+            import base64
+            
             soup = BeautifulSoup(html_content, 'html.parser')
             
             # Remove script and style elements
@@ -1251,45 +1364,99 @@ async def process_html_with_template(file_path: str, template_data: dict, traini
             full_text = ' '.join(chunk for chunk in chunks if chunk)
             
             # Extract images
-            images = []
+            all_images = []
             img_tags = soup.find_all('img')
+            
             for i, img in enumerate(img_tags):
                 src = img.get('src', '')
                 alt = img.get('alt', f'Image {i+1}')
                 
                 if src.startswith('data:image'):
                     # Base64 embedded image
-                    images.append({
-                        "filename": f"html_image_{i+1}",
-                        "data": src,
-                        "size": len(src),
-                        "is_svg": 'svg' in src,
-                        "alt": alt
-                    })
+                    try:
+                        # Extract base64 data
+                        header, data = src.split(',', 1)
+                        image_data = base64.b64decode(data)
+                        
+                        # Determine file extension
+                        if 'svg' in header:
+                            ext = 'svg'
+                            is_svg = True
+                        elif 'png' in header:
+                            ext = 'png'
+                            is_svg = False
+                        elif 'jpg' in header or 'jpeg' in header:
+                            ext = 'jpg'
+                            is_svg = False
+                        else:
+                            ext = 'png'
+                            is_svg = False
+                        
+                        if is_svg:
+                            # SVG images keep base64 format
+                            all_images.append({
+                                "filename": f"html_image_{i+1}.{ext}",
+                                "data": src,
+                                "size": len(src),
+                                "is_svg": True,
+                                "alt": alt
+                            })
+                        else:
+                            # Non-SVG images save to disk
+                            safe_prefix = "".join(c for c in training_session.get('filename', 'html') if c.isalnum())[:10]
+                            unique_filename = f"{safe_prefix}_img{i+1}_{str(uuid.uuid4())[:8]}.{ext}"
+                            file_path_static = f"static/uploads/{unique_filename}"
+                            
+                            # Ensure upload directory exists
+                            os.makedirs("static/uploads", exist_ok=True)
+                            
+                            # Save image to disk
+                            with open(file_path_static, "wb") as f:
+                                f.write(image_data)
+                            
+                            # Generate URL
+                            image_url = f"/api/static/uploads/{unique_filename}"
+                            
+                            all_images.append({
+                                "filename": unique_filename,
+                                "url": image_url,
+                                "size": len(image_data),
+                                "is_svg": False,
+                                "alt": alt
+                            })
+                            
+                            print(f"✅ Extracted HTML embedded image: {unique_filename}")
+                    
+                    except Exception as img_error:
+                        print(f"⚠️ Error processing embedded image {i+1}: {img_error}")
+                        continue
+                
                 elif src.startswith('http') or src.startswith('/'):
-                    # External or relative URL - we'll note it but can't embed
+                    # External or relative URL - add reference to text
                     full_text += f"\n[Referenced image: {src} - Alt: {alt}]\n"
-            
+                    
         except ImportError:
-            print("BeautifulSoup not available, using basic text extraction")
+            print("⚠️ BeautifulSoup not available, using basic text extraction")
             # Fallback: basic HTML tag removal
             import re
             full_text = re.sub(r'<[^>]+>', '', html_content)
-            images = []
+            all_images = []
         except Exception as e:
-            print(f"Error parsing HTML: {e}")
+            print(f"⚠️ Error parsing HTML: {e}")
             full_text = html_content
-            images = []
+            all_images = []
         
-        print(f"✅ HTML processing: {len(full_text)} characters, {len(images)} images")
+        print(f"✅ HTML extraction complete: {len(full_text)} characters, {len(all_images)} images")
         
         # Process with template
-        articles = await create_articles_with_template(full_text, images, template_data, training_session)
+        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
+        
+        print(f"✅ HTML processing generated {len(articles)} articles")
         
         return articles
         
     except Exception as e:
-        print(f"HTML processing error: {e}")
+        print(f"❌ HTML processing error: {e}")
         return []
 
 async def create_articles_with_template(content: str, images: list, template_data: dict, training_session: dict) -> list:

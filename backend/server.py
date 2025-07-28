@@ -494,6 +494,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
             data = {
                 "model": "claude-3-5-sonnet-20241022",
                 "max_tokens": 8000,  # Increased from 6000 to 8000
+                "temperature": 0.1,
                 "system": system_message,
                 "messages": [
                     {"role": "user", "content": user_message}

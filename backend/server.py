@@ -150,7 +150,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
                 "https://api.openai.com/v1/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=45
+                timeout=30  # Reduced from 45 to 30 seconds
             )
             
             if response.status_code == 200:

@@ -2146,39 +2146,37 @@ async def create_single_article_with_template(content: str, images: list, templa
         title = f"Article {article_number} from {training_session['filename']}"
         
         # Generate content using LLM with template instructions
-        system_message = f"""You are an expert technical writer. Process the following content according to these template specifications:
+        system_message = f"""You are an expert technical writer creating knowledge base articles. 
 
-TEMPLATE INSTRUCTIONS:
-{json.dumps(template_data, indent=2)}
+CRITICAL INSTRUCTIONS:
+1. Generate ONLY the article content in clean HTML format
+2. Do NOT include any meta-commentary, explanations, or processing notes
+3. Do NOT mention that you are processing content or creating articles
+4. Start directly with the content - no introductory phrases
+5. Use proper HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>
+6. Create a meaningful, contextual title based on the content topic
+7. Structure the content logically with clear sections and headings
 
-Your task is to:
-1. Follow the processing instructions exactly
-2. Generate content that meets the output requirements
-3. Apply the specified formatting and structure
-4. Ensure quality benchmarks are met
-5. Generate clean HTML output suitable for a WYSIWYG editor
+TEMPLATE SPECIFICATIONS:
+{json.dumps(template_data.get('processing_instructions', []), indent=2)}
 
-IMPORTANT: Output clean HTML with proper tags like <h1>, <h2>, <p>, <ul>, <ol>, <li>, <strong>, <em>, etc.
-DO NOT use Markdown syntax (##, **, *, etc.) - use HTML tags only.
-
-Generate clean, professional content suitable for a knowledge base."""
+OUTPUT FORMAT: Clean HTML only - no meta-text or commentary."""
         
-        user_message = f"""Please process this content according to the template:
+        user_message = f"""Create a well-structured knowledge base article from this content:
 
-CONTENT:
 {content}
 
-AVAILABLE IMAGES: {len(images)} images
-{[img.get('filename', f'image_{i+1}') for i, img in enumerate(images)]}
+REQUIREMENTS:
+1. Generate a contextual title that reflects the main topic (not filename-based)
+2. Structure content with proper HTML headings and sections
+3. Include bullet points, numbered lists, and formatting as appropriate
+4. Write in a professional, informative tone suitable for a knowledge base
+5. If images are available, include placeholder markers like [IMAGE_1], [IMAGE_2] where they should be placed contextually
+6. Ensure content flows logically and is easy to understand
 
-INSTRUCTIONS:
-1. Generate well-structured HTML content with proper headings, paragraphs, and lists
-2. Create multiple sections if the content warrants it
-3. Include placeholders like {{image_1}}, {{image_2}}, etc. where images should be contextually placed
-4. Ensure the content is informative, well-organized, and professionally written
-5. Use proper HTML formatting throughout
+Available images: {len(images)}
 
-Generate a properly structured article following the template specifications."""
+Return only the HTML article content - no explanations or meta-commentary."""
         
         # Use LLM to generate content with better image placement instructions
         print(f"🤖 Calling LLM for article generation...")

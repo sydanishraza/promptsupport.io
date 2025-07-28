@@ -2382,12 +2382,15 @@ Return only the HTML article content - no explanations or meta-commentary."""
                 
                 # Strategy 1: Replace explicit placeholders first
                 placeholder_patterns = [
-                    f"[image_{i+1}]",
-                    f"[IMAGE_{i+1}]",
+                    f"[IMAGE_{i+1}]",      # LLM commonly generates this format
+                    f"[image_{i+1}]",      # Case variations
+                    f"[Image_{i+1}]",      
+                    f"{{IMAGE_{i+1}}}",    # Brace formats
                     f"{{image_{i+1}}}",
-                    f"{{IMAGE_{i+1}}}",
                     f"{{img_{i+1}}}",
-                    f"{{IMG_{i+1}}}"
+                    f"{{IMG_{i+1}}}",
+                    f"[IMG_{i+1}]",        # Short versions
+                    f"[img_{i+1}]"
                 ]
                 
                 for pattern in placeholder_patterns:

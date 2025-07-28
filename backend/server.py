@@ -1094,8 +1094,21 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
         
         print(f"🔍 Phase 1: Starting enhanced DOCX content extraction")
         
-        # Read DOCX content
-        doc = Document(file_path)
+        # Try to read as actual DOCX file
+        try:
+            doc = Document(file_path)
+            print(f"✅ Successfully loaded DOCX file")
+        except Exception as docx_error:
+            print(f"⚠️ Failed to load as DOCX file: {docx_error}")
+            print(f"🔄 Falling back to text processing")
+            # If it's not a valid DOCX file, treat it as text
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except Exception as text_error:
+                print(f"❌ Text fallback also failed: {text_error}")
+                return []
         
         # Phase 1: Enhanced Text Extraction
         extracted_content = {

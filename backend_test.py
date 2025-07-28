@@ -9176,57 +9176,51 @@ Success Factors:
         failed = 0
         
         for test_name, test_func in tests:
-            print(f"\n{'='*20} {test_name} {'='*20}")
             try:
+                print(f"\n{'='*20} {test_name} {'='*20}")
                 result = test_func()
-                if result:
-                    print(f"✅ {test_name} PASSED")
-                    passed += 1
-                else:
-                    print(f"❌ {test_name} FAILED")
-                    failed += 1
                 results.append((test_name, result))
+                if result:
+                    passed += 1
+                    print(f"✅ {test_name}: PASSED")
+                else:
+                    failed += 1
+                    print(f"❌ {test_name}: FAILED")
             except Exception as e:
-                print(f"💥 {test_name} CRASHED: {str(e)}")
                 failed += 1
                 results.append((test_name, False))
+                print(f"❌ {test_name}: FAILED with exception - {str(e)}")
         
         # Print summary
         print("\n" + "="*80)
-        print("🎯 COMPREHENSIVE TEST SUMMARY")
+        print("🎯 TRAINING INTERFACE TEST SUMMARY")
         print("="*80)
         print(f"✅ Passed: {passed}")
         print(f"❌ Failed: {failed}")
-        print(f"📊 Total: {passed + failed}")
-        print(f"📈 Success Rate: {(passed/(passed+failed)*100):.1f}%")
+        print(f"📊 Success Rate: {(passed/(passed+failed)*100):.1f}%")
         
-        print("\n📋 DETAILED RESULTS:")
+        print("\n📋 Detailed Results:")
         for test_name, result in results:
             status = "✅ PASS" if result else "❌ FAIL"
-            print(f"  {status} - {test_name}")
+            print(f"  {status}: {test_name}")
         
-        # Focus on image upload and static file serving results
-        print("\n🖼️ IMAGE UPLOAD & STATIC FILE SERVING ANALYSIS:")
-        image_tests = [
-            "Asset Upload Endpoint",
-            "Static File Serving", 
-            "Asset Library Endpoint",
-            "External URL Access",
-            "Image Upload Integration Flow"
+        # Training Interface specific summary
+        training_tests = [
+            ("Training Templates", results[2][1] if len(results) > 2 else False),
+            ("Training Sessions", results[3][1] if len(results) > 3 else False),
+            ("Training Process - Text Files", results[4][1] if len(results) > 4 else False),
+            ("Training Process - DOCX Files", results[5][1] if len(results) > 5 else False),
+            ("Training Process - PDF Files", results[6][1] if len(results) > 6 else False),
+            ("Training Process - PowerPoint Files", results[7][1] if len(results) > 7 else False),
+            ("Training Evaluate", results[8][1] if len(results) > 8 else False),
         ]
         
-        image_results = [(name, result) for name, result in results if name in image_tests]
-        image_passed = sum(1 for _, result in image_results if result)
-        image_failed = len(image_results) - image_passed
+        training_passed = sum(1 for _, result in training_tests if result)
+        training_total = len(training_tests)
         
-        if image_failed == 0:
-            print("✅ ALL IMAGE UPLOAD TESTS PASSED: Static file serving working correctly")
-            print("✅ Images uploaded locally now work correctly instead of appearing broken")
-            print("✅ Static file serving uses correct /api/static/ route prefix")
-            print("✅ External URL access works properly through production domain")
-        else:
-            print(f"⚠️ IMAGE UPLOAD ISSUES: {image_failed} test(s) failed")
-            print("🔍 Investigation needed for image upload and static file serving")
+        print(f"\n🧠 TRAINING INTERFACE SPECIFIC RESULTS:")
+        print(f"   Training Tests Passed: {training_passed}/{training_total}")
+        print(f"   Training Success Rate: {(training_passed/training_total*100):.1f}%")
         
         return passed, failed, results
 

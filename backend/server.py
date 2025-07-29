@@ -1951,6 +1951,9 @@ def generate_pdf_from_html(html_content: str, title: str = "Generated Article") 
         
         print(f"🎨 Generating PDF for: '{title}' with {len(html_content)} characters")
         
+        # Process HTML content to convert relative image URLs to absolute URLs
+        processed_html_content = _process_images_for_pdf(html_content)
+        
         # Create a complete HTML document with proper styling
         full_html = f"""
         <!DOCTYPE html>
@@ -2021,6 +2024,16 @@ def generate_pdf_from_html(html_content: str, title: str = "Generated Article") 
                     border: 1px solid #ddd;
                     border-radius: 4px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }}
+                
+                img {{
+                    max-width: 100%;
+                    height: auto;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    display: block;
+                    margin: 10px auto;
                 }}
                 
                 figcaption {{

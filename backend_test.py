@@ -10147,13 +10147,20 @@ This test document verifies that the recent fixes to PDF processing are working 
             return False
 
     def run_all_tests(self):
-        """Run all Enhanced Content Engine tests with focus on OpenAI integration"""
+        """Run all Enhanced Content Engine tests with focus on 3-tier LLM fallback system"""
         print("🚀 Starting Enhanced Content Engine Backend Testing...")
-        print("🎯 FOCUSED TESTING: OpenAI Integration and Fallback System")
+        print("🎯 FOCUSED TESTING: 3-Tier LLM Fallback System (OpenAI → Claude → Local LLM)")
         print("=" * 80)
         
         tests = [
-            # PRIORITY TESTS - OpenAI Integration and Fallback System
+            # PRIORITY TESTS - 3-Tier LLM Fallback System
+            ("🔥 3-Tier LLM Fallback System", self.test_three_tier_llm_fallback_system),
+            ("🔥 Content Analysis 3-Tier Fallback", self.test_content_analysis_three_tier_fallback),
+            ("🔥 AI Model Metadata Verification", self.test_ai_model_metadata_verification),
+            ("🔥 Local LLM Graceful Failure", self.test_local_llm_graceful_failure),
+            ("🔥 AI Assistance 3-Tier Fallback", self.test_ai_assistance_fallback),
+            
+            # Legacy OpenAI Integration Tests (for comparison)
             ("🔥 Direct OpenAI API Call", self.test_openai_direct_api_call),
             ("🔥 Direct Claude API Call", self.test_claude_direct_api_call),
             ("🔥 GPT-4o-mini Model Verification", self.test_gpt4o_mini_model_verification),
@@ -10164,7 +10171,6 @@ This test document verifies that the recent fixes to PDF processing are working 
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
             ("AI Chat with Fallback", self.test_ai_chat),
-            ("AI Assistance with Fallback", self.test_ai_assistance_fallback),
             ("Content Analysis with Fallback", self.test_content_analysis_fallback),
             ("Knowledge Engine Article Generation", self.test_knowledge_engine_article_generation_fallback),
             ("Content Processing", self.test_content_processing),

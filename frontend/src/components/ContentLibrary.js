@@ -641,6 +641,7 @@ const ContentLibrary = () => {
                   articles={filteredAndSortedArticles}
                   onArticleSelect={handleArticleSelect}
                   onDeleteArticle={handleDeleteArticle}
+                  onDownloadPDF={downloadArticlePDF}
                 />
               ) : (
                 <ArticleTable

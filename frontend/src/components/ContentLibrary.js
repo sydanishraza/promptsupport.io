@@ -131,7 +131,7 @@ const ContentLibrary = () => {
   // Download PDF function
   const downloadArticlePDF = async (articleId, articleTitle) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/content-library/article/${articleId}/download-pdf`);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/content-library/article/${articleId}/download-pdf`);
       
       if (!response.ok) {
         throw new Error('Failed to generate PDF');

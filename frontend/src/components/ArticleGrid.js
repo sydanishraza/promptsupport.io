@@ -17,7 +17,8 @@ import {
   Upload,
   ExternalLink,
   Mic,
-  Brain
+  Brain,
+  Download
 } from 'lucide-react';
 
 const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle }) => {

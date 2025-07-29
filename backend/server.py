@@ -1899,6 +1899,43 @@ def create_image_figure_html(img: dict) -> str:
     
     return figure_html
 
+def _process_images_for_pdf(html_content: str) -> str:
+    """
+    Process HTML content to convert relative image URLs to absolute URLs for PDF generation
+    """
+    import re
+    from urllib.parse import urljoin
+    
+    # Pattern to match img src attributes
+    img_pattern = r'<img([^>]*?)src=["\']([^"\']*?)["\']([^>]*?)>'
+    
+    def replace_img_src(match):
+        before_src = match.group(1)
+        src_url = match.group(2)
+        after_src = match.group(3)
+        
+        # If it's already an absolute URL, leave it as is
+        if src_url.startswith(('http://', 'https://', 'data:')):
+            return match.group(0)
+        
+        # If it's a relative URL starting with /api/static, convert to absolute
+        if src_url.startswith('/api/static/'):
+            # Convert to absolute URL - in production this would be your domain
+            absolute_url = f"http://localhost:8000{src_url}"
+            return f'<img{before_src}src="{absolute_url}"{after_src}>'
+        
+        # For other relative URLs, try to make them absolute
+        if src_url.startswith('/'):
+            absolute_url = f"http://localhost:8000{src_url}"
+            return f'<img{before_src}src="{absolute_url}"{after_src}>'
+        
+        return match.group(0)
+    
+    # Replace all img src attributes
+    processed_html = re.sub(img_pattern, replace_img_src, html_content)
+    
+    return processed_html
+
 def generate_pdf_from_html(html_content: str, title: str = "Generated Article") -> bytes:
     """
     Generate PDF from HTML content using WeasyPrint

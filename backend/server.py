@@ -1632,21 +1632,7 @@ def estimate_page_number(paragraph_index: int, total_paragraphs: int) -> int:
     """
     return max(1, (paragraph_index // 30) + 1)
 
-def generate_contextual_caption(image_context: dict, image_number: int) -> str:
-    """
-    Generate a meaningful caption based on image context
-    """
-    chapter = image_context.get('chapter', 'Document')
-    
-    # Create contextual caption
-    if 'step' in chapter.lower():
-        return f"Figure {image_number}: {chapter} illustration"
-    elif 'process' in chapter.lower() or 'workflow' in chapter.lower():
-        return f"Figure {image_number}: {chapter} diagram"
-    elif 'example' in chapter.lower() or 'sample' in chapter.lower():
-        return f"Figure {image_number}: {chapter} example"
-    else:
-        return f"Figure {image_number}: {chapter} visual"
+
 
 def calculate_placement_priority(image_context: dict) -> int:
     """

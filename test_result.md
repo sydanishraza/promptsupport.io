@@ -326,15 +326,18 @@
 
   - task: "PDF Download Functionality for Training Interface Articles"
     implemented: true
-    working: true
+    working: false
     file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: true
     status_history:
         -working: true
         -agent: "testing"
         -comment: "✅ TRAINING INTERFACE PDF DOWNLOAD TESTING COMPLETED SUCCESSFULLY: Comprehensive testing of /api/training/article/{session_id}/{article_index}/download-pdf endpoint as requested in the review. RESULTS: ✅ ALL TESTS PASSED (100% success rate). DETAILED VERIFICATION: 1) Training Session Integration - Successfully retrieves training sessions from database, properly accesses articles array within training sessions, handles session_id and article_index parameters correctly, 2) PDF Generation - Generates valid PDF files (16,059 bytes) from training article content, proper Training_ filename prefix applied (e.g., Training_Creating_A_Training_Session.pdf), application/pdf content-type returned correctly, PDF magic bytes validation passed, 3) Article Content Processing - Successfully processes training articles with HTML content, preserves formatting and structure in PDF output, handles articles generated from various document types (TXT, DOCX, PDF, etc.), 4) Error Handling - Returns proper 404 errors for non-existent training sessions, returns proper 404 errors for invalid article indices, proper HTTPException handling without 500 error masking. CRITICAL FIX APPLIED: Fixed training session storage bug where articles were not being saved to the database - added training_session['articles'] = articles before database insertion. The Training Interface PDF download functionality is FULLY OPERATIONAL and integrates seamlessly with the existing training system."
+        -working: false
+        -agent: "main"
+        -comment: "❌ USER REPORTS PDF CORRUPTION ISSUE: Despite previous testing showing successful PDF generation (16KB files), user reports PDFs are corrupted (0.01MB) and cannot be opened. Same issue affects both Content Library and Training Interface downloads. APPLIED FIX: Replaced FileResponse with StreamingResponse to serve PDF bytes directly from memory, eliminated temporary file creation, added proper Content-Disposition headers."
 
   - task: "WeasyPrint PDF Generation Library Integration"
     implemented: true

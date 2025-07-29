@@ -311,15 +311,18 @@
 
   - task: "PDF Download Functionality for Content Library Articles"
     implemented: true
-    working: true
+    working: false
     file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: true
     status_history:
         -working: true
         -agent: "testing"
         -comment: "✅ PDF DOWNLOAD FUNCTIONALITY TESTING COMPLETED SUCCESSFULLY: Conducted comprehensive testing of the new PDF download functionality as specifically requested in the review. RESULTS: ✅ ALL 4/4 TESTS PASSED (100% success rate). DETAILED VERIFICATION: 1) Content Library PDF Download - Successfully tested /api/content-library/article/{article_id}/download-pdf endpoint, generates valid PDF files (19,311 bytes) with proper application/pdf content-type, PDF magic bytes validation passed (%PDF header confirmed), proper filename generation from article titles, 2) Training Interface PDF Download - Successfully tested /api/training/article/{session_id}/{article_index}/download-pdf endpoint, generates valid PDF files (16,059 bytes) with proper Training_ filename prefix, works with existing training sessions and articles, 3) PDF Download Error Handling - All edge cases working correctly: returns proper 404 errors for non-existent article IDs, returns proper 404 errors for non-existent training sessions, returns proper 404 errors for invalid article indices, proper HTTPException handling implemented, 4) PDF Quality and Formatting - WeasyPrint library working correctly after compatibility fix (downgraded to weasyprint==59.0 and pydyf==0.10.0), generates professional PDFs with proper styling including fonts, margins, spacing, page headers/footers with titles and page numbers, HTML-to-PDF conversion preserves formatting, figure elements and accessibility features included, rich content produces substantial PDFs (29,130 bytes for test article). CRITICAL FIXES APPLIED: Fixed WeasyPrint/pydyf compatibility issue that was causing 'PDF.__init__() takes 1 positional argument but 3 were given' error, Fixed training session storage to include articles array in database, Fixed error handling to properly return 404 HTTPExceptions instead of 500 errors. The PDF download functionality is FULLY OPERATIONAL and ready for production use with both Content Library and Training Interface articles."
+        -working: false
+        -agent: "main"
+        -comment: "❌ USER REPORTS PDF CORRUPTION ISSUE: Despite previous testing showing successful PDF generation (19-29KB files), user reports PDFs are corrupted (0.01MB) and cannot be opened. Troubleshoot agent identified root cause: FileResponse with temporary files is causing truncation. Backend generates PDFs correctly but file serving fails. APPLIED FIX: Replaced FileResponse with StreamingResponse to serve PDF bytes directly from memory, eliminated temporary file creation, added proper Content-Disposition headers."
 
   - task: "PDF Download Functionality for Training Interface Articles"
     implemented: true

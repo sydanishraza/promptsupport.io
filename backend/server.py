@@ -1519,7 +1519,7 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
                     "url": file_url,
                     "size": len(image_data),
                     "is_svg": filename.endswith('.svg'),
-                    "caption": generate_contextual_caption(image_context, len(contextual_images) + 1),
+                    "caption": generate_contextual_caption(image_context, paragraph_contexts),
                     "alt_text": f"Figure {len(contextual_images) + 1}: {image_context['chapter']} illustration",
                     "original_filename": filename,
                     "context_paragraph": image_context.get('paragraph_text', ''),

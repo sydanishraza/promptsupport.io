@@ -1452,6 +1452,295 @@ def table_to_html(table_data: list) -> str:
     html += "</table>"
     return html
 
+def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: dict, training_session: dict) -> list:
+    """
+    Enhanced image extraction with contextual tagging according to specifications
+    Only extracts relevant images and tags them with proper context
+    """
+    contextual_images = []
+    
+    try:
+        import zipfile
+        from xml.etree import ElementTree as ET
+        
+        # Phase 1: Parse document structure to map images to context
+        paragraph_contexts = []
+        current_chapter = "Introduction"
+        
+        for i, paragraph in enumerate(doc.paragraphs):
+            text = paragraph.text.strip()
+            if not text:
+                continue
+                
+            # Update current chapter context
+            if is_heading(paragraph):
+                current_chapter = text
+                
+            paragraph_contexts.append({
+                "index": i,
+                "text": text,
+                "chapter": current_chapter,
+                "is_heading": is_heading(paragraph),
+                "page_estimate": estimate_page_number(i, len(doc.paragraphs))
+            })
+        
+        # Phase 2: Extract images with contextual filtering and tagging
+        print(f"🖼️ Starting enhanced contextual image extraction...")
+        
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            # Get document relationships to map images to content
+            try:
+                rels_xml = zip_ref.read('word/_rels/document.xml.rels')
+                rels_tree = ET.fromstring(rels_xml)
+                image_relationships = {}
+                
+                for rel in rels_tree.findall('.//{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'):
+                    if 'image' in rel.get('Type', ''):
+                        image_relationships[rel.get('Id')] = rel.get('Target')
+                        
+            except Exception as rel_error:
+                print(f"⚠️ Could not parse image relationships: {rel_error}")
+                image_relationships = {}
+            
+            # Parse document XML to find image positions
+            try:
+                doc_xml = zip_ref.read('word/document.xml')
+                doc_tree = ET.fromstring(doc_xml)
+                image_positions = extract_image_positions_from_xml(doc_tree, paragraph_contexts)
+            except Exception as xml_error:
+                print(f"⚠️ Could not parse document XML for positions: {xml_error}")
+                image_positions = []
+            
+            # Extract actual image files with contextual filtering
+            for file_info in zip_ref.filelist:
+                if not file_info.filename.startswith('word/media/'):
+                    continue
+                    
+                filename = file_info.filename.split('/')[-1].lower()
+                
+                # Apply filtering rules from specifications
+                if should_skip_image(filename, file_info):
+                    continue
+                
+                # Find contextual placement for this image
+                image_context = find_image_context(filename, image_positions, paragraph_contexts)
+                
+                if not image_context:
+                    print(f"🚫 Skipping image without clear context: {filename}")
+                    continue
+                
+                # Extract and save the image
+                image_data = zip_ref.read(file_info.filename)
+                
+                # Generate contextual filename
+                safe_prefix = "".join(c for c in training_session.get('filename', 'doc') if c.isalnum())[:10]
+                context_key = "".join(c for c in image_context['chapter'][:15] if c.isalnum())
+                unique_filename = f"{safe_prefix}_{context_key}_{image_context['page']}_img{len(contextual_images)+1}_{str(uuid.uuid4())[:8]}.{filename.split('.')[-1]}"
+                
+                file_path_static = f"static/uploads/{unique_filename}"
+                
+                # Ensure upload directory exists
+                os.makedirs("static/uploads", exist_ok=True)
+                
+                # Save image file
+                with open(file_path_static, "wb") as f:
+                    f.write(image_data)
+                
+                # Generate URL
+                file_url = f"/api/static/uploads/{unique_filename}"
+                
+                # Create contextual image object according to specifications
+                contextual_image = {
+                    "image": file_url,
+                    "page": image_context['page'],
+                    "position": image_context['position'],
+                    "chapter": image_context['chapter'],
+                    "type": image_context['type'],
+                    "filename": unique_filename,
+                    "url": file_url,
+                    "size": len(image_data),
+                    "is_svg": filename.endswith('.svg'),
+                    "caption": generate_contextual_caption(image_context, len(contextual_images) + 1),
+                    "alt_text": f"Figure {len(contextual_images) + 1}: {image_context['chapter']} illustration",
+                    "original_filename": filename,
+                    "context_paragraph": image_context.get('paragraph_text', ''),
+                    "placement_priority": calculate_placement_priority(image_context)
+                }
+                
+                contextual_images.append(contextual_image)
+                print(f"✅ Extracted contextual image: {unique_filename} (Chapter: {image_context['chapter']}, Page: {image_context['page']})")
+        
+        # Sort images by their natural document flow order
+        contextual_images.sort(key=lambda x: (x['page'], x['placement_priority']))
+        
+        print(f"🎯 Enhanced image extraction complete: {len(contextual_images)} contextual images extracted")
+        return contextual_images
+        
+    except Exception as e:
+        print(f"❌ Enhanced image extraction failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def should_skip_image(filename: str, file_info) -> bool:
+    """
+    Determine if an image should be skipped based on filtering rules
+    """
+    # Skip patterns for decorative/irrelevant images
+    skip_patterns = [
+        'logo', 'header', 'footer', 'watermark', 'background', 'banner',
+        'cover', 'title', 'border', 'decoration', 'template', 'frame'
+    ]
+    
+    # Skip if filename contains skip patterns
+    if any(pattern in filename for pattern in skip_patterns):
+        print(f"🚫 Skipping decorative image: {filename}")
+        return True
+    
+    # Skip very small images (likely decorative)
+    if file_info.file_size < 5000:  # Less than 5KB
+        print(f"🚫 Skipping small decorative image: {filename} ({file_info.file_size} bytes)")
+        return True
+    
+    return False
+
+def extract_image_positions_from_xml(doc_tree, paragraph_contexts) -> list:
+    """
+    Parse document XML to find where images are positioned relative to paragraphs
+    """
+    positions = []
+    
+    try:
+        # Find all image references in the document
+        for drawing in doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing'):
+            # Try to find the paragraph this image belongs to
+            paragraph_element = drawing
+            
+            # Walk up the tree to find the containing paragraph
+            while paragraph_element is not None and paragraph_element.tag != '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
+                paragraph_element = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
+            
+            if paragraph_element is not None:
+                # Find which paragraph index this corresponds to
+                all_paragraphs = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
+                try:
+                    para_index = list(all_paragraphs).index(paragraph_element)
+                    if para_index < len(paragraph_contexts):
+                        context = paragraph_contexts[para_index]
+                        positions.append({
+                            'paragraph_index': para_index,
+                            'chapter': context['chapter'],
+                            'page': context['page_estimate'],
+                            'paragraph_text': context['text']
+                        })
+                except ValueError:
+                    continue
+        
+    except Exception as e:
+        print(f"⚠️ Error parsing image positions from XML: {e}")
+    
+    return positions
+
+def find_image_context(filename: str, image_positions: list, paragraph_contexts: list) -> dict:
+    """
+    Find the best contextual placement for an image
+    """
+    if not image_positions or not paragraph_contexts:
+        # Fallback: assign to first non-heading paragraph
+        for context in paragraph_contexts:
+            if not context['is_heading'] and len(context['text']) > 50:
+                return {
+                    'chapter': context['chapter'],
+                    'page': context['page_estimate'],
+                    'position': f"after-paragraph-{context['index']}",
+                    'type': 'block',
+                    'paragraph_text': context['text'],
+                    'confidence': 'fallback'
+                }
+    
+    # Use the first available position (images are typically in document order)
+    if image_positions:
+        pos = image_positions[0]
+        return {
+            'chapter': pos['chapter'],
+            'page': pos['page'],
+            'position': f"after-paragraph-{pos['paragraph_index']}",
+            'type': 'block' if len(pos.get('paragraph_text', '')) < 100 else 'inline',
+            'paragraph_text': pos.get('paragraph_text', ''),
+            'confidence': 'high'
+        }
+    
+    return None
+
+def is_heading(paragraph) -> bool:
+    """
+    Determine if a paragraph is a heading
+    """
+    try:
+        # Check if paragraph uses a heading style
+        if hasattr(paragraph, 'style') and paragraph.style:
+            style_name = paragraph.style.name.lower()
+            if 'heading' in style_name:
+                return True
+        
+        # Check text characteristics
+        text = paragraph.text.strip()
+        if not text:
+            return False
+            
+        # Short, capitalized text might be a heading
+        if len(text) < 100 and (text.isupper() or text.istitle()):
+            return True
+            
+        # Check for heading patterns
+        if re.match(r'^\d+\.?\s+[A-Z]', text) or re.match(r'^[A-Z][^.!?]*$', text):
+            return True
+    
+    except Exception:
+        pass
+    
+    return False
+
+def estimate_page_number(paragraph_index: int, total_paragraphs: int) -> int:
+    """
+    Estimate page number based on paragraph position
+    Assumes ~30 paragraphs per page on average
+    """
+    return max(1, (paragraph_index // 30) + 1)
+
+def generate_contextual_caption(image_context: dict, image_number: int) -> str:
+    """
+    Generate a meaningful caption based on image context
+    """
+    chapter = image_context.get('chapter', 'Document')
+    
+    # Create contextual caption
+    if 'step' in chapter.lower():
+        return f"Figure {image_number}: {chapter} illustration"
+    elif 'process' in chapter.lower() or 'workflow' in chapter.lower():
+        return f"Figure {image_number}: {chapter} diagram"
+    elif 'example' in chapter.lower() or 'sample' in chapter.lower():
+        return f"Figure {image_number}: {chapter} example"
+    else:
+        return f"Figure {image_number}: {chapter} visual"
+
+def calculate_placement_priority(image_context: dict) -> int:
+    """
+    Calculate priority for image placement order within a page
+    Lower numbers = higher priority (placed first)
+    """
+    base_priority = 100
+    
+    # Inline images get higher priority
+    if image_context.get('type') == 'inline':
+        base_priority -= 10
+    
+    # Images with more context get higher priority
+    if image_context.get('confidence') == 'high':
+        base_priority -= 5
+    
+    return base_priority
+
 async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
     """Process PDF file with comprehensive text and image extraction"""
     try:

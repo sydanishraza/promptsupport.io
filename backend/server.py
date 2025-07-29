@@ -1482,7 +1482,7 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
                     continue
                 
                 # Find contextual placement for this image
-                image_context = find_image_context(filename, image_positions, paragraph_contexts)
+                image_context = find_enhanced_image_context(filename, image_positions, paragraph_contexts)
                 
                 if not image_context:
                     print(f"🚫 Skipping image without clear context: {filename}")

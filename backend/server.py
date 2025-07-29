@@ -437,7 +437,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
     # Try OpenAI first
     if OPENAI_API_KEY:
         try:
-            print("🤖 Attempting OpenAI (GPT-4o) call...")
+            print("🤖 Attempting OpenAI (GPT-4o-mini) call...")
             
             headers = {
                 "Authorization": f"Bearer {OPENAI_API_KEY}",

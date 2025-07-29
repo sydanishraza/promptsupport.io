@@ -194,6 +194,16 @@ const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle, onDownloadPDF
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    downloadArticlePDF(article.id, article.title);
+                  }}
+                  className="p-1 text-gray-400 hover:text-purple-600 rounded"
+                  title="Download PDF"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onDeleteArticle(article.id);
                   }}
                   className="p-1 text-gray-400 hover:text-red-600 rounded"

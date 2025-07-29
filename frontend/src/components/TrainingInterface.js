@@ -144,9 +144,10 @@ const TrainingInterface = () => {
         setProcessingResults(results.articles || []);
         setShowResults(true);
         
-        // Create training session
+        // Create training session using the session_id returned from backend
         const session = {
-          id: Date.now().toString(),
+          id: results.session_id || Date.now().toString(), // Use backend session_id
+          session_id: results.session_id, // Store the actual session_id for PDF downloads
           template_id: selectedTemplate,
           filename: uploadedFile.name,
           timestamp: new Date().toISOString(),

@@ -1904,7 +1904,6 @@ def _process_images_for_pdf(html_content: str) -> str:
     Process HTML content to convert relative image URLs to absolute URLs for PDF generation
     """
     import re
-    from urllib.parse import urljoin
     
     # Pattern to match img src attributes
     img_pattern = r'<img([^>]*?)src=["\']([^"\']*?)["\']([^>]*?)>'
@@ -1920,19 +1919,22 @@ def _process_images_for_pdf(html_content: str) -> str:
         
         # If it's a relative URL starting with /api/static, convert to absolute
         if src_url.startswith('/api/static/'):
-            # Convert to absolute URL - in production this would be your domain
-            absolute_url = f"http://localhost:8000{src_url}"
-            return f'<img{before_src}src="{absolute_url}"{after_src}>'
+            # Convert to file path for WeasyPrint
+            file_path = src_url.replace('/api/static/', '/app/backend/static/')
+            return f'<img{before_src}src="file://{file_path}"{after_src}>'
         
-        # For other relative URLs, try to make them absolute
+        # For other relative URLs starting with /, convert to file paths
         if src_url.startswith('/'):
-            absolute_url = f"http://localhost:8000{src_url}"
-            return f'<img{before_src}src="{absolute_url}"{after_src}>'
+            # Assume it's in the static directory
+            file_path = f"/app/backend{src_url}"
+            return f'<img{before_src}src="file://{file_path}"{after_src}>'
         
         return match.group(0)
     
     # Replace all img src attributes
     processed_html = re.sub(img_pattern, replace_img_src, html_content)
+    
+    print(f"🖼️ Processed {len(re.findall(img_pattern, html_content))} images for PDF generation")
     
     return processed_html
 

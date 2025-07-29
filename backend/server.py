@@ -274,7 +274,7 @@ async def regenerate_articles_with_enhanced_context(extracted_content: dict, con
                 "format": "html",
                 "created_at": datetime.utcnow().isoformat(),
                 "ai_processed": True,
-                "ai_model": "gpt-4o (with claude fallback)",
+                "ai_model": "gpt-4o-mini (with claude fallback)",
                 "training_mode": True,
                 "metadata": {
                     "article_number": i + 1,

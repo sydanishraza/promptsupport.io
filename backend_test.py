@@ -11670,6 +11670,10 @@ The generated article should have metadata showing 'gpt-4o-mini (with claude + l
         return results
 
 if __name__ == "__main__":
+    print("🚀 Enhanced Content Engine Backend Testing")
+    print("🎯 Focus: 3-Tier LLM Fallback System with Built-in Local LLM")
+    print("="*80)
+    
     tester = EnhancedContentEngineTest()
     
     # Check command line arguments
@@ -11704,18 +11708,22 @@ if __name__ == "__main__":
                 print(f"❌ Failed tests: {', '.join(failed_tests)}")
             
             exit(0 if passed == total else 1)
+        elif sys.argv[1] == "--local-llm":
+            # Run comprehensive 3-tier LLM fallback system tests
+            success = tester.run_comprehensive_local_llm_tests()
+            exit(0 if success else 1)
     else:
-        # Default: run training tests as requested in the review
-        results = tester.run_training_tests()
-        passed = sum(1 for _, result in results if result)
-        total = len(results)
+        # Default: run comprehensive 3-tier LLM fallback system tests as requested in the review
+        success = tester.run_comprehensive_local_llm_tests()
         
-        print(f"\n🎯 TRAINING INTERFACE TESTING COMPLETE: {passed}/{total} tests passed ({(passed/total*100):.1f}%)")
-        
-        if passed == total:
-            print("🎉 ALL TRAINING INTERFACE TESTS PASSED!")
+        if success:
+            print("\n🎉 3-TIER LLM FALLBACK SYSTEM TESTING COMPLETED SUCCESSFULLY!")
+            print("✅ Built-in Local LLM integration is working correctly")
+            print("✅ Complete fallback chain is operational")
+            print("✅ System handles failures gracefully")
         else:
-            failed_tests = [name for name, result in results if not result]
-            print(f"❌ Failed tests: {', '.join(failed_tests)}")
+            print("\n🚨 3-TIER LLM FALLBACK SYSTEM TESTING COMPLETED WITH ISSUES")
+            print("❌ Some components need attention")
+            print("📋 Check individual test results above for details")
         
-        exit(0 if passed == total else 1)
+        exit(0 if success else 1)

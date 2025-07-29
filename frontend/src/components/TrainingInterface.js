@@ -423,7 +423,7 @@ const TrainingInterface = () => {
                       <Eye className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => downloadArticlePDF(activeSession?.session_id, result.index || 0, result.title)}
+                      onClick={() => downloadArticlePDF(activeSession?.session_id, index, result.title)}
                       className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                       title="Download PDF"
                     >

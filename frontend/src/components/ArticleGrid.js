@@ -21,7 +21,20 @@ import {
   Download
 } from 'lucide-react';
 
-const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle }) => {
+const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle, onDownloadPDF }) => {
+  
+  // Download PDF function
+  const downloadArticlePDF = async (articleId, articleTitle) => {
+    try {
+      if (onDownloadPDF) {
+        await onDownloadPDF(articleId, articleTitle);
+      } else {
+        console.error('onDownloadPDF function not provided');
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
+  };
   
   // Get source type icon
   const getSourceTypeIcon = (sourceType) => {

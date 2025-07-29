@@ -2254,22 +2254,21 @@ async def download_training_article_pdf(session_id: str, article_index: int):
         
         print(f"✅ PDF generated successfully: {len(pdf_bytes)} bytes")
         
-        # Create temporary file
-        import tempfile
-        import os
+        # Create PDF stream response
+        def generate():
+            yield pdf_bytes
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            tmp_file.write(pdf_bytes)
-            temp_path = tmp_file.name
+        # Return streaming response with proper headers
+        headers = {
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Content-Type': 'application/pdf',
+            'Content-Length': str(len(pdf_bytes))
+        }
         
-        print(f"✅ PDF saved to temporary file: {temp_path}")
-        
-        # Return file response
-        return FileResponse(
-            path=temp_path,
-            filename=filename,
+        return StreamingResponse(
+            generate(),
             media_type='application/pdf',
-            background=None  # Don't delete file automatically
+            headers=headers
         )
         
     except HTTPException:

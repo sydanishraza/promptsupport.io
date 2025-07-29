@@ -1594,36 +1594,7 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
 
 
 
-def find_image_context(filename: str, image_positions: list, paragraph_contexts: list) -> dict:
-    """
-    Find the best contextual placement for an image
-    """
-    if not image_positions or not paragraph_contexts:
-        # Fallback: assign to first non-heading paragraph
-        for context in paragraph_contexts:
-            if not context['is_heading'] and len(context['text']) > 50:
-                return {
-                    'chapter': context['chapter'],
-                    'page': context['page_estimate'],
-                    'position': f"after-paragraph-{context['index']}",
-                    'type': 'block',
-                    'paragraph_text': context['text'],
-                    'confidence': 'fallback'
-                }
-    
-    # Use the first available position (images are typically in document order)
-    if image_positions:
-        pos = image_positions[0]
-        return {
-            'chapter': pos['chapter'],
-            'page': pos['page'],
-            'position': f"after-paragraph-{pos['paragraph_index']}",
-            'type': 'block' if len(pos.get('paragraph_text', '')) < 100 else 'inline',
-            'paragraph_text': pos.get('paragraph_text', ''),
-            'confidence': 'high'
-        }
-    
-    return None
+
 
 def is_heading(paragraph) -> bool:
     """

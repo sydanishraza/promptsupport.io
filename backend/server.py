@@ -1697,6 +1697,205 @@ def calculate_placement_priority(image_context: dict) -> int:
     
     return base_priority
 
+def embed_contextual_images_in_content(content: str, images: list) -> str:
+    """
+    Embed images in content using enhanced contextual placement according to specifications
+    """
+    if not images:
+        return content
+    
+    print(f"🖼️ Embedding {len(images)} contextual images in content")
+    
+    # Parse content into sections based on headings
+    content_sections = parse_content_into_sections(content)
+    
+    # Group images by chapter/section
+    images_by_chapter = {}
+    for img in images:
+        chapter = img.get('chapter', 'Introduction')
+        if chapter not in images_by_chapter:
+            images_by_chapter[chapter] = []
+        images_by_chapter[chapter].append(img)
+    
+    # Embed images in their appropriate sections
+    enhanced_content = ""
+    
+    for section in content_sections:
+        section_title = section['title']
+        section_content = section['content']
+        
+        # Find matching images for this section
+        matching_images = []
+        
+        # Exact chapter match
+        if section_title in images_by_chapter:
+            matching_images.extend(images_by_chapter[section_title])
+        
+        # Fuzzy matching for partial matches
+        for chapter, chapter_images in images_by_chapter.items():
+            if section_title.lower() in chapter.lower() or chapter.lower() in section_title.lower():
+                matching_images.extend([img for img in chapter_images if img not in matching_images])
+        
+        # Add section header
+        enhanced_content += section['header']
+        
+        if matching_images:
+            # Insert images contextually within the section
+            enhanced_content += insert_images_contextually(section_content, matching_images)
+        else:
+            # No images for this section, just add content
+            enhanced_content += section_content
+        
+        enhanced_content += "\n\n"
+    
+    # Handle any remaining images that didn't match sections
+    unmatched_images = []
+    all_embedded_images = set()
+    
+    for section in content_sections:
+        section_title = section['title']
+        if section_title in images_by_chapter:
+            all_embedded_images.update(img['url'] for img in images_by_chapter[section_title])
+    
+    for img in images:
+        if img['url'] not in all_embedded_images:
+            unmatched_images.append(img)
+    
+    if unmatched_images:
+        print(f"📎 Adding {len(unmatched_images)} unmatched images at the end")
+        enhanced_content += "\n\n<h2>Additional Resources</h2>\n"
+        for img in unmatched_images:
+            enhanced_content += create_image_figure_html(img)
+            enhanced_content += "\n\n"
+    
+    return enhanced_content.strip()
+
+def parse_content_into_sections(content: str) -> list:
+    """
+    Parse HTML content into logical sections based on headings
+    """
+    import re
+    
+    sections = []
+    
+    # Split content by heading tags
+    heading_pattern = r'(<h[1-6][^>]*>.*?</h[1-6]>)'
+    parts = re.split(heading_pattern, content, flags=re.DOTALL | re.IGNORECASE)
+    
+    current_section = {
+        'title': 'Introduction',
+        'header': '',
+        'content': ''
+    }
+    
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+            
+        # Check if this part is a heading
+        heading_match = re.match(r'<h[1-6][^>]*>(.*?)</h[1-6]>', part, re.DOTALL | re.IGNORECASE)
+        
+        if heading_match:
+            # Save previous section if it has content
+            if current_section['content'].strip():
+                sections.append(current_section.copy())
+            
+            # Start new section
+            heading_text = heading_match.group(1).strip()
+            current_section = {
+                'title': heading_text,
+                'header': part,
+                'content': ''
+            }
+        else:
+            # Add to current section content
+            current_section['content'] += part
+    
+    # Don't forget the last section
+    if current_section['content'].strip():
+        sections.append(current_section)
+    
+    return sections if sections else [{'title': 'Content', 'header': '', 'content': content}]
+
+def insert_images_contextually(content: str, images: list) -> str:
+    """
+    Insert images at appropriate positions within section content
+    """
+    if not images:
+        return content
+    
+    # Split content into paragraphs
+    paragraphs = content.split('</p>')
+    if len(paragraphs) <= 1:
+        # No clear paragraph structure, insert images at the beginning
+        image_html = ""
+        for img in images:
+            image_html += create_image_figure_html(img) + "\n\n"
+        return image_html + content
+    
+    # Calculate ideal insertion points
+    total_paragraphs = len(paragraphs) - 1  # Last split is usually empty
+    images_per_position = max(1, len(images))
+    
+    enhanced_content = ""
+    image_index = 0
+    
+    for i, paragraph in enumerate(paragraphs[:-1]):  # Skip last empty element
+        enhanced_content += paragraph + '</p>'
+        
+        # Determine if we should insert an image after this paragraph
+        if image_index < len(images):
+            # Insert images based on their placement preferences
+            should_insert = False
+            current_img = images[image_index]
+            
+            # Check position preference from contextual data
+            position_info = current_img.get('position', '')
+            
+            if f"after-paragraph-{i}" in position_info:
+                should_insert = True
+            elif i == total_paragraphs // 2 and image_index == 0:  # Middle of content
+                should_insert = True
+            elif i == total_paragraphs - 1 and image_index < len(images):  # End of content
+                should_insert = True
+            elif (i + 1) % max(1, total_paragraphs // len(images)) == 0:  # Even distribution
+                should_insert = True
+            
+            if should_insert:
+                enhanced_content += "\n\n" + create_image_figure_html(current_img)
+                image_index += 1
+        
+        enhanced_content += "\n\n"
+    
+    # Insert any remaining images at the end
+    while image_index < len(images):
+        enhanced_content += create_image_figure_html(images[image_index]) + "\n\n"
+        image_index += 1
+    
+    return enhanced_content
+
+def create_image_figure_html(img: dict) -> str:
+    """
+    Create proper HTML figure element for an image using contextual data
+    """
+    # Use contextual data from the enhanced extraction
+    image_url = img.get('url', img.get('image', ''))
+    alt_text = img.get('alt_text', f"Figure: {img.get('chapter', 'Content')} illustration")
+    caption = img.get('caption', f"Figure: {img.get('chapter', 'Document')} visual")
+    
+    # Create accessible, well-structured HTML figure
+    figure_html = f'''<figure class="embedded-image" style="margin: 1.5rem 0; text-align: center;">
+    <img src="{image_url}" 
+         alt="{alt_text}" 
+         style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 0.5rem; font-style: italic; color: #666; font-size: 0.9em;">
+        {caption}
+    </figcaption>
+</figure>'''
+    
+    return figure_html
+
 async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
     """Process PDF file with comprehensive text and image extraction"""
     try:

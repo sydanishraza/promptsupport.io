@@ -426,6 +426,40 @@ class SaveArticleRequest(BaseModel):
     content: str
     status: str = "draft"  # draft, published
 
+async def call_local_llm(system_message: str, user_message: str) -> Optional[str]:
+    """
+    Call local LLM as final fallback option
+    Returns the response text or None if it fails
+    """
+    try:
+        # Try to connect to local LLM server (e.g., Ollama, LocalAI, etc.)
+        # This is a placeholder implementation - adjust URL and format as needed
+        local_llm_url = os.getenv("LOCAL_LLM_URL", "http://localhost:11434/api/generate")
+        
+        # Format for Ollama API
+        data = {
+            "model": os.getenv("LOCAL_LLM_MODEL", "llama2"),
+            "prompt": f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:",
+            "stream": False
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(local_llm_url, json=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result.get("response", "")
+                if ai_response:
+                    print(f"✅ Local LLM response successful: {len(ai_response)} characters")
+                    return ai_response
+            else:
+                print(f"❌ Local LLM failed: {response.status_code} - {response.text}")
+                
+    except Exception as e:
+        print(f"❌ Local LLM connection failed: {e}")
+    
+    return None
+
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
     """
     Call LLM with OpenAI first, fallback to Claude if OpenAI fails

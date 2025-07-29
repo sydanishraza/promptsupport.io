@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://ea690f47-290f-42c5-a91b-ff6c95b5773d.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://2318aeda-c194-4690-b95f-460c1aa5825b.preview.emergentagent.com') + '/api'
 
 # Extended test content that should definitely trigger multi-article splitting
 EXTENDED_MULTI_SECTION_CONTENT = """# Enterprise Software Documentation

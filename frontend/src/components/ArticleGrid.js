@@ -292,16 +292,28 @@ const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle, onDownloadPDF
 
             {/* Actions */}
             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onArticleSelect(article);
-                }}
-                className="flex items-center space-x-1 px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs font-medium transition-colors"
-              >
-                <Eye className="h-3 w-3" />
-                <span>View</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onArticleSelect(article);
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs font-medium transition-colors"
+                >
+                  <Eye className="h-3 w-3" />
+                  <span>View</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadArticlePDF(article.id, article.title);
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 text-xs font-medium transition-colors"
+                >
+                  <Download className="h-3 w-3" />
+                  <span>PDF</span>
+                </button>
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

@@ -207,6 +207,7 @@
 
 ## test_plan:
   current_focus:
+    - "3-Tier LLM Fallback System Implementation"
     - "Training Interface Backend API Implementation"
     - "Enhanced Document Processing with Image Embedding"
     - "Comprehensive Format Support (PDF, PowerPoint, Text)"

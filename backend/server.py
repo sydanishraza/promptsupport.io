@@ -1541,25 +1541,54 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
         traceback.print_exc()
         return []
 
-def should_skip_image(filename: str, file_info) -> bool:
+def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     """
-    Determine if an image should be skipped based on filtering rules
+    Enhanced image filtering to skip decorative images and focus on content-relevant images
     """
-    # Skip patterns for decorative/irrelevant images
+    # Enhanced skip patterns for decorative/irrelevant images
     skip_patterns = [
         'logo', 'header', 'footer', 'watermark', 'background', 'banner',
-        'cover', 'title', 'border', 'decoration', 'template', 'frame'
+        'cover', 'title', 'border', 'decoration', 'template', 'frame',
+        'bullet', 'icon', 'symbol', 'separator', 'divider', 'ornament',
+        'brand', 'trademark', 'copyright', 'signature', 'letterhead'
     ]
     
-    # Skip if filename contains skip patterns
-    if any(pattern in filename for pattern in skip_patterns):
-        print(f"🚫 Skipping decorative image: {filename}")
+    # Check filename patterns
+    filename_lower = filename.lower()
+    if any(pattern in filename_lower for pattern in skip_patterns):
+        print(f"🚫 Skipping decorative image (filename pattern): {filename}")
         return True
     
-    # Skip very small images (likely decorative)
-    if file_info.file_size < 5000:  # Less than 5KB
+    # Skip very small images (likely decorative icons/bullets)
+    if file_info.file_size < 8000:  # Less than 8KB
         print(f"🚫 Skipping small decorative image: {filename} ({file_info.file_size} bytes)")
         return True
+    
+    # Skip very large images that might be cover pages or backgrounds
+    if file_info.file_size > 5000000:  # Greater than 5MB
+        print(f"🚫 Skipping very large image (likely cover/background): {filename} ({file_info.file_size} bytes)")
+        return True
+    
+    # Enhanced context-based filtering
+    if paragraph_context:
+        # Skip images in the first few paragraphs (likely cover page area)
+        if paragraph_context.get('page_estimate', 0) <= 1 and paragraph_context.get('paragraph_index', 0) < 10:
+            print(f"🚫 Skipping image from cover page area: {filename}")
+            return True
+            
+        # Skip images with minimal surrounding text (likely decorative)
+        surrounding_text = paragraph_context.get('text', '')
+        if len(surrounding_text.strip()) < 50:
+            print(f"🚫 Skipping image with minimal context: {filename}")
+            return True
+    
+    # Check for repeated/pattern-based image names (likely decorative)
+    import re
+    if re.search(r'image\d+$|img\d+$|picture\d+$', filename_lower.split('.')[0]):
+        # Generic numbered images are often decorative unless they have substantial context
+        if not paragraph_context or len(paragraph_context.get('text', '')) < 100:
+            print(f"🚫 Skipping generic numbered image without context: {filename}")
+            return True
     
     return False
 

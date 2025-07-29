@@ -9947,9 +9947,15 @@ This test document verifies that the recent fixes to PDF processing are working 
         print(f"❌ Failed: {failed}")
         print(f"📊 Success Rate: {(passed/(passed+failed)*100):.1f}%")
         
-        print("\n🎯 PRIORITY TEST RESULTS (DOCX/PDF Processing):")
-        if len(results) >= 2:
-            priority_tests = [("🎯 DOCX Processing Fix", results[0][1]), ("🎯 PDF Processing Fix", results[1][1])]
+        print("\n🎯 PRIORITY TEST RESULTS (OpenAI Integration):")
+        if len(results) >= 5:
+            priority_tests = [
+                ("🔥 Direct OpenAI API Call", results[0][1]), 
+                ("🔥 Direct Claude API Call", results[1][1]),
+                ("🔥 GPT-4o-mini Model Verification", results[2][1]),
+                ("🔥 LLM Fallback System Comprehensive", results[3][1]),
+                ("🔥 Quota and Rate Limit Handling", results[4][1])
+            ]
             for test_name, result in priority_tests:
                 status = "✅ PASS" if result else "❌ FAIL"
                 print(f"  {status} - {test_name}")

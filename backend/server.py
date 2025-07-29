@@ -2129,7 +2129,7 @@ def generate_pdf_from_html(html_content: str, title: str = "Generated Article") 
             </style>
         </head>
         <body>
-            {html_content}
+            {processed_html_content}
         </body>
         </html>
         """

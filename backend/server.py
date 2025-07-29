@@ -2471,7 +2471,7 @@ Return only the HTML article content - no explanations or meta-commentary."""
             "format": "html",
             "created_at": datetime.utcnow().isoformat(),
             "ai_processed": True,
-            "ai_model": "gpt-4o (with claude fallback)",
+            "ai_model": "gpt-4o-mini (with claude fallback)",
             "training_mode": True,
             "metadata": {
                 "article_number": article_number,

@@ -168,6 +168,37 @@ const TrainingInterface = () => {
     }
   };
 
+  // Download PDF function
+  const downloadArticlePDF = async (sessionId, articleIndex, articleTitle) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/training/article/${sessionId}/${articleIndex}/download-pdf`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      // Create blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Training_${articleTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  };
+
   // Evaluate result
   const evaluateResult = async (resultId, evaluation) => {
     try {

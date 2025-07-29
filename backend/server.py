@@ -1465,7 +1465,7 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
             try:
                 doc_xml = zip_ref.read('word/document.xml')
                 doc_tree = ET.fromstring(doc_xml)
-                image_positions = extract_image_positions_from_xml(doc_tree, paragraph_contexts)
+                image_positions = extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts)
             except Exception as xml_error:
                 print(f"⚠️ Could not parse document XML for positions: {xml_error}")
                 image_positions = []

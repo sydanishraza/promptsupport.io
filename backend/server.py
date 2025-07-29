@@ -3234,301 +3234,288 @@ def find_best_section_for_image(image: dict, sections: list) -> int:
     return best_section if best_score > 10 else None
 
 async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int, total_articles: int = 1) -> dict:
-    """Create a single article using template specifications"""
+    """Create a single comprehensive article with enhanced structure and quality"""
     try:
-        print(f"🔍 Creating article {article_number} with {len(images)} images")
+        print(f"🔍 Creating enhanced article {article_number}/{total_articles} with {len(images)} images")
         
-        # Generate title
-        title = f"Article {article_number} from {training_session['filename']}"
+        # Generate intelligent title based on content, not filename
+        title = generate_contextual_title(content, article_number, training_session)
         
-        # Generate content using LLM with template instructions
-        system_message = f"""You are an expert technical writer creating knowledge base articles. 
+        # Enhanced LLM system message for better content quality
+        system_message = f"""You are an expert technical writer creating comprehensive knowledge base articles.
 
-CRITICAL INSTRUCTIONS:
-1. Generate ONLY the article content in clean HTML format
-2. Do NOT include any meta-commentary, explanations, or processing notes
-3. Do NOT mention that you are processing content or creating articles
-4. Start directly with the content - no introductory phrases
-5. Use proper HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>
-6. Create a meaningful, contextual title based on the content topic
-7. Structure the content logically with clear sections and headings
+CRITICAL OUTPUT REQUIREMENTS:
+1. Generate ONLY clean, semantic HTML content - no meta-commentary
+2. Use proper HTML5 structure: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>
+3. Create contextual, descriptive titles that reflect actual content topics
+4. Write in professional, technical tone suitable for knowledge documentation
+5. Include proper structure with clear hierarchy and logical flow
+6. Use callout sections for Notes, Tips, Warnings with appropriate HTML
 
 TEMPLATE SPECIFICATIONS:
 {json.dumps(template_data.get('processing_instructions', []), indent=2)}
 
-OUTPUT FORMAT: Clean HTML only - no meta-text or commentary."""
-        
-        user_message = f"""Create a well-structured knowledge base article from this content:
+QUALITY STANDARDS:
+- Comprehensive coverage without skipping details
+- Clear step-by-step instructions where applicable  
+- Professional technical writing style
+- Proper heading hierarchy for content organization
+- Lists and tables for structured information
+- No artificial content truncation
 
+IMAGE INTEGRATION:
+- Embed images contextually using proper HTML figure elements
+- Reference images naturally in text flow
+- Use descriptive captions and alt text"""
+
+        # Enhanced user message with better content processing
+        user_message = f"""Transform this content into a comprehensive, well-structured knowledge base article:
+
+CONTENT TO PROCESS:
 {content}
 
-IMPORTANT INSTRUCTIONS:
-1. Generate a contextual title that reflects the main topic (not filename-based)
-2. Structure content with proper HTML headings and sections
-3. Include bullet points, numbered lists, and formatting as appropriate
-4. Write in a professional, informative tone suitable for a knowledge base
-5. DO NOT include image placeholders like [IMAGE_1], [IMAGE_2] unless you have confirmed images available
-6. If the source content mentions images but no actual images are provided, describe what the image would show instead
-7. Ensure content flows logically and is easy to understand
+REQUIREMENTS:
+1. **Intelligent Title**: Create a meaningful title based on the main topic (not filename)
+2. **Comprehensive Structure**: Use proper headings, sections, and logical flow
+3. **Technical Quality**: Professional language for technical documentation
+4. **Full Coverage**: Include all important information without truncation
+5. **Enhanced Formatting**: Lists, tables, callouts, and proper HTML structure
 
-Available images: {len(images)}
-{[f"IMAGE_{i+1}: {img.get('filename', 'unknown')}" for i, img in enumerate(images)] if images else "No images available - focus on text content only"}
+AVAILABLE IMAGES: {len(images)}
+{format_available_images(images)}
 
-CRITICAL: Only include image placeholders if you have actual images to reference. If no images are available, provide descriptive text instead of placeholders.
+IMAGE EMBEDDING:
+- Only reference actually available images
+- Use this format for image embedding:
+  <figure class="embedded-image">
+    <img src="[IMAGE_URL]" alt="[DESCRIPTIVE_ALT]" style="max-width: 100%; height: auto;">
+    <figcaption>[CONTEXTUAL_CAPTION]</figcaption>
+  </figure>
+- Reference images naturally in the text
+- If no images available, focus on comprehensive text content
 
-Return only the HTML article content - no explanations or meta-commentary."""
-        
-        # Use LLM to generate content with better image placement instructions
-        print(f"🤖 Calling LLM for article generation...")
+ENHANCEMENT INSTRUCTIONS:
+- Transform basic content into comprehensive documentation
+- Add proper structure and professional formatting
+- Include implementation details and examples
+- Use callouts for important information
+- Ensure logical content flow from introduction to conclusion
+
+Return only the complete HTML article content with semantic structure."""
+
+        # Generate content with enhanced LLM processing
+        print(f"🤖 Generating enhanced article content...")
         ai_content = await call_llm_with_fallback(system_message, user_message)
         
-        print(f"🔍 DEBUG - LLM response received: {ai_content is not None}")
-        print(f"🔍 DEBUG - LLM response length: {len(ai_content) if ai_content else 0}")
-        
         if not ai_content:
-            print("⚠️ No AI content generated, creating enhanced fallback matching LLM quality")
-            
-            # Create a high-quality fallback that matches LLM output standards
-            lines = content.strip().split('\n')
-            
-            # Extract a contextual title from the first meaningful line
-            contextual_title = title  # Default fallback
-            for line in lines:
-                line = line.strip()
-                if line and len(line) > 10 and not line.lower().startswith(('table of contents', 'toc', '===', '---')):
-                    # Remove common prefixes and clean up
-                    contextual_title = line.replace('=', '').replace('#', '').strip()
-                    if len(contextual_title) > 5:
-                        break
-            
-            # Create professional, LLM-quality structured HTML content
-            ai_content = f"<h1>{contextual_title}</h1>\n"
-            
-            # Add introduction paragraph if we can extract one
-            intro_added = False
-            current_paragraph = []
-            in_list = False
-            list_type = 'ul'
-            
-            for i, line in enumerate(lines[1:], 1):  # Skip first line since we used it as title
-                line = line.strip()
-                if not line:
-                    # Handle paragraph breaks
-                    if current_paragraph and not in_list:
-                        ai_content += f"<p>{''.join(current_paragraph)}</p>\n\n"
-                        current_paragraph = []
-                    continue
-                    
-                # Skip table of contents and metadata
-                if any(skip in line.lower() for skip in ['table of contents', 'toc', 'created:', 'modified:', 'author:']):
-                    continue
-                    
-                # Detect headings (chapters, sections, or standalone short lines that look like headings)
-                is_heading = False
-                heading_level = 2  # Default to h2
-                
-                if (line.startswith(('Chapter', 'Section', 'Part ')) or 
-                    (len(line) < 80 and 
-                     (any(line.startswith(f'{i}.') or line.startswith(f'{i} ') for i in range(1, 20)) or
-                      line.isupper() or
-                      (line.endswith(':') and len(line) < 60) or
-                      (not any(c in line for c in '.,;') and len(line.split()) <= 6)))):
-                    is_heading = True
-                    
-                    # Determine heading level
-                    if line.startswith(('Chapter', 'Part ')):
-                        heading_level = 2
-                    elif line.startswith('Section') or (line.endswith(':') and len(line) < 30):
-                        heading_level = 3
-                    elif len(line.split()) <= 3:
-                        heading_level = 3
-                    else:
-                        heading_level = 2
-                
-                if is_heading:
-                    # Close any open content
-                    if current_paragraph:
-                        ai_content += f"<p>{''.join(current_paragraph)}</p>\n\n"
-                        current_paragraph = []
-                    if in_list:
-                        ai_content += f"</{list_type}>\n\n"
-                        in_list = False
-                    
-                    # Clean the heading
-                    clean_heading = line.rstrip(':').strip()
-                    ai_content += f"<h{heading_level}>{clean_heading}</h{heading_level}>\n\n"
-                    
-                # Detect list items
-                elif (line.startswith(('- ', '• ', '* ', '+ ')) or 
-                      (len(line) < 100 and (line[0].isdigit() and '. ' in line[:5]))):
-                    
-                    # Close paragraph if open
-                    if current_paragraph:
-                        ai_content += f"<p>{''.join(current_paragraph)}</p>\n\n"
-                        current_paragraph = []
-                    
-                    # Determine list type
-                    new_list_type = 'ol' if (line[0].isdigit() and '. ' in line[:5]) else 'ul'
-                    
-                    # Start new list or change list type
-                    if not in_list:
-                        ai_content += f"<{new_list_type}>\n"
-                        in_list = True
-                        list_type = new_list_type
-                    elif list_type != new_list_type:
-                        ai_content += f"</{list_type}>\n<{new_list_type}>\n"
-                        list_type = new_list_type
-                    
-                    # Extract list content
-                    if line.startswith(('- ', '• ', '* ', '+ ')):
-                        list_content = line[2:].strip()
-                    else:  # Numbered list
-                        list_content = line.split('. ', 1)[1] if '. ' in line else line
-                    
-                    ai_content += f"  <li>{list_content}</li>\n"
-                    
-                else:
-                    # Close list if we were in one
-                    if in_list:
-                        ai_content += f"</{list_type}>\n\n"
-                        in_list = False
-                    
-                    # Regular paragraph content - enhance with better formatting
-                    enhanced_line = line
-                    
-                    # Add emphasis for key terms (simple heuristics)
-                    if ':' in enhanced_line and not enhanced_line.endswith(':'):
-                        parts = enhanced_line.split(':', 1)
-                        if len(parts) == 2 and len(parts[0]) < 50:
-                            enhanced_line = f"<strong>{parts[0]}:</strong>{parts[1]}"
-                    
-                    # Add to current paragraph
-                    current_paragraph.append(enhanced_line + ' ')
-                    
-                    # If paragraph is getting long, close it
-                    if len(' '.join(current_paragraph)) > 400:
-                        ai_content += f"<p>{' '.join(current_paragraph).strip()}</p>\n\n"
-                        current_paragraph = []
-            
-            # Close any remaining content
-            if current_paragraph:
-                ai_content += f"<p>{' '.join(current_paragraph).strip()}</p>\n\n"
-            if in_list:
-                ai_content += f"</{list_type}>\n\n"
-            
-            # Add a conclusion if the content is substantial
-            if len(ai_content) > 1000:
-                ai_content += "<h2>Summary</h2>\n<p>This comprehensive guide covers the essential aspects of the topic, providing valuable insights and practical information for implementation and understanding.</p>\n"
-            
-            print(f"✅ Created enhanced fallback content matching LLM quality: {len(ai_content)} characters")
+            print("⚠️ No AI content generated, creating enhanced fallback")
+            ai_content = create_structured_fallback_content(content, images, title)
         
-        # Extract title from the HTML content if it contains an h1 tag
-        contextual_title = title  # fallback
-        if '<h1>' in ai_content:
-            import re
-            h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', ai_content, re.IGNORECASE | re.DOTALL)
-            if h1_match:
-                contextual_title = h1_match.group(1).strip()
-                print(f"✅ Extracted contextual title: {contextual_title}")
+        # Post-process for quality and image embedding
+        final_content = enhance_content_quality(ai_content, images)
         
-        print(f"✅ AI content generated: {len(ai_content)} characters, title: {contextual_title}")
+        # Extract final title from content if better than generated
+        final_title = extract_content_title(final_content) or title
         
-        # Enhanced image embedding with contextual placement using new system
-        if images:
-            print(f"🖼️ Processing {len(images)} images for enhanced contextual embedding")
-            
-            # Check content-to-image ratio to ensure balanced articles
-            text_content = ai_content.replace('<', ' <').replace('>', '> ')  # Add spaces around tags
-            text_only = ''.join(c for c in text_content if c.isalnum() or c.isspace())
-            word_count = len(text_only.split())
-            
-            # Limit images based on text content to prevent image-heavy articles
-            max_images_for_content = max(3, word_count // 100)  # At least 100 words per image
-            images_to_use = images[:max_images_for_content] if len(images) > max_images_for_content else images
-            
-            if len(images_to_use) < len(images):
-                print(f"🎯 Limiting to {len(images_to_use)} images (from {len(images)}) to maintain content balance")
-            
-            # Use the new enhanced contextual image embedding system
-            ai_content = embed_contextual_images_in_content(ai_content, images_to_use)
-            print(f"✅ Enhanced contextual image embedding complete: {len(images_to_use)} images embedded")
-        else:
-            print("📄 No images to embed, proceeding with text-only content")
-        
-        # Clean up any remaining image placeholders when no images are available
-        if not images:
-            placeholder_patterns_cleanup = [
-                r'\[IMAGE_\d+\]', r'\[image_\d+\]', r'\[Image_\d+\]', r'\[IMG_\d+\]', r'\[img_\d+\]',
-                r'\{IMAGE_\d+\}', r'\{image_\d+\}', r'\{IMG_\d+\}', r'\{img_\d+\}'
-            ]
-            
-            import re
-            original_length = len(ai_content)
-            
-            for pattern in placeholder_patterns_cleanup:
-                # Replace placeholders with descriptive text
-                def replace_placeholder(match):
-                    placeholder = match.group(0)
-                    return f'<p><em>[Visual diagram would be displayed here showing relevant system components and relationships]</em></p>'
-                
-                ai_content = re.sub(pattern, replace_placeholder, ai_content)
-            
-            if len(ai_content) != original_length:
-                print(f"🧹 Cleaned up image placeholders in content without actual images")
-        
-        # Ensure the article has sufficient text content
-        final_text = ''.join(c for c in ai_content if c.isalnum() or c.isspace())
-        final_word_count = len(final_text.split())
-        
-        if final_word_count < 100:
-            print(f"⚠️ Article has only {final_word_count} words, enhancing with additional content")
-            # Add more descriptive content to avoid image-heavy articles
-            ai_content += f"\n\n<section><h3>Additional Context</h3><p>This section provides comprehensive coverage of the topic with detailed explanations and analysis relevant to the content above.</p></section>"
-        
-        # Clean and format content
-        formatted_content = clean_article_content(ai_content)
-        
-        # Create article object with contextual title
+        # Create enhanced article with comprehensive metadata
         article = {
             "id": str(uuid.uuid4()),
-            "title": clean_article_title(contextual_title),  # Use contextual title instead of generic one
-            "content": formatted_content,
-            "status": "training",
-            "template_id": training_session["template_id"],
-            "session_id": training_session["session_id"],
-            "word_count": len(formatted_content.split()),
+            "title": final_title,
+            "content": final_content,
+            "word_count": len(final_content.split()),
             "image_count": len(images),
-            "format": "html",
-            "created_at": datetime.utcnow().isoformat(),
-            "ai_processed": True,
-            "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
+            "status": "training",
+            "template_id": template_data.get("template_id", "enhanced_processing"),
+            "session_id": training_session.get("session_id"),
             "training_mode": True,
-            "metadata": {
+            "ai_processed": True,
+            "ai_model": "enhanced_knowledge_engine",
+            "has_images": len(images) > 0,
+            "has_structure": check_content_structure(final_content),
+            "processing_metadata": {
                 "article_number": article_number,
-                "source_filename": training_session["filename"],
-                "template_applied": training_session["template_id"]
+                "total_articles": total_articles,
+                "original_length": len(content),
+                "enhanced_length": len(final_content),
+                "images_embedded": count_embedded_images(final_content)
             }
         }
         
-        print(f"✅ Article created: {article['title']}, {article['word_count']} words, {article['image_count']} images")
-        
+        print(f"✅ Enhanced article created: '{final_title}' ({article['word_count']} words)")
         return article
         
     except Exception as e:
-        print(f"❌ Single article creation error: {e}")
-        return {
-            "id": str(uuid.uuid4()),
-            "title": f"Error Article {article_number}",
-            "content": f"<p>Error processing content: {str(e)}</p>",
-            "status": "error",
-            "template_id": training_session["template_id"],
-            "session_id": training_session["session_id"],
-            "word_count": 0,
-            "image_count": 0,
-            "format": "html",
-            "created_at": datetime.utcnow().isoformat(),
-            "training_mode": True
-        }
+        print(f"❌ Enhanced article creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def generate_contextual_title(content: str, article_number: int, training_session: dict) -> str:
+    """Generate intelligent title based on content analysis"""
+    import re
+    
+    # Extract from existing headings first
+    h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', content, re.IGNORECASE | re.DOTALL)
+    if h1_match:
+        title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+        if 5 < len(title_text) < 100:
+            return title_text
+    
+    h2_match = re.search(r'<h2[^>]*>(.*?)</h2>', content, re.IGNORECASE | re.DOTALL)
+    if h2_match:
+        title_text = re.sub(r'<[^>]+>', '', h2_match.group(1)).strip()
+        if 5 < len(title_text) < 100:
+            return title_text
+    
+    # Analyze content for key topics
+    clean_content = re.sub(r'<[^>]+>', '', content)
+    words = clean_content.split()[:100]  # First 100 words
+    
+    # Look for topic keywords
+    topic_keywords = ['guide', 'process', 'procedure', 'step', 'method', 'system', 'overview', 'management']
+    found_topics = []
+    
+    for i, word in enumerate(words):
+        if word.lower() in topic_keywords and i > 0:
+            # Get context around the keyword
+            start_idx = max(0, i-3)
+            end_idx = min(len(words), i+4)
+            context = ' '.join(words[start_idx:end_idx])
+            found_topics.append(context)
+    
+    if found_topics:
+        # Use the first relevant topic
+        topic = found_topics[0]
+        topic = re.sub(r'[^\w\s]', '', topic).strip()
+        if len(topic) > 10:
+            return topic.title()
+    
+    # Fallback to source-based naming
+    source_name = training_session.get('filename', 'Document').replace('.docx', '').replace('.pdf', '')
+    source_name = source_name.replace('_', ' ').replace('-', ' ')
+    
+    if article_number == 1:
+        return f"Understanding {source_name}"
+    else:
+        return f"{source_name} - Section {article_number}"
+
+def format_available_images(images: list) -> str:
+    """Format available images for LLM reference"""
+    if not images:
+        return "No images available - focus on comprehensive text content"
+    
+    image_refs = []
+    for i, img in enumerate(images, 1):
+        chapter = img.get('chapter', 'Document')
+        filename = img.get('filename', f'image{i}')
+        caption = img.get('caption', f'Figure {i}')
+        image_refs.append(f"IMAGE_{i}: {filename} - {caption} (from {chapter})")
+    
+    return "\n".join(image_refs)
+
+def create_structured_fallback_content(content: str, images: list, title: str) -> str:
+    """Create structured fallback when AI is unavailable"""
+    html = f"<h1>{title}</h1>\n\n"
+    
+    # Process content into structured HTML
+    paragraphs = content.split('\n\n')
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+            
+        # Detect if paragraph looks like a heading
+        if len(para) < 80 and (para.isupper() or para.endswith(':') or para.count(' ') < 8):
+            html += f"<h2>{para.rstrip(':')}</h2>\n\n"
+        elif para.startswith('•') or para.startswith('-'):
+            # Convert to list
+            html += f"<ul>\n<li>{para[1:].strip()}</li>\n</ul>\n\n"
+        else:
+            html += f"<p>{para}</p>\n\n"
+    
+    # Add images if available
+    if images:
+        html += "<h2>Related Figures</h2>\n\n"
+        for img in images[:2]:  # Limit for fallback
+            html += f"""<figure class="embedded-image">
+<img src="{img.get('url', '')}" alt="{img.get('alt_text', 'Figure')}" style="max-width: 100%; height: auto;">
+<figcaption>{img.get('caption', 'Figure')}</figcaption>
+</figure>\n\n"""
+    
+    return html
+
+def enhance_content_quality(content: str, images: list) -> str:
+    """Post-process content for quality and image integration"""
+    if not content:
+        return content
+    
+    # Ensure proper HTML structure
+    if not content.strip().startswith('<'):
+        content = f"<div>{content}</div>"
+    
+    # Add missing images if AI didn't embed them
+    if images and not any(img.get('url', '') in content for img in images):
+        content = add_missing_images(content, images)
+    
+    # Clean HTML formatting
+    import re
+    content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Remove excessive newlines
+    content = re.sub(r'</p>\s*<p>', '</p>\n\n<p>', content)  # Proper paragraph spacing
+    
+    return content.strip()
+
+def add_missing_images(content: str, images: list) -> str:
+    """Add missing images at appropriate locations"""
+    import re
+    
+    # Find insertion points after headings
+    h2_positions = [m.end() for m in re.finditer(r'</h2>', content, re.IGNORECASE)]
+    
+    if not h2_positions:
+        # Fall back to paragraph positions
+        h2_positions = [m.end() for m in re.finditer(r'</p>', content, re.IGNORECASE)][:2]
+    
+    # Insert images at found positions
+    offset = 0
+    images_to_add = images[:min(len(h2_positions), 2)]  # Limit insertions
+    
+    for i, image in enumerate(images_to_add):
+        if i < len(h2_positions):
+            insert_pos = h2_positions[i] + offset
+            
+            img_html = f"""
+<figure class="embedded-image">
+<img src="{image.get('url', '')}" alt="{image.get('alt_text', 'Figure')}" style="max-width: 100%; height: auto;">
+<figcaption>{image.get('caption', 'Figure')}</figcaption>
+</figure>
+"""
+            content = content[:insert_pos] + img_html + content[insert_pos:]
+            offset += len(img_html)
+    
+    return content
+
+def extract_content_title(content: str) -> str:
+    """Extract title from generated content"""
+    import re
+    
+    h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', content, re.IGNORECASE | re.DOTALL)
+    if h1_match:
+        title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+        if 5 < len(title_text) < 120:
+            return title_text
+    return None
+
+def check_content_structure(content: str) -> bool:
+    """Check if content has proper structure"""
+    import re
+    has_headings = bool(re.search(r'<h[1-6][^>]*>', content, re.IGNORECASE))
+    has_lists = bool(re.search(r'<[uo]l[^>]*>', content, re.IGNORECASE))
+    return has_headings or has_lists
+
+def count_embedded_images(content: str) -> int:
+    """Count embedded images in content"""
+    import re
+    return len(re.findall(r'<img[^>]*>', content, re.IGNORECASE))
 
 # Content processing endpoint
 @app.post("/api/content/process")

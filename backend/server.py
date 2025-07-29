@@ -553,7 +553,16 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
         except Exception as e:
             print(f"❌ Claude also failed with exception: {e}")
     
-    print("❌ Both OpenAI and Claude failed - no LLM response available")
+    # Try Local LLM as final fallback
+    try:
+        print("🤖 Attempting Local LLM fallback...")
+        local_response = await call_local_llm(system_message, user_message)
+        if local_response:
+            return local_response
+    except Exception as e:
+        print(f"❌ Local LLM also failed: {e}")
+    
+    print("❌ All LLM options failed - no AI response available")
     return None
 
 # Startup event

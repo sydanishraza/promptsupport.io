@@ -5653,6 +5653,276 @@ def extract_media_from_content(content: str) -> List[Dict[str, str]]:
     
     return media_items
 
+def get_heading_level(paragraph) -> int:
+    """
+    Determine the heading level of a paragraph
+    """
+    try:
+        style_name = paragraph.style.name.lower()
+        if 'heading 1' in style_name or 'title' in style_name:
+            return 1
+        elif 'heading 2' in style_name:
+            return 2
+        elif 'heading 3' in style_name:
+            return 3
+        elif 'heading 4' in style_name:
+            return 4
+        elif 'heading' in style_name:
+            return 2  # Default for generic heading
+        
+        # Check for manual formatting that indicates headings
+        if paragraph.runs:
+            first_run = paragraph.runs[0]
+            if first_run.bold and first_run.font.size and first_run.font.size.pt > 14:
+                return 1
+            elif first_run.bold and first_run.font.size and first_run.font.size.pt > 12:
+                return 2
+            elif first_run.bold:
+                return 3
+                
+        return None
+    except:
+        return None
+
+def clean_heading_text(text: str) -> str:
+    """
+    Clean heading text for better chapter naming
+    """
+    import re
+    # Remove numbering, extra spaces, and special characters
+    cleaned = re.sub(r'^\d+\.?\s*', '', text)  # Remove leading numbers
+    cleaned = re.sub(r'[^\w\s-]', '', cleaned)  # Keep only alphanumeric, spaces, hyphens
+    cleaned = ' '.join(cleaned.split())  # Normalize whitespace
+    return cleaned.strip()
+
+def detect_content_type(text: str) -> str:
+    """
+    Detect the type of content based on text patterns
+    """
+    text_lower = text.lower()
+    
+    if any(keyword in text_lower for keyword in ['figure', 'diagram', 'chart', 'table', 'image']):
+        return 'visual_reference'
+    elif any(keyword in text_lower for keyword in ['step', 'procedure', 'process', 'instruction']):
+        return 'instructional'
+    elif any(keyword in text_lower for keyword in ['note:', 'warning:', 'tip:', 'important:']):
+        return 'callout'
+    elif text.endswith(':') and len(text.split()) < 10:
+        return 'list_header'
+    else:
+        return 'body_text'
+
+def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> list:
+    """
+    Enhanced XML parsing to find precise image positions with better context mapping
+    """
+    positions = []
+    
+    try:
+        # Find all drawing elements (images) in the document
+        drawings = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
+        
+        for drawing in drawings:
+            # Find the containing paragraph
+            paragraph_element = drawing
+            while paragraph_element is not None:
+                if paragraph_element.tag == '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
+                    break
+                paragraph_element = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
+            
+            if paragraph_element is not None:
+                # Find paragraph index
+                all_paragraphs = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
+                try:
+                    para_index = list(all_paragraphs).index(paragraph_element)
+                    
+                    if para_index < len(paragraph_contexts):
+                        context = paragraph_contexts[para_index]
+                        
+                        # Enhanced position data
+                        position_data = {
+                            'paragraph_index': para_index,
+                            'chapter': context['chapter'],
+                            'page': context['page_estimate'],
+                            'paragraph_text': context['text'],
+                            'position_in_chapter': context.get('position_in_chapter', 0),
+                            'content_type': context.get('content_type', 'body_text'),
+                            'word_count': context.get('word_count', 0),
+                            'is_heading': context.get('is_heading', False)
+                        }
+                        
+                        positions.append(position_data)
+                        
+                except (ValueError, IndexError):
+                    continue
+        
+        print(f"📍 Found {len(positions)} image positions in document")
+        return positions
+        
+    except Exception as e:
+        print(f"⚠️ Error in enhanced XML parsing: {e}")
+        return []
+
+def find_enhanced_image_context(filename: str, image_positions: list, paragraph_contexts: list) -> dict:
+    """
+    Find the most relevant context for an image with enhanced matching
+    """
+    if not image_positions:
+        return None
+    
+    # Try to match based on proximity and content relevance
+    best_context = None
+    best_score = 0
+    
+    for position in image_positions:
+        score = 0
+        
+        # Score based on content type relevance
+        if position.get('content_type') == 'visual_reference':
+            score += 10
+        elif position.get('content_type') == 'instructional':
+            score += 8
+        elif position.get('content_type') == 'body_text':
+            score += 5
+        
+        # Score based on paragraph text length (more context is better)
+        text_length = len(position.get('paragraph_text', ''))
+        if text_length > 100:
+            score += 5
+        elif text_length > 50:
+            score += 3
+        
+        # Avoid headings as image contexts unless they specifically reference visuals
+        if position.get('is_heading', False):
+            paragraph_text = position.get('paragraph_text', '').lower()
+            if any(keyword in paragraph_text for keyword in ['figure', 'diagram', 'chart', 'image']):
+                score += 3
+            else:
+                score -= 5
+        
+        # Prefer images not in the first page (likely cover content)
+        if position.get('page', 0) > 1:
+            score += 3
+        
+        if score > best_score:
+            best_score = score
+            best_context = position
+    
+    return best_context
+
+def is_content_relevant_image(image_context: dict, paragraph_contexts: list) -> bool:
+    """
+    Determine if an image is relevant to the main content
+    """
+    if not image_context:
+        return False
+    
+    # Check if the image is in a meaningful chapter
+    chapter = image_context.get('chapter', '').lower()
+    if any(skip_term in chapter for skip_term in ['table of contents', 'toc', 'index', 'references', 'bibliography']):
+        return False
+    
+    # Check surrounding context for relevance indicators
+    paragraph_text = image_context.get('paragraph_text', '').lower()
+    context_indicators = ['step', 'process', 'example', 'shows', 'demonstrates', 'illustrates', 'figure', 'diagram']
+    
+    if any(indicator in paragraph_text for indicator in context_indicators):
+        return True
+    
+    # Check if image has substantial surrounding content
+    para_index = image_context.get('paragraph_index', 0)
+    surrounding_text = ""
+    
+    # Get text from surrounding paragraphs
+    for i in range(max(0, para_index - 2), min(len(paragraph_contexts), para_index + 3)):
+        if i < len(paragraph_contexts):
+            surrounding_text += paragraph_contexts[i].get('text', '') + " "
+    
+    # If there's substantial instructional content around the image, it's likely relevant
+    if len(surrounding_text.strip()) > 200:
+        return True
+    
+    return False
+
+def determine_precise_position(image_context: dict, paragraph_contexts: list) -> str:
+    """
+    Determine precise position description for image embedding
+    """
+    position_in_chapter = image_context.get('position_in_chapter', 0)
+    
+    if position_in_chapter == 0:
+        return "chapter-start"
+    elif position_in_chapter <= 2:
+        return "after-introduction"
+    else:
+        # Check content around the image
+        paragraph_text = image_context.get('paragraph_text', '').lower()
+        if any(keyword in paragraph_text for keyword in ['step', 'procedure', 'process']):
+            return f"within-step-{position_in_chapter}"
+        elif 'example' in paragraph_text:
+            return f"within-example-{position_in_chapter}"
+        else:
+            return f"after-paragraph-{position_in_chapter}"
+
+def determine_image_type(image_context: dict) -> str:
+    """
+    Determine the type of image based on context
+    """
+    paragraph_text = image_context.get('paragraph_text', '').lower()
+    
+    if 'diagram' in paragraph_text:
+        return 'diagram'
+    elif 'chart' in paragraph_text or 'graph' in paragraph_text:
+        return 'chart'
+    elif 'screenshot' in paragraph_text or 'screen' in paragraph_text:
+        return 'screenshot'
+    elif 'table' in paragraph_text:
+        return 'table'
+    elif any(keyword in paragraph_text for keyword in ['step', 'procedure', 'process']):
+        return 'instructional'
+    else:
+        return 'illustration'
+
+def calculate_placement_priority(image_context: dict) -> int:
+    """
+    Calculate placement priority for image ordering
+    """
+    priority = 100  # Base priority
+    
+    # Higher priority for instructional content
+    if image_context.get('content_type') == 'instructional':
+        priority += 50
+    elif image_context.get('content_type') == 'visual_reference':
+        priority += 30
+    
+    # Higher priority for images with more context
+    text_length = len(image_context.get('paragraph_text', ''))
+    if text_length > 200:
+        priority += 20
+    elif text_length > 100:
+        priority += 10
+    
+    return priority
+
+def generate_contextual_caption(image_context: dict, paragraph_contexts: list) -> str:
+    """
+    Generate a contextual caption for the image
+    """
+    chapter = image_context.get('chapter', 'Document Section')
+    paragraph_text = image_context.get('paragraph_text', '')
+    
+    # Try to extract existing caption-like text
+    if any(keyword in paragraph_text.lower() for keyword in ['figure', 'diagram', 'shows', 'illustrates']):
+        # Use the paragraph text as basis for caption
+        caption_base = paragraph_text[:100].strip()
+        if caption_base.endswith('.'):
+            caption_base = caption_base[:-1]
+        return f"{caption_base}..."
+    
+    # Generate contextual caption based on chapter and position
+    image_type = determine_image_type(image_context)
+    return f"{image_type.title()} from {chapter}"
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)

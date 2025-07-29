@@ -1306,52 +1306,8 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
             })
             print(f"📊 Extracted table {i+1} with {len(table_data)} rows")
         
-        # Phase 1: Enhanced Image Extraction
-        contextual_images = []
-        try:
-            with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                for file_info in zip_ref.filelist:
-                    if file_info.filename.startswith('word/media/'):
-                        # Check if image is contextual (not decorative)
-                        filename = file_info.filename.split('/')[-1].lower()
-                        
-                        # Skip logos and decorative elements
-                        skip_patterns = ['logo', 'header', 'footer', 'watermark', 'background', 'banner']
-                        if any(pattern in filename for pattern in skip_patterns):
-                            print(f"🚫 Skipping decorative image: {filename}")
-                            continue
-                        
-                        image_data = zip_ref.read(file_info.filename)
-                        
-                        # Generate meaningful filename
-                        safe_prefix = "".join(c for c in training_session.get('filename', 'doc') if c.isalnum())[:10]
-                        unique_filename = f"{safe_prefix}_{filename}_{str(uuid.uuid4())[:8]}"
-                        file_path_static = f"static/uploads/{unique_filename}"
-                        
-                        # Ensure upload directory exists
-                        os.makedirs("static/uploads", exist_ok=True)
-                        
-                        # Save image file
-                        with open(file_path_static, "wb") as f:
-                            f.write(image_data)
-                        
-                        # Generate URL
-                        file_url = f"/api/static/uploads/{unique_filename}"
-                        
-                        contextual_images.append({
-                            "filename": unique_filename,
-                            "url": file_url,
-                            "size": len(image_data),
-                            "is_svg": filename.endswith('.svg'),
-                            "caption": f"Document image {len(contextual_images) + 1}",
-                            "placement": "contextual",
-                            "alt_text": f"Figure {len(contextual_images) + 1}: Content illustration"
-                        })
-                        
-                        print(f"🖼️ Extracted contextual image: {unique_filename}")
-                        
-        except Exception as e:
-            print(f"⚠️ Image extraction error: {e}")
+        # Phase 1: Enhanced Image Extraction - Call the new function
+        contextual_images = extract_contextual_images_from_docx(file_path, doc, extracted_content, training_session)
         
         print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")
         

@@ -1093,6 +1093,9 @@ async def training_process_document(
         
         print(f"📚 Processing complete: {len(articles)} articles generated")
         
+        # Add articles to training session before storing
+        training_session["articles"] = articles
+        
         # Clean up temp file
         try:
             os.remove(temp_file_path)

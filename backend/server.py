@@ -1896,6 +1896,301 @@ def create_image_figure_html(img: dict) -> str:
     
     return figure_html
 
+def generate_pdf_from_html(html_content: str, title: str = "Generated Article") -> bytes:
+    """
+    Generate PDF from HTML content using WeasyPrint
+    """
+    try:
+        from weasyprint import HTML, CSS
+        import tempfile
+        import os
+        
+        # Create a complete HTML document with proper styling
+        full_html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{title}</title>
+            <style>
+                body {{
+                    font-family: 'Arial', 'Helvetica', sans-serif;
+                    line-height: 1.6;
+                    margin: 2cm;
+                    color: #333;
+                    font-size: 12pt;
+                }}
+                
+                h1 {{
+                    color: #2c3e50;
+                    border-bottom: 3px solid #3498db;
+                    padding-bottom: 10px;
+                    margin-bottom: 30px;
+                    font-size: 24pt;
+                    page-break-after: avoid;
+                }}
+                
+                h2 {{
+                    color: #34495e;
+                    margin-top: 30px;
+                    margin-bottom: 15px;
+                    font-size: 18pt;
+                    page-break-after: avoid;
+                }}
+                
+                h3 {{
+                    color: #5d6d7e;
+                    margin-top: 25px;
+                    margin-bottom: 12px;
+                    font-size: 16pt;
+                    page-break-after: avoid;
+                }}
+                
+                p {{
+                    margin-bottom: 12px;
+                    text-align: justify;
+                    orphans: 3;
+                    widows: 3;
+                }}
+                
+                ul, ol {{
+                    margin-bottom: 15px;
+                    padding-left: 25px;
+                }}
+                
+                li {{
+                    margin-bottom: 5px;
+                }}
+                
+                figure.embedded-image {{
+                    margin: 20px 0;
+                    text-align: center;
+                    page-break-inside: avoid;
+                }}
+                
+                figure.embedded-image img {{
+                    max-width: 100%;
+                    height: auto;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }}
+                
+                figcaption {{
+                    margin-top: 8px;
+                    font-style: italic;
+                    color: #666;
+                    font-size: 10pt;
+                }}
+                
+                .page-header {{
+                    position: running(header);
+                    text-align: center;
+                    font-size: 10pt;
+                    color: #666;
+                    border-bottom: 1px solid #ddd;
+                    padding-bottom: 5px;
+                }}
+                
+                .page-footer {{
+                    position: running(footer);
+                    text-align: center;
+                    font-size: 10pt;
+                    color: #666;
+                    border-top: 1px solid #ddd;
+                    padding-top: 5px;
+                }}
+                
+                @page {{
+                    margin: 2cm;
+                    @top-center {{
+                        content: "{title}";
+                        font-size: 10pt;
+                        color: #666;
+                    }}
+                    @bottom-center {{
+                        content: "Page " counter(page) " of " counter(pages);
+                        font-size: 10pt;
+                        color: #666;
+                    }}
+                }}
+                
+                .no-break {{
+                    page-break-inside: avoid;
+                }}
+                
+                table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 15px 0;
+                    page-break-inside: avoid;
+                }}
+                
+                th, td {{
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: left;
+                }}
+                
+                th {{
+                    background-color: #f5f5f5;
+                    font-weight: bold;
+                }}
+                
+                blockquote {{
+                    margin: 20px 0;
+                    padding: 15px 20px;
+                    background-color: #f8f9fa;
+                    border-left: 4px solid #3498db;
+                    font-style: italic;
+                }}
+                
+                code {{
+                    background-color: #f4f4f4;
+                    padding: 2px 4px;
+                    border-radius: 3px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 11pt;
+                }}
+                
+                pre {{
+                    background-color: #f4f4f4;
+                    padding: 15px;
+                    border-radius: 5px;
+                    overflow-wrap: break-word;
+                    white-space: pre-wrap;
+                    font-family: 'Courier New', monospace;
+                    font-size: 10pt;
+                }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+        
+        # Generate PDF using WeasyPrint
+        pdf_bytes = HTML(string=full_html).write_pdf()
+        
+        print(f"✅ PDF generated successfully: {len(pdf_bytes)} bytes")
+        return pdf_bytes
+        
+    except Exception as e:
+        print(f"❌ PDF generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+@app.get("/api/content-library/article/{article_id}/download-pdf")
+async def download_article_pdf(article_id: str):
+    """Download a Content Library article as PDF"""
+    try:
+        print(f"🔍 Generating PDF for Content Library article: {article_id}")
+        
+        # Find the article in Content Library
+        article = await db.content_library.find_one({"id": article_id})
+        
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        # Get article content and title
+        title = article.get("title", "Generated Article")
+        content = article.get("content", "")
+        
+        if not content:
+            raise HTTPException(status_code=400, detail="Article has no content to export")
+        
+        # Clean title for filename
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        filename = f"{safe_title[:50]}.pdf"  # Limit filename length
+        
+        # Generate PDF
+        pdf_bytes = generate_pdf_from_html(content, title)
+        
+        # Create temporary file
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            tmp_file.write(pdf_bytes)
+            temp_path = tmp_file.name
+        
+        print(f"✅ PDF generated for Content Library article: {title}")
+        
+        # Return file response
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type='application/pdf',
+            background=None  # Don't delete file automatically, we'll handle cleanup
+        )
+        
+    except Exception as e:
+        print(f"❌ Content Library PDF download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/training/article/{session_id}/{article_index}/download-pdf")
+async def download_training_article_pdf(session_id: str, article_index: int):
+    """Download a Training Interface article as PDF"""
+    try:
+        print(f"🔍 Generating PDF for Training article: {session_id}, index: {article_index}")
+        
+        # Find the training session
+        training_session = await db.training_sessions.find_one({"session_id": session_id})
+        
+        if not training_session:
+            raise HTTPException(status_code=404, detail="Training session not found")
+        
+        # Get the specific article
+        articles = training_session.get("articles", [])
+        
+        if article_index >= len(articles) or article_index < 0:
+            raise HTTPException(status_code=404, detail="Article not found in session")
+        
+        article = articles[article_index]
+        
+        # Get article content and title
+        title = article.get("title", f"Training Article {article_index + 1}")
+        content = article.get("content", "")
+        
+        if not content:
+            raise HTTPException(status_code=400, detail="Article has no content to export")
+        
+        # Clean title for filename
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        filename = f"Training_{safe_title[:40]}.pdf"  # Limit filename length
+        
+        # Generate PDF
+        pdf_bytes = generate_pdf_from_html(content, title)
+        
+        # Create temporary file
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            tmp_file.write(pdf_bytes)
+            temp_path = tmp_file.name
+        
+        print(f"✅ PDF generated for Training article: {title}")
+        
+        # Return file response
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type='application/pdf',
+            background=None  # Don't delete file automatically
+        )
+        
+    except Exception as e:
+        print(f"❌ Training PDF download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
     """Process PDF file with comprehensive text and image extraction"""
     try:

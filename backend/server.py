@@ -3034,50 +3034,203 @@ async def create_articles_with_template(content: str, images: list, template_dat
         
         print(f"📝 Identified {len(natural_sections)} natural content sections")
         
-        # Distribute images across sections based on content relevance and context
-        images_per_section = []
-        if images:
-            base_images_per_section = max(1, len(images) // len(natural_sections))
-            remaining_images = len(images) % len(natural_sections)
-            
-            for i in range(len(natural_sections)):
-                section_image_count = base_images_per_section
-                if i < remaining_images:
-                    section_image_count += 1
-                images_per_section.append(section_image_count)
-        else:
-            images_per_section = [0] * len(natural_sections)
+        # Enhanced image distribution with contextual matching
+        section_images = distribute_images_contextually(natural_sections, images)
         
-        # Create articles from natural sections
-        image_index = 0
+        # Create articles from natural sections with enhanced processing
         for i, section in enumerate(natural_sections):
             if section.strip():
-                # Get images for this section
-                section_images = []
-                for j in range(images_per_section[i]):
-                    if image_index < len(images):
-                        section_images.append(images[image_index])
-                        image_index += 1
+                assigned_images = section_images[i] if i < len(section_images) else []
                 
-                print(f"📄 Creating article {i+1} with {len(section_images)} images")
+                print(f"📄 Creating comprehensive article {i+1} with {len(assigned_images)} images")
                 
                 article = await create_single_article_with_template(
                     section, 
-                    section_images,
+                    assigned_images,
                     template_data, 
                     training_session,
                     i + 1
                 )
-                articles.append(article)
+                
+                if article:
+                    articles.append(article)
         
-        print(f"✅ Created {len(articles)} articles from {content_length} chars and {image_count} images")
+        print(f"✅ Created {len(articles)} comprehensive articles from {content_length} chars and {image_count} images")
         return articles
         
     except Exception as e:
-        print(f"❌ Article creation error: {e}")
+        print(f"❌ Enhanced article creation error: {e}")
         import traceback
         traceback.print_exc()
         return []
+
+def analyze_document_structure(content: str) -> list:
+    """
+    Analyze document structure to determine natural breaking points
+    """
+    sections = []
+    
+    # Enhanced structure detection
+    if '<h1>' in content or '<h2>' in content:
+        # Split on major headings with intelligent merging
+        if '<h1>' in content:
+            sections = intelligent_split_on_headings(content, 'h1')
+        else:
+            sections = intelligent_split_on_headings(content, 'h2')
+    elif content.count('\n\n') > 10:
+        # Handle paragraph-based documents
+        sections = intelligent_paragraph_grouping(content)
+    else:
+        # Single comprehensive section for shorter documents
+        sections = [content]
+    
+    # Filter and validate sections
+    validated_sections = []
+    for section in sections:
+        if len(section.strip()) > 200:  # Minimum meaningful content
+            validated_sections.append(section.strip())
+        elif validated_sections:
+            # Merge small sections with previous one
+            validated_sections[-1] += "\n\n" + section.strip()
+    
+    return validated_sections if validated_sections else [content]
+
+def intelligent_split_on_headings(content: str, heading_tag: str) -> list:
+    """
+    Intelligently split content on headings while preserving context
+    """
+    import re
+    
+    # Pattern to match heading tags
+    pattern = f'<{heading_tag}[^>]*>(.*?)</{heading_tag}>'
+    headings = re.findall(pattern, content, re.IGNORECASE | re.DOTALL)
+    
+    if not headings:
+        return [content]
+    
+    # Split and reconstruct sections
+    sections = []
+    parts = re.split(f'<{heading_tag}[^>]*>.*?</{heading_tag}>', content, flags=re.IGNORECASE | re.DOTALL)
+    heading_matches = re.finditer(pattern, content, re.IGNORECASE | re.DOTALL)
+    
+    # Reconstruct sections with their headings
+    for i, match in enumerate(heading_matches):
+        section_content = match.group(0)  # Include the heading
+        if i + 1 < len(parts):
+            section_content += parts[i + 1]  # Add content after heading
+        
+        if section_content.strip():
+            sections.append(section_content.strip())
+    
+    return sections if sections else [content]
+
+def intelligent_paragraph_grouping(content: str) -> list:
+    """
+    Group paragraphs intelligently to form coherent sections
+    """
+    paragraphs = content.split('\n\n')
+    sections = []
+    current_section = ""
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+            
+        # Check if this paragraph starts a new logical section
+        if is_section_boundary(paragraph, current_section):
+            if current_section.strip():
+                sections.append(current_section.strip())
+            current_section = paragraph
+        else:
+            current_section += "\n\n" + paragraph if current_section else paragraph
+        
+        # Ensure sections don't get too long (but allow substantial content)
+        if len(current_section) > 15000:  # Increased from 8000
+            sections.append(current_section.strip())
+            current_section = ""
+    
+    if current_section.strip():
+        sections.append(current_section.strip())
+    
+    return sections
+
+def is_section_boundary(paragraph: str, current_section: str) -> bool:
+    """
+    Determine if a paragraph represents a natural section boundary
+    """
+    # Check for topic transition indicators
+    transition_indicators = [
+        'next step', 'following section', 'in addition', 'furthermore',
+        'alternatively', 'however', 'on the other hand', 'similarly',
+        'step ', 'phase ', 'part ', 'section ', 'chapter '
+    ]
+    
+    paragraph_lower = paragraph.lower()
+    
+    # Strong indicators of new section
+    if any(indicator in paragraph_lower for indicator in transition_indicators):
+        return True
+    
+    # Check if starting a numbered list or procedure
+    if re.match(r'^\d+\.', paragraph.strip()):
+        return len(current_section) > 1000  # Only if current section has substance
+    
+    return False
+
+def distribute_images_contextually(sections: list, images: list) -> list:
+    """
+    Distribute images across sections based on contextual relevance
+    """
+    if not images:
+        return [[] for _ in sections]
+    
+    section_images = [[] for _ in sections]
+    
+    for image in images:
+        best_section_idx = find_best_section_for_image(image, sections)
+        if best_section_idx is not None:
+            section_images[best_section_idx].append(image)
+        else:
+            # Distribute evenly if no clear match
+            min_images_idx = min(range(len(section_images)), key=lambda i: len(section_images[i]))
+            section_images[min_images_idx].append(image)
+    
+    return section_images
+
+def find_best_section_for_image(image: dict, sections: list) -> int:
+    """
+    Find the best section for an image based on contextual matching
+    """
+    image_chapter = image.get('chapter', '').lower()
+    image_context = image.get('context_text', '').lower()
+    
+    best_score = 0
+    best_section = None
+    
+    for i, section in enumerate(sections):
+        section_lower = section.lower()
+        score = 0
+        
+        # Match based on chapter name
+        if image_chapter and image_chapter in section_lower:
+            score += 50
+        
+        # Match based on context keywords
+        context_words = image_context.split()[:10]  # First 10 words of context
+        for word in context_words:
+            if len(word) > 3 and word in section_lower:
+                score += 5
+        
+        # Prefer sections with visual references
+        if any(keyword in section_lower for keyword in ['figure', 'diagram', 'image', 'shows', 'illustrates']):
+            score += 20
+        
+        if score > best_score:
+            best_score = score
+            best_section = i
+    
+    return best_section if best_score > 10 else None
 
 async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int) -> dict:
     """Create a single article using template specifications"""

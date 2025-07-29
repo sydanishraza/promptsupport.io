@@ -15,7 +15,7 @@ import base64
 from bson import ObjectId
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Header, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field

@@ -171,7 +171,7 @@ const TrainingInterface = () => {
   // Download PDF function
   const downloadArticlePDF = async (sessionId, articleIndex, articleTitle) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/training/article/${sessionId}/${articleIndex}/download-pdf`);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/training/article/${sessionId}/${articleIndex}/download-pdf`);
       
       if (!response.ok) {
         throw new Error('Failed to generate PDF');

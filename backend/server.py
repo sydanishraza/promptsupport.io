@@ -428,37 +428,102 @@ class SaveArticleRequest(BaseModel):
 
 async def call_local_llm(system_message: str, user_message: str) -> Optional[str]:
     """
-    Call local LLM as final fallback option
+    Call local LLM as final fallback option using transformers library
     Returns the response text or None if it fails
     """
     try:
-        # Try to connect to local LLM server (e.g., Ollama, LocalAI, etc.)
-        # This is a placeholder implementation - adjust URL and format as needed
+        # First try external Ollama server if available
         local_llm_url = os.getenv("LOCAL_LLM_URL", "http://localhost:11434/api/generate")
         
-        # Format for Ollama API
-        data = {
-            "model": os.getenv("LOCAL_LLM_MODEL", "llama2"),
-            "prompt": f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:",
-            "stream": False
-        }
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(local_llm_url, json=data)
+        if local_llm_url.startswith("http"):
+            # Format for Ollama API
+            data = {
+                "model": os.getenv("LOCAL_LLM_MODEL", "llama3.1:8b"),
+                "prompt": f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:",
+                "stream": False
+            }
             
-            if response.status_code == 200:
-                result = response.json()
-                ai_response = result.get("response", "")
-                if ai_response:
-                    print(f"✅ Local LLM response successful: {len(ai_response)} characters")
-                    return ai_response
-            else:
-                print(f"❌ Local LLM failed: {response.status_code} - {response.text}")
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(local_llm_url, json=data)
                 
+                if response.status_code == 200:
+                    result = response.json()
+                    ai_response = result.get("response", "")
+                    if ai_response:
+                        print(f"✅ External Local LLM response successful: {len(ai_response)} characters")
+                        return ai_response
+        
+        # Fallback to built-in transformers-based local LLM
+        print("🤖 Attempting built-in local LLM with transformers...")
+        return await call_built_in_local_llm(system_message, user_message)
+                        
     except Exception as e:
         print(f"❌ Local LLM connection failed: {e}")
+        # Try built-in local LLM as final attempt
+        try:
+            return await call_built_in_local_llm(system_message, user_message)
+        except Exception as built_in_error:
+            print(f"❌ Built-in local LLM also failed: {built_in_error}")
     
     return None
+
+async def call_built_in_local_llm(system_message: str, user_message: str) -> Optional[str]:
+    """
+    Use transformers library to run a small local model
+    """
+    try:
+        # Import transformers only when needed to avoid startup delays
+        from transformers import pipeline
+        import torch
+        
+        # Use a small, fast model that can run in limited resources
+        # Microsoft Phi-3 Mini is perfect for this use case
+        model_name = "microsoft/Phi-3-mini-4k-instruct"
+        
+        print(f"🧠 Loading built-in local model: {model_name}")
+        
+        # Create text generation pipeline with optimizations for speed
+        generator = pipeline(
+            "text-generation",
+            model=model_name,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if torch.cuda.is_available() else "cpu",
+            trust_remote_code=True,
+            max_new_tokens=1000,
+            do_sample=True,
+            temperature=0.3,
+            top_p=0.9
+        )
+        
+        # Format prompt for Phi-3
+        prompt = f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:"
+        
+        # Generate response
+        outputs = generator(
+            prompt,
+            max_new_tokens=1000,
+            temperature=0.3,
+            do_sample=True,
+            pad_token_id=generator.tokenizer.eos_token_id
+        )
+        
+        # Extract the generated text (remove the input prompt)
+        generated_text = outputs[0]['generated_text']
+        response = generated_text[len(prompt):].strip()
+        
+        if response:
+            print(f"✅ Built-in local LLM response successful: {len(response)} characters")
+            return response
+        else:
+            print("❌ Built-in local LLM generated empty response")
+            return None
+            
+    except ImportError as e:
+        print(f"❌ Transformers library not available: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ Built-in local LLM failed: {e}")
+        return None
 
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
     """

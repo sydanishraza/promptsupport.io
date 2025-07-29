@@ -1306,7 +1306,7 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
             })
             print(f"📊 Extracted table {i+1} with {len(table_data)} rows")
         
-        # Phase 1: Enhanced Image Extraction - Call the new function
+        # Phase 1: Enhanced Image Extraction using new contextual system
         contextual_images = extract_contextual_images_from_docx(file_path, doc, extracted_content, training_session)
         
         print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")

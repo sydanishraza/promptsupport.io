@@ -1,0 +1,94 @@
+
+<h1 id="h_manage_resources_api">Managing and Submitting Course Resources via API</h1>
+
+<p>
+  This article provides the complete reference for submitting and managing course resources using Woolf’s GraphQL API. It covers all supported resource types, required fields, mutation formats, compliance monitoring, and verification logic.
+</p>
+
+<div class="note">
+  ⚠️ <strong>Note:</strong> Only <code>VERIFIED</code> resources count toward graduation. Avoid modifying verified resources mid-course unless required—doing so will reset their status.
+</div>
+
+<hr />
+
+<h2 id="h_supported_types">Supported Resource Types</h2>
+<table>
+  <thead>
+    <tr><th>Type</th><th>Kind</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>General</td><td><code>GENERAL</code></td><td>Supplemental learning materials not tied to a specific category</td></tr>
+    <tr><td>Publication</td><td><code>PUBLICATION</code></td><td>Standard reading materials (eBooks, articles)</td></tr>
+    <tr><td>Peer-reviewed Publication</td><td><code>PUBLICATION_REVIEWED</code></td><td>Academic, peer-reviewed sources (last 5 years)</td></tr>
+    <tr><td>Meeting</td><td><code>MEETING</code></td><td>Live sessions (online or in-person)</td></tr>
+    <tr><td>Assignment</td><td><code>ASSIGNMENT</code></td><td>Essays, quizzes, project tasks with grading</td></tr>
+    <tr><td>Summative Assignment</td><td><code>ASSIGNMENT_SUMMATIVE</code></td><td>Final, graded project representing course mastery</td></tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="h_required_fields">Required Fields</h2>
+<table>
+  <thead>
+    <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>✅</td><td>Title of the resource</td></tr>
+    <tr><td><code>kind</code></td><td>✅</td><td>One of the supported kinds</td></tr>
+    <tr><td><code>workload</code></td><td>✅</td><td>Minutes required to complete</td></tr>
+    <tr><td><code>isGradeRequired</code></td><td>⚠️</td><td>Set to <code>true</code> for assignments</td></tr>
+    <tr><td><code>cohortName</code></td><td>⚠️</td><td>Target specific cohort (optional)</td></tr>
+    <tr><td><code>externalId</code></td><td>Optional</td><td>LMS resource identifier</td></tr>
+    <tr><td><code>content</code></td><td>Optional</td><td>Lesson content in HTML or Markdown</td></tr>
+    <tr><td><code>assets</code></td><td>Optional</td><td>File attachments via <code>importUrl</code></td></tr>
+    <tr><td><code>weightIds</code></td><td>✅ for assignments</td><td>Grade mapping weights</td></tr>
+    <tr><td><code>tags</code></td><td>Optional</td><td>Used for filtering</td></tr>
+    <tr><td><code>teacherIds</code></td><td>Recommended</td><td>Assign teachers to resource</td></tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="h_add_resource">Submit a Resource</h2>
+<p>Use the <code>addResource</code> mutation to submit any content type. Sample requests are below:</p>
+
+<div class="expandable"><div class="expandable-header"><h3>🧾 General Resource</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJtdXRhdGlvbiB7XG4gIGFkZFJlc291cmNlKGNvdXJzZUlkOiBcIkNPVVJTRV9JRFwiLCByZXNvdXJjZToge1xuICAgIG5hbWU6IFwiSW50cm8gdG8gQUlcIixcbiAgICBraW5kOiBHRU5FUkFMLFxuICAgIGNvaG9ydE5hbWU6IFwiQ09IT1JUX0lEXCIsXG4gICAgZXh0ZXJuYWxJZDogXCJHRU5fRVhUX0lEXCIsXG4gICAgY29udGVudDogXCI8cD5UaGlzIGlzIGFuIG92ZXJ2aWV3IG9mIGFydGlmaWNpYWwgaW50ZWxsaWdlbmNlLjwvcD5cIixcbiAgICB3b3JrbG9hZDogMzAsXG4gICAgaXNHcmFkZVJlcXVpcmVkOiBmYWxzZSxcbiAgICB0YWdzOiBbXCJBSVwiLCBcIkludHJvXCJdLFxuICAgIHRlYWNoZXJJZHM6IFtcIlRFQUNIRVJfSURcIl0sXG4gICAgYXNzZXRzOiBbXG4gICAgICB7XG4gICAgICAgIGZpbGVOYW1lOiBcImludHJvX2FpLnBkZlwiLFxuICAgICAgICBjb250ZW50VHlwZTogXCJhcHBsaWNhdGlvbi9wZGZcIixcbiAgICAgICAgaW1wb3J0VXJsOiBcImh0dHBzOi8vZXhhbXBsZS5jb20vaW50cm9fYWkucGRmXCJcbiAgICAgIH1cbiAgICBdXG4gIH0pIHtcbiAgICByZXNvdXJjZSB7XG4gICAgICBpZFxuICAgICAgbmFtZVxuICAgICAga2luZFxuICAgICAgc3RhdHVzXG4gICAgfVxuICAgIGFzc2V0cyB7XG4gICAgICB1cGxvYWRVcmxcbiAgICB9XG4gIH1cbn0ifQ==" data-min-height="450px"></div></div></div>
+<div class="expandable"><div class="expandable-header"><h3>📘 Publication</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJtdXRhdGlvbiB7XG4gIGFkZFJlc291cmNlKGNvdXJzZUlkOiBcIkNPVVJTRV9JRFwiLCByZXNvdXJjZToge1xuICAgIG5hbWU6IFwiRm91bmRhdGlvbnMgb2YgTWFjaGluZSBMZWFybmluZ1wiLFxuICAgIGtpbmQ6IFBVQkxJQ0FUSU9OLFxuICAgIGNvaG9ydE5hbWU6IFwiQ09IT1JUX0lEXCIsXG4gICAgZXh0ZXJuYWxJZDogXCJQVUJfRVhUX0lEXCIsXG4gICAgd29ya2xvYWQ6IDYwLFxuICAgIGlzR3JhZGVSZXF1aXJlZDogZmFsc2UsXG4gICAgdGFnczogW1wiTUxcIiwgXCJSZWFkaW5nXCJdLFxuICAgIHRlYWNoZXJJZHM6IFtcIlRFQUNIRVJfSURcIl0sXG4gICAgYXNzZXRzOiBbXG4gICAgICB7XG4gICAgICAgIGZpbGVOYW1lOiBcIm1sX2ZvdW5kYXRpb25zLnBkZlwiLFxuICAgICAgICBjb250ZW50VHlwZTogXCJhcHBsaWNhdGlvbi9wZGZcIixcbiAgICAgICAgaW1wb3J0VXJsOiBcImh0dHBzOi8vZXhhbXBsZS5jb20vbWxfZm91bmRhdGlvbnMucGRmXCJcbiAgICAgIH1cbiAgICBdXG4gIH0pIHtcbiAgICByZXNvdXJjZSB7XG4gICAgICBpZFxuICAgICAgbmFtZVxuICAgICAga2luZFxuICAgICAgc3RhdHVzXG4gICAgfVxuICAgIGFzc2V0cyB7XG4gICAgICB1cGxvYWRVcmxcbiAgICB9XG4gIH1cbn0ifQ==" data-min-height="450px"></div></div></div>
+<div class="expandable"><div class="expandable-header"><h3>📚 Peer-reviewed Publication</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJtdXRhdGlvbiB7XG4gIGFkZFJlc291cmNlKGNvdXJzZUlkOiBcIkNPVVJTRV9JRFwiLCByZXNvdXJjZToge1xuICAgIG5hbWU6IFwiRGVlcCBMZWFybmluZyBSZXZpZXcgMjAyM1wiLFxuICAgIGtpbmQ6IFBVQkxJQ0FUSU9OX1JFVklFV0VELFxuICAgIGNvaG9ydE5hbWU6IFwiQ09IT1JUX0lEXCIsXG4gICAgZXh0ZXJuYWxJZDogXCJSRVZJRVdfRVhUX0lEXCIsXG4gICAgd29ya2xvYWQ6IDQ1LFxuICAgIGlzR3JhZGVSZXF1aXJlZDogZmFsc2UsXG4gICAgdGFnczogW1wiRGVlcCBMZWFybmluZ1wiXSxcbiAgICB0ZWFjaGVySWRzOiBbXCJURUFDSEVSX0lEXCJdLFxuICAgIGFzc2V0czogW1xuICAgICAge1xuICAgICAgICBmaWxlTmFtZTogXCJkbF9yZXZpZXcucGRmXCIsXG4gICAgICAgIGNvbnRlbnRUeXBlOiBcImFwcGxpY2F0aW9uL3BkZlwiLFxuICAgICAgICBpbXBvcnRVcmw6IFwiaHR0cHM6Ly9leGFtcGxlLmNvbS9kbF9yZXZpZXcucGRmXCJcbiAgICAgIH1cbiAgICBdXG4gIH0pIHtcbiAgICByZXNvdXJjZSB7XG4gICAgICBpZFxuICAgICAgbmFtZVxuICAgICAga2luZFxuICAgICAgc3RhdHVzXG4gICAgfVxuICAgIGFzc2V0cyB7XG4gICAgICB1cGxvYWRVcmxcbiAgICB9XG4gIH1cbn0ifQ==" data-min-height="450px"></div></div></div>
+<div class="expandable"><div class="expandable-header"><h3>📅 Meeting</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJtdXRhdGlvbiB7XG4gIGFkZFJlc291cmNlKGNvdXJzZUlkOiBcIkNPVVJTRV9JRFwiLCByZXNvdXJjZToge1xuICAgIG5hbWU6IFwiT3JpZW50YXRpb24gU2Vzc2lvblwiLFxuICAgIGtpbmQ6IE1FRVRJTkcsXG4gICAgY29ob3J0TmFtZTogXCJDT0hPUlRfSURcIixcbiAgICBleHRlcm5hbElkOiBcIk1FRVRfRVhUX0lEXCIsXG4gICAgd29ya2xvYWQ6IDIwLFxuICAgIGlzR3JhZGVSZXF1aXJlZDogZmFsc2UsXG4gICAgdGFnczogW1wiT3JpZW50YXRpb25cIl0sXG4gICAgdGVhY2hlcklkczogW1wiVEVBQ0hFUl9JRFwiXVxuICB9KSB7XG4gICAgcmVzb3VyY2Uge1xuICAgICAgaWRcbiAgICAgIG5hbWVcbiAgICAgIGtpbmRcbiAgICAgIHN0YXR1c1xuICAgIH1cbiAgfVxufSJ9" data-min-height="450px"></div></div></div>
+<div class="expandable"><div class="expandable-header"><h3>📝 Assignment</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJtdXRhdGlvbiB7XG4gIGFkZFJlc291cmNlKGNvdXJzZUlkOiBcIkNPVVJTRV9JRFwiLCByZXNvdXJjZToge1xuICAgIG5hbWU6IFwiQUkgRXRoaWNzIEVzc2F5XCIsXG4gICAga2luZDogQVNTSUdOTUVOVCxcbiAgICBpc0dyYWRlUmVxdWlyZWQ6IHRydWUsXG4gICAgY29ob3J0TmFtZTogXCJDT0hPUlRfSURcIixcbiAgICBleHRlcm5hbElkOiBcIkFTU0lHTl9FWFRfSURcIixcbiAgICBjb250ZW50OiBcIldyaXRlIGEgMTAwMC13b3JkIGVzc2F5IG9uIGV0aGljYWwgY2hhbGxlbmdlcyBpbiBBSS5cIixcbiAgICB3b3JrbG9hZDogOTAsXG4gICAgd2VpZ2h0SWRzOiBbXCJXRUlHSFRfSURcIl0sXG4gICAgdGFnczogW1wiRXNzYXlcIiwgXCJBSSBFdGhpY3NcIl0sXG4gICAgdGVhY2hlcklkczogW1wiVEVBQ0hFUl9JRFwiXSxcbiAgICBhc3NldHM6IFtcbiAgICAgIHtcbiAgICAgICAgZmlsZU5hbWU6IFwiZXRoaWNzX3Byb21wdC5wZGZcIixcbiAgICAgICAgY29udGVudFR5cGU6IFwiYXBwbGljYXRpb24vcGRmXCIsXG4gICAgICAgIGltcG9ydFVybDogXCJodHRwczovL2V4YW1wbGUuY29tL2V0aGljc19wcm9tcHQucGRmXCJcbiAgICAgIH1cbiAgICBdXG4gIH0pIHtcbiAgICByZXNvdXJjZSB7XG4gICAgICBpZFxuICAgICAgbmFtZVxuICAgICAga2luZFxuICAgICAgc3RhdHVzXG4gICAgfVxuICAgIGFzc2V0cyB7XG4gICAgICB1cGxvYWRVcmxcbiAgICB9XG4gIH1cbn0ifQ==" data-min-height="450px"></div></div></div>
+<div class="expandable"><div class="expandable-header"><h3>🎓 Summative Assignment</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJtdXRhdGlvbiB7XG4gIGFkZFJlc291cmNlKGNvdXJzZUlkOiBcIkNPVVJTRV9JRFwiLCByZXNvdXJjZToge1xuICAgIG5hbWU6IFwiQ2Fwc3RvbmUgUHJvamVjdFwiLFxuICAgIGtpbmQ6IEFTU0lHTk1FTlRfU1VNTUFUSVZFLFxuICAgIGlzR3JhZGVSZXF1aXJlZDogdHJ1ZSxcbiAgICBjb2hvcnROYW1lOiBcIkNPSE9SVF9JRFwiLFxuICAgIGV4dGVybmFsSWQ6IFwiRklOQUxfRVhUX0lEXCIsXG4gICAgY29udGVudDogXCJEZWxpdmVyIGEgcmVzZWFyY2gtYmFja2VkIGZpbmFsIHByZXNlbnRhdGlvbiBvbiBhbiBBSSB1c2UgY2FzZS5cIixcbiAgICB3b3JrbG9hZDogMTgwLFxuICAgIHdlaWdodElkczogW1wiV0VJR0hUX0lEXCJdLFxuICAgIHRhZ3M6IFtcIkNhcHN0b25lXCIsIFwiRmluYWxcIl0sXG4gICAgdGVhY2hlcklkczogW1wiVEVBQ0hFUl9JRFwiXSxcbiAgICBhc3NldHM6IFtcbiAgICAgIHtcbiAgICAgICAgZmlsZU5hbWU6IFwicHJvamVjdF9ndWlkZWxpbmVzLnBkZlwiLFxuICAgICAgICBjb250ZW50VHlwZTogXCJhcHBsaWNhdGlvbi9wZGZcIixcbiAgICAgICAgaW1wb3J0VXJsOiBcImh0dHBzOi8vZXhhbXBsZS5jb20vcHJvamVjdF9ndWlkZWxpbmVzLnBkZlwiXG4gICAgICB9XG4gICAgXVxuICB9KSB7XG4gICAgcmVzb3VyY2Uge1xuICAgICAgaWRcbiAgICAgIG5hbWVcbiAgICAgIGtpbmRcbiAgICAgIHN0YXR1c1xuICAgIH1cbiAgICBhc3NldHMge1xuICAgICAgdXBsb2FkVXJsXG4gICAgfVxuICB9XG59In0=" data-min-height="450px"></div></div></div>
+
+<hr />
+
+<h2 id="h_modify_resource">Modify a Resource</h2>
+<p>Use <code>modifyResource</code> to edit an existing resource. Editing a verified resource resets its status to draft.</p>
+<div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJtdXRhdGlvbiB7XG4gIG1vZGlmeVJlc291cmNlKHJlc291cmNlSWQ6IFwiUkVTT1VSQ0VfSURcIiwgcmVzb3VyY2U6IHtcbiAgICBuYW1lOiBcIlVwZGF0ZWQgUmVzb3VyY2UgTmFtZVwiLFxuICAgIGNvbnRlbnQ6IFwiVXBkYXRlZCBIVE1MIGNvbnRlbnQuLi5cIixcbiAgICB3b3JrbG9hZDogNDVcbiAgfSkge1xuICAgIHJlc291cmNlIHtcbiAgICAgIGlkXG4gICAgICBuYW1lXG4gICAgICBzdGF0dXNcbiAgICB9XG4gIH1cbn0ifQ==" data-min-height="450px"></div>
+
+<hr />
+
+<h2 id="h_monitor_compliance">Monitor Resource Compliance</h2>
+<div class="expandable"><div class="expandable-header"><h3>📊 Compliance Overview</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJxdWVyeSB7XG4gIGNvdXJzZXMge1xuICAgIGlkXG4gICAgbmFtZVxuICAgIGdlbmVyYWxTdWJtaXR0ZWRcbiAgICBnZW5lcmFsUmVxdWlyZWRcbiAgICBhc3NpZ25tZW50U3VibWl0dGVkXG4gICAgYXNzaWdubWVudFJlcXVpcmVkXG4gICAgYXNzaWdubWVudFN1bW1hdGl2ZVN1Ym1pdHRlZFxuICAgIGFzc2lnbm1lbnRTdW1tYXRpdmVSZXF1aXJlZFxuICAgIG1lZXRpbmdTdWJtaXR0ZWRcbiAgICBtZWV0aW5nUmVxdWlyZWRcbiAgICBwdWJsaWNhdGlvblJldmlld2VkU3VibWl0dGVkXG4gICAgcHVibGljYXRpb25SZXZpZXdlZFJlcXVpcmVkXG4gICAgd29ya2xvYWRcbiAgICB3b3JrbG9hZFJlcXVpcmVkXG4gIH1cbn0ifQ==" data-min-height="450px"></div></div></div>
+<div class="expandable"><div class="expandable-header"><h3>🔍 Get Resource by ID</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJxdWVyeSB7XG4gIHJlc291cmNlKGlkOiBcIlJFU09VUkNFX0lEXCIpIHtcbiAgICBpZFxuICAgIG5hbWVcbiAgICBraW5kXG4gICAgc3RhdHVzXG4gICAgd29ya2xvYWRcbiAgICBjb250ZW50XG4gICAgYXNzZXRzIHtcbiAgICAgIGZpbGVOYW1lXG4gICAgICBpbXBvcnRVcmxcbiAgICB9XG4gICAgdGVhY2hlcklkc1xuICAgIHdlaWdodElkc1xuICAgIGNvaG9ydE5hbWVcbiAgICBleHRlcm5hbElkXG4gICAgY3JlYXRlZFxuICAgIHVwZGF0ZWRcbiAgfVxufSJ9" data-min-height="450px"></div></div></div>
+<div class="expandable"><div class="expandable-header"><h3>📦 Get Multiple Resources</h3></div><div class="expandable-content"><div id="graphiql-console" data-url="https://api.woolf.university/v1/graphiql?p=eyJxdWVyeSI6ICJxdWVyeSB7XG4gIHJlc291cmNlcyhjb3Vyc2VJZDogXCJDT1VSU0VfSURcIikge1xuICAgIGlkXG4gICAgbmFtZVxuICAgIGtpbmRcbiAgICBzdGF0dXNcbiAgICB3b3JrbG9hZFxuICAgIGV4dGVybmFsSWRcbiAgICBjb2hvcnROYW1lXG4gIH1cbn0ifQ==" data-min-height="450px"></div></div></div>
+
+<hr />
+
+<h2 id="h_side_cases">Side Cases & Tips</h2>
+<ul>
+  <li>To track asset upload completion, subscribe to the <code>IMPORTED_ASSET</code> webhook event.</li>
+  <li>To be notified when a resource is rejected, subscribe to the <code>REJECTED_RESOURCE</code> webhook.</li>
+  <li>For long videos (e.g. lectures), you may upload <strong>HLS</strong> playlists — flat only (no nested playlists).</li>
+</ul>
+
+<hr />
+
+<h2 id="h_related">Related Articles</h2>
+<div class="related-links wysiwyg-text-align-center">
+  <a class="related-link" href="/hc/en-us/articles/15404801468060">Resource Submission Guide</a>
+  <a class="related-link" href="/hc/en-us/articles/13099267008156">Resources Basics</a>
+  <a class="related-link" href="/hc/en-us/articles/16585191540764">Configure Grade Weight System</a>
+  <a class="related-link" href="/hc/en-us/articles/16803651711388">Manage Resources in Canvas</a>
+  <a class="related-link" href="/hc/en-us/articles/16525845746716">Woolf’s Grading Standards</a>
+</div>

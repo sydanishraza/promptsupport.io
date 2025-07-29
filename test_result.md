@@ -1418,9 +1418,8 @@
 
 ## test_plan:
   current_focus:
-    - "Fix Image Handling - Asset Library Cursor Position and Hover Overlay"
-  stuck_tasks:
-    - "Fix Image Handling - Asset Library Cursor Position and Hover Overlay"
+    - "OpenAI Integration Testing - COMPLETED"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 

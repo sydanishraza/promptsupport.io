@@ -445,7 +445,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
             }
             
             data = {
-                "model": "gpt-4o",
+                "model": "gpt-4o-mini",
                 "messages": [
                     {"role": "system", "content": system_message},
                     {"role": "user", "content": user_message}

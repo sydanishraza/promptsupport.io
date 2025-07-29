@@ -1904,6 +1904,7 @@ def _process_images_for_pdf(html_content: str) -> str:
     Process HTML content to convert relative image URLs to absolute URLs for PDF generation
     """
     import re
+    import os
     
     # Pattern to match img src attributes
     img_pattern = r'<img([^>]*?)src=["\']([^"\']*?)["\']([^>]*?)>'
@@ -1913,28 +1914,41 @@ def _process_images_for_pdf(html_content: str) -> str:
         src_url = match.group(2)
         after_src = match.group(3)
         
-        # If it's already an absolute URL, leave it as is
+        # If it's already an absolute URL or data URL, leave it as is
         if src_url.startswith(('http://', 'https://', 'data:')):
             return match.group(0)
         
-        # If it's a relative URL starting with /api/static, convert to absolute
+        # If it's a relative URL starting with /api/static, convert to file path
         if src_url.startswith('/api/static/'):
-            # Convert to file path for WeasyPrint
             file_path = src_url.replace('/api/static/', '/app/backend/static/')
-            return f'<img{before_src}src="file://{file_path}"{after_src}>'
+            
+            # Check if file exists
+            if os.path.exists(file_path):
+                return f'<img{before_src}src="file://{file_path}"{after_src}>'
+            else:
+                print(f"⚠️ Image file not found: {file_path}")
+                # Remove the img tag if file doesn't exist
+                return f'<p style="color: #666; font-style: italic; text-align: center;">[Image not available: {os.path.basename(file_path)}]</p>'
         
         # For other relative URLs starting with /, convert to file paths
         if src_url.startswith('/'):
-            # Assume it's in the static directory
             file_path = f"/app/backend{src_url}"
-            return f'<img{before_src}src="file://{file_path}"{after_src}>'
+            if os.path.exists(file_path):
+                return f'<img{before_src}src="file://{file_path}"{after_src}>'
+            else:
+                print(f"⚠️ Image file not found: {file_path}")
+                return f'<p style="color: #666; font-style: italic; text-align: center;">[Image not available: {os.path.basename(file_path)}]</p>'
         
         return match.group(0)
     
     # Replace all img src attributes
     processed_html = re.sub(img_pattern, replace_img_src, html_content)
     
-    print(f"🖼️ Processed {len(re.findall(img_pattern, html_content))} images for PDF generation")
+    # Count original images and processed images
+    original_images = len(re.findall(img_pattern, html_content))
+    remaining_images = len(re.findall(img_pattern, processed_html))
+    
+    print(f"🖼️ Processed {original_images} images for PDF generation, {remaining_images} images available")
     
     return processed_html
 

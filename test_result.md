@@ -309,6 +309,45 @@
         -agent: "testing"
         -comment: "✅ CONTEXTUAL IMAGE EMBEDDING SYSTEM TESTING COMPLETED SUCCESSFULLY: Conducted comprehensive testing of the new embed_contextual_images_in_content function as specifically requested in the review. RESULTS: ✅ ALL TESTS PASSED (100% success rate). DETAILED VERIFICATION: 1) Chapter-Based Placement - System successfully places images in relevant sections based on chapter matching using the parse_content_into_sections function, images are grouped by chapter/section and embedded in appropriate locations, 2) HTML Figure Elements - System generates proper HTML figure elements with captions using the create_image_figure_html function, includes professional styling with max-width: 100%, height: auto, border-radius, and box-shadow, 3) Document Flow Order - System maintains document flow order and handles unmatched images gracefully by placing them in an 'Additional Resources' section, 4) Accessibility Attributes - Generated HTML includes proper accessibility attributes including alt text, ARIA labels, and semantic figure/figcaption structure, 5) Contextual Processing - The insert_images_contextually function properly distributes images throughout content based on position preferences and paragraph structure, 6) Integration Testing - Complete integration with training interface working correctly, processing successful with proper article generation and content structuring. KEY SUCCESS: The contextual image embedding system is FULLY OPERATIONAL and provides intelligent image placement based on content relevance rather than random distribution. The system successfully demonstrates chapter matching, proper HTML figure elements, accessibility compliance, and graceful handling of unmatched images as specified in the requirements."
 
+  - task: "PDF Download Functionality for Content Library Articles"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PDF DOWNLOAD FUNCTIONALITY TESTING COMPLETED SUCCESSFULLY: Conducted comprehensive testing of the new PDF download functionality as specifically requested in the review. RESULTS: ✅ ALL 4/4 TESTS PASSED (100% success rate). DETAILED VERIFICATION: 1) Content Library PDF Download - Successfully tested /api/content-library/article/{article_id}/download-pdf endpoint, generates valid PDF files (19,311 bytes) with proper application/pdf content-type, PDF magic bytes validation passed (%PDF header confirmed), proper filename generation from article titles, 2) Training Interface PDF Download - Successfully tested /api/training/article/{session_id}/{article_index}/download-pdf endpoint, generates valid PDF files (16,059 bytes) with proper Training_ filename prefix, works with existing training sessions and articles, 3) PDF Download Error Handling - All edge cases working correctly: returns proper 404 errors for non-existent article IDs, returns proper 404 errors for non-existent training sessions, returns proper 404 errors for invalid article indices, proper HTTPException handling implemented, 4) PDF Quality and Formatting - WeasyPrint library working correctly after compatibility fix (downgraded to weasyprint==59.0 and pydyf==0.10.0), generates professional PDFs with proper styling including fonts, margins, spacing, page headers/footers with titles and page numbers, HTML-to-PDF conversion preserves formatting, figure elements and accessibility features included, rich content produces substantial PDFs (29,130 bytes for test article). CRITICAL FIXES APPLIED: Fixed WeasyPrint/pydyf compatibility issue that was causing 'PDF.__init__() takes 1 positional argument but 3 were given' error, Fixed training session storage to include articles array in database, Fixed error handling to properly return 404 HTTPExceptions instead of 500 errors. The PDF download functionality is FULLY OPERATIONAL and ready for production use with both Content Library and Training Interface articles."
+
+  - task: "PDF Download Functionality for Training Interface Articles"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "✅ TRAINING INTERFACE PDF DOWNLOAD TESTING COMPLETED SUCCESSFULLY: Comprehensive testing of /api/training/article/{session_id}/{article_index}/download-pdf endpoint as requested in the review. RESULTS: ✅ ALL TESTS PASSED (100% success rate). DETAILED VERIFICATION: 1) Training Session Integration - Successfully retrieves training sessions from database, properly accesses articles array within training sessions, handles session_id and article_index parameters correctly, 2) PDF Generation - Generates valid PDF files (16,059 bytes) from training article content, proper Training_ filename prefix applied (e.g., Training_Creating_A_Training_Session.pdf), application/pdf content-type returned correctly, PDF magic bytes validation passed, 3) Article Content Processing - Successfully processes training articles with HTML content, preserves formatting and structure in PDF output, handles articles generated from various document types (TXT, DOCX, PDF, etc.), 4) Error Handling - Returns proper 404 errors for non-existent training sessions, returns proper 404 errors for invalid article indices, proper HTTPException handling without 500 error masking. CRITICAL FIX APPLIED: Fixed training session storage bug where articles were not being saved to the database - added training_session['articles'] = articles before database insertion. The Training Interface PDF download functionality is FULLY OPERATIONAL and integrates seamlessly with the existing training system."
+
+  - task: "WeasyPrint PDF Generation Library Integration"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "testing"
+        -comment: "❌ CRITICAL WEASYPRINT COMPATIBILITY ISSUE DISCOVERED: Initial testing revealed a critical compatibility issue between WeasyPrint 60.2 and pydyf 0.11.0 causing 'TypeError: PDF.__init__() takes 1 positional argument but 3 were given' error. This was preventing all PDF generation functionality from working."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ WEASYPRINT COMPATIBILITY ISSUE RESOLVED: Successfully fixed the WeasyPrint/pydyf compatibility issue by downgrading to compatible versions (weasyprint==59.0 and pydyf==0.10.0). VERIFICATION RESULTS: 1) PDF Generation Working - generate_pdf_from_html() function now successfully converts HTML to PDF, produces valid PDF files with proper magic bytes (%PDF-1.7), generates substantial file sizes for rich content (29,130 bytes for complex test article), 2) Professional Styling Applied - Professional fonts (Arial/Helvetica font family), proper margins (2cm) and spacing, page headers with article titles, page footers with page numbers ('Page X of Y'), proper line height (1.6) and text justification, 3) HTML-to-PDF Conversion Quality - Preserves HTML formatting including headings (H1-H4), lists (ul, ol), tables with proper styling, blockquotes with indentation, code blocks with monospace fonts, figure elements with captions, 4) Image Embedding Support - Supports embedded images including SVG and raster formats, proper figure/figcaption structure, responsive image sizing (max-width: 100%), accessibility attributes preserved. The WeasyPrint integration is now FULLY FUNCTIONAL and produces high-quality, professional PDF documents from HTML content."
+
 ## frontend:
   - task: "Training Interface Component Implementation"
     implemented: true

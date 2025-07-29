@@ -2130,6 +2130,9 @@ async def download_article_pdf(article_id: str):
             background=None  # Don't delete file automatically, we'll handle cleanup
         )
         
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404) without modification
+        raise
     except Exception as e:
         print(f"❌ Content Library PDF download error: {str(e)}")
         import traceback

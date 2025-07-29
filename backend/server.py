@@ -1634,22 +1634,7 @@ def estimate_page_number(paragraph_index: int, total_paragraphs: int) -> int:
 
 
 
-def calculate_placement_priority(image_context: dict) -> int:
-    """
-    Calculate priority for image placement order within a page
-    Lower numbers = higher priority (placed first)
-    """
-    base_priority = 100
-    
-    # Inline images get higher priority
-    if image_context.get('type') == 'inline':
-        base_priority -= 10
-    
-    # Images with more context get higher priority
-    if image_context.get('confidence') == 'high':
-        base_priority -= 5
-    
-    return base_priority
+
 
 def embed_contextual_images_in_content(content: str, images: list) -> str:
     """

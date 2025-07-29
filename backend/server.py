@@ -1908,6 +1908,12 @@ def generate_pdf_from_html(html_content: str, title: str = "Generated Article") 
         import tempfile
         import os
         
+        # Validate input
+        if not html_content or len(html_content.strip()) < 10:
+            raise ValueError("HTML content is empty or too short")
+        
+        print(f"🎨 Generating PDF for: '{title}' with {len(html_content)} characters")
+        
         # Create a complete HTML document with proper styling
         full_html = f"""
         <!DOCTYPE html>
@@ -1987,22 +1993,30 @@ def generate_pdf_from_html(html_content: str, title: str = "Generated Article") 
                     font-size: 10pt;
                 }}
                 
-                .page-header {{
-                    position: running(header);
-                    text-align: center;
-                    font-size: 10pt;
-                    color: #666;
-                    border-bottom: 1px solid #ddd;
-                    padding-bottom: 5px;
+                .article-metadata {{
+                    background-color: #f8f9fa;
+                    padding: 15px;
+                    border-left: 4px solid #3498db;
+                    margin-bottom: 25px;
+                    border-radius: 4px;
                 }}
                 
-                .page-footer {{
-                    position: running(footer);
-                    text-align: center;
-                    font-size: 10pt;
-                    color: #666;
-                    border-top: 1px solid #ddd;
-                    padding-top: 5px;
+                .no-content-notice {{
+                    background-color: #fff3cd;
+                    padding: 20px;
+                    border: 1px solid #ffeaa7;
+                    border-radius: 4px;
+                    margin: 20px 0;
+                }}
+                
+                .no-content-notice h2 {{
+                    color: #856404;
+                    margin-top: 0;
+                }}
+                
+                .no-content-notice p {{
+                    color: #856404;
+                    margin-bottom: 8px;
                 }}
                 
                 @page {{
@@ -2017,10 +2031,6 @@ def generate_pdf_from_html(html_content: str, title: str = "Generated Article") 
                         font-size: 10pt;
                         color: #666;
                     }}
-                }}
-                
-                .no-break {{
-                    page-break-inside: avoid;
                 }}
                 
                 table {{
@@ -2074,8 +2084,24 @@ def generate_pdf_from_html(html_content: str, title: str = "Generated Article") 
         </html>
         """
         
+        # Log the HTML content for debugging
+        print(f"📄 HTML document length: {len(full_html)} characters")
+        print(f"📝 HTML preview: {full_html[:300]}...")
+        
         # Generate PDF using WeasyPrint
+        print("🔧 Starting WeasyPrint PDF generation...")
         pdf_bytes = HTML(string=full_html).write_pdf()
+        
+        # Validate PDF output
+        if not pdf_bytes:
+            raise ValueError("WeasyPrint returned no PDF data")
+        
+        if len(pdf_bytes) < 1000:
+            raise ValueError(f"Generated PDF is too small: {len(pdf_bytes)} bytes")
+        
+        # Check for valid PDF header
+        if not pdf_bytes.startswith(b'%PDF-'):
+            raise ValueError("Generated data does not appear to be a valid PDF")
         
         print(f"✅ PDF generated successfully: {len(pdf_bytes)} bytes")
         return pdf_bytes

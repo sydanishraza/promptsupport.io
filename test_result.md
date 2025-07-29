@@ -393,9 +393,8 @@
 
 ## test_plan:
   current_focus:
-    - "Training Interface Backend API Implementation"
-    - "Template-Based Document Processing System"
-    - "Training Interface Component Implementation"
+    - "PDF Download Functionality for Content Library Articles"
+    - "PDF Download Functionality for Training Interface Articles"
   stuck_tasks: []
   test_all: false
   test_priority: "critical_first"

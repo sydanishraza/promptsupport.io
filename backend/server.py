@@ -3049,7 +3049,8 @@ async def create_articles_with_template(content: str, images: list, template_dat
                     assigned_images,
                     template_data, 
                     training_session,
-                    i + 1
+                    i + 1,
+                    len(natural_sections)
                 )
                 
                 if article:

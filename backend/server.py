@@ -462,8 +462,11 @@ async def call_local_llm(system_message: str, user_message: str) -> Optional[str
 
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
     """
-    Call LLM with OpenAI first, fallback to Claude if OpenAI fails
-    Returns the response text or None if both fail
+    Call LLM with three-tier fallback system:
+    1. OpenAI (GPT-4o-mini) - Primary
+    2. Claude (Anthropic) - Secondary fallback
+    3. Local LLM - Final fallback
+    Returns the response text or None if all fail
     """
     if session_id is None:
         session_id = str(uuid.uuid4())

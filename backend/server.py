@@ -3040,7 +3040,7 @@ RESPONSE FORMAT - Return valid JSON:
                 cleaned_content = clean_article_content(raw_content)
                 
                 # Determine which AI model was used
-                ai_model = "gpt-4o-mini (with claude fallback)" if OPENAI_API_KEY else "claude-3-5-sonnet"
+                ai_model = "gpt-4o-mini (with claude + local llm fallback)" if OPENAI_API_KEY else "claude-3-5-sonnet (with local llm fallback)"
                 
                 article_record = {
                     "id": str(uuid.uuid4()),

@@ -3233,7 +3233,7 @@ def find_best_section_for_image(image: dict, sections: list) -> int:
     
     return best_section if best_score > 10 else None
 
-async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int) -> dict:
+async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int, total_articles: int = 1) -> dict:
     """Create a single article using template specifications"""
     try:
         print(f"🔍 Creating article {article_number} with {len(images)} images")

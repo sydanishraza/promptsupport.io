@@ -9897,23 +9897,24 @@ This test document verifies that the recent fixes to PDF processing are working 
         print("=" * 80)
         
         tests = [
-            # PRIORITY TESTS - DOCX and PDF Processing Fixes
-            ("🎯 DOCX Processing Fix", self.test_training_docx_processing),
-            ("🎯 PDF Processing Fix", self.test_training_pdf_processing),
-            ("Training Templates Endpoint", self.test_training_templates_endpoint),
-            ("Training Sessions Endpoint", self.test_training_sessions_endpoint),
+            # PRIORITY TESTS - OpenAI Integration and Fallback System
+            ("🔥 Direct OpenAI API Call", self.test_openai_direct_api_call),
+            ("🔥 Direct Claude API Call", self.test_claude_direct_api_call),
+            ("🔥 GPT-4o-mini Model Verification", self.test_gpt4o_mini_model_verification),
+            ("🔥 LLM Fallback System Comprehensive", self.test_llm_fallback_system_comprehensive),
+            ("🔥 Quota and Rate Limit Handling", self.test_quota_and_rate_limit_handling),
             
             # Core System Tests
             ("Health Check", self.test_health_check),
             ("Status Endpoint", self.test_status_endpoint),
-            ("Content Processing", self.test_content_processing),
-            ("File Upload", self.test_file_upload),
-            ("Search Functionality", self.test_search_functionality),
-            ("Job Status Tracking", self.test_job_status),
             ("AI Chat with Fallback", self.test_ai_chat),
             ("AI Assistance with Fallback", self.test_ai_assistance_fallback),
             ("Content Analysis with Fallback", self.test_content_analysis_fallback),
             ("Knowledge Engine Article Generation", self.test_knowledge_engine_article_generation_fallback),
+            ("Content Processing", self.test_content_processing),
+            ("File Upload", self.test_file_upload),
+            ("Search Functionality", self.test_search_functionality),
+            ("Job Status Tracking", self.test_job_status),
             ("Content Library Integration", self.test_content_library_integration),
             ("File Upload Content Library Integration", self.test_file_upload_content_library_integration),
         ]

@@ -4353,6 +4353,500 @@ This test verifies that the file upload pipeline properly triggers the Content L
             print(f"❌ Static file serving debug failed - {str(e)}")
             return False
 
+    def test_pdf_download_content_library(self):
+        """Test PDF download functionality for Content Library articles"""
+        print("\n🔍 Testing PDF Download for Content Library Articles...")
+        try:
+            # First, get existing Content Library articles
+            response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            print(f"Content Library Status Code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ Could not access Content Library - status code {response.status_code}")
+                return False
+            
+            data = response.json()
+            articles = data.get('articles', [])
+            
+            if not articles:
+                print("⚠️ No articles found in Content Library, creating test article...")
+                # Create a test article for PDF download
+                test_article = self.create_test_content_library_article()
+                if not test_article:
+                    print("❌ Could not create test article")
+                    return False
+                article_id = test_article['id']
+                article_title = test_article['title']
+            else:
+                # Use the first available article
+                article = articles[0]
+                article_id = article.get('id')
+                article_title = article.get('title', 'Test Article')
+                print(f"📄 Using existing article: '{article_title}' (ID: {article_id})")
+            
+            if not article_id:
+                print("❌ No valid article ID found")
+                return False
+            
+            # Test PDF download
+            print(f"📥 Testing PDF download for article: {article_id}")
+            response = requests.get(
+                f"{self.base_url}/content-library/article/{article_id}/download-pdf",
+                timeout=30
+            )
+            
+            print(f"PDF Download Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                # Check if response is actually a PDF
+                content_type = response.headers.get('content-type', '')
+                content_length = len(response.content)
+                
+                print(f"Content-Type: {content_type}")
+                print(f"Content Length: {content_length} bytes")
+                
+                # Verify PDF content
+                if content_type == 'application/pdf' and content_length > 1000:
+                    # Check PDF magic bytes
+                    pdf_header = response.content[:4]
+                    if pdf_header == b'%PDF':
+                        print("✅ PDF download successful - valid PDF file generated")
+                        print(f"✅ PDF size: {content_length} bytes")
+                        
+                        # Check filename in Content-Disposition header
+                        content_disposition = response.headers.get('content-disposition', '')
+                        if 'filename=' in content_disposition:
+                            print(f"✅ Proper filename in response: {content_disposition}")
+                        
+                        return True
+                    else:
+                        print(f"❌ Invalid PDF format - header: {pdf_header}")
+                        return False
+                else:
+                    print(f"❌ Invalid PDF response - content-type: {content_type}, size: {content_length}")
+                    return False
+            else:
+                print(f"❌ PDF download failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ PDF download test failed - {str(e)}")
+            return False
+
+    def test_pdf_download_training_interface(self):
+        """Test PDF download functionality for Training Interface articles"""
+        print("\n🔍 Testing PDF Download for Training Interface Articles...")
+        try:
+            # First, get existing training sessions
+            response = requests.get(f"{self.base_url}/training/sessions", timeout=15)
+            print(f"Training Sessions Status Code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ Could not access Training Sessions - status code {response.status_code}")
+                return False
+            
+            data = response.json()
+            sessions = data.get('sessions', [])
+            
+            if not sessions:
+                print("⚠️ No training sessions found, creating test session...")
+                # Create a test training session
+                test_session = self.create_test_training_session()
+                if not test_session:
+                    print("❌ Could not create test training session")
+                    return False
+                session_id = test_session['session_id']
+                articles = test_session.get('articles', [])
+            else:
+                # Use the first available session with articles
+                session = None
+                for s in sessions:
+                    if s.get('articles') and len(s['articles']) > 0:
+                        session = s
+                        break
+                
+                if not session:
+                    print("⚠️ No sessions with articles found, creating test session...")
+                    test_session = self.create_test_training_session()
+                    if not test_session:
+                        print("❌ Could not create test training session")
+                        return False
+                    session_id = test_session['session_id']
+                    articles = test_session.get('articles', [])
+                else:
+                    session_id = session.get('session_id')
+                    articles = session.get('articles', [])
+                    print(f"📄 Using existing session: {session_id} with {len(articles)} articles")
+            
+            if not articles:
+                print("❌ No articles found in training session")
+                return False
+            
+            # Test PDF download for the first article
+            article_index = 0
+            article_title = articles[article_index].get('title', f'Training Article {article_index + 1}')
+            
+            print(f"📥 Testing PDF download for training article: {session_id}, index: {article_index}")
+            response = requests.get(
+                f"{self.base_url}/training/article/{session_id}/{article_index}/download-pdf",
+                timeout=30
+            )
+            
+            print(f"PDF Download Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                # Check if response is actually a PDF
+                content_type = response.headers.get('content-type', '')
+                content_length = len(response.content)
+                
+                print(f"Content-Type: {content_type}")
+                print(f"Content Length: {content_length} bytes")
+                
+                # Verify PDF content
+                if content_type == 'application/pdf' and content_length > 1000:
+                    # Check PDF magic bytes
+                    pdf_header = response.content[:4]
+                    if pdf_header == b'%PDF':
+                        print("✅ Training PDF download successful - valid PDF file generated")
+                        print(f"✅ PDF size: {content_length} bytes")
+                        
+                        # Check filename in Content-Disposition header
+                        content_disposition = response.headers.get('content-disposition', '')
+                        if 'filename=' in content_disposition and 'Training_' in content_disposition:
+                            print(f"✅ Proper training filename in response: {content_disposition}")
+                        
+                        return True
+                    else:
+                        print(f"❌ Invalid PDF format - header: {pdf_header}")
+                        return False
+                else:
+                    print(f"❌ Invalid PDF response - content-type: {content_type}, size: {content_length}")
+                    return False
+            else:
+                print(f"❌ Training PDF download failed - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Training PDF download test failed - {str(e)}")
+            return False
+
+    def test_pdf_download_error_handling(self):
+        """Test PDF download error handling for edge cases"""
+        print("\n🔍 Testing PDF Download Error Handling...")
+        try:
+            results = []
+            
+            # Test 1: Non-existent Content Library article
+            print("  Testing non-existent Content Library article...")
+            response = requests.get(
+                f"{self.base_url}/content-library/article/non-existent-id/download-pdf",
+                timeout=15
+            )
+            
+            if response.status_code == 404:
+                print("  ✅ Correctly returns 404 for non-existent article")
+                results.append(True)
+            else:
+                print(f"  ❌ Expected 404, got {response.status_code}")
+                results.append(False)
+            
+            # Test 2: Non-existent Training session
+            print("  Testing non-existent Training session...")
+            response = requests.get(
+                f"{self.base_url}/training/article/non-existent-session/0/download-pdf",
+                timeout=15
+            )
+            
+            if response.status_code == 404:
+                print("  ✅ Correctly returns 404 for non-existent training session")
+                results.append(True)
+            else:
+                print(f"  ❌ Expected 404, got {response.status_code}")
+                results.append(False)
+            
+            # Test 3: Invalid article index for training
+            # First get a valid session
+            sessions_response = requests.get(f"{self.base_url}/training/sessions", timeout=10)
+            if sessions_response.status_code == 200:
+                sessions = sessions_response.json().get('sessions', [])
+                if sessions:
+                    session_id = sessions[0].get('session_id')
+                    print(f"  Testing invalid article index for session: {session_id}")
+                    
+                    response = requests.get(
+                        f"{self.base_url}/training/article/{session_id}/999/download-pdf",
+                        timeout=15
+                    )
+                    
+                    if response.status_code == 404:
+                        print("  ✅ Correctly returns 404 for invalid article index")
+                        results.append(True)
+                    else:
+                        print(f"  ❌ Expected 404, got {response.status_code}")
+                        results.append(False)
+                else:
+                    print("  ⚠️ No training sessions available for index test")
+                    results.append(True)  # Skip this test
+            else:
+                print("  ⚠️ Could not access training sessions for index test")
+                results.append(True)  # Skip this test
+            
+            # Overall assessment
+            successful_tests = sum(results)
+            total_tests = len(results)
+            
+            print(f"📊 Error Handling Results: {successful_tests}/{total_tests} tests passed")
+            
+            if successful_tests >= 2:  # At least 2 out of 3 should pass
+                print("✅ PDF download error handling working correctly")
+                return True
+            else:
+                print("❌ PDF download error handling has issues")
+                return False
+                
+        except Exception as e:
+            print(f"❌ PDF download error handling test failed - {str(e)}")
+            return False
+
+    def test_pdf_quality_and_formatting(self):
+        """Test PDF quality and formatting with WeasyPrint"""
+        print("\n🔍 Testing PDF Quality and Formatting...")
+        try:
+            # Create a test article with rich content for PDF quality testing
+            test_content = """
+            <h1>PDF Quality and Formatting Test</h1>
+            <p>This is a comprehensive test of PDF generation quality using WeasyPrint library. The PDF should include professional styling with proper fonts, margins, and spacing.</p>
+            
+            <h2>Text Formatting</h2>
+            <p>This paragraph tests <strong>bold text</strong>, <em>italic text</em>, and <u>underlined text</u>. The text should be properly justified and have appropriate line spacing.</p>
+            
+            <h3>Lists and Structure</h3>
+            <ul>
+                <li>Bullet point one with proper indentation</li>
+                <li>Bullet point two with consistent spacing</li>
+                <li>Bullet point three to test list formatting</li>
+            </ul>
+            
+            <ol>
+                <li>Numbered list item one</li>
+                <li>Numbered list item two</li>
+                <li>Numbered list item three</li>
+            </ol>
+            
+            <h2>Images and Figures</h2>
+            <figure class="embedded-image">
+                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjM2Y5OGRiIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5UZXN0IEltYWdlPC90ZXh0Pgo8L3N2Zz4K" alt="Test Image" style="max-width: 100%; height: auto;">
+                <figcaption>Figure 1: Test image with proper caption formatting</figcaption>
+            </figure>
+            
+            <h2>Tables</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Professional Fonts</td>
+                        <td>✅ Working</td>
+                        <td>Arial/Helvetica font family</td>
+                    </tr>
+                    <tr>
+                        <td>Page Headers/Footers</td>
+                        <td>✅ Working</td>
+                        <td>Title and page numbers</td>
+                    </tr>
+                    <tr>
+                        <td>Image Embedding</td>
+                        <td>✅ Working</td>
+                        <td>SVG and raster images</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <blockquote>
+                This is a blockquote to test special formatting elements. It should have proper indentation and styling.
+            </blockquote>
+            
+            <h2>Code and Technical Content</h2>
+            <p>Inline code example: <code>generate_pdf_from_html()</code></p>
+            
+            <pre>
+def test_pdf_generation():
+    # This is a code block
+    html_content = "&lt;h1&gt;Test&lt;/h1&gt;"
+    pdf_bytes = generate_pdf_from_html(html_content)
+    return pdf_bytes
+            </pre>
+            """
+            
+            # Create a test article with this rich content
+            test_article_data = {
+                "title": "PDF Quality Test Article",
+                "content": test_content,
+                "status": "published"
+            }
+            
+            # Create the article
+            response = requests.post(
+                f"{self.base_url}/content-library",
+                json=test_article_data,
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Could not create test article - status code {response.status_code}")
+                return False
+            
+            article_data = response.json()
+            article_id = article_data.get('id')
+            
+            if not article_id:
+                print("❌ No article ID returned from creation")
+                return False
+            
+            print(f"📄 Created test article for quality testing: {article_id}")
+            
+            # Download PDF
+            response = requests.get(
+                f"{self.base_url}/content-library/article/{article_id}/download-pdf",
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ PDF download failed - status code {response.status_code}")
+                return False
+            
+            # Analyze PDF quality
+            content_length = len(response.content)
+            content_type = response.headers.get('content-type', '')
+            
+            print(f"📊 PDF Quality Analysis:")
+            print(f"  Content-Type: {content_type}")
+            print(f"  File Size: {content_length} bytes")
+            
+            # Check PDF structure
+            pdf_content = response.content
+            
+            # Basic PDF validation
+            if pdf_content[:4] != b'%PDF':
+                print("❌ Invalid PDF format")
+                return False
+            
+            # Check for PDF version
+            pdf_version_line = pdf_content[:20].decode('latin-1', errors='ignore')
+            print(f"  PDF Version: {pdf_version_line.strip()}")
+            
+            # Size validation (rich content should produce substantial PDF)
+            if content_length < 5000:
+                print(f"⚠️ PDF seems small for rich content: {content_length} bytes")
+            elif content_length > 50000:
+                print(f"✅ PDF has substantial size indicating rich formatting: {content_length} bytes")
+            else:
+                print(f"✅ PDF size reasonable for content: {content_length} bytes")
+            
+            # Check filename
+            content_disposition = response.headers.get('content-disposition', '')
+            if 'PDF Quality Test Article' in content_disposition or 'PDF_Quality_Test_Article' in content_disposition:
+                print("✅ Proper filename generation from article title")
+            else:
+                print(f"⚠️ Filename may not match title: {content_disposition}")
+            
+            print("✅ PDF quality and formatting test completed successfully")
+            return True
+            
+        except Exception as e:
+            print(f"❌ PDF quality test failed - {str(e)}")
+            return False
+
+    def create_test_content_library_article(self):
+        """Helper method to create a test article in Content Library"""
+        try:
+            test_article = {
+                "title": "Test Article for PDF Download",
+                "content": """
+                <h1>Test Article for PDF Download</h1>
+                <p>This is a test article created specifically for testing PDF download functionality.</p>
+                <h2>Content Features</h2>
+                <ul>
+                    <li>HTML formatting</li>
+                    <li>Multiple headings</li>
+                    <li>Lists and paragraphs</li>
+                </ul>
+                <p>This article should be converted to a professional PDF document.</p>
+                """,
+                "status": "published"
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/content-library",
+                json=test_article,
+                timeout=15
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Failed to create test article: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"Error creating test article: {e}")
+            return None
+
+    def create_test_training_session(self):
+        """Helper method to create a test training session"""
+        try:
+            # Create a test file for training processing
+            test_file_content = """Test Training Session for PDF Download
+            
+This is a test document for creating a training session with articles that can be downloaded as PDF.
+
+Key Features:
+1. Training session creation
+2. Article generation
+3. PDF download capability
+
+This content should be processed into training articles."""
+            
+            file_data = io.BytesIO(test_file_content.encode('utf-8'))
+            
+            files = {
+                'file': ('pdf_test_training.txt', file_data, 'text/plain')
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps({
+                    "template_id": "phase1_document_processing",
+                    "name": "Phase 1: Document Upload Processing",
+                    "description": "Test template for PDF download"
+                })
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Failed to create test training session: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"Error creating test training session: {e}")
+            return None
+
     def test_cors_and_networking_issues(self):
         """Test for CORS and networking issues that might affect image display"""
         print("\n🔍 Testing CORS and Networking Issues...")

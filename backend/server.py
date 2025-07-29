@@ -2188,6 +2188,9 @@ async def download_training_article_pdf(session_id: str, article_index: int):
             background=None  # Don't delete file automatically
         )
         
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404) without modification
+        raise
     except Exception as e:
         print(f"❌ Training PDF download error: {str(e)}")
         import traceback

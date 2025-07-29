@@ -2102,15 +2102,42 @@ async def download_article_pdf(article_id: str):
         title = article.get("title", "Generated Article")
         content = article.get("content", "")
         
-        if not content:
-            raise HTTPException(status_code=400, detail="Article has no content to export")
+        # Debug logging for content validation
+        print(f"📄 Article title: '{title}'")
+        print(f"📏 Content length: {len(content)} characters")
+        print(f"📝 Content preview: {content[:200]}...")
+        
+        if not content or len(content.strip()) < 50:
+            # Provide fallback content if article is empty or too short
+            print("⚠️ Article content is empty or too short, providing fallback content")
+            content = f"""
+            <h1>{title}</h1>
+            <div class="article-metadata">
+                <p><strong>Article ID:</strong> {article_id}</p>
+                <p><strong>Created:</strong> {article.get('created_at', 'Unknown')}</p>
+                <p><strong>Source:</strong> {article.get('source_type', 'Unknown')}</p>
+            </div>
+            <div class="no-content-notice">
+                <h2>Content Not Available</h2>
+                <p>This article appears to have empty or insufficient content for PDF generation.</p>
+                <p>Please ensure the article has been properly processed and contains meaningful content.</p>
+            </div>
+            """
         
         # Clean title for filename
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
         filename = f"{safe_title[:50]}.pdf"  # Limit filename length
         
         # Generate PDF
+        print(f"🎨 Starting PDF generation with {len(content)} characters of content")
         pdf_bytes = generate_pdf_from_html(content, title)
+        
+        # Validate PDF was actually generated
+        if not pdf_bytes or len(pdf_bytes) < 1000:
+            print(f"❌ Generated PDF is too small: {len(pdf_bytes) if pdf_bytes else 0} bytes")
+            raise HTTPException(status_code=500, detail="PDF generation produced invalid output")
+        
+        print(f"✅ PDF generated successfully: {len(pdf_bytes)} bytes")
         
         # Create temporary file
         import tempfile
@@ -2120,7 +2147,7 @@ async def download_article_pdf(article_id: str):
             tmp_file.write(pdf_bytes)
             temp_path = tmp_file.name
         
-        print(f"✅ PDF generated for Content Library article: {title}")
+        print(f"✅ PDF saved to temporary file: {temp_path}")
         
         # Return file response
         return FileResponse(

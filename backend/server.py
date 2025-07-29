@@ -1592,42 +1592,7 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     
     return False
 
-def extract_image_positions_from_xml(doc_tree, paragraph_contexts) -> list:
-    """
-    Parse document XML to find where images are positioned relative to paragraphs
-    """
-    positions = []
-    
-    try:
-        # Find all image references in the document
-        for drawing in doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing'):
-            # Try to find the paragraph this image belongs to
-            paragraph_element = drawing
-            
-            # Walk up the tree to find the containing paragraph
-            while paragraph_element is not None and paragraph_element.tag != '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
-                paragraph_element = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
-            
-            if paragraph_element is not None:
-                # Find which paragraph index this corresponds to
-                all_paragraphs = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
-                try:
-                    para_index = list(all_paragraphs).index(paragraph_element)
-                    if para_index < len(paragraph_contexts):
-                        context = paragraph_contexts[para_index]
-                        positions.append({
-                            'paragraph_index': para_index,
-                            'chapter': context['chapter'],
-                            'page': context['page_estimate'],
-                            'paragraph_text': context['text']
-                        })
-                except ValueError:
-                    continue
-        
-    except Exception as e:
-        print(f"⚠️ Error parsing image positions from XML: {e}")
-    
-    return positions
+
 
 def find_image_context(filename: str, image_positions: list, paragraph_contexts: list) -> dict:
     """

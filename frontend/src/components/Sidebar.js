@@ -96,7 +96,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
     },
     {
       id: 'training',
-      label: 'Training Interface',
+      label: 'Lab',
       icon: FlaskConical,
       description: 'Internal tool for PromptSupport team to train and improve AI models'
     }

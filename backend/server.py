@@ -3276,39 +3276,42 @@ IMAGE INTEGRATION REQUIREMENTS:
 - Images should support and enhance the written content, not replace it"""
 
         # Enhanced user message with better content processing
-        user_message = f"""Transform this content into a comprehensive, well-structured knowledge base article:
+        user_message = f"""Transform this content into a comprehensive, well-structured knowledge base article with complete coverage:
 
 CONTENT TO PROCESS:
 {content}
 
-REQUIREMENTS:
-1. **Intelligent Title**: Create a meaningful title based on the main topic (not filename)
-2. **Comprehensive Structure**: Use proper headings, sections, and logical flow
-3. **Technical Quality**: Professional language for technical documentation
-4. **Full Coverage**: Include all important information without truncation
-5. **Enhanced Formatting**: Lists, tables, callouts, and proper HTML structure
+CRITICAL REQUIREMENTS:
+1. **Comprehensive Coverage**: Include ALL information from the source content - do not truncate or summarize
+2. **Intelligent Title**: Create a meaningful title based on the main topic (NOT filename-based)
+3. **Professional Structure**: Use proper headings (h1 for title, h2 for major sections, h3 for subsections)
+4. **Technical Quality**: Enterprise-level professional language for technical documentation
+5. **Detailed Instructions**: Include complete step-by-step procedures with full detail
+6. **Enhanced Formatting**: Proper lists, tables, callouts, and semantic HTML structure
+7. **Complete Content**: Process the entire content without artificial limits or truncation
 
-AVAILABLE IMAGES: {len(images)}
+AVAILABLE IMAGES FOR EMBEDDING: {len(images)}
 {format_available_images(images)}
 
-IMAGE EMBEDDING:
-- Only reference actually available images
-- Use this format for image embedding:
-  <figure class="embedded-image">
-    <img src="[IMAGE_URL]" alt="[DESCRIPTIVE_ALT]" style="max-width: 100%; height: auto;">
-    <figcaption>[CONTEXTUAL_CAPTION]</figcaption>
-  </figure>
-- Reference images naturally in the text
-- If no images available, focus on comprehensive text content
+CRITICAL IMAGE EMBEDDING INSTRUCTIONS:
+- You MUST embed images at contextually appropriate locations throughout the article
+- Use the exact HTML provided for each image in the list above
+- Reference images in the text flow naturally (e.g., "As shown in Figure 1 below:", "The following screenshot demonstrates:")
+- Embed images near relevant text sections, not grouped at the end
+- If no images are available, focus on comprehensive text content only
+- NEVER create placeholder text like [IMAGE_1] - only use actual provided images
 
-ENHANCEMENT INSTRUCTIONS:
-- Transform basic content into comprehensive documentation
-- Add proper structure and professional formatting
-- Include implementation details and examples
-- Use callouts for important information
-- Ensure logical content flow from introduction to conclusion
+CONTENT ENHANCEMENT REQUIREMENTS:
+- Transform basic content into comprehensive enterprise documentation
+- Maintain all technical details and procedural steps
+- Add proper structure with detailed headings and sections
+- Include implementation details, examples, and comprehensive explanations
+- Use callout boxes for important notes, tips, or warnings
+- Create tables for structured information where appropriate
+- Ensure content flows logically from introduction through detailed procedures to conclusion
+- Include troubleshooting information where relevant
 
-Return only the complete HTML article content with semantic structure."""
+CRITICAL: Return ONLY the complete HTML article content with semantic structure. Do not include any explanatory text, processing notes, or meta-commentary."""
 
         # Generate content with enhanced LLM processing
         print(f"🤖 Generating enhanced article content...")

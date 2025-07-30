@@ -4007,6 +4007,28 @@ def clean_html_wrappers(content: str) -> str:
     content = re.sub(r'<body[^>]*>', '', content, flags=re.IGNORECASE)
     content = re.sub(r'</body>', '', content, flags=re.IGNORECASE)
     
+    # CRITICAL FIX: Remove code blocks that contain HTML titles
+    content = re.sub(r'```html\s*.*?```', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```javascript\s*.*?```', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```\s*.*?```', '', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # CRITICAL FIX: Remove duplicate h1 tags that repeat the title
+    h1_matches = re.findall(r'<h1[^>]*>(.*?)</h1>', content, flags=re.IGNORECASE | re.DOTALL)
+    if len(h1_matches) > 1:
+        # Keep only the first h1, remove the rest
+        first_h1_found = False
+        def replace_h1(match):
+            nonlocal first_h1_found
+            if not first_h1_found:
+                first_h1_found = True
+                return match.group(0)  # Keep the first one
+            else:
+                # Convert subsequent h1s to h2s
+                inner_text = match.group(1)
+                return f'<h2>{inner_text}</h2>'
+        
+        content = re.sub(r'<h1[^>]*>(.*?)</h1>', replace_h1, content, flags=re.IGNORECASE | re.DOTALL)
+    
     # Remove any remaining div wrappers that might have been added
     content = re.sub(r'^<div[^>]*>(.*)</div>$', r'\1', content.strip(), flags=re.IGNORECASE | re.DOTALL)
     

@@ -135,7 +135,7 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "Fixed and enhanced Training Interface backend system for comprehensive document format support and image embedding with Phase 1 engine-level training capabilities"
+## user_problem_statement: "Implementing HTML Preprocessing Pipeline for Accurate Image Reinsertion - Revolutionary 3-Phase approach to solve image placement issues in Knowledge Engine"
 
 ## backend:
   - task: "Training Interface Backend API Implementation"

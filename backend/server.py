@@ -1772,12 +1772,19 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     if paragraph_context:
         # CRITICAL FIX: More intelligent cover page filtering
         # Skip images in the first few paragraphs ONLY if they seem like cover page content
-        if paragraph_context.get('page_estimate', 0) <= 1 and paragraph_context.get('paragraph_index', 0) < 3:
+        page_estimate = paragraph_context.get('page_estimate', 0)
+        paragraph_index = paragraph_context.get('paragraph_index', 0)
+        chapter = paragraph_context.get('chapter', '').lower()
+        
+        print(f"🔍 DEBUG: Cover page check for {filename}: page={page_estimate}, para_index={paragraph_index}, chapter='{chapter[:50]}...'")
+        
+        if page_estimate <= 1 and paragraph_index < 3:
             # Only skip if it's really early content AND the chapter suggests cover page
-            chapter = paragraph_context.get('chapter', '').lower()
             if any(cover_word in chapter for cover_word in ['title', 'cover', 'table of contents', 'index']):
                 print(f"🚫 Skipping image from cover page area: {filename}")
                 return True
+            else:
+                print(f"✅ Allowing early page image with content chapter: {filename}")
         
         # ALLOW tutorial/content images that might be on page 1
     

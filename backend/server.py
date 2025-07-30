@@ -3732,24 +3732,24 @@ TARGET LENGTH: {section_data.get('estimated_words', 600)} words"""
 
 CRITICAL REQUIREMENTS:
 1. Generate detailed, comprehensive content for this section
-2. Write 1000-2000 words minimum for thorough coverage - NO SHORTER CONTENT
-3. Use professional technical documentation style with extensive detail
+2. Write 400-800 words for thorough coverage - BALANCED LENGTH
+3. Use professional technical documentation style with good detail
 4. Include detailed explanations, comprehensive step-by-step procedures, and thorough information
 5. Use proper HTML structure: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>
 6. Embed provided images with proper figure elements
 7. NO meta-commentary - only detailed article content
 8. NO truncation or summarization - provide COMPLETE detailed content
-9. Expand on every concept with comprehensive explanations
+9. Focus on quality over quantity - comprehensive but concise
 
 {section_info}
 
 QUALITY STANDARDS:
-- Comprehensive, detailed explanations with extensive depth
+- Comprehensive, detailed explanations with good depth
 - Professional enterprise technical writing with thorough coverage
 - Complete step-by-step procedures with detailed instructions
-- Thorough coverage of all aspects with extensive information
+- Thorough coverage of all aspects with focused information
 - Proper HTML semantic structure with rich formatting
-- Minimum 1000 words - comprehensive content only"""
+- Target 400-800 words - comprehensive yet efficient content"""
 
         user_message = f"""Create comprehensive content for section {segment_num} of {total_segments}:
 

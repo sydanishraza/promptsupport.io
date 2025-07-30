@@ -1770,10 +1770,16 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     
     # Enhanced context-based filtering
     if paragraph_context:
-        # Skip images in the first few paragraphs (likely cover page area)
-        if paragraph_context.get('page_estimate', 0) <= 1 and paragraph_context.get('paragraph_index', 0) < 10:
-            print(f"🚫 Skipping image from cover page area: {filename}")
-            return True
+        # CRITICAL FIX: More intelligent cover page filtering
+        # Skip images in the first few paragraphs ONLY if they seem like cover page content
+        if paragraph_context.get('page_estimate', 0) <= 1 and paragraph_context.get('paragraph_index', 0) < 3:
+            # Only skip if it's really early content AND the chapter suggests cover page
+            chapter = paragraph_context.get('chapter', '').lower()
+            if any(cover_word in chapter for cover_word in ['title', 'cover', 'table of contents', 'index']):
+                print(f"🚫 Skipping image from cover page area: {filename}")
+                return True
+        
+        # ALLOW tutorial/content images that might be on page 1
     
     # Check for repeated/pattern-based image names (likely decorative) - MOVED UP
     import re

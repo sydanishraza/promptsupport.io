@@ -392,6 +392,344 @@ async def generate_enhanced_markdown_content(article_data: dict, template_data: 
 
 # === END HELPER FUNCTIONS ===
 
+# === HTML PREPROCESSING PIPELINE FOR ACCURATE IMAGE REINSERTION ===
+
+class DocumentPreprocessor:
+    """
+    Revolutionary 3-phase HTML preprocessing pipeline for accurate image reinsertion
+    Phase 1: Convert documents to structured HTML with block IDs and image tokenization
+    Phase 2: AI processing that preserves tokens and structure  
+    Phase 3: Token replacement with rich image HTML
+    """
+    
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        self.asset_dir = f"static/uploads/session_{session_id}"
+        self.block_counter = 0
+        self.image_counter = 0
+        self.extracted_images = {}
+        
+        # Ensure asset directory exists
+        os.makedirs(self.asset_dir, exist_ok=True)
+    
+    async def preprocess_document(self, file_path: str, file_type: str) -> tuple[str, dict]:
+        """
+        Phase 1: Convert document to structured HTML with block IDs and image tokenization
+        Returns: (tokenized_html, image_assets)
+        """
+        print(f"🔄 Phase 1: Starting HTML preprocessing for {file_type} document")
+        
+        try:
+            # Convert document to HTML based on type
+            if file_type.lower() in ['docx', 'doc']:
+                html_content, images = await self._convert_docx_to_html(file_path)
+            elif file_type.lower() == 'pdf':
+                html_content, images = await self._convert_pdf_to_html(file_path)
+            elif file_type.lower() in ['ppt', 'pptx']:
+                html_content, images = await self._convert_ppt_to_html(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {file_type}")
+            
+            print(f"📄 Converted to HTML: {len(html_content)} characters, {len(images)} images extracted")
+            
+            # Assign structural block IDs
+            structured_html = self._assign_block_ids(html_content)
+            print(f"🏗️ Assigned block IDs: {self.block_counter} blocks created")
+            
+            # Tokenize images with positional markers
+            tokenized_html = self._tokenize_images(structured_html, images)
+            print(f"🖼️ Tokenized {len(images)} images with positional markers")
+            
+            return tokenized_html, self.extracted_images
+            
+        except Exception as e:
+            print(f"❌ Phase 1 preprocessing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
+    
+    async def _convert_docx_to_html(self, file_path: str) -> tuple[str, list]:
+        """Convert DOCX to HTML using mammoth with image extraction"""
+        try:
+            with open(file_path, "rb") as docx_file:
+                # Use mammoth to convert with image handling
+                def image_handler(image):
+                    self.image_counter += 1
+                    image_filename = f"img_{self.image_counter}.{image.content_type.split('/')[-1]}"
+                    image_path = os.path.join(self.asset_dir, image_filename)
+                    
+                    # Save image to disk
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(image.bytes)
+                    
+                    # Store image metadata
+                    image_id = f"doc_{self.session_id}_img_{self.image_counter}"
+                    self.extracted_images[image_id] = {
+                        'filename': image_filename,
+                        'path': image_path,
+                        'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                        'alt_text': f"Image {self.image_counter}",
+                        'content_type': image.content_type
+                    }
+                    
+                    return {
+                        "src": f"IMAGE_PLACEHOLDER_{image_id}"  # Placeholder for tokenization
+                    }
+                
+                # Convert with image handling
+                result = mammoth.convert_to_html(docx_file, convert_image=image_handler)
+                html_content = result.value
+                
+                # Extract image placeholders and create image list
+                images = []
+                for image_id, image_data in self.extracted_images.items():
+                    if f"IMAGE_PLACEHOLDER_{image_id}" in html_content:
+                        images.append({
+                            'id': image_id,
+                            'filename': image_data['filename'],
+                            'url': image_data['url'],
+                            'alt_text': image_data['alt_text']
+                        })
+                
+                return html_content, images
+                
+        except Exception as e:
+            print(f"❌ DOCX conversion failed: {e}")
+            # Fallback to basic text extraction
+            return f"<p>Failed to convert DOCX: {str(e)}</p>", []
+    
+    async def _convert_pdf_to_html(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF to HTML using pdfminer with basic structure"""
+        try:
+            # Extract text from PDF
+            text_content = pdf_extract_text(file_path)
+            
+            # Convert text to basic HTML structure
+            paragraphs = text_content.split('\n\n')
+            html_parts = []
+            
+            for para in paragraphs:
+                para = para.strip()
+                if para:
+                    # Detect potential headings (uppercase, short lines)
+                    if len(para) < 100 and para.isupper():
+                        html_parts.append(f"<h2>{para}</h2>")
+                    elif para.endswith(':') and len(para) < 80:
+                        html_parts.append(f"<h3>{para}</h3>")
+                    else:
+                        html_parts.append(f"<p>{para}</p>")
+            
+            html_content = '\n'.join(html_parts)
+            
+            # Note: PDF image extraction is complex, for now return empty images
+            # TODO: Implement PDF image extraction in future iteration
+            images = []
+            
+            return html_content, images
+            
+        except Exception as e:
+            print(f"❌ PDF conversion failed: {e}")
+            return f"<p>Failed to convert PDF: {str(e)}</p>", []
+    
+    async def _convert_ppt_to_html(self, file_path: str) -> tuple[str, list]:
+        """Convert PowerPoint to HTML with slide structure"""
+        try:
+            # Try to use python-pptx for basic extraction
+            from pptx import Presentation
+            
+            prs = Presentation(file_path)
+            html_parts = []
+            images = []
+            
+            for i, slide in enumerate(prs.slides):
+                html_parts.append(f"<h2>Slide {i + 1}</h2>")
+                
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        html_parts.append(f"<p>{shape.text}</p>")
+                    elif shape.shape_type == 13:  # Picture type
+                        # Handle images in slides
+                        self.image_counter += 1
+                        image_id = f"ppt_{self.session_id}_img_{self.image_counter}"
+                        images.append({
+                            'id': image_id,
+                            'filename': f"slide_{i+1}_img_{self.image_counter}.png",
+                            'alt_text': f"Slide {i+1} Image {self.image_counter}"
+                        })
+                        html_parts.append(f"<p>IMAGE_PLACEHOLDER_{image_id}</p>")
+            
+            html_content = '\n'.join(html_parts)
+            return html_content, images
+            
+        except Exception as e:
+            print(f"❌ PowerPoint conversion failed: {e}")
+            return f"<p>Failed to convert PowerPoint: {str(e)}</p>", []
+    
+    def _assign_block_ids(self, html_content: str) -> str:
+        """
+        Phase 1b: Assign unique data-block-id to every content block
+        Creates hierarchical naming for stability: intro_para_1, heading_1_para_2, etc.
+        """
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Track current section for hierarchical naming
+            current_section = "intro"
+            heading_counter = 0
+            section_counters = {}
+            
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
+                self.block_counter += 1
+                
+                # Update section tracking for headings
+                if element.name.startswith('h'):
+                    heading_counter += 1
+                    current_section = f"heading_{heading_counter}"
+                    section_counters[current_section] = 0
+                
+                # Generate hierarchical block ID
+                if current_section not in section_counters:
+                    section_counters[current_section] = 0
+                
+                section_counters[current_section] += 1
+                block_id = f"{current_section}_{element.name}_{section_counters[current_section]}"
+                
+                # Assign the block ID
+                element['data-block-id'] = block_id
+                
+                print(f"📋 Assigned block ID: {block_id} to <{element.name}>")
+            
+            return str(soup)
+            
+        except Exception as e:
+            print(f"❌ Block ID assignment failed: {e}")
+            return html_content
+    
+    def _tokenize_images(self, structured_html: str, images: list) -> str:
+        """
+        Phase 1c: Replace image placeholders with positioned tokens
+        Creates <!-- IMAGE_BLOCK:xxx --> tokens that AI can preserve
+        """
+        try:
+            tokenized_html = structured_html
+            
+            for image in images:
+                image_id = image['id']
+                placeholder = f"IMAGE_PLACEHOLDER_{image_id}"
+                
+                # Create rich image token with metadata
+                image_token = f"""<!-- IMAGE_BLOCK:{image_id} -->
+<div data-image-id="{image_id}" data-original-filename="{image.get('filename', '')}" data-alt="{image.get('alt_text', '')}">
+    [IMAGE: {image.get('alt_text', 'Image')}]
+</div>
+<!-- END_IMAGE_BLOCK:{image_id} -->"""
+                
+                tokenized_html = tokenized_html.replace(placeholder, image_token)
+                print(f"🏷️ Tokenized image: {image_id}")
+            
+            return tokenized_html
+            
+        except Exception as e:
+            print(f"❌ Image tokenization failed: {e}")
+            return structured_html
+    
+    async def process_with_ai_preserving_tokens(self, tokenized_html: str, template_data: dict) -> str:
+        """
+        Phase 2: AI processing that preserves tokens and block structure
+        """
+        print(f"🤖 Phase 2: Starting AI processing with token preservation")
+        
+        try:
+            system_message = """You are an expert content writer tasked with improving document content while preserving its structure.
+
+CRITICAL REQUIREMENTS:
+1. PRESERVE ALL <!-- IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear
+2. PRESERVE ALL <!-- END_IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear  
+3. MAINTAIN all data-block-id attributes on HTML elements
+4. PRESERVE the [IMAGE: ...] placeholders within image blocks
+5. If you merge content blocks, REASSIGN image tokens to the closest surviving block in the same section
+
+Your task is to:
+- Improve the text content within each block for clarity, readability, and engagement
+- Expand content where appropriate to provide comprehensive information
+- Maintain the logical flow and structure of the document
+- Ensure all image tokens remain in sensible positions relative to the content they illustrate
+
+Do NOT:
+- Remove or modify any <!-- IMAGE_BLOCK --> or <!-- END_IMAGE_BLOCK --> tokens
+- Remove data-block-id attributes
+- Generate new fake images or image URLs
+- Change the basic HTML structure (headings hierarchy, paragraphs, lists)"""
+
+            user_message = f"""Please improve this document content while preserving all image tokens and structure:
+
+{tokenized_html}
+
+Focus on:
+- Making content more comprehensive and informative
+- Improving readability and flow
+- Maintaining professional tone
+- Preserving all image positions and tokens exactly"""
+
+            # Use the existing LLM fallback system
+            improved_content = await call_llm_with_fallback(system_message, user_message, self.session_id)
+            
+            if improved_content:
+                print(f"✅ AI processing complete: {len(improved_content)} characters generated")
+                return improved_content
+            else:
+                print("⚠️ AI processing failed, returning original content")
+                return tokenized_html
+                
+        except Exception as e:
+            print(f"❌ AI processing failed: {e}")
+            return tokenized_html
+    
+    def replace_tokens_with_rich_images(self, processed_html: str) -> str:
+        """
+        Phase 3: Replace image tokens with rich HTML figure elements
+        """
+        print(f"🖼️ Phase 3: Starting token replacement with rich image HTML")
+        
+        try:
+            result_html = processed_html
+            
+            # Find all image blocks and replace with rich HTML
+            import re
+            
+            pattern = r'<!-- IMAGE_BLOCK:([^>]+) -->(.*?)<!-- END_IMAGE_BLOCK:\1 -->'
+            matches = re.findall(pattern, result_html, re.DOTALL)
+            
+            for image_id, block_content in matches:
+                if image_id in self.extracted_images:
+                    image_data = self.extracted_images[image_id]
+                    
+                    # Create rich figure element
+                    rich_image_html = f"""<figure style="margin: 20px 0; text-align: center;">
+    <img src="{image_data['url']}" 
+         alt="{image_data['alt_text']}" 
+         style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+    <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic;">
+        {image_data['alt_text']}
+    </figcaption>
+</figure>"""
+                    
+                    # Replace the entire image block
+                    full_token = f"<!-- IMAGE_BLOCK:{image_id} -->{block_content}<!-- END_IMAGE_BLOCK:{image_id} -->"
+                    result_html = result_html.replace(full_token, rich_image_html)
+                    
+                    print(f"🎨 Replaced token {image_id} with rich HTML")
+                else:
+                    print(f"⚠️ Image data not found for token: {image_id}")
+            
+            return result_html
+            
+        except Exception as e:
+            print(f"❌ Token replacement failed: {e}")
+            return processed_html
+
+# === END HTML PREPROCESSING PIPELINE ===
+
 # Global clients
 mongo_client = None
 db = None

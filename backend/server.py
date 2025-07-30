@@ -1579,9 +1579,16 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
             if not text:
                 continue
                 
-            # Update current chapter context
+            # Update current chapter context with better heading detection
             if is_heading(paragraph):
-                current_chapter = text
+                # CRITICAL FIX: Limit chapter names to reasonable length
+                chapter_text = text[:100] + "..." if len(text) > 100 else text
+                current_chapter = chapter_text
+                print(f"📖 DEBUG: New chapter detected: '{current_chapter}' (original length: {len(text)})")
+            else:
+                # CRITICAL FIX: Don't let long paragraphs become chapter names
+                if len(text) > 150:
+                    print(f"📄 DEBUG: Long paragraph ignored for chapter context: {len(text)} chars")
                 
             paragraph_contexts.append({
                 "index": i,

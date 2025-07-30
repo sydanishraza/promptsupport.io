@@ -3318,14 +3318,19 @@ async def create_articles_with_template(content: str, images: list, template_dat
         if '<h1>' in content or '<h2>' in content or '\n\n' in content:
             # Content has structure, split intelligently
             
+            # CRITICAL FIX: Prevent multiple H1 tags in single article
             # First try splitting on major headings
             if '<h1>' in content:
                 sections = content.split('<h1>')
                 for i, section in enumerate(sections):
                     if section.strip():
-                        if i > 0:  # Add back the h1 tag
-                            section = '<h1>' + section
-                        natural_sections.append(section)
+                        if i == 0:
+                            # First section without H1 prefix
+                            natural_sections.append(section)
+                        else:
+                            # Convert H1 to H2 for subsequent sections to avoid multiple H1s
+                            section = '<h2>' + section.replace('</h1>', '</h2>', 1)
+                            natural_sections.append(section)
             elif '<h2>' in content:
                 sections = content.split('<h2>')
                 for i, section in enumerate(sections):

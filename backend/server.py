@@ -6722,13 +6722,15 @@ CRITICAL OUTPUT REQUIREMENTS:
 1. Generate ONLY clean, semantic HTML content - absolutely NO meta-commentary, explanations, or processing notes
 2. NEVER mention that you are processing content, creating articles, or analyzing documents
 3. Start directly with content - no introductory phrases like "Here is the article" or "Based on the content"
-4. Use proper HTML5 structure: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
+4. Use proper HTML5 structure: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
 5. Create contextual, descriptive titles that reflect actual content topics (NOT filename-based)
 6. Write in professional, technical tone suitable for enterprise knowledge documentation
 7. Include comprehensive coverage - do NOT truncate or summarize content artificially
 8. Use proper heading hierarchy and logical content flow
 9. Include step-by-step instructions, detailed procedures, and comprehensive explanations
 10. Use callout sections for Notes, Tips, Warnings using appropriate HTML structure
+11. NEVER generate code blocks with ```html or ```javascript - only generate actual HTML content
+12. NEVER repeat the document title as it already exists in the h1 tag
 
 TEMPLATE SPECIFICATIONS:
 {json.dumps(template_data.get('processing_instructions', []), indent=2)}

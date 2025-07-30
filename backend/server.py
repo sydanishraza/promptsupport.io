@@ -3672,9 +3672,10 @@ Create a detailed outline with major sections, key points, and estimated word co
 def split_content_into_segments(content: str, outline: dict) -> list:
     """Split content into segments based on outline structure"""
     if not outline or "sections" not in outline:
-        # Fallback: split into roughly equal segments
+        # Fallback: split into 2 balanced segments for faster processing
         words = content.split()
-        segment_size = max(300, len(words) // 4)  # At least 300 words per segment, max 4 segments
+        segments_count = 2  # Reduced from 4 to 2 segments
+        segment_size = max(200, len(words) // segments_count)  # At least 200 words per segment
         
         segments = []
         for i in range(0, len(words), segment_size):

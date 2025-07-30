@@ -527,7 +527,7 @@ const TrainingInterface = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Engine Lab</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Phase 1: Document Upload Processing Training
+              Phase 1: Document Upload Processing Lab
             </p>
           </div>
           <div className="flex items-center space-x-3">

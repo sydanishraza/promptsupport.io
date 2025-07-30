@@ -136,7 +136,9 @@ const TrainingInterface = () => {
       
       const response = await fetch(`${backendUrl}/api/training/process`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        // Add timeout handling for long-running processing
+        signal: AbortSignal.timeout(300000) // 5 minutes timeout
       });
       
       if (response.ok) {

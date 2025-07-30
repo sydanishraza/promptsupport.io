@@ -6264,30 +6264,43 @@ def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> l
         for i, drawing in enumerate(drawings):
             print(f"🔍 DEBUG: Processing drawing {i+1}/{len(drawings)}")
             
-            # CRITICAL FIX: Find the containing paragraph using parent traversal
-            paragraph_element = drawing
-            while paragraph_element is not None:
-                if paragraph_element.tag == '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
-                    break
-                # Use alternative parent traversal method
-                paragraph_element = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
-                
-                # Alternative approach: get parent from XML tree structure
-                if paragraph_element is None:
-                    # Find parent by searching all elements
-                    for elem in doc_tree.iter():
-                        if drawing in elem:
-                            paragraph_element = elem
+            # CRITICAL FIX: Find the containing paragraph using multiple traversal methods
+            paragraph_element = None
+            
+            # Method 1: XPath to find parent paragraph
+            try:
+                parent_paragraphs = drawing.xpath('./ancestor::*[local-name()="p"]')
+                if parent_paragraphs:
+                    paragraph_element = parent_paragraphs[-1]  # Get the closest paragraph parent
+                    print(f"✅ DEBUG: Found paragraph via XPath for drawing {i+1}")
+                else:
+                    print(f"⚠️ DEBUG: No paragraph parent found via XPath for drawing {i+1}")
+            except Exception as xpath_error:
+                print(f"⚠️ DEBUG: XPath method failed for drawing {i+1}: {xpath_error}")
+            
+            # Method 2: Use iterancestors() if XPath fails
+            if paragraph_element is None:
+                try:
+                    for ancestor in drawing.iterancestors():
+                        if ancestor.tag == '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
+                            paragraph_element = ancestor
+                            print(f"✅ DEBUG: Found paragraph via iterancestors for drawing {i+1}")
                             break
-                    if paragraph_element is not None and paragraph_element.tag != '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
-                        # Continue traversing up
-                        parent = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
-                        if parent is not None:
-                            paragraph_element = parent
-                        else:
+                except Exception as ancestor_error:
+                    print(f"⚠️ DEBUG: iterancestors method failed for drawing {i+1}: {ancestor_error}")
+            
+            # Method 3: Manual traversal using getparent() if available
+            if paragraph_element is None:
+                try:
+                    current = drawing
+                    while current is not None and hasattr(current, 'getparent'):
+                        if current.tag == '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
+                            paragraph_element = current
+                            print(f"✅ DEBUG: Found paragraph via manual traversal for drawing {i+1}")
                             break
-                    else:
-                        break
+                        current = current.getparent()
+                except Exception as manual_error:
+                    print(f"⚠️ DEBUG: Manual traversal failed for drawing {i+1}: {manual_error}")
             
             if paragraph_element is not None:
                 # Find paragraph index

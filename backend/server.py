@@ -451,6 +451,8 @@ class DocumentPreprocessor:
     async def _convert_docx_to_html(self, file_path: str) -> tuple[str, list]:
         """Convert DOCX to HTML using mammoth with image extraction"""
         try:
+            print(f"📄 Starting DOCX conversion: {file_path}")
+            
             with open(file_path, "rb") as docx_file:
                 # Use mammoth to convert with image handling
                 def image_handler(image):
@@ -513,9 +515,32 @@ class DocumentPreprocessor:
                         "src": f"IMAGE_PLACEHOLDER_{image_id}"  # Placeholder for tokenization
                     }
                 
-                # Convert with image handling
-                result = mammoth.convert_to_html(docx_file, convert_image=image_handler)
-                html_content = result.value
+                try:
+                    # Convert with image handling
+                    result = mammoth.convert_to_html(docx_file, convert_image=image_handler)
+                    html_content = result.value
+                    messages = result.messages
+                    
+                    # Log any conversion messages
+                    if messages:
+                        for message in messages:
+                            if message.type == "warning":
+                                print(f"⚠️ Mammoth warning: {message.message}")
+                            elif message.type == "error":
+                                print(f"❌ Mammoth error: {message.message}")
+                    
+                    print(f"✅ DOCX converted to HTML: {len(html_content)} characters")
+                    
+                except Exception as conversion_error:
+                    print(f"❌ Mammoth conversion failed: {conversion_error}")
+                    # Fallback: try to extract text without images
+                    try:
+                        result = mammoth.convert_to_html(docx_file)
+                        html_content = result.value
+                        print(f"⚠️ Fallback conversion successful (no images): {len(html_content)} characters")
+                    except Exception as fallback_error:
+                        print(f"❌ Fallback conversion also failed: {fallback_error}")
+                        return f"<p>Failed to convert DOCX: {str(fallback_error)}</p>", []
                 
                 # Extract image placeholders and create image list
                 images = []
@@ -528,10 +553,13 @@ class DocumentPreprocessor:
                             'alt_text': image_data['alt_text']
                         })
                 
+                print(f"🖼️ Extracted {len(images)} images from DOCX")
                 return html_content, images
                 
         except Exception as e:
             print(f"❌ DOCX conversion failed: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback to basic text extraction
             return f"<p>Failed to convert DOCX: {str(e)}</p>", []
     

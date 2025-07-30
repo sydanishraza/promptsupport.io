@@ -513,7 +513,7 @@ const TrainingInterface = () => {
       ) : (
         <div className="text-center py-8 text-gray-500">
           <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <p>No training sessions yet.</p>
+          <p>No lab sessions yet.</p>
         </div>
       )}
     </div>

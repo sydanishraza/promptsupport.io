@@ -6173,6 +6173,213 @@ This content should be processed into training articles."""
             print(f"❌ DOCX image extraction test failed - {str(e)}")
             return False
 
+    def test_critical_image_extraction_debug(self):
+        """CRITICAL: Test image extraction fixes with comprehensive debug logging"""
+        print("\n🔍 CRITICAL IMAGE EXTRACTION DEBUG TEST")
+        print("=" * 60)
+        try:
+            # Create a test DOCX file with multiple images to simulate the user's scenario
+            test_docx_content = """Promotions Configuration Document Test
+
+This is a comprehensive test document designed to simulate the user's Promotions Configuration document with 14 images. This test will verify the enhanced image extraction system with debug logging.
+
+Chapter 1: Introduction to Promotions
+This chapter introduces the concept of promotional campaigns and their importance in marketing strategies. Images in this section should be extracted with proper contextual tagging.
+
+Chapter 2: Configuration Settings
+This section covers the technical configuration aspects of promotional systems. Multiple images are expected to be found and processed here.
+
+Chapter 3: Implementation Guidelines
+Detailed implementation steps with visual references and diagrams. The system should extract and contextualize all images from this section.
+
+Chapter 4: Best Practices
+Industry best practices with supporting visual materials and case studies.
+
+Chapter 5: Troubleshooting
+Common issues and their solutions with diagnostic images and flowcharts.
+
+This document is specifically designed to test the image extraction pipeline with debug logging to identify why only 3 out of 14 images are being extracted."""
+
+            # Create file-like object
+            file_data = io.BytesIO(test_docx_content.encode('utf-8'))
+            
+            files = {
+                'file': ('promotions_config_test.txt', file_data, 'text/plain')  # Using .txt for simplicity
+            }
+            
+            # Use Phase 1 Document Upload Processing template
+            template_data = {
+                "template_id": "phase1_document_processing",
+                "name": "Phase 1: Document Upload Processing",
+                "description": "Enhanced document processing with contextual image extraction",
+                "processing_instructions": "Extract all content with enhanced image context detection",
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 5,
+                    "quality_benchmarks": ["content_completeness", "no_duplication", "proper_formatting"]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "contextual_placement": True,
+                    "filter_decorative": True
+                }
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            print("🚀 Starting critical image extraction test with debug logging...")
+            print(f"📄 Processing document: promotions_config_test.txt")
+            print(f"📋 Template: {template_data['name']}")
+            
+            # Monitor the backend logs for debug messages
+            print("\n🔍 MONITORING DEBUG OUTPUT:")
+            print("Watch for these critical debug messages:")
+            print("- '🔍 DEBUG: Starting XML position extraction'")
+            print("- '🔍 DEBUG: Found X drawing elements in XML'")
+            print("- '🔍 DEBUG: Finding context for filename'")
+            print("- '⚠️ No enhanced context found for filename, creating fallback context'")
+            print("- '✅ Extracted contextual image'")
+            
+            start_time = time.time()
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=120  # Extended timeout for debug processing
+            )
+            
+            processing_time = time.time() - start_time
+            
+            print(f"\n⏱️ Processing completed in {processing_time:.2f} seconds")
+            print(f"📡 Response Status Code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"📊 Response Data: {json.dumps(data, indent=2)}")
+                
+                # Critical metrics to verify
+                success = data.get('success', False)
+                session_id = data.get('session_id')
+                articles = data.get('articles', [])
+                images_processed = data.get('images_processed', 0)
+                
+                print(f"\n📈 CRITICAL METRICS:")
+                print(f"✅ Processing Success: {success}")
+                print(f"🆔 Session ID: {session_id}")
+                print(f"📄 Articles Generated: {len(articles)}")
+                print(f"🖼️ Images Processed: {images_processed}")
+                
+                # Check if images are being saved to /app/backend/static/uploads/
+                print(f"\n📁 CHECKING IMAGE STORAGE:")
+                try:
+                    import os
+                    uploads_dir = "/app/backend/static/uploads/"
+                    if os.path.exists(uploads_dir):
+                        image_files = [f for f in os.listdir(uploads_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg'))]
+                        print(f"📂 Found {len(image_files)} image files in uploads directory")
+                        if image_files:
+                            print(f"📋 Recent image files: {image_files[:5]}")  # Show first 5
+                    else:
+                        print(f"❌ Uploads directory does not exist: {uploads_dir}")
+                except Exception as e:
+                    print(f"⚠️ Could not check uploads directory: {e}")
+                
+                # Analyze articles for embedded images
+                print(f"\n🔍 ANALYZING GENERATED ARTICLES:")
+                total_embedded_images = 0
+                for i, article in enumerate(articles):
+                    article_images = article.get('image_count', 0)
+                    media_array = article.get('media', [])
+                    content = article.get('content', '')
+                    
+                    # Count image tags in content
+                    import re
+                    img_tags = len(re.findall(r'<img[^>]*>', content))
+                    figure_tags = len(re.findall(r'<figure[^>]*>', content))
+                    
+                    total_embedded_images += article_images
+                    
+                    print(f"📄 Article {i+1}:")
+                    print(f"   Title: {article.get('title', 'N/A')}")
+                    print(f"   Image Count: {article_images}")
+                    print(f"   Media Array Length: {len(media_array)}")
+                    print(f"   IMG tags in content: {img_tags}")
+                    print(f"   Figure tags in content: {figure_tags}")
+                    print(f"   Content length: {len(content)} characters")
+                
+                print(f"\n📊 FINAL IMAGE EXTRACTION RESULTS:")
+                print(f"🖼️ Total Images Processed: {images_processed}")
+                print(f"📄 Total Embedded Images: {total_embedded_images}")
+                print(f"📈 Success Rate: {total_embedded_images}/{images_processed if images_processed > 0 else 'N/A'}")
+                
+                # SUCCESS CRITERIA EVALUATION
+                print(f"\n🎯 SUCCESS CRITERIA EVALUATION:")
+                
+                criteria_met = 0
+                total_criteria = 4
+                
+                # 1. More than 3 images should be extracted
+                if images_processed > 3:
+                    print(f"✅ Criterion 1: More than 3 images extracted ({images_processed})")
+                    criteria_met += 1
+                else:
+                    print(f"❌ Criterion 1: Only {images_processed} images extracted (need >3)")
+                
+                # 2. Images should be saved to uploads directory
+                try:
+                    uploads_dir = "/app/backend/static/uploads/"
+                    if os.path.exists(uploads_dir):
+                        image_files = [f for f in os.listdir(uploads_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg'))]
+                        if len(image_files) > 0:
+                            print(f"✅ Criterion 2: Images saved to uploads directory ({len(image_files)} files)")
+                            criteria_met += 1
+                        else:
+                            print(f"❌ Criterion 2: No image files found in uploads directory")
+                    else:
+                        print(f"❌ Criterion 2: Uploads directory does not exist")
+                except:
+                    print(f"❌ Criterion 2: Could not verify uploads directory")
+                
+                # 3. Articles should contain embedded images
+                if total_embedded_images > 0:
+                    print(f"✅ Criterion 3: Articles contain embedded images ({total_embedded_images})")
+                    criteria_met += 1
+                else:
+                    print(f"❌ Criterion 3: No embedded images found in articles")
+                
+                # 4. Processing should be successful
+                if success and len(articles) > 0:
+                    print(f"✅ Criterion 4: Processing successful with {len(articles)} articles")
+                    criteria_met += 1
+                else:
+                    print(f"❌ Criterion 4: Processing failed or no articles generated")
+                
+                print(f"\n📊 OVERALL RESULT: {criteria_met}/{total_criteria} criteria met")
+                
+                if criteria_met >= 3:
+                    print(f"🎉 CRITICAL IMAGE EXTRACTION TEST: PASSED")
+                    return True
+                else:
+                    print(f"❌ CRITICAL IMAGE EXTRACTION TEST: FAILED")
+                    return False
+                    
+            else:
+                print(f"❌ Processing failed with status code: {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Critical image extraction test failed with exception: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     def test_content_processing_with_images(self):
         """Test content processing pipeline with image URL references"""
         print("\n🔍 Testing Content Processing with Image References...")

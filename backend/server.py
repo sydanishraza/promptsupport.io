@@ -1724,27 +1724,29 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
         if paragraph_context.get('page_estimate', 0) <= 1 and paragraph_context.get('paragraph_index', 0) < 10:
             print(f"🚫 Skipping image from cover page area: {filename}")
             return True
-            
-        # Skip images with minimal surrounding text (likely decorative)
-        surrounding_text = paragraph_context.get('text', '')
-        if len(surrounding_text.strip()) < 50:
-            print(f"🚫 Skipping image with minimal context: {filename}")
-            return True
     
-    # Check for repeated/pattern-based image names (likely decorative)
+    # Check for repeated/pattern-based image names (likely decorative) - MOVED UP
     import re
     if re.search(r'image\d+$|img\d+$|picture\d+$', filename_lower.split('.')[0]):
         # CRITICAL FIX: Allow generic numbered images when they have ANY context (including fallback)
         if not paragraph_context:
             print(f"🚫 Skipping generic numbered image without any context: {filename}")
             return True
-        # If we have fallback context, allow the image through
+        # For generic numbered images, use relaxed threshold for fallback context
         context_text = paragraph_context.get('text', '')
-        if len(context_text.strip()) >= 50:  # Reduced threshold for fallback context
+        if len(context_text.strip()) >= 20:  # Reduced threshold for generic numbered images with fallback
             print(f"✅ Allowing generic numbered image with fallback context: {filename} ({len(context_text)} chars context)")
             return False
         else:
             print(f"🚫 Skipping generic numbered image with insufficient context: {filename} ({len(context_text)} chars)")
+            return True
+            
+    # For non-generic images, apply stricter context requirements
+    if paragraph_context:
+        # Skip images with minimal surrounding text (likely decorative) - MOVED DOWN and only for non-generic
+        surrounding_text = paragraph_context.get('text', '')
+        if len(surrounding_text.strip()) < 50:
+            print(f"🚫 Skipping non-generic image with minimal context: {filename}")
             return True
     
     return False

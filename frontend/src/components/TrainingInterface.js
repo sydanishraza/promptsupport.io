@@ -565,7 +565,7 @@ const TrainingInterface = () => {
               <div className="text-center py-12">
                 <Brain className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                  Ready for Training
+                  Ready for Lab Testing
                 </h2>
                 <p className="text-gray-600 mb-6">
                   Select a template and upload a document to begin training the Knowledge Engine.

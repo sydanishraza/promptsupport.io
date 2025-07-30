@@ -3683,10 +3683,12 @@ def split_content_into_segments(content: str, outline: dict) -> list:
         
         return segments
     
-    # Try to split based on outline sections
+    # Try to split based on outline sections - OPTIMIZED to 2 segments
     sections = outline["sections"]
+    # Limit to maximum 2 segments for faster processing
+    target_segments = min(2, len(sections))  # Reduced from 4-6 to 2 segments
     total_words = len(content.split())
-    words_per_section = total_words // len(sections)
+    words_per_section = total_words // target_segments
     
     segments = []
     words = content.split()

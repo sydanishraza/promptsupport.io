@@ -6465,8 +6465,39 @@ def create_fallback_image_context(filename: str, image_number: int, paragraph_co
     Create a fallback context for images when enhanced context detection fails
     """
     try:
-        # Use the first meaningful paragraph as fallback context
+        # Find a good paragraph with reasonable chapter name
         fallback_paragraph = None
+        for para in paragraph_contexts:
+            # CRITICAL FIX: Skip paragraphs with excessively long chapter names
+            chapter = para.get('chapter', 'Document Content')
+            if len(chapter) > 100:
+                continue  # Skip paragraphs with overly long chapter names
+            
+            # Prefer paragraphs with substantial text
+            if len(para.get('text', '')) > 50 and not para.get('is_heading', False):
+                fallback_paragraph = para
+                break
+                
+        # If we found a good paragraph, use it
+        if fallback_paragraph:
+            chapter = fallback_paragraph.get('chapter', 'Document Content')
+            # Further limit chapter names
+            if len(chapter) > 80:
+                chapter = chapter[:80] + "..."
+                
+            return {
+                'page': fallback_paragraph.get('page_estimate', 1),
+                'position': 'inline',
+                'chapter': chapter,
+                'type': 'illustration',
+                'paragraph_text': f'Figure {image_number}: {filename.replace(".png", "").replace(".jpg", "").replace(".jpeg", "")} - Contextual illustration for {chapter}',
+                'content_type': 'body_text',
+                'is_heading': False,
+                'paragraph_index': fallback_paragraph.get('index', 0),
+                'position_in_chapter': image_number
+            }
+
+        # Continue with existing logic for remaining cases
         for para in paragraph_contexts:
             if (len(para.get('text', '').strip()) > 50 and 
                 not para.get('is_heading', False) and

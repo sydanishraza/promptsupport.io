@@ -40,6 +40,8 @@ const TrainingInterface = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [processingResults, setProcessingResults] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [processingStartTime, setProcessingStartTime] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
   
   // UI state

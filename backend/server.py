@@ -1776,7 +1776,7 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
             print(f"🚫 Skipping generic numbered image without any context: {filename}")
             return True
         # For generic numbered images, use relaxed threshold for fallback context
-        context_text = paragraph_context.get('text', '')
+        context_text = paragraph_context.get('paragraph_text', '') or paragraph_context.get('text', '')
         if len(context_text.strip()) >= 20:  # Reduced threshold for generic numbered images with fallback
             print(f"✅ Allowing generic numbered image with fallback context: {filename} ({len(context_text)} chars context)")
             return False
@@ -1787,7 +1787,7 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     # For non-generic images, apply stricter context requirements
     if paragraph_context:
         # Skip images with minimal surrounding text (likely decorative) - MOVED DOWN and only for non-generic
-        surrounding_text = paragraph_context.get('text', '')
+        surrounding_text = paragraph_context.get('paragraph_text', '') or paragraph_context.get('text', '')
         if len(surrounding_text.strip()) < 50:
             print(f"🚫 Skipping non-generic image with minimal context: {filename}")
             return True

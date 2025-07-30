@@ -1823,13 +1823,25 @@ def is_heading(paragraph) -> bool:
         text = paragraph.text.strip()
         if not text:
             return False
+        
+        # CRITICAL FIX: Be much more restrictive about what constitutes a heading
+        # Reject anything that's too long to be a reasonable heading
+        if len(text) > 80:  # Reduced from 100 to 80
+            return False
+            
+        # Check for obvious non-heading patterns
+        if any(phrase in text.lower() for phrase in ['add the following', 'in this section', 'as shown', 'follow these steps', 'copy the code']):
+            return False
             
         # Short, capitalized text might be a heading
-        if len(text) < 100 and (text.isupper() or text.istitle()):
+        if len(text) < 80 and (text.isupper() or text.istitle()):
+            # Additional checks for instruction-like text
+            if ':' in text and ('element' in text.lower() or 'following' in text.lower()):
+                return False
             return True
             
-        # Check for heading patterns
-        if re.match(r'^\d+\.?\s+[A-Z]', text) or re.match(r'^[A-Z][^.!?]*$', text):
+        # Check for heading patterns (but be more restrictive)
+        if len(text) < 50 and (re.match(r'^\d+\.?\s+[A-Z]', text) or re.match(r'^[A-Z][A-Za-z\s]*$', text)):
             return True
     
     except Exception:

@@ -1776,7 +1776,10 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
             print(f"🚫 Skipping generic numbered image without any context: {filename}")
             return True
         # For generic numbered images, use relaxed threshold for fallback context
+        print(f"🔍 DEBUG: Context keys for {filename}: {list(paragraph_context.keys())}")
         context_text = paragraph_context.get('paragraph_text', '') or paragraph_context.get('text', '')
+        print(f"🔍 DEBUG: Context text for {filename}: '{context_text[:50]}...' ({len(context_text)} chars)")
+        
         if len(context_text.strip()) >= 20:  # Reduced threshold for generic numbered images with fallback
             print(f"✅ Allowing generic numbered image with fallback context: {filename} ({len(context_text)} chars context)")
             return False

@@ -42,6 +42,7 @@ const TrainingInterface = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [processingStartTime, setProcessingStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [activeSession, setActiveSession] = useState(null);
   
   // UI state

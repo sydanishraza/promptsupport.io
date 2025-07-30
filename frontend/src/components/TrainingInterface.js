@@ -482,7 +482,7 @@ const TrainingInterface = () => {
   // Training history
   const LabHistory = () => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Training History</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Lab History</h3>
       
       {trainingHistory.length > 0 ? (
         <div className="space-y-3">

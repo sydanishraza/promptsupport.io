@@ -1568,7 +1568,7 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
     
     try:
         import zipfile
-        from xml.etree import ElementTree as ET
+        from lxml import etree
         
         # Phase 1: Parse document structure to map images to context
         paragraph_contexts = []
@@ -1619,7 +1619,7 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
             # Get document relationships to map images to content
             try:
                 rels_xml = zip_ref.read('word/_rels/document.xml.rels')
-                rels_tree = ET.fromstring(rels_xml)
+                rels_tree = etree.fromstring(rels_xml)
                 image_relationships = {}
                 
                 for rel in rels_tree.findall('.//{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'):
@@ -1633,7 +1633,7 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
             # Parse document XML to find image positions
             try:
                 doc_xml = zip_ref.read('word/document.xml')
-                doc_tree = ET.fromstring(doc_xml)
+                doc_tree = etree.fromstring(doc_xml)
                 image_positions = extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts)
             except Exception as xml_error:
                 print(f"⚠️ Could not parse document XML for positions: {xml_error}")

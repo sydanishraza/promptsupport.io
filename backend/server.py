@@ -1375,7 +1375,7 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
                 if table.get("html"):
                     fallback_content += f"\n\n{table['html']}\n"
             
-            print(f"🔄 Using simplified processing for DOCX: {len(fallback_content)} chars")
+            print(f"🔄 Using simplified processing for DOCX fallback: {len(fallback_content)} chars")
             
             # Use the working template-based processing
             articles = await create_articles_with_template(fallback_content, contextual_images, template_data, training_session)

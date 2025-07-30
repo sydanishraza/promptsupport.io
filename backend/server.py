@@ -1202,7 +1202,7 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
             from docx import Document
             from docx.shared import Inches
             import zipfile
-            from xml.etree import ElementTree as ET
+            from lxml import etree  # Use lxml instead of xml.etree.ElementTree
         except ImportError:
             print("python-docx not installed, using fallback processing")
             return await process_text_with_template("", template_data, training_session)

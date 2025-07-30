@@ -3085,6 +3085,69 @@ async def process_html_with_template(file_path: str, template_data: dict, traini
         print(f"❌ HTML processing error: {e}")
         return []
 
+async def create_recovery_articles(content: str, images: list, template_data: dict, training_session: dict) -> list:
+    """Recovery function for enhanced processing failures - creates simplified articles"""
+    try:
+        print(f"🔧 Recovery processing: {len(content)} chars, {len(images)} images")
+        
+        # Create a single simplified article with all content
+        article_id = str(uuid.uuid4())
+        
+        # Basic HTML structure
+        html_content = f"<h1>Document Content from {training_session.get('filename', 'Document')}</h1>\n"
+        html_content += content
+        
+        # Add images at the end
+        for i, img in enumerate(images):
+            html_content += f'\n<figure class="embedded-image">'
+            html_content += f'<img src="{img["url"]}" alt="{img["alt_text"]}" style="max-width: 100%; height: auto; margin: 1rem 0;">'
+            html_content += f'<figcaption>{img.get("caption", f"Figure {i + 1}")}</figcaption>'
+            html_content += f'</figure>\n'
+        
+        # Create media array
+        media_array = []
+        for img in images:
+            media_array.append({
+                "url": img['url'],
+                "alt": img['alt_text'],
+                "caption": img.get('caption', ''),
+                "placement": img.get('placement', 'inline'),
+                "filename": img['filename']
+            })
+        
+        article = {
+            "id": article_id,
+            "title": f"Recovery Article from {training_session['filename']}",
+            "html": html_content,
+            "markdown": html_content.replace('<h1>', '# ').replace('</h1>', '').replace('<p>', '').replace('</p>', '\n'),
+            "content": html_content,
+            "media": media_array,
+            "tags": ["extracted", "recovery", "simplified"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": len(html_content.split()),
+            "image_count": len(media_array),
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": False,
+            "ai_model": "recovery_mode",
+            "training_mode": True,
+            "metadata": {
+                "article_number": 1,
+                "source_filename": training_session['filename'],
+                "template_applied": training_session['template_id'],
+                "phase": "recovery_processing"
+            }
+        }
+        
+        print(f"✅ Recovery article created: {len(html_content)} chars, {len(media_array)} images")
+        return [article]
+        
+    except Exception as e:
+        print(f"❌ Recovery processing also failed: {e}")
+        return []
+
 async def create_articles_with_template(content: str, images: list, template_data: dict, training_session: dict) -> list:
     """Create articles using template specifications - processing full content without artificial limits"""
     try:

@@ -234,7 +234,7 @@ const TrainingInterface = () => {
   // Template selector
   const TemplateSelector = () => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Training Templates</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Lab Templates</h3>
       
       <div className="space-y-3">
         {templates.map(template => (

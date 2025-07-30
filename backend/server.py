@@ -6015,14 +6015,20 @@ def find_enhanced_image_context(filename: str, image_positions: list, paragraph_
     """
     Find the most relevant context for an image with enhanced matching
     """
+    print(f"🔍 DEBUG: Finding context for {filename}")
+    print(f"🔍 DEBUG: Available image positions: {len(image_positions)}")
+    print(f"🔍 DEBUG: Available paragraph contexts: {len(paragraph_contexts)}")
+    
     if not image_positions:
+        print(f"⚠️ DEBUG: No image positions available for {filename}")
         return None
     
     # Try to match based on proximity and content relevance
     best_context = None
     best_score = 0
     
-    for position in image_positions:
+    for i, position in enumerate(image_positions):
+        print(f"🔍 DEBUG: Evaluating position {i+1}: {position}")
         score = 0
         
         # Score based on content type relevance
@@ -6052,10 +6058,13 @@ def find_enhanced_image_context(filename: str, image_positions: list, paragraph_
         if position.get('page', 0) > 1:
             score += 3
         
+        print(f"🔍 DEBUG: Position {i+1} scored {score}")
+        
         if score > best_score:
             best_score = score
             best_context = position
     
+    print(f"🔍 DEBUG: Best context for {filename}: score={best_score}, context={best_context is not None}")
     return best_context
 
 def create_fallback_image_context(filename: str, image_number: int, paragraph_contexts: list) -> dict:

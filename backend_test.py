@@ -2749,6 +2749,495 @@ This test verifies that the file upload pipeline properly triggers the Content L
             print(f"❌ Media analysis test failed - {str(e)}")
             return False
 
+    def test_contextual_images_debug_comprehensive(self):
+        """Comprehensive test for contextual images issue with enhanced logging as requested in review"""
+        print("\n🔍 CONTEXTUAL IMAGES DEBUG - COMPREHENSIVE TESTING...")
+        print("🎯 Testing specific issues mentioned in review request:")
+        print("  1. Check if contextual_images is being populated correctly")
+        print("  2. Verify extract_contextual_images_from_docx returns images")
+        print("  3. Check debug logs for '🔍 DEBUG - Contextual images returned: X'")
+        print("  4. See if images are being saved to /app/backend/static/uploads/")
+        print("  5. Confirm image URLs are being generated correctly")
+        print("  6. Trace flow from contextual_images → create_articles_with_template → image_count")
+        print("  7. Find where disconnect between processing and counter happens")
+        
+        try:
+            # Create a test DOCX file with realistic content that should contain images
+            test_docx_content = """Contextual Images Debug Test Document
+
+This comprehensive test document is designed to debug the contextual images processing issue where images_processed shows 0 despite images being embedded in articles.
+
+Chapter 1: Image Processing Overview
+This section discusses how the system should extract images from DOCX files and embed them contextually in generated articles. The system should find images like image1.png, image2.png, and image3.png.
+
+Chapter 2: Expected Behavior
+When processing this document, the system should:
+1. Extract images from the DOCX file using extract_contextual_images_from_docx()
+2. Create contextual information for each image
+3. Save images to /app/backend/static/uploads/ directory
+4. Generate proper URLs in format /api/static/uploads/filename
+5. Pass images array to create_articles_with_template()
+6. Set correct image_count in article objects
+7. Update images_processed counter to reflect actual processed images
+
+Chapter 3: Debug Points
+The system should log:
+- "🔍 DEBUG - Contextual images returned: X" where X > 0
+- Image filenames being processed
+- URLs being generated
+- Image count being set in articles
+
+Chapter 4: Root Cause Investigation
+This test will help identify:
+- Are images being processed but not returned by extract_contextual_images_from_docx?
+- Is create_articles_with_template receiving empty images array?
+- Is the image_count being set correctly in article objects?
+- Where exactly does the disconnect happen between processing and counter?
+
+Expected Results:
+- contextual_images should contain image objects
+- images_processed counter should be > 0
+- articles should contain embedded images with proper URLs
+- Debug logs should show successful image processing steps"""
+
+            # Create file-like object
+            file_data = io.BytesIO(test_docx_content.encode('utf-8'))
+            
+            files = {
+                'file': ('contextual_images_debug_test.docx', file_data, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            }
+            
+            # Use Phase 1 template with comprehensive image processing
+            template_data = {
+                "template_id": "phase1_document_processing",
+                "processing_instructions": "Extract and process all content including images with enhanced debugging",
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 3,
+                    "quality_benchmarks": ["content_completeness", "no_duplication", "proper_formatting"]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "contextual_placement": True,
+                    "filter_decorative": True,
+                    "debug_mode": True
+                }
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            print("📤 Uploading test DOCX file for contextual images debugging...")
+            
+            start_time = time.time()
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=120
+            )
+            processing_time = time.time() - start_time
+            
+            print(f"⏱️ Processing completed in {processing_time:.2f} seconds")
+            print(f"📊 Response Status Code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ CONTEXTUAL IMAGES DEBUG FAILED - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            data = response.json()
+            print(f"📋 Response Keys: {list(data.keys())}")
+            
+            # DEBUG POINT 1: Check if contextual_images is being populated
+            images_processed = data.get('images_processed', 0)
+            print(f"🔍 DEBUG POINT 1 - Images Processed Counter: {images_processed}")
+            
+            # DEBUG POINT 2: Check articles for image content
+            articles = data.get('articles', [])
+            print(f"🔍 DEBUG POINT 2 - Articles Generated: {len(articles)}")
+            
+            total_image_count_in_articles = 0
+            total_embedded_images_found = 0
+            articles_with_images = 0
+            
+            for i, article in enumerate(articles):
+                article_image_count = article.get('image_count', 0)
+                has_images = article.get('has_images', False)
+                media_array = article.get('media', [])
+                
+                print(f"🔍 DEBUG POINT 3 - Article {i+1}:")
+                print(f"  - image_count: {article_image_count}")
+                print(f"  - has_images: {has_images}")
+                print(f"  - media array length: {len(media_array)}")
+                
+                total_image_count_in_articles += article_image_count
+                
+                # Check HTML content for embedded images
+                content = article.get('content', '') or article.get('html', '')
+                figure_count = content.count('<figure')
+                img_count = content.count('<img')
+                api_static_count = content.count('/api/static/uploads/')
+                
+                print(f"  - HTML analysis: {figure_count} <figure>, {img_count} <img>, {api_static_count} /api/static URLs")
+                
+                if figure_count > 0 or img_count > 0 or api_static_count > 0:
+                    articles_with_images += 1
+                    total_embedded_images_found += max(figure_count, img_count, api_static_count)
+                
+                # Check media array for image URLs
+                if media_array:
+                    print(f"  - Media array contents:")
+                    for j, media_item in enumerate(media_array):
+                        url = media_item.get('url', 'no_url')
+                        filename = media_item.get('filename', 'no_filename')
+                        print(f"    Media {j+1}: {filename} -> {url}")
+            
+            # DEBUG POINT 4: Analyze the disconnect
+            print(f"\n🔍 DEBUG POINT 4 - ROOT CAUSE ANALYSIS:")
+            print(f"  - images_processed counter: {images_processed}")
+            print(f"  - total image_count in articles: {total_image_count_in_articles}")
+            print(f"  - total embedded images found in HTML: {total_embedded_images_found}")
+            print(f"  - articles with images: {articles_with_images}/{len(articles)}")
+            
+            # DEBUG POINT 5: Check image directory
+            print(f"\n🔍 DEBUG POINT 5 - IMAGE DIRECTORY CHECK:")
+            try:
+                import os
+                uploads_dir = "/app/backend/static/uploads"
+                if os.path.exists(uploads_dir):
+                    files_in_dir = os.listdir(uploads_dir)
+                    image_files = [f for f in files_in_dir if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+                    print(f"  - Upload directory exists: {uploads_dir}")
+                    print(f"  - Total files in directory: {len(files_in_dir)}")
+                    print(f"  - Image files in directory: {len(image_files)}")
+                    if image_files:
+                        print(f"  - Recent image files: {image_files[:5]}")  # Show first 5
+                else:
+                    print(f"  - Upload directory does not exist: {uploads_dir}")
+            except Exception as dir_error:
+                print(f"  - Could not check directory: {dir_error}")
+            
+            # COMPREHENSIVE ASSESSMENT
+            print(f"\n🎯 CONTEXTUAL IMAGES DEBUG ASSESSMENT:")
+            
+            # Test 1: Are images being processed but counter shows 0?
+            if total_embedded_images_found > 0 and images_processed == 0:
+                print("❌ CRITICAL ISSUE CONFIRMED: Images are being embedded but counter shows 0")
+                print("  🔍 ROOT CAUSE: Disconnect between image processing and counter logic")
+                print("  🔧 NEEDS FIX: images_processed counter is not reflecting actual processing")
+                return False
+            
+            # Test 2: Are images being processed and counter is correct?
+            elif total_embedded_images_found > 0 and images_processed > 0:
+                print("✅ IMAGES PROCESSING CORRECTLY: Both embedding and counter working")
+                print(f"  ✅ Images embedded: {total_embedded_images_found}")
+                print(f"  ✅ Counter shows: {images_processed}")
+                return True
+            
+            # Test 3: No images being processed at all?
+            elif total_embedded_images_found == 0 and images_processed == 0:
+                print("❌ NO IMAGES BEING PROCESSED: Complete image processing failure")
+                print("  🔍 ROOT CAUSE: extract_contextual_images_from_docx not finding/returning images")
+                print("  🔧 NEEDS FIX: Image extraction pipeline is broken")
+                return False
+            
+            # Test 4: Counter shows images but none embedded?
+            elif total_embedded_images_found == 0 and images_processed > 0:
+                print("❌ COUNTER MISMATCH: Counter shows processing but no images embedded")
+                print("  🔍 ROOT CAUSE: Images processed but not passed to create_articles_with_template")
+                print("  🔧 NEEDS FIX: Image passing between functions is broken")
+                return False
+            
+            else:
+                print("⚠️ UNCLEAR STATE: Unexpected combination of results")
+                print(f"  - Embedded images: {total_embedded_images_found}")
+                print(f"  - Counter: {images_processed}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ CONTEXTUAL IMAGES DEBUG TEST FAILED - {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def test_real_docx_upload_verification(self):
+        """Test with a real DOCX file to verify the complete image processing pipeline"""
+        print("\n🔍 REAL DOCX UPLOAD VERIFICATION...")
+        print("🎯 Testing with realistic DOCX content to verify:")
+        print("  1. Processing completes successfully")
+        print("  2. Debug logs show contextual images being found and processed")
+        print("  3. articles contain proper image_count values")
+        print("  4. images_processed counter reflects actual processed images")
+        
+        try:
+            # Create a more realistic DOCX-like content
+            realistic_docx_content = """Technical Documentation: System Architecture Guide
+
+Table of Contents
+1. Introduction
+2. System Overview
+3. Architecture Components
+4. Implementation Details
+5. Troubleshooting Guide
+
+Chapter 1: Introduction
+
+This technical documentation provides a comprehensive overview of the system architecture and implementation details. The document includes various diagrams and screenshots to illustrate key concepts.
+
+Figure 1.1: System Overview Diagram (image1.png)
+The system architecture consists of multiple interconnected components that work together to provide a robust and scalable solution.
+
+Chapter 2: System Overview
+
+The system is designed with a modular architecture that allows for easy maintenance and scalability. Key components include:
+
+- Frontend Interface
+- Backend API Services  
+- Database Layer
+- Authentication System
+- File Processing Engine
+
+Figure 2.1: Component Diagram (image2.png)
+This diagram shows the relationship between different system components and their interactions.
+
+Chapter 3: Architecture Components
+
+3.1 Frontend Layer
+The frontend layer provides the user interface and handles user interactions. It communicates with the backend through RESTful APIs.
+
+Figure 3.1: Frontend Architecture (image3.png)
+The frontend is built using modern web technologies and follows responsive design principles.
+
+3.2 Backend Services
+The backend services handle business logic, data processing, and API endpoints.
+
+Figure 3.2: Backend Services (image4.png)
+Multiple microservices work together to provide comprehensive functionality.
+
+3.3 Database Design
+The database layer stores all application data with proper indexing and relationships.
+
+Figure 3.3: Database Schema (image5.png)
+The database schema is optimized for performance and data integrity.
+
+Chapter 4: Implementation Details
+
+4.1 API Endpoints
+The system provides various API endpoints for different functionalities:
+
+- /api/users - User management
+- /api/documents - Document processing
+- /api/images - Image handling
+- /api/reports - Report generation
+
+Figure 4.1: API Documentation (screenshot1.png)
+Complete API documentation with examples and response formats.
+
+4.2 Security Implementation
+Security is implemented at multiple layers:
+
+- Authentication and authorization
+- Data encryption
+- Input validation
+- Rate limiting
+
+Figure 4.2: Security Architecture (security_diagram.png)
+Comprehensive security measures protect the system from various threats.
+
+Chapter 5: Troubleshooting Guide
+
+5.1 Common Issues
+This section covers common issues and their solutions:
+
+- Connection timeouts
+- Authentication failures
+- File upload errors
+- Performance issues
+
+Figure 5.1: Error Handling Flow (error_flow.png)
+The system handles errors gracefully and provides meaningful feedback to users.
+
+5.2 Performance Optimization
+Guidelines for optimizing system performance:
+
+- Database query optimization
+- Caching strategies
+- Load balancing
+- Resource monitoring
+
+Figure 5.2: Performance Metrics (performance_chart.png)
+Regular monitoring helps maintain optimal system performance.
+
+Conclusion
+
+This documentation provides a comprehensive guide to understanding and implementing the system architecture. The included diagrams and screenshots help visualize complex concepts and implementation details.
+
+Appendix A: Additional Resources
+- Configuration files
+- Deployment scripts
+- Monitoring tools
+- Testing procedures
+
+Figure A.1: Deployment Architecture (deployment_diagram.png)
+Complete deployment setup with all necessary components and configurations."""
+
+            # Create file-like object
+            file_data = io.BytesIO(realistic_docx_content.encode('utf-8'))
+            
+            files = {
+                'file': ('realistic_technical_doc.docx', file_data, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            }
+            
+            # Use comprehensive template configuration
+            template_data = {
+                "template_id": "phase1_document_processing",
+                "processing_instructions": "Extract and process all content including images with comprehensive analysis",
+                "output_requirements": {
+                    "format": "html",
+                    "min_articles": 1,
+                    "max_articles": 5,
+                    "quality_benchmarks": ["content_completeness", "no_duplication", "proper_formatting", "image_integration"]
+                },
+                "media_handling": {
+                    "extract_images": True,
+                    "contextual_placement": True,
+                    "filter_decorative": True,
+                    "preserve_captions": True,
+                    "generate_alt_text": True
+                }
+            }
+            
+            form_data = {
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps(template_data)
+            }
+            
+            print("📤 Uploading realistic DOCX file for comprehensive testing...")
+            
+            start_time = time.time()
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=180  # Extended timeout for comprehensive processing
+            )
+            processing_time = time.time() - start_time
+            
+            print(f"⏱️ Processing completed in {processing_time:.2f} seconds")
+            print(f"📊 Response Status Code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ REAL DOCX UPLOAD FAILED - status code {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            data = response.json()
+            
+            # Comprehensive verification
+            success = data.get('success', False)
+            session_id = data.get('session_id')
+            images_processed = data.get('images_processed', 0)
+            articles = data.get('articles', [])
+            template_applied = data.get('template_applied')
+            
+            print(f"📊 REAL DOCX PROCESSING RESULTS:")
+            print(f"  ✅ Success: {success}")
+            print(f"  🆔 Session ID: {session_id}")
+            print(f"  🖼️ Images Processed: {images_processed}")
+            print(f"  📚 Articles Generated: {len(articles)}")
+            print(f"  📋 Template Applied: {template_applied}")
+            print(f"  ⏱️ Processing Time: {processing_time:.2f}s")
+            
+            # Detailed article analysis
+            total_words = 0
+            total_images_in_articles = 0
+            articles_with_embedded_images = 0
+            
+            for i, article in enumerate(articles):
+                word_count = article.get('word_count', 0)
+                image_count = article.get('image_count', 0)
+                title = article.get('title', 'Untitled')
+                
+                total_words += word_count
+                total_images_in_articles += image_count
+                
+                # Check for embedded images in HTML
+                content = article.get('content', '') or article.get('html', '')
+                embedded_images = content.count('<figure') + content.count('<img')
+                
+                if embedded_images > 0:
+                    articles_with_embedded_images += 1
+                
+                print(f"  📄 Article {i+1}: '{title[:50]}...'")
+                print(f"    - Words: {word_count}")
+                print(f"    - Image count: {image_count}")
+                print(f"    - Embedded images in HTML: {embedded_images}")
+            
+            print(f"📊 COMPREHENSIVE ANALYSIS:")
+            print(f"  📝 Total words across all articles: {total_words}")
+            print(f"  🖼️ Total image_count in articles: {total_images_in_articles}")
+            print(f"  📄 Articles with embedded images: {articles_with_embedded_images}/{len(articles)}")
+            
+            # SUCCESS CRITERIA
+            success_criteria = [
+                ("Processing completed successfully", success),
+                ("Articles generated", len(articles) > 0),
+                ("Reasonable processing time", processing_time < 300),  # 5 minutes max
+                ("Content generated", total_words > 100),
+                ("Session created", session_id is not None)
+            ]
+            
+            print(f"\n✅ SUCCESS CRITERIA EVALUATION:")
+            all_passed = True
+            for criterion, passed in success_criteria:
+                status = "✅ PASS" if passed else "❌ FAIL"
+                print(f"  {status} - {criterion}")
+                if not passed:
+                    all_passed = False
+            
+            # IMAGE PROCESSING SPECIFIC EVALUATION
+            print(f"\n🖼️ IMAGE PROCESSING EVALUATION:")
+            if images_processed > 0:
+                print(f"  ✅ Images processed counter: {images_processed}")
+            else:
+                print(f"  ❌ Images processed counter: {images_processed} (should be > 0)")
+                all_passed = False
+            
+            if total_images_in_articles > 0:
+                print(f"  ✅ Images in articles: {total_images_in_articles}")
+            else:
+                print(f"  ⚠️ Images in articles: {total_images_in_articles}")
+            
+            if articles_with_embedded_images > 0:
+                print(f"  ✅ Articles with embedded images: {articles_with_embedded_images}")
+            else:
+                print(f"  ⚠️ Articles with embedded images: {articles_with_embedded_images}")
+            
+            # FINAL ASSESSMENT
+            if all_passed:
+                print(f"\n✅ REAL DOCX UPLOAD VERIFICATION SUCCESSFUL")
+                print(f"  ✅ All success criteria met")
+                print(f"  ✅ Image processing pipeline operational")
+                print(f"  ✅ Complete workflow functional")
+                return True
+            else:
+                print(f"\n❌ REAL DOCX UPLOAD VERIFICATION FAILED")
+                print(f"  ❌ Some success criteria not met")
+                print(f"  ❌ Issues need to be addressed")
+                return False
+                
+        except Exception as e:
+            print(f"❌ REAL DOCX UPLOAD VERIFICATION FAILED - {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     def test_media_intelligence_process_article(self):
         """Test POST /api/media/process-article - Process articles with multiple media formats"""
         print("\n🔍 Testing Media Intelligence Article Processing...")

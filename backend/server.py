@@ -1314,7 +1314,53 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
         
         print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")
         
-        # Fallback to simplified processing if enhanced fails
+        # CRITICAL FIX: Use enhanced processing path instead of always falling back
+        if len(contextual_images) > 0 or len(extracted_content.get('structure', [])) > 5:
+            print(f"🚀 Using ENHANCED processing path: {len(contextual_images)} images, {len(extracted_content.get('structure', []))} content blocks")
+            
+            # Enhanced processing with full structure preservation
+            enhanced_content = ""
+            
+            # Process structured content with proper HTML
+            for block in extracted_content.get('structure', []):
+                block_type = block.get('type', 'paragraph')
+                content = block.get('content', '').strip()
+                
+                if not content:
+                    continue
+                    
+                if block_type == 'heading':
+                    level = block.get('level', 2)
+                    enhanced_content += f"<h{level}>{content}</h{level}>\n\n"
+                elif block_type == 'paragraph':
+                    enhanced_content += f"<p>{content}</p>\n\n"
+                elif block_type == 'list_item':
+                    enhanced_content += f"<li>{content}</li>\n"
+                else:
+                    enhanced_content += f"<p>{content}</p>\n\n"
+            
+            # Add body text if available
+            if extracted_content.get("body_text"):
+                enhanced_content += f"\n\n{extracted_content['body_text']}"
+            
+            # Add table content
+            for table in extracted_content.get("tables", []):
+                if table.get("html"):
+                    enhanced_content += f"\n\n{table['html']}\n"
+            
+            print(f"🎨 Enhanced content prepared: {len(enhanced_content)} chars with {len(contextual_images)} contextual images")
+            
+            # Use enhanced template-based processing with contextual images
+            articles = await create_articles_with_template(enhanced_content, contextual_images, template_data, training_session)
+            
+            if articles and len(articles) > 0:
+                print(f"✅ Enhanced processing successful: {len(articles)} articles with images")
+                return articles
+            else:
+                print("⚠️ Enhanced processing failed, falling back to simplified")
+        
+        # Fallback to simplified processing only if enhanced fails or has minimal content
+        print(f"🔄 Using simplified processing fallback")
         try:
             # Convert extracted structure to simple text content for fallback
             fallback_content = extracted_content.get("body_text", "")

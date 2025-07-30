@@ -3400,7 +3400,7 @@ def generate_contextual_title(content: str, article_number: int, training_sessio
         return f"{source_name} - Section {article_number}"
 
 def format_available_images(images: list) -> str:
-    """Format available images for LLM reference"""
+    """Format available images for LLM reference with URLs for embedding"""
     if not images:
         return "No images available - focus on comprehensive text content"
     
@@ -3409,9 +3409,18 @@ def format_available_images(images: list) -> str:
         chapter = img.get('chapter', 'Document')
         filename = img.get('filename', f'image{i}')
         caption = img.get('caption', f'Figure {i}')
-        image_refs.append(f"IMAGE_{i}: {filename} - {caption} (from {chapter})")
+        url = img.get('url', '')
+        alt_text = img.get('alt_text', f'Figure {i}')
+        
+        image_refs.append(f"""IMAGE_{i}: 
+- Filename: {filename}
+- URL: {url}
+- Caption: {caption}
+- Alt Text: {alt_text}
+- Chapter: {chapter}
+- HTML to embed: <figure class="embedded-image"><img src="{url}" alt="{alt_text}" style="max-width: 100%; height: auto;"><figcaption>{caption}</figcaption></figure>""")
     
-    return "\n".join(image_refs)
+    return "\n\n".join(image_refs)
 
 def create_structured_fallback_content(content: str, images: list, title: str) -> str:
     """Create structured fallback when AI is unavailable"""

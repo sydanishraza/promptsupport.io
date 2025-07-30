@@ -125,6 +125,8 @@ const TrainingInterface = () => {
     
     setIsProcessing(true);
     setProcessingResults([]);
+    setProcessingStatus('Preparing document for processing...');
+    setProcessingStartTime(Date.now());
     
     try {
       const template = templates.find(t => t.id === selectedTemplate);
@@ -136,6 +138,8 @@ const TrainingInterface = () => {
       // Add template instructions as metadata
       formData.append('template_instructions', JSON.stringify(template.template));
       
+      setProcessingStatus('Uploading document and extracting content...');
+      
       const response = await fetch(`${backendUrl}/api/training/process`, {
         method: 'POST',
         body: formData,
@@ -144,6 +148,7 @@ const TrainingInterface = () => {
       });
       
       if (response.ok) {
+        setProcessingStatus('Processing complete! Generating results...');
         const results = await response.json();
         setProcessingResults(results.articles || []);
         setShowResults(true);
@@ -163,13 +168,22 @@ const TrainingInterface = () => {
         setActiveSession(session);
         setTrainingHistory(prev => [session, ...prev]);
         
+        setProcessingStatus(`Successfully generated ${results.articles?.length || 0} articles in ${results.processing_time || 0}s`);
+        
       } else {
         console.error('Processing failed:', response.status);
+        setProcessingStatus('Processing failed. Please try again.');
       }
     } catch (error) {
-      console.error('Error processing file:', error);
+      if (error.name === 'TimeoutError') {
+        setProcessingStatus('Processing timed out. The document may be too large or complex.');
+      } else {
+        console.error('Error processing file:', error);
+        setProcessingStatus('An error occurred during processing. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
+      setProcessingStartTime(null);
     }
   };
 

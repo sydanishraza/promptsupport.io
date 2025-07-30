@@ -3680,7 +3680,8 @@ def split_content_into_segments(content: str, outline: dict) -> list:
         segments = []
         for i in range(0, len(words), segment_size):
             segment_words = words[i:i + segment_size]
-            segments.append(" ".join(segment_words))
+            if segment_words:  # Only add non-empty segments
+                segments.append(" ".join(segment_words))
         
         return segments
     

@@ -682,11 +682,33 @@ class DocumentPreprocessor:
     async def process_with_ai_preserving_tokens(self, tokenized_html: str, template_data: dict) -> str:
         """
         Phase 2: AI processing that preserves tokens and block structure
+        Implements content chunking for large documents
         """
         print(f"🤖 Phase 2: Starting AI processing with token preservation")
         
         try:
-            system_message = """You are an expert content writer tasked with improving document content while preserving its structure.
+            # Estimate token count (rough approximation: 1 token ≈ 4 characters)
+            estimated_tokens = len(tokenized_html) // 4
+            max_tokens_per_chunk = 100000  # Conservative limit to stay under model limits
+            
+            print(f"📊 Estimated tokens: {estimated_tokens:,}")
+            
+            if estimated_tokens <= max_tokens_per_chunk:
+                # Small content - process normally
+                print(f"📝 Processing content in single pass ({estimated_tokens:,} tokens)")
+                return await self._process_single_chunk(tokenized_html, template_data)
+            else:
+                # Large content - implement chunking
+                print(f"📚 Large content detected - implementing chunking strategy")
+                return await self._process_chunked_content(tokenized_html, template_data, max_tokens_per_chunk)
+                
+        except Exception as e:
+            print(f"❌ AI processing failed: {e}")
+            return tokenized_html
+    
+    async def _process_single_chunk(self, content: str, template_data: dict) -> str:
+        """Process content in a single AI call"""
+        system_message = """You are an expert content writer tasked with improving document content while preserving its structure.
 
 CRITICAL REQUIREMENTS:
 1. PRESERVE ALL <!-- IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear
@@ -707,9 +729,9 @@ Do NOT:
 - Generate new fake images or image URLs
 - Change the basic HTML structure (headings hierarchy, paragraphs, lists)"""
 
-            user_message = f"""Please improve this document content while preserving all image tokens and structure:
+        user_message = f"""Please improve this document content while preserving all image tokens and structure:
 
-{tokenized_html}
+{content}
 
 Focus on:
 - Making content more comprehensive and informative
@@ -717,19 +739,145 @@ Focus on:
 - Maintaining professional tone
 - Preserving all image positions and tokens exactly"""
 
-            # Use the existing LLM fallback system
-            improved_content = await call_llm_with_fallback(system_message, user_message, self.session_id)
+        # Use the existing LLM fallback system
+        improved_content = await call_llm_with_fallback(system_message, user_message, self.session_id)
+        
+        if improved_content:
+            print(f"✅ AI processing complete: {len(improved_content)} characters generated")
+            return improved_content
+        else:
+            print("⚠️ AI processing failed, returning original content")
+            return content
+    
+    async def _process_chunked_content(self, content: str, template_data: dict, max_tokens_per_chunk: int) -> str:
+        """Process large content by splitting into manageable chunks"""
+        print(f"🔄 Implementing chunked processing for large content")
+        
+        try:
+            # Split content by headings to maintain document structure
+            chunks = self._split_content_by_structure(content, max_tokens_per_chunk)
+            print(f"📄 Split content into {len(chunks)} chunks")
             
-            if improved_content:
-                print(f"✅ AI processing complete: {len(improved_content)} characters generated")
-                return improved_content
-            else:
-                print("⚠️ AI processing failed, returning original content")
-                return tokenized_html
+            processed_chunks = []
+            
+            for i, chunk in enumerate(chunks):
+                print(f"🔄 Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
                 
+                # Create focused system message for chunk processing
+                system_message = """You are an expert content writer improving a section of a larger document.
+
+CRITICAL REQUIREMENTS:
+1. PRESERVE ALL <!-- IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear
+2. PRESERVE ALL <!-- END_IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear  
+3. MAINTAIN all data-block-id attributes on HTML elements
+4. PRESERVE the [IMAGE: ...] placeholders within image blocks
+
+Your task is to improve this content section while maintaining its structure and all tokens."""
+
+                user_message = f"""Improve this content section while preserving all structure and tokens:
+
+{chunk}
+
+Focus on clarity, readability, and professional tone."""
+
+                # Process this chunk
+                improved_chunk = await call_llm_with_fallback(system_message, user_message, f"{self.session_id}_chunk_{i}")
+                
+                if improved_chunk:
+                    processed_chunks.append(improved_chunk)
+                    print(f"✅ Chunk {i+1} processed successfully")
+                else:
+                    # Fallback to original chunk if processing fails
+                    processed_chunks.append(chunk)
+                    print(f"⚠️ Chunk {i+1} processing failed, using original")
+                
+                # Small delay between chunks to avoid rate limiting
+                await asyncio.sleep(1)
+            
+            # Combine all processed chunks
+            final_content = '\n\n'.join(processed_chunks)
+            print(f"✅ Chunked processing complete: {len(final_content)} characters")
+            return final_content
+            
         except Exception as e:
-            print(f"❌ AI processing failed: {e}")
-            return tokenized_html
+            print(f"❌ Chunked processing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return content
+    
+    def _split_content_by_structure(self, content: str, max_tokens_per_chunk: int) -> list:
+        """Split content by headings and structure while respecting token limits"""
+        try:
+            # Approximate characters per chunk (4 chars ≈ 1 token)
+            max_chars_per_chunk = max_tokens_per_chunk * 4
+            
+            # Split by major headings first
+            sections = []
+            current_section = ""
+            
+            lines = content.split('\n')
+            
+            for line in lines:
+                # Check if this is a major heading
+                if '<h1' in line or '<h2' in line:
+                    # Save current section if it has content
+                    if current_section.strip():
+                        sections.append(current_section.strip())
+                    # Start new section with this heading
+                    current_section = line + '\n'
+                else:
+                    current_section += line + '\n'
+                
+                # If current section is getting too large, split it
+                if len(current_section) > max_chars_per_chunk:
+                    sections.append(current_section.strip())
+                    current_section = ""
+            
+            # Add final section
+            if current_section.strip():
+                sections.append(current_section.strip())
+            
+            # Further split any sections that are still too large
+            final_chunks = []
+            for section in sections:
+                if len(section) <= max_chars_per_chunk:
+                    final_chunks.append(section)
+                else:
+                    # Split large sections by paragraphs
+                    sub_chunks = self._split_large_section(section, max_chars_per_chunk)
+                    final_chunks.extend(sub_chunks)
+            
+            return final_chunks
+            
+        except Exception as e:
+            print(f"❌ Content splitting failed: {e}")
+            # Fallback: simple character-based splitting
+            chunk_size = max_tokens_per_chunk * 4
+            return [content[i:i+chunk_size] for i in range(0, len(content), chunk_size)]
+    
+    def _split_large_section(self, section: str, max_chars: int) -> list:
+        """Split a large section by paragraphs while preserving structure"""
+        chunks = []
+        current_chunk = ""
+        
+        # Split by paragraphs (double newlines or HTML paragraph tags)
+        paragraphs = section.split('</p>')
+        
+        for para in paragraphs:
+            if para.strip():
+                para_with_tag = para + '</p>' if not para.endswith('</p>') else para
+                
+                if len(current_chunk + para_with_tag) <= max_chars:
+                    current_chunk += para_with_tag + '\n'
+                else:
+                    if current_chunk.strip():
+                        chunks.append(current_chunk.strip())
+                    current_chunk = para_with_tag + '\n'
+        
+        if current_chunk.strip():
+            chunks.append(current_chunk.strip())
+        
+        return chunks
     
     def replace_tokens_with_rich_images(self, processed_html: str) -> str:
         """

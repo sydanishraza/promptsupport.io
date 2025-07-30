@@ -3641,7 +3641,7 @@ Required JSON format:
     "total_estimated_words": 2500
 }
 
-Create 4-6 major sections with detailed key points. Aim for comprehensive coverage with 2000-4000 total words."""
+Create 2-3 major sections with detailed key points. Aim for balanced coverage with 1500-2500 total words."""
 
         user_message = f"""Create a comprehensive outline for this content:
 

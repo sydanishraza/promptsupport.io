@@ -1734,9 +1734,17 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     # Check for repeated/pattern-based image names (likely decorative)
     import re
     if re.search(r'image\d+$|img\d+$|picture\d+$', filename_lower.split('.')[0]):
-        # Generic numbered images are often decorative unless they have substantial context
-        if not paragraph_context or len(paragraph_context.get('text', '')) < 100:
-            print(f"🚫 Skipping generic numbered image without context: {filename}")
+        # CRITICAL FIX: Allow generic numbered images when they have ANY context (including fallback)
+        if not paragraph_context:
+            print(f"🚫 Skipping generic numbered image without any context: {filename}")
+            return True
+        # If we have fallback context, allow the image through
+        context_text = paragraph_context.get('text', '')
+        if len(context_text.strip()) >= 50:  # Reduced threshold for fallback context
+            print(f"✅ Allowing generic numbered image with fallback context: {filename} ({len(context_text)} chars context)")
+            return False
+        else:
+            print(f"🚫 Skipping generic numbered image with insufficient context: {filename} ({len(context_text)} chars)")
             return True
     
     return False

@@ -367,6 +367,24 @@ const TrainingInterface = () => {
             </>
           )}
         </button>
+        
+        {/* Processing Status Display */}
+        {isProcessing && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+              <h3 className="font-medium text-blue-900">Processing Document</h3>
+            </div>
+            <p className="text-sm text-blue-700 mb-2">{processingStatus}</p>
+            {processingStartTime && (
+              <div className="text-xs text-blue-600">
+                Elapsed: {Math.floor((Date.now() - processingStartTime) / 1000)}s
+                <br />
+                <span className="text-amber-600">This may take 2-5 minutes for comprehensive processing...</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

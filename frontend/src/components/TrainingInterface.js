@@ -395,7 +395,7 @@ const TrainingInterface = () => {
             <p className="text-sm text-blue-700 mb-2">{processingStatus}</p>
             {processingStartTime && (
               <div className="text-xs text-blue-600">
-                Elapsed: {Math.floor((Date.now() - processingStartTime) / 1000)}s
+                Elapsed: {elapsedTime}s
                 <br />
                 <span className="text-amber-600">This may take 2-5 minutes for comprehensive processing...</span>
               </div>

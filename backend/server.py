@@ -1314,9 +1314,22 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
         
         print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")
         
-        # CRITICAL FIX: Use enhanced processing path instead of always falling back
-        if len(contextual_images) > 0 or len(extracted_content.get('structure', [])) > 5:
-            print(f"🚀 Using ENHANCED processing path: {len(contextual_images)} images, {len(extracted_content.get('structure', []))} content blocks")
+        # CRITICAL FIX: Use enhanced processing path for most cases, fallback only for minimal content
+        body_text_length = len(extracted_content.get("body_text", ""))
+        structure_count = len(extracted_content.get('structure', []))
+        
+        # Use enhanced processing if:
+        # 1. Images found, OR
+        # 2. Multiple structure blocks, OR  
+        # 3. Substantial body text content
+        should_use_enhanced = (
+            len(contextual_images) > 0 or 
+            structure_count > 2 or 
+            body_text_length > 1000
+        )
+        
+        if should_use_enhanced:
+            print(f"🚀 Using ENHANCED processing path: {len(contextual_images)} images, {structure_count} content blocks, {body_text_length} chars body text")
             
             # Enhanced processing with full structure preservation
             enhanced_content = ""

@@ -1651,12 +1651,20 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
                 
                 if not image_context:
                     print(f"⚠️ No enhanced context found for {filename}, creating fallback context")
+                    print(f"🔍 DEBUG: Image positions available: {len(image_positions)}")
+                    print(f"🔍 DEBUG: Paragraph contexts available: {len(paragraph_contexts)}")
                     # CRITICAL FIX: Create fallback context instead of skipping
                     image_context = create_fallback_image_context(filename, len(contextual_images) + 1, paragraph_contexts)
+                    if image_context:
+                        print(f"✅ DEBUG: Successfully created fallback context for {filename}: {len(image_context.get('text', ''))} chars")
+                    else:
+                        print(f"❌ DEBUG: Failed to create fallback context for {filename}")
                 
                 if not image_context:
-                    print(f"🚫 Skipping image after fallback failed: {filename}")
+                    print(f"🚫 Skipping image after context creation failed: {filename}")
                     continue
+                    
+                print(f"🔍 DEBUG: Image context for {filename}: chapter='{image_context.get('chapter', 'unknown')}', page={image_context.get('page', 0)}, text_length={len(image_context.get('text', ''))}")
                     
                 # CRITICAL FIX: Apply filtering rules AFTER context is created so filtering can use context
                 if should_skip_image(filename, file_info, image_context):

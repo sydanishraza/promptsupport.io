@@ -3757,15 +3757,18 @@ CONTENT TO EXPAND:
 AVAILABLE IMAGES: {len(segment_images)}
 {format_available_images(segment_images)}
 
-REQUIREMENTS:
-- Write 600-1000 words minimum for comprehensive coverage
-- Include detailed explanations and complete procedures
-- Use proper HTML structure with headings and formatting
-- Embed images contextually with provided HTML
-- Focus on thorough, professional technical documentation
-- NO truncation or summarization - provide complete detailed content
+CRITICAL REQUIREMENTS:
+- Write 1000-2000 words minimum for comprehensive coverage - NO SHORTER CONTENT
+- Include extensive detailed explanations and complete comprehensive procedures
+- Use proper HTML structure with headings and rich formatting
+- Embed images contextually with provided HTML code
+- Focus on thorough, professional technical documentation with extensive detail
+- NO truncation or summarization - provide complete detailed comprehensive content
+- Expand every point with extensive explanations and detailed examples
+- Provide comprehensive step-by-step instructions where applicable
+- Include thorough background information and context
 
-Generate comprehensive section content with full detail and proper HTML structure."""
+Generate comprehensive section content with extensive detail, proper HTML structure, and minimum 1000 words."""
 
         segment_response = await call_llm_with_fallback(system_message, user_message)
         

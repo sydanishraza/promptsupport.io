@@ -6369,7 +6369,9 @@ def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> l
                             'position_in_chapter': context.get('position_in_chapter', 0),
                             'content_type': context.get('content_type', 'body_text'),
                             'word_count': context.get('word_count', 0),
-                            'is_heading': context.get('is_heading', False)
+                            'is_heading': context.get('is_heading', False),
+                            'position': 'inline',  # Add missing position field
+                            'type': 'illustration'  # Add missing type field
                         }
                         
                         positions.append(position_data)

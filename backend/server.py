@@ -3234,100 +3234,32 @@ def find_best_section_for_image(image: dict, sections: list) -> int:
     return best_section if best_score > 10 else None
 
 async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int, total_articles: int = 1) -> dict:
-    """Create a single comprehensive article with enhanced structure and quality"""
+    """Create a single comprehensive article with enhanced structure and quality using segmented generation"""
     try:
-        print(f"🔍 Creating enhanced article {article_number}/{total_articles} with {len(images)} images")
+        print(f"🔍 Creating comprehensive article {article_number}/{total_articles} with {len(images)} images")
         
         # Generate intelligent title based on content, not filename
         title = generate_contextual_title(content, article_number, training_session)
         
-        # Enhanced LLM system message for better content quality
-        system_message = f"""You are an expert technical writer creating comprehensive, professional knowledge base articles.
-
-CRITICAL OUTPUT REQUIREMENTS:
-1. Generate ONLY clean, semantic HTML content - absolutely NO meta-commentary, explanations, or processing notes
-2. NEVER mention that you are processing content, creating articles, or analyzing documents
-3. Start directly with content - no introductory phrases like "Here is the article" or "Based on the content"
-4. Use proper HTML5 structure: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
-5. Create contextual, descriptive titles that reflect actual content topics (NOT filename-based)
-6. Write in professional, technical tone suitable for enterprise knowledge documentation
-7. Include comprehensive coverage - do NOT truncate or summarize content artificially
-8. Use proper heading hierarchy and logical content flow
-9. Include step-by-step instructions, detailed procedures, and comprehensive explanations
-10. Use callout sections for Notes, Tips, Warnings using appropriate HTML structure
-
-TEMPLATE SPECIFICATIONS:
-{json.dumps(template_data.get('processing_instructions', []), indent=2)}
-
-QUALITY STANDARDS:
-- COMPREHENSIVE coverage - include ALL important details from source content
-- Clear, detailed step-by-step instructions where applicable  
-- Professional enterprise technical writing style
-- Proper heading hierarchy for content organization (h1 for title, h2 for major sections, h3 for subsections)
-- Bullet points and numbered lists for procedures and key points
-- Tables for structured data presentation
-- No artificial content truncation or summarization
-
-IMAGE INTEGRATION REQUIREMENTS:
-- Embed ALL available images at contextually appropriate locations in the content
-- Use proper HTML figure elements with captions exactly as provided
-- Reference images naturally in the text flow (e.g., "as shown in Figure 1")
-- CRITICAL: Only use the exact URLs provided in the image list
-- Images should support and enhance the written content, not replace it"""
-
-        # Enhanced user message with better content processing
-        user_message = f"""Transform this content into a comprehensive, well-structured knowledge base article with complete coverage:
-
-CONTENT TO PROCESS:
-{content}
-
-CRITICAL REQUIREMENTS:
-1. **Comprehensive Coverage**: Include ALL information from the source content - do not truncate or summarize
-2. **Intelligent Title**: Create a meaningful title based on the main topic (NOT filename-based)
-3. **Professional Structure**: Use proper headings (h1 for title, h2 for major sections, h3 for subsections)
-4. **Technical Quality**: Enterprise-level professional language for technical documentation
-5. **Detailed Instructions**: Include complete step-by-step procedures with full detail
-6. **Enhanced Formatting**: Proper lists, tables, callouts, and semantic HTML structure
-7. **Complete Content**: Process the entire content without artificial limits or truncation
-
-AVAILABLE IMAGES FOR EMBEDDING: {len(images)}
-{format_available_images(images)}
-
-CRITICAL IMAGE EMBEDDING INSTRUCTIONS:
-- You MUST embed images at contextually appropriate locations throughout the article
-- Use the exact HTML provided for each image in the list above
-- Reference images in the text flow naturally (e.g., "As shown in Figure 1 below:", "The following screenshot demonstrates:")
-- Embed images near relevant text sections, not grouped at the end
-- If no images are available, focus on comprehensive text content only
-- NEVER create placeholder text like [IMAGE_1] - only use actual provided images
-
-CONTENT ENHANCEMENT REQUIREMENTS:
-- Transform basic content into comprehensive enterprise documentation
-- Maintain all technical details and procedural steps
-- Add proper structure with detailed headings and sections
-- Include implementation details, examples, and comprehensive explanations
-- Use callout boxes for important notes, tips, or warnings
-- Create tables for structured information where appropriate
-- Ensure content flows logically from introduction through detailed procedures to conclusion
-- Include troubleshooting information where relevant
-
-CRITICAL: Return ONLY the complete HTML article content with semantic structure. Do not include any explanatory text, processing notes, or meta-commentary."""
-
-        # Generate content with enhanced LLM processing
-        print(f"🤖 Generating enhanced article content...")
-        ai_content = await call_llm_with_fallback(system_message, user_message)
+        # CRITICAL FIX: Use segmented generation for comprehensive coverage
+        if len(content) > 2000:  # For longer content, use segmented approach
+            print("📝 Using segmented generation for comprehensive coverage")
+            final_content = await generate_comprehensive_article_segmented(content, images, template_data, title)
+        else:
+            print("📝 Using single-pass generation for shorter content")
+            final_content = await generate_single_pass_article(content, images, template_data, title)
         
-        if not ai_content:
+        if not final_content:
             print("⚠️ No AI content generated, creating enhanced fallback")
-            ai_content = create_structured_fallback_content(content, images, title)
+            final_content = create_structured_fallback_content(content, images, title)
         
-        # Post-process for quality and image embedding
-        final_content = enhance_content_quality(ai_content, images)
+        # Post-process the AI content for quality assurance
+        final_content = enhance_content_quality(final_content, images)
         
-        # Extract final title from content if better than generated
+        # Extract or generate final title from content
         final_title = extract_content_title(final_content) or title
         
-        # Create enhanced article with comprehensive metadata
+        # Create comprehensive article with enhanced metadata
         article = {
             "id": str(uuid.uuid4()),
             "title": final_title,
@@ -3347,17 +3279,225 @@ CRITICAL: Return ONLY the complete HTML article content with semantic structure.
                 "total_articles": total_articles,
                 "original_length": len(content),
                 "enhanced_length": len(final_content),
-                "images_embedded": count_embedded_images(final_content)
+                "images_embedded": count_embedded_images(final_content),
+                "generation_method": "segmented" if len(content) > 2000 else "single_pass"
             }
         }
         
-        print(f"✅ Enhanced article created: '{final_title}' ({article['word_count']} words)")
+        print(f"✅ Comprehensive article created: '{final_title}' ({article['word_count']} words)")
         return article
         
     except Exception as e:
         print(f"❌ Enhanced article creation error: {e}")
         import traceback
         traceback.print_exc()
+        return None
+
+async def generate_comprehensive_article_segmented(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate comprehensive article using segmented approach for full coverage"""
+    try:
+        print("🔄 Starting segmented generation for comprehensive coverage")
+        
+        # Step 1: Generate article outline and structure
+        outline = await generate_article_outline(content, title, template_data)
+        if not outline:
+            print("⚠️ Could not generate outline, falling back to single-pass")
+            return await generate_single_pass_article(content, images, template_data, title)
+        
+        print(f"📋 Generated article outline with sections")
+        
+        # Step 2: Split content into logical segments based on outline
+        content_segments = split_content_into_segments(content, outline)
+        print(f"📄 Split content into {len(content_segments)} segments")
+        
+        # Step 3: Distribute images across segments
+        segment_images = distribute_images_to_segments(images, content_segments)
+        
+        # Step 4: Generate each segment comprehensively
+        generated_sections = []
+        generated_sections.append(f"<h1>{title}</h1>\n")
+        
+        for i, (segment, segment_imgs) in enumerate(zip(content_segments, segment_images)):
+            print(f"🔄 Generating comprehensive section {i+1}/{len(content_segments)}")
+            
+            section_content = await generate_content_segment(
+                segment, 
+                segment_imgs, 
+                template_data, 
+                i + 1, 
+                len(content_segments),
+                outline
+            )
+            
+            if section_content:
+                generated_sections.append(section_content)
+            else:
+                print(f"⚠️ Failed to generate section {i+1}, using fallback")
+                generated_sections.append(create_fallback_segment(segment, segment_imgs))
+        
+        # Step 5: Combine all sections
+        final_content = "\n\n".join(generated_sections)
+        
+        print(f"✅ Segmented generation completed: {len(final_content.split())} words")
+        return final_content
+        
+    except Exception as e:
+        print(f"❌ Segmented generation error: {e}")
+        return await generate_single_pass_article(content, images, template_data, title)
+
+async def generate_article_outline(content: str, title: str, template_data: dict) -> dict:
+    """Generate a structured outline for the article"""
+    try:
+        system_message = """You are an expert content strategist creating comprehensive article outlines.
+
+Generate a detailed outline for a comprehensive knowledge base article. Return ONLY a JSON structure with no additional text.
+
+Required JSON format:
+{
+    "title": "Article Title",
+    "sections": [
+        {
+            "heading": "Section Title",
+            "level": 2,
+            "key_points": ["point 1", "point 2", "point 3"],
+            "estimated_words": 500
+        }
+    ],
+    "total_estimated_words": 2500
+}
+
+Create 4-6 major sections with detailed key points. Aim for comprehensive coverage with 2000-4000 total words."""
+
+        user_message = f"""Create a comprehensive outline for this content:
+
+TITLE: {title}
+
+CONTENT TO OUTLINE:
+{content[:2000]}...
+
+Create a detailed outline with major sections, key points, and estimated word counts for comprehensive coverage."""
+
+        outline_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if outline_response:
+            import json
+            try:
+                outline_data = json.loads(outline_response)
+                if "sections" in outline_data and len(outline_data["sections"]) > 0:
+                    return outline_data
+            except json.JSONDecodeError:
+                print("⚠️ Could not parse outline JSON")
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Outline generation error: {e}")
+        return None
+
+def split_content_into_segments(content: str, outline: dict) -> list:
+    """Split content into segments based on outline structure"""
+    if not outline or "sections" not in outline:
+        # Fallback: split into roughly equal segments
+        words = content.split()
+        segment_size = max(300, len(words) // 4)  # At least 300 words per segment, max 4 segments
+        
+        segments = []
+        for i in range(0, len(words), segment_size):
+            segment_words = words[i:i + segment_size]
+            segments.append(" ".join(segment_words))
+        
+        return segments
+    
+    # Try to split based on outline sections
+    sections = outline["sections"]
+    total_words = len(content.split())
+    words_per_section = total_words // len(sections)
+    
+    segments = []
+    words = content.split()
+    
+    for i, section in enumerate(sections):
+        start_idx = i * words_per_section
+        end_idx = min((i + 1) * words_per_section, len(words)) if i < len(sections) - 1 else len(words)
+        
+        segment_words = words[start_idx:end_idx]
+        if segment_words:
+            segments.append(" ".join(segment_words))
+    
+    return segments
+
+def distribute_images_to_segments(images: list, segments: list) -> list:
+    """Distribute images across content segments"""
+    if not images:
+        return [[] for _ in segments]
+    
+    # Distribute images roughly evenly across segments
+    segment_images = [[] for _ in segments]
+    
+    for i, image in enumerate(images):
+        segment_idx = i % len(segments)
+        segment_images[segment_idx].append(image)
+    
+    return segment_images
+
+async def generate_content_segment(segment_content: str, segment_images: list, template_data: dict, segment_num: int, total_segments: int, outline: dict) -> str:
+    """Generate a comprehensive content segment"""
+    try:
+        section_info = ""
+        if outline and "sections" in outline and segment_num <= len(outline["sections"]):
+            section_data = outline["sections"][segment_num - 1]
+            section_info = f"""
+SECTION FOCUS: {section_data.get('heading', f'Section {segment_num}')}
+KEY POINTS TO COVER: {', '.join(section_data.get('key_points', []))}
+TARGET LENGTH: {section_data.get('estimated_words', 600)} words"""
+
+        system_message = f"""You are an expert technical writer creating comprehensive section content.
+
+CRITICAL REQUIREMENTS:
+1. Generate detailed, comprehensive content for this section
+2. Write 600-1000 words minimum for thorough coverage
+3. Use professional technical documentation style
+4. Include detailed explanations, step-by-step procedures, and comprehensive information
+5. Use proper HTML structure: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>
+6. Embed provided images with proper figure elements
+7. NO meta-commentary - only article content
+
+{section_info}
+
+QUALITY STANDARDS:
+- Comprehensive, detailed explanations
+- Professional enterprise technical writing
+- Complete step-by-step procedures
+- Thorough coverage of all aspects
+- Proper HTML semantic structure"""
+
+        user_message = f"""Create comprehensive content for section {segment_num} of {total_segments}:
+
+CONTENT TO EXPAND:
+{segment_content}
+
+AVAILABLE IMAGES: {len(segment_images)}
+{format_available_images(segment_images)}
+
+REQUIREMENTS:
+- Write 600-1000 words minimum for comprehensive coverage
+- Include detailed explanations and complete procedures
+- Use proper HTML structure with headings and formatting
+- Embed images contextually with provided HTML
+- Focus on thorough, professional technical documentation
+- NO truncation or summarization - provide complete detailed content
+
+Generate comprehensive section content with full detail and proper HTML structure."""
+
+        segment_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if segment_response:
+            return segment_response.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Segment generation error: {e}")
         return None
 
 def generate_contextual_title(content: str, article_number: int, training_session: dict) -> str:

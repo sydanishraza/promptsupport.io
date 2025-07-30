@@ -730,6 +730,77 @@ Focus on:
 
 # === END HTML PREPROCESSING PIPELINE ===
 
+async def process_with_html_preprocessing_pipeline(file_path: str, file_extension: str, template_data: dict, training_session: dict) -> list:
+    """
+    Process documents using the new HTML preprocessing pipeline
+    """
+    try:
+        print(f"🔄 Starting HTML preprocessing pipeline for {file_extension} file")
+        
+        # Initialize the document preprocessor
+        session_id = training_session['session_id']
+        preprocessor = DocumentPreprocessor(session_id)
+        
+        # Phase 1: Convert document to structured HTML with tokenized images
+        tokenized_html, image_assets = await preprocessor.preprocess_document(file_path, file_extension)
+        
+        # Phase 2: AI processing that preserves tokens and structure
+        processed_html = await preprocessor.process_with_ai_preserving_tokens(tokenized_html, template_data)
+        
+        # Phase 3: Replace tokens with rich image HTML
+        final_html = preprocessor.replace_tokens_with_rich_images(processed_html)
+        
+        # Create article from processed content
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": f"Article From {training_session['filename']}",
+            "html": final_html,
+            "markdown": final_html,  # For now, use HTML as markdown
+            "content": final_html,
+            "media": [
+                {
+                    "url": img_data['url'],
+                    "alt": img_data['alt_text'],
+                    "caption": img_data.get('caption', ''),
+                    "placement": "inline",
+                    "filename": img_data['filename']
+                }
+                for img_data in image_assets.values()
+            ],
+            "tags": ["extracted", "generated", "html-pipeline"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": len(final_html.split()),
+            "image_count": len(image_assets),
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": True,
+            "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
+            "training_mode": True,
+            "metadata": {
+                "source_filename": training_session['filename'],
+                "template_applied": training_session['template_id'],
+                "phase": "html_preprocessing_pipeline",
+                "file_extension": file_extension
+            }
+        }
+        
+        print(f"✅ HTML preprocessing pipeline complete: {len(final_html)} chars, {len(image_assets)} images")
+        return [article]
+        
+    except Exception as e:
+        print(f"❌ HTML preprocessing pipeline failed: {e}")
+        import traceback
+        traceback.print_exc()
+        # Fallback to text processing
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return await process_text_with_template(content, template_data, training_session)
+        except:
+            return []
+
 # Global clients
 mongo_client = None
 db = None

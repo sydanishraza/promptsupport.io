@@ -6737,7 +6737,7 @@ QUALITY STANDARDS:
 - COMPREHENSIVE coverage - include ALL important details from source content
 - Clear, detailed step-by-step instructions where applicable  
 - Professional enterprise technical writing style
-- Proper heading hierarchy for content organization (h1 for title, h2 for major sections, h3 for subsections)
+- Proper heading hierarchy for content organization (h2 for major sections, h3 for subsections) - document already has h1 title
 - Bullet points and numbered lists for procedures and key points
 - Tables for structured data presentation
 - No artificial content truncation or summarization

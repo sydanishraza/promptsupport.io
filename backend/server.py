@@ -1592,9 +1592,30 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
             })
         
         # Phase 2: Extract images with contextual filtering and tagging
-        print(f"🖼️ Starting enhanced contextual image extraction...")
+        print(f"🖼️ Starting enhanced contextual image extraction from {file_path}")
         
+        # Debug: Check if file exists and is accessible
+        if not os.path.exists(file_path):
+            print(f"❌ File does not exist: {file_path}")
+            return []
+        
+        print(f"✅ File exists: {file_path}")
+        
+        # Debug: Try to open as ZIP file
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            print(f"✅ Successfully opened as ZIP file")
+            file_list = zip_ref.namelist()
+            print(f"📁 ZIP contains {len(file_list)} files")
+            
+            # Debug: Check for media files
+            media_files = [f for f in file_list if f.startswith('word/media/')]
+            print(f"🖼️ Found {len(media_files)} media files:")
+            for media_file in media_files:
+                print(f"  - {media_file}")
+                
+            if len(media_files) == 0:
+                print("❌ No media files found in DOCX")
+                return []
             # Get document relationships to map images to content
             try:
                 rels_xml = zip_ref.read('word/_rels/document.xml.rels')

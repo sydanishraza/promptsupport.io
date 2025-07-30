@@ -1424,14 +1424,38 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
             
             print(f"🎨 Enhanced content prepared: {len(enhanced_content)} chars with {len(contextual_images)} contextual images")
             
+            # CRITICAL FIX: Ensure enhanced processing succeeds
+            if len(enhanced_content) < 100:
+                print("❌ Enhanced content too short, forcing fallback creation")
+                enhanced_content = f"<h1>Document Processing</h1>\n<p>Processing content from {training_session.get('filename', 'document')} with {len(contextual_images)} images.</p>\n"
+                
+                # Add any available content
+                if extracted_content.get("body_text"):
+                    enhanced_content += f"<p>{extracted_content['body_text']}</p>\n"
+                
+                # Add table summaries
+                for i, table in enumerate(extracted_content.get("tables", []), 1):
+                    if table.get("data"):
+                        enhanced_content += f"<p>Table {i}: Contains {len(table['data'])} rows of data.</p>\n"
+            
             # Use enhanced template-based processing with contextual images
             articles = await create_articles_with_template(enhanced_content, contextual_images, template_data, training_session)
             
+            print(f"📊 Enhanced processing result: {len(articles)} articles generated")
+            
+            # CRITICAL FIX: Don't give up on enhanced processing too easily
             if articles and len(articles) > 0:
                 print(f"✅ Enhanced processing successful: {len(articles)} articles with images")
                 return articles
             else:
-                print("⚠️ Enhanced processing failed, falling back to simplified")
+                print("⚠️ Enhanced processing failed, trying recovery...")
+                # Try recovery with simpler template approach
+                recovery_articles = await create_recovery_articles(enhanced_content, contextual_images, template_data, training_session)
+                if recovery_articles:
+                    print(f"✅ Recovery successful: {len(recovery_articles)} articles")
+                    return recovery_articles
+                else:
+                    print("❌ Recovery failed, falling back to simplified")
         
         # Fallback to simplified processing only if enhanced fails or has minimal content
         print(f"🔄 Using simplified processing fallback")

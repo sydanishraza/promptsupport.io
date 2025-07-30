@@ -2307,7 +2307,7 @@ async def download_training_article_pdf(session_id: str, article_index: int):
         
         # Clean title for filename
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
-        filename = f"Training_{safe_title[:40]}.pdf"  # Limit filename length
+        filename = f"Lab_{safe_title[:40]}.pdf"  # Limit filename length
         
         # Generate PDF
         print(f"🎨 Starting PDF generation with {len(content)} characters of content")

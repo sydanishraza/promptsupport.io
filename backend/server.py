@@ -3449,9 +3449,8 @@ def enhance_content_quality(content: str, images: list) -> str:
     if not content:
         return content
     
-    # Ensure proper HTML structure
-    if not content.strip().startswith('<'):
-        content = f"<div>{content}</div>"
+    # CRITICAL FIX: Remove HTML document wrappers that may come from LLM
+    content = clean_html_wrappers(content)
     
     # Add missing images if AI didn't embed them
     if images and not any(img.get('url', '') in content for img in images):
@@ -3463,6 +3462,43 @@ def enhance_content_quality(content: str, images: list) -> str:
     content = re.sub(r'</p>\s*<p>', '</p>\n\n<p>', content)  # Proper paragraph spacing
     
     return content.strip()
+
+def clean_html_wrappers(content: str) -> str:
+    """Remove HTML document wrappers and extract only body content"""
+    import re
+    
+    # Remove HTML document structure wrappers
+    content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<html[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</html>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<head>.*?</head>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'<body[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</body>', '', content, flags=re.IGNORECASE)
+    
+    # Remove any remaining div wrappers that might have been added
+    content = re.sub(r'^<div[^>]*>(.*)</div>$', r'\1', content.strip(), flags=re.IGNORECASE | re.DOTALL)
+    
+    # Ensure we still have content
+    if not content.strip():
+        return content
+    
+    # Ensure content starts with proper HTML tags (but not document structure)
+    content = content.strip()
+    if content and not content.startswith('<'):
+        # Only wrap in paragraph if it's plain text
+        if '\n' not in content[:100]:  # Single line text
+            content = f"<p>{content}</p>"
+        else:
+            # Multi-line content, process paragraphs
+            paragraphs = content.split('\n\n')
+            html_parts = []
+            for para in paragraphs:
+                para = para.strip()
+                if para:
+                    html_parts.append(f"<p>{para}</p>")
+            content = '\n\n'.join(html_parts)
+    
+    return content
 
 def add_missing_images(content: str, images: list) -> str:
     """Add missing images at appropriate locations"""

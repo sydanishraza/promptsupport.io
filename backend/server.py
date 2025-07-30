@@ -6289,6 +6289,90 @@ def create_fallback_segment(segment_content: str, segment_images: list) -> str:
         print(f"❌ Fallback segment creation error: {e}")
         return f"<p>{segment_content}</p>"
 
+async def generate_single_pass_article(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate article using single-pass approach for shorter content"""
+    try:
+        system_message = f"""You are an expert technical writer creating comprehensive, professional knowledge base articles.
+
+CRITICAL OUTPUT REQUIREMENTS:
+1. Generate ONLY clean, semantic HTML content - absolutely NO meta-commentary, explanations, or processing notes
+2. NEVER mention that you are processing content, creating articles, or analyzing documents
+3. Start directly with content - no introductory phrases like "Here is the article" or "Based on the content"
+4. Use proper HTML5 structure: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
+5. Create contextual, descriptive titles that reflect actual content topics (NOT filename-based)
+6. Write in professional, technical tone suitable for enterprise knowledge documentation
+7. Include comprehensive coverage - do NOT truncate or summarize content artificially
+8. Use proper heading hierarchy and logical content flow
+9. Include step-by-step instructions, detailed procedures, and comprehensive explanations
+10. Use callout sections for Notes, Tips, Warnings using appropriate HTML structure
+
+TEMPLATE SPECIFICATIONS:
+{json.dumps(template_data.get('processing_instructions', []), indent=2)}
+
+QUALITY STANDARDS:
+- COMPREHENSIVE coverage - include ALL important details from source content
+- Clear, detailed step-by-step instructions where applicable  
+- Professional enterprise technical writing style
+- Proper heading hierarchy for content organization (h1 for title, h2 for major sections, h3 for subsections)
+- Bullet points and numbered lists for procedures and key points
+- Tables for structured data presentation
+- No artificial content truncation or summarization
+
+IMAGE INTEGRATION REQUIREMENTS:
+- Embed ALL available images at contextually appropriate locations in the content
+- Use proper HTML figure elements with captions exactly as provided
+- Reference images naturally in the text flow (e.g., "as shown in Figure 1")
+- CRITICAL: Only use the exact URLs provided in the image list
+- Images should support and enhance the written content, not replace it"""
+
+        user_message = f"""Transform this content into a comprehensive, well-structured knowledge base article with complete coverage:
+
+CONTENT TO PROCESS:
+{content}
+
+CRITICAL REQUIREMENTS:
+1. **Comprehensive Coverage**: Include ALL information from the source content - do not truncate or summarize
+2. **Intelligent Title**: Create a meaningful title based on the main topic (NOT filename-based)
+3. **Professional Structure**: Use proper headings (h1 for title, h2 for major sections, h3 for subsections)
+4. **Technical Quality**: Enterprise-level professional language for technical documentation
+5. **Detailed Instructions**: Include complete step-by-step procedures with full detail
+6. **Enhanced Formatting**: Proper lists, tables, callouts, and semantic HTML structure
+7. **Complete Content**: Process the entire content without artificial limits or truncation
+
+AVAILABLE IMAGES FOR EMBEDDING: {len(images)}
+{format_available_images(images)}
+
+CRITICAL IMAGE EMBEDDING INSTRUCTIONS:
+- You MUST embed images at contextually appropriate locations throughout the article
+- Use the exact HTML provided for each image in the list above
+- Reference images in the text flow naturally (e.g., "As shown in Figure 1 below:", "The following screenshot demonstrates:")
+- Embed images near relevant text sections, not grouped at the end
+- If no images are available, focus on comprehensive text content only
+- NEVER create placeholder text like [IMAGE_1] - only use actual provided images
+
+CONTENT ENHANCEMENT REQUIREMENTS:
+- Transform basic content into comprehensive enterprise documentation
+- Maintain all technical details and procedural steps
+- Add proper structure with detailed headings and sections
+- Include implementation details, examples, and comprehensive explanations
+- Use callout boxes for important notes, tips, or warnings
+- Create tables for structured information where appropriate
+- Ensure content flows logically from introduction through detailed procedures to conclusion
+- Include troubleshooting information where relevant
+
+CRITICAL: Return ONLY the complete HTML article content with semantic structure. Do not include any explanatory text, processing notes, or meta-commentary."""
+
+        # Generate content with LLM
+        ai_content = await call_llm_with_fallback(system_message, user_message)
+        
+        if ai_content:
+            return ai_content.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Single-pass generation error: {e}")
+        return None
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)

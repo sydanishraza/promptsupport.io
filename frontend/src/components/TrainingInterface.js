@@ -568,7 +568,7 @@ const TrainingInterface = () => {
                   Ready for Lab Testing
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  Select a template and upload a document to begin training the Knowledge Engine.
+                  Select a template and upload a document to begin testing the Knowledge Engine.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
                   <div className="text-center p-4 bg-blue-50 rounded-lg">

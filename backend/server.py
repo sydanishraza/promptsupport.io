@@ -1314,22 +1314,33 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
         
         print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")
         
-        # CRITICAL FIX: Use enhanced processing path for most cases, fallback only for minimal content
+        # CRITICAL FIX: Force enhanced processing for DOCX files to prevent fallback bypass
         body_text_length = len(extracted_content.get("body_text", ""))
         structure_count = len(extracted_content.get('structure', []))
+        total_content_length = body_text_length + sum(len(block.get('content', '')) for block in extracted_content.get('structure', []))
         
+        print(f"🔍 DEBUG Processing decision metrics:")
+        print(f"  - Contextual images: {len(contextual_images)}")
+        print(f"  - Structure blocks: {structure_count}")
+        print(f"  - Body text length: {body_text_length}")
+        print(f"  - Total content length: {total_content_length}")
+        
+        # FORCE enhanced processing for any meaningful DOCX content
         # Use enhanced processing if:
-        # 1. Images found, OR
-        # 2. Multiple structure blocks, OR  
-        # 3. Substantial body text content
+        # 1. ANY images found, OR
+        # 2. Multiple structure blocks (even 2+), OR  
+        # 3. ANY substantial text content (lowered threshold)
         should_use_enhanced = (
             len(contextual_images) > 0 or 
-            structure_count > 2 or 
-            body_text_length > 1000
+            structure_count >= 1 or  # Changed from > 2 to >= 1
+            body_text_length > 200 or  # Changed from 1000 to 200
+            total_content_length > 500  # Added total content check
         )
         
+        print(f"🚀 Processing decision: {'ENHANCED' if should_use_enhanced else 'SIMPLIFIED'}")
+        
         if should_use_enhanced:
-            print(f"🚀 Using ENHANCED processing path: {len(contextual_images)} images, {structure_count} content blocks, {body_text_length} chars body text")
+            print(f"✅ Using ENHANCED processing path: {len(contextual_images)} images, {structure_count} content blocks, {body_text_length} chars body text, {total_content_length} total chars")
             
             # Enhanced processing with full structure preservation
             enhanced_content = ""

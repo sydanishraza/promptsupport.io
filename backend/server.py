@@ -3516,8 +3516,8 @@ async def create_single_article_with_template(content: str, images: list, templa
         # Generate intelligent title based on content, not filename
         title = generate_contextual_title(content, article_number, training_session)
         
-        # CRITICAL FIX: Use segmented generation for comprehensive coverage
-        if len(content) > 2000:  # For longer content, use segmented approach
+        # CRITICAL FIX: Use segmented generation for comprehensive coverage - OPTIMIZED
+        if len(content) > 5000:  # Increased threshold from 2000 to 5000 chars
             print("📝 Using segmented generation for comprehensive coverage")
             final_content = await generate_comprehensive_article_segmented(content, images, template_data, title)
         else:

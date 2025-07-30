@@ -480,7 +480,7 @@ const TrainingInterface = () => {
   );
 
   // Training history
-  const TrainingHistory = () => (
+  const LabHistory = () => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Training History</h3>
       

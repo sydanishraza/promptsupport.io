@@ -5967,10 +5967,15 @@ def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> l
     positions = []
     
     try:
+        print(f"🔍 DEBUG: Starting XML position extraction")
+        
         # Find all drawing elements (images) in the document
         drawings = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
+        print(f"🔍 DEBUG: Found {len(drawings)} drawing elements in XML")
         
-        for drawing in drawings:
+        for i, drawing in enumerate(drawings):
+            print(f"🔍 DEBUG: Processing drawing {i+1}/{len(drawings)}")
+            
             # Find the containing paragraph
             paragraph_element = drawing
             while paragraph_element is not None:
@@ -5983,6 +5988,7 @@ def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> l
                 all_paragraphs = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
                 try:
                     para_index = list(all_paragraphs).index(paragraph_element)
+                    print(f"🔍 DEBUG: Drawing {i+1} found in paragraph {para_index}")
                     
                     if para_index < len(paragraph_contexts):
                         context = paragraph_contexts[para_index]
@@ -6000,15 +6006,21 @@ def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> l
                         }
                         
                         positions.append(position_data)
+                        print(f"✅ DEBUG: Added position for drawing {i+1}: chapter={context['chapter']}, page={context['page_estimate']}")
                         
-                except (ValueError, IndexError):
+                except (ValueError, IndexError) as e:
+                    print(f"⚠️ DEBUG: Error processing drawing {i+1}: {e}")
                     continue
+            else:
+                print(f"⚠️ DEBUG: Could not find paragraph for drawing {i+1}")
         
-        print(f"📍 Found {len(positions)} image positions in document")
+        print(f"📍 DEBUG: Final result - Found {len(positions)} image positions in document")
         return positions
         
     except Exception as e:
-        print(f"⚠️ Error in enhanced XML parsing: {e}")
+        print(f"❌ DEBUG: Error in enhanced XML parsing: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def find_enhanced_image_context(filename: str, image_positions: list, paragraph_contexts: list) -> dict:

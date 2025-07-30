@@ -551,7 +551,7 @@ const TrainingInterface = () => {
             <div className="p-4 space-y-4">
               <TemplateSelector />
               <FileUploadArea />
-              <TrainingHistory />
+              <LabHistory />
             </div>
           )}
         </div>

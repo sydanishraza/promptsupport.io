@@ -467,8 +467,10 @@
   run_ui: true
 
 ## test_plan:
-  current_focus: []
-  stuck_tasks: []
+  current_focus:
+    - "Knowledge Engine Content Coverage Fix"
+  stuck_tasks:
+    - "Knowledge Engine Content Coverage Fix"
   test_all: false
   test_priority: "critical_first"
 

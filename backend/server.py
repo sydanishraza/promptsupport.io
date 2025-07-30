@@ -6053,6 +6053,65 @@ def find_enhanced_image_context(filename: str, image_positions: list, paragraph_
     
     return best_context
 
+def create_fallback_image_context(filename: str, image_number: int, paragraph_contexts: list) -> dict:
+    """
+    Create a fallback context for images when enhanced context detection fails
+    """
+    try:
+        # Use the first meaningful paragraph as fallback context
+        fallback_paragraph = None
+        for para in paragraph_contexts:
+            if (len(para.get('text', '').strip()) > 50 and 
+                not para.get('is_heading', False) and
+                para.get('page_estimate', 1) > 1):  # Skip cover page
+                fallback_paragraph = para
+                break
+        
+        # If no good paragraph found, use a generic one
+        if not fallback_paragraph and paragraph_contexts:
+            fallback_paragraph = paragraph_contexts[min(5, len(paragraph_contexts) - 1)]
+        
+        if not fallback_paragraph:
+            # Last resort: create minimal context
+            return {
+                'page': 1,
+                'position': 'inline',
+                'chapter': 'Document Content',
+                'type': 'illustration',
+                'paragraph_text': f'Image {image_number} from document',
+                'content_type': 'body_text',
+                'is_heading': False,
+                'paragraph_index': 0,
+                'position_in_chapter': image_number
+            }
+        
+        return {
+            'page': fallback_paragraph.get('page_estimate', 1),
+            'position': 'inline',
+            'chapter': fallback_paragraph.get('chapter', 'Document Content'),
+            'type': 'illustration',
+            'paragraph_text': fallback_paragraph.get('text', f'Image {image_number} context'),
+            'content_type': 'body_text',
+            'is_heading': fallback_paragraph.get('is_heading', False),
+            'paragraph_index': fallback_paragraph.get('index', 0),
+            'position_in_chapter': image_number
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Error creating fallback context: {e}")
+        # Return minimal fallback context
+        return {
+            'page': 1,
+            'position': 'inline',
+            'chapter': 'Document Content',
+            'type': 'illustration',
+            'paragraph_text': f'Image {image_number} from document',
+            'content_type': 'body_text',
+            'is_heading': False,
+            'paragraph_index': 0,
+            'position_in_chapter': image_number
+        }
+
 def is_content_relevant_image(image_context: dict, paragraph_contexts: list) -> bool:
     """
     Determine if an image is relevant to the main content

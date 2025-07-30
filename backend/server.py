@@ -33,7 +33,7 @@ from media_intelligence import media_intelligence
 # HTML preprocessing pipeline imports
 import mammoth
 import pypandoc
-from pdfminer.six import extract_text as pdf_extract_text
+# from pdfminer.six import extract_text as pdf_extract_text
 from lxml import etree
 from lxml.html import fromstring as html_fromstring, tostring as html_tostring
 import shutil

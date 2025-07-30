@@ -1485,7 +1485,12 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
                 image_context = find_enhanced_image_context(filename, image_positions, paragraph_contexts)
                 
                 if not image_context:
-                    print(f"🚫 Skipping image without clear context: {filename}")
+                    print(f"⚠️ No enhanced context found for {filename}, creating fallback context")
+                    # CRITICAL FIX: Create fallback context instead of skipping
+                    image_context = create_fallback_image_context(filename, len(contextual_images) + 1, paragraph_contexts)
+                
+                if not image_context:
+                    print(f"🚫 Skipping image after fallback failed: {filename}")
                     continue
                 
                 # Extract and save the image

@@ -111,6 +111,22 @@ const TrainingInterface = () => {
     ]);
   }, []);
 
+  // Timer for processing elapsed time
+  useEffect(() => {
+    let timer;
+    if (isProcessing && processingStartTime) {
+      timer = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - processingStartTime) / 1000));
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isProcessing, processingStartTime]);
+
   // File upload handler
   const handleFileUpload = (event) => {
     const file = event.target.files[0];

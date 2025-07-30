@@ -1473,26 +1473,20 @@ async def training_process_document(
         
         print(f"💾 Temporary file saved: {temp_file_path}")
         
-        # Process based on file type
-        if file.filename.lower().endswith('.docx'):
-            print("🔍 Processing DOCX file")
-            articles = await process_docx_with_template(temp_file_path, template_data, training_session)
-        elif file.filename.lower().endswith('.doc'):
-            print("🔍 Processing DOC file")
-            articles = await process_doc_with_template(temp_file_path, template_data, training_session)
-        elif file.filename.lower().endswith('.pdf'):
-            print("🔍 Processing PDF file")
-            articles = await process_pdf_with_template(temp_file_path, template_data, training_session)
-        elif file.filename.lower().endswith(('.ppt', '.pptx')):
-            print("🔍 Processing PowerPoint file")
-            articles = await process_ppt_with_template(temp_file_path, template_data, training_session)
-        elif file.filename.lower().endswith(('.xls', '.xlsx')):
+        # Process based on file type - NEW HTML PREPROCESSING PIPELINE
+        file_extension = file.filename.lower().split('.')[-1] if '.' in file.filename else 'txt'
+        
+        # Use HTML preprocessing pipeline for supported document types
+        if file_extension in ['docx', 'doc', 'pdf', 'ppt', 'pptx']:
+            print(f"🔄 Using HTML preprocessing pipeline for {file_extension}")
+            articles = await process_with_html_preprocessing_pipeline(temp_file_path, file_extension, template_data, training_session)
+        elif file_extension in ['xls', 'xlsx']:
             print("🔍 Processing Excel file")
             articles = await process_excel_with_template(temp_file_path, template_data, training_session)
-        elif file.filename.lower().endswith(('.html', '.htm')):
+        elif file_extension in ['html', 'htm']:
             print("🔍 Processing HTML file")
             articles = await process_html_with_template(temp_file_path, template_data, training_session)
-        elif file.filename.lower().endswith(('.txt', '.md')):
+        elif file_extension in ['txt', 'md']:
             print("🔍 Processing text file")
             # Read text content
             with open(temp_file_path, 'r', encoding='utf-8') as f:

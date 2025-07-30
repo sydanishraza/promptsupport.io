@@ -455,12 +455,49 @@ class DocumentPreprocessor:
                 # Use mammoth to convert with image handling
                 def image_handler(image):
                     self.image_counter += 1
-                    image_filename = f"img_{self.image_counter}.{image.content_type.split('/')[-1]}"
+                    
+                    # Determine file extension from content type
+                    content_type = getattr(image, 'content_type', 'image/png')
+                    if 'jpeg' in content_type or 'jpg' in content_type:
+                        ext = 'jpg'
+                    elif 'png' in content_type:
+                        ext = 'png'
+                    elif 'gif' in content_type:
+                        ext = 'gif'
+                    else:
+                        ext = 'png'  # Default to PNG
+                    
+                    image_filename = f"img_{self.image_counter}.{ext}"
                     image_path = os.path.join(self.asset_dir, image_filename)
                     
-                    # Save image to disk
-                    with open(image_path, "wb") as img_file:
-                        img_file.write(image.bytes)
+                    # Get image data - mammoth uses different attribute names
+                    try:
+                        # Try different possible attribute names for image data
+                        if hasattr(image, 'open'):
+                            # mammoth Image object has 'open' method
+                            with image.open() as image_data:
+                                image_bytes = image_data.read()
+                        elif hasattr(image, 'bytes'):
+                            image_bytes = image.bytes
+                        elif hasattr(image, 'data'):
+                            image_bytes = image.data
+                        else:
+                            print(f"⚠️ Unknown image data format for image {self.image_counter}")
+                            # Create a placeholder to continue processing
+                            image_bytes = b''
+                    except Exception as img_error:
+                        print(f"❌ Failed to extract image {self.image_counter}: {img_error}")
+                        # Create a placeholder to continue processing
+                        image_bytes = b''
+                    
+                    # Save image to disk if we have data
+                    if image_bytes:
+                        try:
+                            with open(image_path, "wb") as img_file:
+                                img_file.write(image_bytes)
+                            print(f"💾 Saved image: {image_filename} ({len(image_bytes)} bytes)")
+                        except Exception as save_error:
+                            print(f"❌ Failed to save image {image_filename}: {save_error}")
                     
                     # Store image metadata
                     image_id = f"doc_{self.session_id}_img_{self.image_counter}"
@@ -469,7 +506,7 @@ class DocumentPreprocessor:
                         'path': image_path,
                         'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
                         'alt_text': f"Image {self.image_counter}",
-                        'content_type': image.content_type
+                        'content_type': content_type
                     }
                     
                     return {

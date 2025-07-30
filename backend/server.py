@@ -3242,31 +3242,38 @@ async def create_single_article_with_template(content: str, images: list, templa
         title = generate_contextual_title(content, article_number, training_session)
         
         # Enhanced LLM system message for better content quality
-        system_message = f"""You are an expert technical writer creating comprehensive knowledge base articles.
+        system_message = f"""You are an expert technical writer creating comprehensive, professional knowledge base articles.
 
 CRITICAL OUTPUT REQUIREMENTS:
-1. Generate ONLY clean, semantic HTML content - no meta-commentary
-2. Use proper HTML5 structure: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>
-3. Create contextual, descriptive titles that reflect actual content topics
-4. Write in professional, technical tone suitable for knowledge documentation
-5. Include proper structure with clear hierarchy and logical flow
-6. Use callout sections for Notes, Tips, Warnings with appropriate HTML
+1. Generate ONLY clean, semantic HTML content - absolutely NO meta-commentary, explanations, or processing notes
+2. NEVER mention that you are processing content, creating articles, or analyzing documents
+3. Start directly with content - no introductory phrases like "Here is the article" or "Based on the content"
+4. Use proper HTML5 structure: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
+5. Create contextual, descriptive titles that reflect actual content topics (NOT filename-based)
+6. Write in professional, technical tone suitable for enterprise knowledge documentation
+7. Include comprehensive coverage - do NOT truncate or summarize content artificially
+8. Use proper heading hierarchy and logical content flow
+9. Include step-by-step instructions, detailed procedures, and comprehensive explanations
+10. Use callout sections for Notes, Tips, Warnings using appropriate HTML structure
 
 TEMPLATE SPECIFICATIONS:
 {json.dumps(template_data.get('processing_instructions', []), indent=2)}
 
 QUALITY STANDARDS:
-- Comprehensive coverage without skipping details
-- Clear step-by-step instructions where applicable  
-- Professional technical writing style
-- Proper heading hierarchy for content organization
-- Lists and tables for structured information
-- No artificial content truncation
+- COMPREHENSIVE coverage - include ALL important details from source content
+- Clear, detailed step-by-step instructions where applicable  
+- Professional enterprise technical writing style
+- Proper heading hierarchy for content organization (h1 for title, h2 for major sections, h3 for subsections)
+- Bullet points and numbered lists for procedures and key points
+- Tables for structured data presentation
+- No artificial content truncation or summarization
 
-IMAGE INTEGRATION:
-- Embed images contextually using proper HTML figure elements
-- Reference images naturally in text flow
-- Use descriptive captions and alt text"""
+IMAGE INTEGRATION REQUIREMENTS:
+- Embed ALL available images at contextually appropriate locations in the content
+- Use proper HTML figure elements with captions exactly as provided
+- Reference images naturally in the text flow (e.g., "as shown in Figure 1")
+- CRITICAL: Only use the exact URLs provided in the image list
+- Images should support and enhance the written content, not replace it"""
 
         # Enhanced user message with better content processing
         user_message = f"""Transform this content into a comprehensive, well-structured knowledge base article:

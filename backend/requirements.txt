@@ -42,7 +42,6 @@ html5lib==1.1
 mammoth==1.7.1
 pypandoc==1.13
 pdfminer.six==20221105
-python-docx2txt==0.8
 
 # Local LLM support
 transformers==4.36.0

@@ -6264,12 +6264,30 @@ def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> l
         for i, drawing in enumerate(drawings):
             print(f"🔍 DEBUG: Processing drawing {i+1}/{len(drawings)}")
             
-            # Find the containing paragraph
+            # CRITICAL FIX: Find the containing paragraph using parent traversal
             paragraph_element = drawing
             while paragraph_element is not None:
                 if paragraph_element.tag == '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
                     break
-                paragraph_element = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
+                # Use alternative parent traversal method
+                paragraph_element = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
+                
+                # Alternative approach: get parent from XML tree structure
+                if paragraph_element is None:
+                    # Find parent by searching all elements
+                    for elem in doc_tree.iter():
+                        if drawing in elem:
+                            paragraph_element = elem
+                            break
+                    if paragraph_element is not None and paragraph_element.tag != '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
+                        # Continue traversing up
+                        parent = paragraph_element.getparent() if hasattr(paragraph_element, 'getparent') else None
+                        if parent is not None:
+                            paragraph_element = parent
+                        else:
+                            break
+                    else:
+                        break
             
             if paragraph_element is not None:
                 # Find paragraph index

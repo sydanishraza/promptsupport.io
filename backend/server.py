@@ -1649,6 +1649,16 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
                 # Find contextual placement for this image FIRST
                 image_context = find_enhanced_image_context(filename, image_positions, paragraph_contexts)
                 
+                # CRITICAL FIX: If enhanced context has insufficient text, use fallback context
+                if image_context and len(image_context.get('paragraph_text', '').strip()) < 20:
+                    print(f"⚠️ Enhanced context for {filename} has insufficient text ({len(image_context.get('paragraph_text', ''))} chars), creating fallback context")
+                    fallback_context = create_fallback_image_context(filename, len(contextual_images) + 1, paragraph_contexts)
+                    if fallback_context and len(fallback_context.get('paragraph_text', '').strip()) >= 20:
+                        print(f"✅ Using fallback context for {filename} with {len(fallback_context.get('paragraph_text', ''))} chars")
+                        image_context = fallback_context
+                    else:
+                        print(f"⚠️ Fallback context also has insufficient text for {filename}")
+                
                 if not image_context:
                     print(f"⚠️ No enhanced context found for {filename}, creating fallback context")
                     print(f"🔍 DEBUG: Image positions available: {len(image_positions)}")
@@ -1664,7 +1674,7 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
                     print(f"🚫 Skipping image after context creation failed: {filename}")
                     continue
                     
-                print(f"🔍 DEBUG: Image context for {filename}: chapter='{image_context.get('chapter', 'unknown')}', page={image_context.get('page', 0)}, text_length={len(image_context.get('text', ''))}")
+                print(f"🔍 DEBUG: Final image context for {filename}: chapter='{image_context.get('chapter', 'unknown')}', page={image_context.get('page', 0)}, text_length={len(image_context.get('paragraph_text', ''))}")
                     
                 # CRITICAL FIX: Apply filtering rules AFTER context is created so filtering can use context
                 if should_skip_image(filename, file_info, image_context):

@@ -3693,9 +3693,9 @@ def split_content_into_segments(content: str, outline: dict) -> list:
     segments = []
     words = content.split()
     
-    for i, section in enumerate(sections):
+    for i in range(target_segments):
         start_idx = i * words_per_section
-        end_idx = min((i + 1) * words_per_section, len(words)) if i < len(sections) - 1 else len(words)
+        end_idx = min((i + 1) * words_per_section, len(words)) if i < target_segments - 1 else len(words)
         
         segment_words = words[start_idx:end_idx]
         if segment_words:

@@ -6757,7 +6757,7 @@ CONTENT TO PROCESS:
 CRITICAL REQUIREMENTS:
 1. **Comprehensive Coverage**: Include ALL information from the source content - do not truncate or summarize
 2. **Intelligent Title**: Create a meaningful title based on the main topic (NOT filename-based)
-3. **Professional Structure**: Use proper headings (h1 for title, h2 for major sections, h3 for subsections)
+3. **Professional Structure**: Use proper headings (h2 for major sections, h3 for subsections) - DO NOT create additional h1 tags as the document already has a title
 4. **Technical Quality**: Enterprise-level professional language for technical documentation
 5. **Detailed Instructions**: Include complete step-by-step procedures with full detail
 6. **Enhanced Formatting**: Proper lists, tables, callouts, and semantic HTML structure

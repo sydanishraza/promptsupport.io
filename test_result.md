@@ -138,6 +138,18 @@
 ## user_problem_statement: "Implementing HTML Preprocessing Pipeline for Accurate Image Reinsertion - Revolutionary 3-Phase approach to solve image placement issues in Knowledge Engine"
 
 ## backend:
+  - task: "HTML Preprocessing Pipeline Implementation"
+    implemented: false
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "STARTING IMPLEMENTATION: Revolutionary 3-phase approach to solve image placement accuracy issues. Phase 1: Convert documents to structured HTML with block IDs and image tokenization. Phase 2: AI processing that preserves tokens and structure. Phase 3: Token replacement with rich image HTML. This addresses the fundamental flaw in current approach where AI tries to guess image placement during content generation."
+
   - task: "Training Interface Backend API Implementation"
     implemented: true
     working: true

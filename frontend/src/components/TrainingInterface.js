@@ -579,7 +579,7 @@ const TrainingInterface = () => {
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <Settings className="h-8 w-8 mx-auto mb-2 text-green-600" />
                     <h3 className="font-medium text-gray-900 mb-1">Apply Template</h3>
-                    <p className="text-sm text-gray-600">Process with selected training template</p>
+                    <p className="text-sm text-gray-600">Process with selected lab template</p>
                   </div>
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
                     <Target className="h-8 w-8 mx-auto mb-2 text-purple-600" />

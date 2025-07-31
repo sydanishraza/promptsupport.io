@@ -437,10 +437,37 @@ class DocumentPreprocessor:
             print(f"📚 Created {len(html_chunks)} structural HTML chunks")
             
             # PERFORMANCE OPTIMIZATION: Use parallel processing for chunks
-            if len(html_chunks) > 3:  # Use parallel processing for multiple chunks
-                processed_chunks = await process_chunks_in_parallel(html_chunks, self, max_concurrent=3)
+            if len(html_chunks) > 2:  # Use parallel processing for multiple chunks
+                print(f"🚀 Using parallel processing for {len(html_chunks)} chunks")
+                try:
+                    processed_chunks = await process_chunks_in_parallel(html_chunks, self, max_concurrent=2)
+                    print(f"✅ Parallel processing complete: {len(processed_chunks)} chunks processed")
+                except Exception as parallel_error:
+                    print(f"❌ Parallel processing failed: {parallel_error}, falling back to sequential")
+                    # Fallback to sequential processing
+                    processed_chunks = []
+                    for i, chunk_data in enumerate(html_chunks):
+                        print(f"🏗️ Sequential processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                        
+                        # Assign structural block IDs
+                        structured_html = self._assign_block_ids_to_chunk(chunk_data['content'], chunk_data['section_id'])
+                        
+                        # Tokenize images for this chunk
+                        tokenized_html = self._tokenize_images_in_chunk(structured_html, chunk_data['images'])
+                        
+                        processed_chunk = {
+                            'section_id': chunk_data['section_id'],
+                            'title': chunk_data['title'],
+                            'content': tokenized_html,
+                            'images': chunk_data['images'],
+                            'token_count': len(tokenized_html) // 4
+                        }
+                        
+                        processed_chunks.append(processed_chunk)
+                        print(f"✅ Chunk {i+1} processed: ~{processed_chunk['token_count']:,} tokens")
             else:
                 # Use sequential processing for small number of chunks
+                print(f"📝 Using sequential processing for {len(html_chunks)} chunks")
                 processed_chunks = []
                 for i, chunk_data in enumerate(html_chunks):
                     print(f"🏗️ Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")

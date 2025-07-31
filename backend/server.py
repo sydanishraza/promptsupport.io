@@ -761,7 +761,7 @@ class DocumentPreprocessor:
             valid_chunks = []
             for chunk in chunks:
                 chunk_size = len(chunk['content'])
-                if chunk_size > 40000:  # ~10K tokens - still too large
+                if chunk_size > 60000:  # ~15K tokens - still manageable for modern LLMs
                     print(f"⚠️ Chunk too large, splitting further: {chunk['title']} ({chunk_size} chars)")
                     # Split large chunk into smaller pieces
                     sub_chunks = self._split_large_chunk(chunk)
@@ -769,7 +769,7 @@ class DocumentPreprocessor:
                 else:
                     valid_chunks.append(chunk)
             
-            print(f"📋 OPTIMIZED: Created {len(valid_chunks)} manageable chunks (max ~8K tokens each)")
+            print(f"📋 OPTIMIZED: Created {len(valid_chunks)} manageable chunks (max ~15K tokens each)")
             return valid_chunks
             
         except Exception as e:

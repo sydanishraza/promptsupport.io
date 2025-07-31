@@ -436,27 +436,31 @@ class DocumentPreprocessor:
             html_chunks = self._create_structural_html_chunks(html_content, images)
             print(f"📚 Created {len(html_chunks)} structural HTML chunks")
             
-            # Assign block IDs and tokenize images for each chunk
-            processed_chunks = []
-            for i, chunk_data in enumerate(html_chunks):
-                print(f"🏗️ Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
-                
-                # Assign structural block IDs
-                structured_html = self._assign_block_ids_to_chunk(chunk_data['content'], chunk_data['section_id'])
-                
-                # Tokenize images for this chunk
-                tokenized_html = self._tokenize_images_in_chunk(structured_html, chunk_data['images'])
-                
-                processed_chunk = {
-                    'section_id': chunk_data['section_id'],
-                    'title': chunk_data['title'],
-                    'content': tokenized_html,
-                    'images': chunk_data['images'],
-                    'token_estimate': len(tokenized_html) // 4
-                }
-                
-                processed_chunks.append(processed_chunk)
-                print(f"✅ Chunk {i+1} processed: ~{processed_chunk['token_estimate']:,} tokens")
+            # PERFORMANCE OPTIMIZATION: Use parallel processing for chunks
+            if len(html_chunks) > 3:  # Use parallel processing for multiple chunks
+                processed_chunks = await process_chunks_in_parallel(html_chunks, self, max_concurrent=3)
+            else:
+                # Use sequential processing for small number of chunks
+                processed_chunks = []
+                for i, chunk_data in enumerate(html_chunks):
+                    print(f"🏗️ Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                    
+                    # Assign structural block IDs
+                    structured_html = self._assign_block_ids_to_chunk(chunk_data['content'], chunk_data['section_id'])
+                    
+                    # Tokenize images for this chunk
+                    tokenized_html = self._tokenize_images_in_chunk(structured_html, chunk_data['images'])
+                    
+                    processed_chunk = {
+                        'section_id': chunk_data['section_id'],
+                        'title': chunk_data['title'],
+                        'content': tokenized_html,
+                        'images': chunk_data['images'],
+                        'token_count': len(tokenized_html) // 4
+                    }
+                    
+                    processed_chunks.append(processed_chunk)
+                    print(f"✅ Chunk {i+1} processed: ~{processed_chunk['token_count']:,} tokens")
             
             return processed_chunks, self.extracted_images
             

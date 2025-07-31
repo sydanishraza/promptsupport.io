@@ -1014,6 +1014,169 @@ Focus on:
 
 # === END HTML PREPROCESSING PIPELINE ===
 
+async def extract_document_title(file_path: str, file_extension: str, html_content: str = None) -> str:
+    """
+    Extract the document title from the first heading or title style
+    Priority: H1 > Title style > First paragraph > Filename
+    """
+    try:
+        if file_extension == 'docx':
+            # Try to extract from DOCX structure first
+            try:
+                from docx import Document
+                doc = Document(file_path)
+                
+                # Check for Title style first
+                for para in doc.paragraphs:
+                    if para.style.name == 'Title' and para.text.strip():
+                        title = para.text.strip()
+                        print(f"📋 Found Title style: {title}")
+                        return title
+                
+                # Check for Heading 1
+                for para in doc.paragraphs:
+                    if para.style.name == 'Heading 1' and para.text.strip():
+                        title = para.text.strip()
+                        print(f"📋 Found Heading 1: {title}")
+                        return title
+                
+                # Check for first non-empty paragraph as fallback
+                for para in doc.paragraphs:
+                    if para.text.strip() and len(para.text.strip()) < 100:  # Likely a title
+                        title = para.text.strip()
+                        print(f"📋 Found first paragraph title: {title}")
+                        return title
+                        
+            except Exception as docx_error:
+                print(f"⚠️ DOCX title extraction failed: {docx_error}")
+        
+        # Fallback: Extract from HTML content if available
+        if html_content:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Look for H1 elements
+            h1_elements = soup.find_all('h1')
+            if h1_elements and h1_elements[0].get_text().strip():
+                title = h1_elements[0].get_text().strip()
+                print(f"📋 Found H1 in HTML: {title}")
+                return title
+            
+            # Look for any heading elements
+            for heading in soup.find_all(['h1', 'h2', 'h3']):
+                if heading.get_text().strip():
+                    title = heading.get_text().strip()
+                    print(f"📋 Found heading in HTML: {title}")
+                    return title
+            
+            # Look for first paragraph that might be a title
+            paragraphs = soup.find_all('p')
+            if paragraphs:
+                first_text = paragraphs[0].get_text().strip()
+                if first_text and len(first_text) < 100:
+                    print(f"📋 Found paragraph title in HTML: {first_text}")
+                    return first_text
+        
+        # Final fallback: use filename without extension
+        filename = os.path.basename(file_path)
+        if '.' in filename:
+            title = filename.rsplit('.', 1)[0]
+        else:
+            title = filename
+        
+        # Clean up the filename title
+        title = title.replace('_', ' ').replace('-', ' ')
+        title = ' '.join(word.capitalize() for word in title.split())
+        
+        print(f"📋 Using cleaned filename as title: {title}")
+        return title
+        
+    except Exception as e:
+        print(f"❌ Title extraction failed: {e}")
+        return "Untitled Document"
+
+async def polish_article_content(content: str, title: str, template_data: dict) -> dict:
+    """
+    Final content polishing pass using LLM for professional formatting and structure
+    This applies technical writing standards and clean HTML formatting
+    """
+    try:
+        print(f"✨ Starting final content polishing for: {title}")
+        
+        # Create comprehensive prompt for content polishing
+        system_message = """You are a professional technical writer and content editor. Your task is to transform the provided content into a publish-ready, professional article with clean HTML structure.
+
+REQUIREMENTS:
+1. Create clean, semantic HTML markup (no code blocks, no markdown)
+2. Use proper HTML5 semantic elements: <article>, <header>, <section>, <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <figure>
+3. Ensure professional tone and technical writing standards
+4. Maintain all data-block-id attributes for image placement
+5. Create logical content structure with proper headings hierarchy
+6. Improve readability and flow while preserving technical accuracy
+7. Add introductory and concluding sections if missing
+8. Format code examples, API references, and technical details appropriately
+
+OUTPUT FORMAT: Return ONLY clean HTML content without any markdown formatting, code blocks, or wrapper elements."""
+
+        user_message = f"""Transform this content into a professional, publish-ready article:
+
+TITLE: {title}
+
+CONTENT: {content}
+
+TEMPLATE CONTEXT: {json.dumps(template_data, indent=2)}
+
+Create a well-structured, professional article with proper HTML formatting suitable for a knowledge base or documentation platform."""
+
+        # Use the LLM fallback system for content polishing
+        polished_content = await call_llm_with_fallback(system_message, user_message)
+        
+        if polished_content and len(polished_content.strip()) > 100:
+            print(f"✅ Content polishing successful: {len(polished_content)} characters")
+            
+            # Extract clean HTML and ensure proper structure
+            polished_html = polished_content.strip()
+            
+            # Remove any remaining code block markers
+            if polished_html.startswith('```'):
+                lines = polished_html.split('\n')
+                polished_html = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
+            
+            # Ensure the content starts with proper article structure
+            if not polished_html.startswith('<article>') and not polished_html.startswith('<header>'):
+                polished_html = f'<article>\n<header><h1>{title}</h1></header>\n{polished_html}\n</article>'
+            
+            return {
+                'html': polished_html,
+                'markdown': polished_html,  # Use HTML as markdown for now
+                'content': polished_html,
+                'polished': True,
+                'word_count': len(polished_html.split())
+            }
+        else:
+            print(f"❌ Content polishing failed or produced insufficient content")
+            # Return original content with basic HTML structure
+            structured_content = f'<article>\n<header><h1>{title}</h1></header>\n<section>\n{content}\n</section>\n</article>'
+            return {
+                'html': structured_content,
+                'markdown': structured_content,
+                'content': structured_content,
+                'polished': False,
+                'word_count': len(content.split())
+            }
+    
+    except Exception as e:
+        print(f"❌ Content polishing error: {e}")
+        # Return original content with basic structure
+        structured_content = f'<article>\n<header><h1>{title}</h1></header>\n<section>\n{content}\n</section>\n</article>'
+        return {
+            'html': structured_content,
+            'markdown': structured_content,
+            'content': structured_content,
+            'polished': False,
+            'word_count': len(content.split())
+        }
+
 async def process_with_html_preprocessing_pipeline(file_path: str, file_extension: str, template_data: dict, training_session: dict) -> list:
     """
     Process documents using the new HTML preprocessing pipeline with structural chunking

@@ -990,7 +990,7 @@ class DocumentPreprocessor:
                     'title': chunk_data['title'],
                     'content': processed_content,
                     'images': chunk_data['images'],
-                    'original_token_estimate': chunk_data['token_estimate']
+                    'original_token_estimate': chunk_data.get('token_count', chunk_data.get('token_estimate', 0))
                 }
                 
                 processed_chunks.append(processed_chunk)

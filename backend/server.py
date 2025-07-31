@@ -873,19 +873,32 @@ class DocumentPreprocessor:
     def _assign_block_ids_to_chunk(self, chunk_html: str, section_id: str) -> str:
         """
         Assign unique data-block-id to every content block within a chunk
-        Uses section-specific naming: section_1_para_1, section_1_heading_2, etc.
+        OPTIMIZED: Reduced verbosity and faster processing for large chunks
         """
         try:
             soup = BeautifulSoup(chunk_html, 'html.parser')
             element_counter = 0
             
-            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
+            # Performance optimization: reduce logging for large chunks
+            chunk_size = len(chunk_html)
+            is_large_chunk = chunk_size > 30000  # 30KB threshold
+            
+            elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+            
+            for element in elements:
                 element_counter += 1
                 block_id = f"{section_id}_{element.name}_{element_counter}"
                 element['data-block-id'] = block_id
                 self.block_counter += 1
                 
-                print(f"📋 Assigned block ID: {block_id} to <{element.name}>")
+                # Reduced logging frequency for performance
+                if not is_large_chunk:
+                    print(f"📋 Assigned block ID: {block_id} to <{element.name}>")
+                elif element_counter % 25 == 0:  # Log every 25th element for large chunks
+                    print(f"📋 Block ID progress: {element_counter}/{len(elements)} elements in {section_id}")
+            
+            if is_large_chunk:
+                print(f"📋 Block ID assignment complete for {section_id}: {element_counter} elements")
             
             return str(soup)
             

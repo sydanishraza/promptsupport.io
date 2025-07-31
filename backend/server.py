@@ -752,9 +752,9 @@ class DocumentPreprocessor:
         return '\n'.join(html_parts)
     
     def _is_chunk_valid(self, chunk_html: str) -> bool:
-        """Check if chunk has substantial content"""
+        """Check if chunk has substantial content - reduced threshold for simple documents"""
         text_content = BeautifulSoup(chunk_html, 'html.parser').get_text().strip()
-        return len(text_content) > 100  # At least 100 characters of text
+        return len(text_content) > 20  # Reduced from 100 to 20 characters for simple documents
     
     def _distribute_images_to_chunks(self, chunks: list, images: list):
         """Distribute images to appropriate chunks based on content proximity"""

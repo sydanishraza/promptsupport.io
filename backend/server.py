@@ -542,23 +542,32 @@ class DocumentPreprocessor:
                         # Create a placeholder to continue processing
                         image_bytes = b''
                     
-                    # Save image to disk if we have data
+                    # Store image metadata with correct URL path
+                    image_id = f"doc_{self.session_id}_img_{self.image_counter}"
+                    
+                    # Ensure correct directory structure for serving
+                    session_dir = f"static/uploads/session_{self.session_id}"
+                    os.makedirs(session_dir, exist_ok=True)
+                    
+                    # Update paths to use session directory
+                    image_path = os.path.join(session_dir, image_filename)
+                    
+                    # Save image to correct location
                     if image_bytes:
                         try:
                             with open(image_path, "wb") as img_file:
                                 img_file.write(image_bytes)
-                            print(f"💾 Saved image: {image_filename} ({len(image_bytes)} bytes)")
+                            print(f"💾 Saved image: {image_path} ({len(image_bytes)} bytes)")
                         except Exception as save_error:
                             print(f"❌ Failed to save image {image_filename}: {save_error}")
                     
-                    # Store image metadata
-                    image_id = f"doc_{self.session_id}_img_{self.image_counter}"
                     self.extracted_images[image_id] = {
                         'filename': image_filename,
                         'path': image_path,
                         'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
                         'alt_text': f"Image {self.image_counter}",
-                        'content_type': content_type
+                        'content_type': content_type,
+                        'size_bytes': len(image_bytes) if image_bytes else 0
                     }
                     
                     return {

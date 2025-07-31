@@ -1360,12 +1360,23 @@ Create a well-structured, professional article with proper HTML formatting suita
     
     except Exception as e:
         print(f"❌ Content polishing error: {e}")
-        # Return original content with basic structure
-        structured_content = f'<article>\n<header><h1>{title}</h1></header>\n<section>\n{content}\n</section>\n</article>'
+        # Return original content with clean structure for Content Library
+        from bs4 import BeautifulSoup
+        try:
+            soup = BeautifulSoup(content, 'html.parser')
+            clean_content = f'<h1>{title}</h1>\n'
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
+                if element.name == 'h1':
+                    continue  # Skip additional H1s since we added the title
+                clean_content += str(element) + '\n'
+        except:
+            # Final fallback if HTML parsing fails
+            clean_content = f'<h1>{title}</h1>\n<p>{content}</p>'
+        
         return {
-            'html': structured_content,
-            'markdown': structured_content,
-            'content': structured_content,
+            'html': clean_content,
+            'markdown': clean_content,
+            'content': clean_content,
             'polished': False,
             'polishing_error': str(e),
             'word_count': len(content.split())

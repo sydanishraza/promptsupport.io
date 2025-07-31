@@ -1650,6 +1650,22 @@ async def training_process_document(
         file_content = await file.read()
         print(f"📄 File content read: {len(file_content)} bytes")
         
+        # DEBUG: Check if uploaded file is valid for DOCX
+        if file.filename.lower().endswith('.docx'):
+            print(f"🔍 DEBUG: Checking DOCX file validity")
+            # Check if file starts with ZIP signature (DOCX files are ZIP archives)
+            if file_content[:4] == b'PK\x03\x04':
+                print(f"✅ Valid DOCX file - has ZIP signature")
+            else:
+                print(f"❌ Invalid DOCX file - missing ZIP signature")
+                print(f"🔍 File starts with: {file_content[:20]}")
+                # Try to analyze the content
+                try:
+                    content_str = file_content.decode('utf-8', errors='ignore')[:100]
+                    print(f"🔍 Content preview: {content_str}")
+                except:
+                    print(f"🔍 Binary content, cannot decode as text")
+        
         # Add file size check to prevent excessive processing
         max_file_size = 50 * 1024 * 1024  # 50MB limit
         if len(file_content) > max_file_size:
@@ -1666,6 +1682,15 @@ async def training_process_document(
             temp_file.write(file_content)
         
         print(f"💾 Temporary file saved: {temp_file_path}")
+        
+        # Additional DEBUG: Verify saved file
+        if file.filename.lower().endswith('.docx'):
+            try:
+                import zipfile
+                with zipfile.ZipFile(temp_file_path, 'r') as zip_ref:
+                    print(f"✅ Saved DOCX is valid ZIP with {len(zip_ref.namelist())} entries")
+            except Exception as zip_error:
+                print(f"❌ Saved file is not a valid ZIP: {zip_error}")
         
         # Process based on file type - NEW HTML PREPROCESSING PIPELINE
         file_extension = file.filename.lower().split('.')[-1] if '.' in file.filename else 'txt'

@@ -1095,47 +1095,140 @@ async def extract_document_title(file_path: str, file_extension: str, html_conte
         print(f"❌ Title extraction failed: {e}")
         return "Untitled Document"
 
+async def chunk_large_document_for_polishing(content: str, title: str) -> list:
+    """
+    Chunk large documents at heading levels for individual LLM processing
+    Returns list of chunks with titles and content for separate article processing
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find all major headings (H1, H2, H3) to use as chunk boundaries
+        major_headings = soup.find_all(['h1', 'h2', 'h3'])
+        
+        if len(major_headings) < 2:
+            # Not enough structure for chunking, return as single chunk
+            return [{
+                'title': title,
+                'content': content,
+                'chunk_type': 'single_section'
+            }]
+        
+        chunks = []
+        current_chunk_content = []
+        current_chunk_title = title
+        chunk_counter = 0
+        
+        # Process all elements and group by major headings
+        all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table', 'blockquote'])
+        
+        for element in all_elements:
+            # Check if this is a major section break (H1, H2, or H3)
+            if element.name in ['h1', 'h2', 'h3']:
+                # Save current chunk if it has content
+                if current_chunk_content:
+                    chunk_html = ''.join(str(el) for el in current_chunk_content)
+                    if len(chunk_html.strip()) > 500:  # Minimum chunk size
+                        chunks.append({
+                            'title': current_chunk_title,
+                            'content': chunk_html,
+                            'chunk_type': 'heading_section',
+                            'heading_level': current_chunk_content[0].name if current_chunk_content else 'h2'
+                        })
+                
+                # Start new chunk
+                chunk_counter += 1
+                heading_text = element.get_text().strip()
+                
+                # Create meaningful chunk title
+                if element.name == 'h1':
+                    current_chunk_title = heading_text
+                elif len(heading_text) > 0:
+                    current_chunk_title = f"{heading_text}"
+                else:
+                    current_chunk_title = f"{title} - Section {chunk_counter}"
+                
+                current_chunk_content = [element]
+            else:
+                # Add to current chunk
+                current_chunk_content.append(element)
+                
+                # Check if chunk is getting very large (split at ~30K chars for polishing)
+                current_chunk_html = ''.join(str(el) for el in current_chunk_content)
+                if len(current_chunk_html) > 30000:
+                    # Save current chunk
+                    chunks.append({
+                        'title': current_chunk_title,
+                        'content': current_chunk_html,
+                        'chunk_type': 'size_split',
+                        'heading_level': 'h2'
+                    })
+                    
+                    # Start new sub-chunk
+                    chunk_counter += 1
+                    current_chunk_title = f"{current_chunk_title} (Part {chunk_counter})"
+                    current_chunk_content = []
+        
+        # Add final chunk
+        if current_chunk_content:
+            chunk_html = ''.join(str(el) for el in current_chunk_content)
+            if len(chunk_html.strip()) > 200:  # Minimum final chunk size
+                chunks.append({
+                    'title': current_chunk_title,
+                    'content': chunk_html,
+                    'chunk_type': 'final_section',
+                    'heading_level': 'h2'
+                })
+        
+        print(f"📊 Large document chunked: {len(chunks)} sections for individual processing")
+        for i, chunk in enumerate(chunks):
+            print(f"   Section {i+1}: {chunk['title']} ({len(chunk['content'])} chars)")
+        
+        return chunks
+        
+    except Exception as e:
+        print(f"❌ Document chunking failed: {e}")
+        # Fallback to single chunk
+        return [{
+            'title': title,
+            'content': content,
+            'chunk_type': 'fallback_single'
+        }]
+
 async def polish_article_content(content: str, title: str, template_data: dict) -> dict:
     """
     Final content polishing pass using LLM for professional formatting and structure
-    This applies technical writing standards and clean HTML formatting
-    Handles large content by applying basic structure without LLM polishing
+    For large documents, chunks them at heading levels and processes separately
     """
     try:
         print(f"✨ Starting final content polishing for: {title}")
         
-        # Check content size - skip LLM polishing for very large content
+        # Check content size - implement chunking for very large content
         content_length = len(content)
-        max_polishing_size = 50000  # ~12K tokens - safe for LLM processing
+        max_single_polishing_size = 50000  # ~12K tokens - safe for single LLM processing
         
-        if content_length > max_polishing_size:
-            print(f"📊 Content too large for LLM polishing ({content_length} chars > {max_polishing_size}), applying basic structure")
+        if content_length > max_single_polishing_size:
+            print(f"📊 Large document detected ({content_length} chars > {max_single_polishing_size}), implementing intelligent chunking")
             
-            # Apply basic HTML structure without LLM processing
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(content, 'html.parser')
+            # Chunk the document at heading levels
+            chunks = await chunk_large_document_for_polishing(content, title)
             
-            # Create structured HTML with proper semantic elements
-            structured_html = f"""<article>
-    <header>
-        <h1>{title}</h1>
-    </header>
-    <section class="content">
-        {content}
-    </section>
-</article>"""
-            
-            return {
-                'html': structured_html,
-                'markdown': structured_html,
-                'content': structured_html,
-                'polished': False,
-                'polishing_skipped': 'content_too_large',
-                'word_count': len(content.split())
-            }
+            if len(chunks) > 1:
+                # Return multiple chunks for separate article processing
+                print(f"🔄 Returning {len(chunks)} chunks for separate article processing")
+                return {
+                    'html': content,  # Original content for fallback
+                    'markdown': content,
+                    'content': content,
+                    'polished': False,
+                    'requires_chunked_processing': True,
+                    'chunks': chunks,
+                    'word_count': len(content.split())
+                }
         
-        # For smaller content, proceed with LLM polishing
-        print(f"📝 Content size suitable for LLM polishing ({content_length} chars)")
+        # For smaller content or single chunks, proceed with standard LLM polishing
+        print(f"📝 Content size suitable for standard LLM polishing ({content_length} chars)")
         
         # Create comprehensive prompt for content polishing
         system_message = """You are a professional technical writer and content editor. Your task is to transform the provided content into a publish-ready, professional article with clean HTML structure.
@@ -1211,6 +1304,150 @@ Create a well-structured, professional article with proper HTML formatting suita
             'polished': False,
             'polishing_error': str(e),
             'word_count': len(content.split())
+        }
+
+async def process_individual_chunk(chunk_data: dict, document_title: str, template_data: dict, training_session: dict, image_assets: dict) -> dict:
+    """
+    Process an individual chunk from a large document with LLM polishing
+    """
+    try:
+        chunk_title = chunk_data['title']
+        chunk_content = chunk_data['content']
+        
+        print(f"🔄 Processing individual chunk: {chunk_title}")
+        
+        # Apply LLM polishing to this specific chunk
+        system_message = """You are a professional technical writer and content editor. Transform this content section into a polished, standalone article with clean HTML structure.
+
+REQUIREMENTS:
+1. Create clean, semantic HTML markup (no code blocks, no markdown)
+2. Use proper HTML5 semantic elements with logical hierarchy
+3. Ensure professional tone and technical writing standards
+4. Maintain all data-block-id attributes for image placement
+5. Create complete, self-contained article structure
+6. Add context or introduction if the section needs it
+7. Format technical content appropriately
+
+OUTPUT FORMAT: Return ONLY clean HTML content suitable for publication."""
+
+        user_message = f"""Transform this content section into a professional, standalone article:
+
+SECTION TITLE: {chunk_title}
+DOCUMENT CONTEXT: {document_title}
+
+CONTENT: {chunk_content}
+
+Create a well-structured, complete article that can stand alone while maintaining its relationship to the larger document."""
+
+        # Polish the chunk content
+        polished_content = await call_llm_with_fallback(system_message, user_message)
+        
+        if polished_content and len(polished_content.strip()) > 100:
+            print(f"✅ Chunk polishing successful: {len(polished_content)} characters")
+            
+            # Clean the polished content
+            polished_html = polished_content.strip()
+            if polished_html.startswith('```'):
+                lines = polished_html.split('\n')
+                polished_html = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
+            
+            # Ensure proper article structure
+            if not polished_html.startswith('<article>'):
+                polished_html = f'<article>\n<header><h1>{chunk_title}</h1></header>\n{polished_html}\n</article>'
+            
+            polished_result = {
+                'html': polished_html,
+                'markdown': polished_html,
+                'content': polished_html,
+                'polished': True,
+                'word_count': len(polished_html.split())
+            }
+        else:
+            print(f"❌ Chunk polishing failed, using structured original content")
+            structured_content = f'<article>\n<header><h1>{chunk_title}</h1></header>\n<section>\n{chunk_content}\n</section>\n</article>'
+            polished_result = {
+                'html': structured_content,
+                'markdown': structured_content,
+                'content': structured_content,
+                'polished': False,
+                'word_count': len(chunk_content.split())
+            }
+        
+        # Create article from polished chunk
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": chunk_title,
+            "html": polished_result['html'],
+            "markdown": polished_result['markdown'],
+            "content": polished_result['content'],
+            "media": [
+                {
+                    "url": img_data['url'],
+                    "alt": img_data['alt_text'],
+                    "caption": img_data.get('caption', ''),
+                    "placement": "inline",
+                    "filename": img_data['filename']
+                }
+                for img_data in image_assets.values()
+                if any(img['id'] in polished_result['content'] for img in [{'id': k} for k in image_assets.keys()])
+            ],
+            "tags": ["extracted", "generated", "html-pipeline", "chunked-section", "polished"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": polished_result['word_count'],
+            "image_count": 0,  # Will be updated based on media
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": True,
+            "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
+            "training_mode": True,
+            "content_polished": polished_result['polished'],
+            "metadata": {
+                "source_filename": training_session['filename'],
+                "template_applied": training_session['template_id'],
+                "phase": "chunked_polishing",
+                "document_title": document_title,
+                "chunk_type": chunk_data.get('chunk_type', 'heading_section'),
+                "heading_level": chunk_data.get('heading_level', 'h2'),
+                "chunk_processing": "individual_llm_polish"
+            }
+        }
+        
+        print(f"📄 Created polished chunk article: {chunk_title} ({len(polished_result['html'])} chars)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Chunk processing error for '{chunk_data.get('title', 'Unknown')}': {e}")
+        # Return basic structured article
+        chunk_title = chunk_data.get('title', 'Untitled Section')
+        chunk_content = chunk_data.get('content', '')
+        
+        structured_content = f'<article>\n<header><h1>{chunk_title}</h1></header>\n<section>\n{chunk_content}\n</section>\n</article>'
+        
+        return {
+            "id": str(uuid.uuid4()),
+            "title": chunk_title,
+            "html": structured_content,
+            "markdown": structured_content,
+            "content": structured_content,
+            "media": [],
+            "tags": ["extracted", "generated", "chunked-section", "error-fallback"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": len(chunk_content.split()),
+            "image_count": 0,
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": False,
+            "training_mode": True,
+            "content_polished": False,
+            "metadata": {
+                "source_filename": training_session['filename'],
+                "processing_error": str(e),
+                "chunk_type": "error_fallback"
+            }
         }
 
 async def process_with_html_preprocessing_pipeline(file_path: str, file_extension: str, template_data: dict, training_session: dict) -> list:

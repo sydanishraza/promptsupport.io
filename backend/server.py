@@ -1097,103 +1097,136 @@ async def extract_document_title(file_path: str, file_extension: str, html_conte
 
 async def chunk_large_document_for_polishing(content: str, title: str) -> list:
     """
-    Chunk large documents at heading levels for individual LLM processing
-    Returns list of chunks with titles and content for separate article processing
+    Chunk large documents ONLY at H1 boundaries for individual LLM processing
+    Maintains structural integrity and respects section boundaries
     """
     try:
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(content, 'html.parser')
         
-        # Find all major headings (H1, H2, H3) to use as chunk boundaries
-        major_headings = soup.find_all(['h1', 'h2', 'h3'])
+        # Find only H1 headings for major section breaks
+        h1_headings = soup.find_all('h1')
         
-        if len(major_headings) < 2:
-            # Not enough structure for chunking, return as single chunk
+        print(f"📊 Document analysis: {len(h1_headings)} H1 sections found")
+        
+        if len(h1_headings) < 2:
+            # Not enough H1 structure for chunking, return as single chunk
+            print("📄 Insufficient H1 structure - processing as single section")
             return [{
                 'title': title,
                 'content': content,
-                'chunk_type': 'single_section'
+                'chunk_type': 'single_section',
+                'min_threshold_met': len(content) > 1000  # Minimum content check
             }]
         
         chunks = []
-        current_chunk_content = []
+        current_chunk_elements = []
         current_chunk_title = title
         chunk_counter = 0
         
-        # Process all elements and group by major headings
-        all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table', 'blockquote'])
+        # Process all elements and group ONLY by H1 boundaries
+        all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table', 'blockquote', 'pre', 'code'])
         
         for element in all_elements:
-            # Check if this is a major section break (H1, H2, or H3)
-            if element.name in ['h1', 'h2', 'h3']:
-                # Save current chunk if it has content
-                if current_chunk_content:
-                    chunk_html = ''.join(str(el) for el in current_chunk_content)
-                    if len(chunk_html.strip()) > 500:  # Minimum chunk size
+            # Check if this is a major section break (H1 ONLY)
+            if element.name == 'h1':
+                # Save current chunk if it has substantial content
+                if current_chunk_elements:
+                    chunk_html = ''.join(str(el) for el in current_chunk_elements)
+                    chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+                    
+                    # Apply minimum content threshold (1000 characters)
+                    if chunk_text_length > 1000:
                         chunks.append({
                             'title': current_chunk_title,
                             'content': chunk_html,
-                            'chunk_type': 'heading_section',
-                            'heading_level': current_chunk_content[0].name if current_chunk_content else 'h2'
+                            'chunk_type': 'h1_section',
+                            'text_length': chunk_text_length,
+                            'min_threshold_met': True
                         })
+                        print(f"✅ H1 chunk created: {current_chunk_title} ({chunk_text_length} chars)")
+                    else:
+                        print(f"⚠️ H1 section too small, merging: {current_chunk_title} ({chunk_text_length} chars)")
+                        # Merge small sections with the next one rather than creating tiny chunks
+                        if chunks:
+                            # Add to previous chunk if exists
+                            chunks[-1]['content'] += chunk_html
+                            chunks[-1]['title'] += f" + {current_chunk_title}"
+                            chunks[-1]['text_length'] += chunk_text_length
+                        # Otherwise, continue building this section
                 
                 # Start new chunk
                 chunk_counter += 1
                 heading_text = element.get_text().strip()
-                
-                # Create meaningful chunk title
-                if element.name == 'h1':
-                    current_chunk_title = heading_text
-                elif len(heading_text) > 0:
-                    current_chunk_title = f"{heading_text}"
-                else:
-                    current_chunk_title = f"{title} - Section {chunk_counter}"
-                
-                current_chunk_content = [element]
+                current_chunk_title = heading_text if heading_text else f"{title} - Section {chunk_counter}"
+                current_chunk_elements = [element]
             else:
-                # Add to current chunk
-                current_chunk_content.append(element)
+                # Add all non-H1 elements to current chunk (maintaining section integrity)
+                current_chunk_elements.append(element)
                 
-                # Check if chunk is getting very large (split at ~30K chars for polishing)
-                current_chunk_html = ''.join(str(el) for el in current_chunk_content)
-                if len(current_chunk_html) > 30000:
-                    # Save current chunk
-                    chunks.append({
-                        'title': current_chunk_title,
-                        'content': current_chunk_html,
-                        'chunk_type': 'size_split',
-                        'heading_level': 'h2'
-                    })
-                    
-                    # Start new sub-chunk
-                    chunk_counter += 1
-                    current_chunk_title = f"{current_chunk_title} (Part {chunk_counter})"
-                    current_chunk_content = []
+                # SAFETY CHECK: If single H1 section becomes too large (>100K chars), split it
+                if len(current_chunk_elements) > 1:  # Don't split if we only have the H1 heading
+                    current_chunk_html = ''.join(str(el) for el in current_chunk_elements)
+                    if len(current_chunk_html) > 100000:  # 100K character limit per section
+                        print(f"⚠️ H1 section exceeding size limit, creating sub-chunk: {current_chunk_title}")
+                        
+                        # Save current chunk
+                        chunks.append({
+                            'title': current_chunk_title,
+                            'content': current_chunk_html,
+                            'chunk_type': 'h1_section_large',
+                            'text_length': len(BeautifulSoup(current_chunk_html, 'html.parser').get_text().strip()),
+                            'min_threshold_met': True
+                        })
+                        
+                        # Start new sub-chunk within same H1 section
+                        chunk_counter += 1
+                        current_chunk_title = f"{current_chunk_title} (Part {chunk_counter})"
+                        current_chunk_elements = []  # Reset but don't include H1 again
         
-        # Add final chunk
-        if current_chunk_content:
-            chunk_html = ''.join(str(el) for el in current_chunk_content)
-            if len(chunk_html.strip()) > 200:  # Minimum final chunk size
+        # Add final chunk if it has substantial content
+        if current_chunk_elements:
+            chunk_html = ''.join(str(el) for el in current_chunk_elements)
+            chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+            
+            if chunk_text_length > 1000:
                 chunks.append({
                     'title': current_chunk_title,
                     'content': chunk_html,
-                    'chunk_type': 'final_section',
-                    'heading_level': 'h2'
+                    'chunk_type': 'h1_final_section',
+                    'text_length': chunk_text_length,
+                    'min_threshold_met': True
                 })
+                print(f"✅ Final H1 chunk created: {current_chunk_title} ({chunk_text_length} chars)")
+            elif chunks:
+                # Merge small final section with previous chunk
+                chunks[-1]['content'] += chunk_html
+                chunks[-1]['title'] += f" + {current_chunk_title}"
+                chunks[-1]['text_length'] += chunk_text_length
+                print(f"✅ Small final section merged with previous chunk ({chunk_text_length} chars)")
         
-        print(f"📊 Large document chunked: {len(chunks)} sections for individual processing")
-        for i, chunk in enumerate(chunks):
-            print(f"   Section {i+1}: {chunk['title']} ({len(chunk['content'])} chars)")
+        # Filter out any chunks that don't meet minimum threshold
+        valid_chunks = [chunk for chunk in chunks if chunk.get('min_threshold_met', False)]
         
-        return chunks
+        print(f"📋 H1-based chunking complete: {len(valid_chunks)} substantial sections created")
+        for i, chunk in enumerate(valid_chunks):
+            print(f"   Section {i+1}: {chunk['title']} ({chunk['text_length']} chars)")
+        
+        return valid_chunks if valid_chunks else [{
+            'title': title,
+            'content': content,
+            'chunk_type': 'fallback_single',
+            'min_threshold_met': True
+        }]
         
     except Exception as e:
-        print(f"❌ Document chunking failed: {e}")
+        print(f"❌ H1-based chunking failed: {e}")
         # Fallback to single chunk
         return [{
             'title': title,
             'content': content,
-            'chunk_type': 'fallback_single'
+            'chunk_type': 'error_fallback',
+            'min_threshold_met': True
         }]
 
 async def polish_article_content(content: str, title: str, template_data: dict) -> dict:

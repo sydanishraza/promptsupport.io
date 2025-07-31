@@ -1250,20 +1250,36 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
         # For smaller content or single chunks, proceed with standard LLM polishing
         print(f"📝 Content size suitable for standard LLM polishing ({content_length} chars)")
         
-        # Create comprehensive prompt for content polishing
-        system_message = """You are a professional technical writer and content editor. Your task is to transform the provided content into a publish-ready, professional article with clean HTML structure.
+        # Create comprehensive prompt for content polishing with proper HTML formatting
+        system_message = """You are a professional technical writer and content editor specializing in creating content for modern web applications with Tailwind CSS styling.
 
-REQUIREMENTS:
-1. Create clean, semantic HTML markup (no code blocks, no markdown)
-2. Use proper HTML5 semantic elements: <article>, <header>, <section>, <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <figure>
-3. Ensure professional tone and technical writing standards
-4. Maintain all data-block-id attributes for image placement
-5. Create logical content structure with proper headings hierarchy
-6. Improve readability and flow while preserving technical accuracy
-7. Add introductory and concluding sections if missing
-8. Format code examples, API references, and technical details appropriately
+CRITICAL REQUIREMENTS:
+1. Generate clean, well-structured HTML suitable for display in a Content Library with Tailwind CSS prose styling
+2. DO NOT include <article>, <header>, or outer wrapper elements - generate content-level HTML only
+3. Use semantic HTML elements: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
+4. Apply appropriate Tailwind CSS classes for styling and spacing
+5. Maintain all data-block-id attributes for image placement compatibility  
+6. Create proper heading hierarchy starting with H1 for the main title
+7. Ensure professional tone and technical writing standards
+8. Format code examples, API references, and technical details with proper <code> or <pre> tags
+9. Use <strong> and <em> for emphasis appropriately
 
-OUTPUT FORMAT: Return ONLY clean HTML content without any markdown formatting, code blocks, or wrapper elements."""
+HTML STRUCTURE REQUIREMENTS:
+- Start with H1 for the article title
+- Use H2, H3, H4 for subsections in logical hierarchy
+- Wrap content in properly styled paragraphs with appropriate spacing
+- Use semantic lists (<ul>, <ol>) with proper structure
+- Apply code formatting for technical content
+- Ensure responsive design compatibility
+
+CSS CLASSES TO USE:
+- Headings: Use standard HTML heading tags (they will be styled by prose classes)
+- Paragraphs: Use standard <p> tags with proper spacing
+- Lists: Use standard <ul> and <ol> tags
+- Code: Use <code> for inline code and <pre><code> for code blocks
+- Emphasis: Use <strong> and <em> for emphasis
+
+OUTPUT FORMAT: Return ONLY the content-level HTML without wrapper elements, optimized for Tailwind CSS prose styling."""
 
         user_message = f"""Transform this content into a professional, publish-ready article:
 

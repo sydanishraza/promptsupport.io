@@ -397,7 +397,7 @@ const TrainingInterface = () => {
               <div className="text-xs text-blue-600">
                 Elapsed: {elapsedTime}s
                 <br />
-                <span className="text-amber-600">This may take 2-5 minutes for comprehensive processing...</span>
+                <span className="text-amber-600">This may take 1-3 minutes for comprehensive processing...</span>
               </div>
             )}
           </div>

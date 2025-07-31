@@ -1099,9 +1099,43 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
     """
     Final content polishing pass using LLM for professional formatting and structure
     This applies technical writing standards and clean HTML formatting
+    Handles large content by applying basic structure without LLM polishing
     """
     try:
         print(f"✨ Starting final content polishing for: {title}")
+        
+        # Check content size - skip LLM polishing for very large content
+        content_length = len(content)
+        max_polishing_size = 50000  # ~12K tokens - safe for LLM processing
+        
+        if content_length > max_polishing_size:
+            print(f"📊 Content too large for LLM polishing ({content_length} chars > {max_polishing_size}), applying basic structure")
+            
+            # Apply basic HTML structure without LLM processing
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Create structured HTML with proper semantic elements
+            structured_html = f"""<article>
+    <header>
+        <h1>{title}</h1>
+    </header>
+    <section class="content">
+        {content}
+    </section>
+</article>"""
+            
+            return {
+                'html': structured_html,
+                'markdown': structured_html,
+                'content': structured_html,
+                'polished': False,
+                'polishing_skipped': 'content_too_large',
+                'word_count': len(content.split())
+            }
+        
+        # For smaller content, proceed with LLM polishing
+        print(f"📝 Content size suitable for LLM polishing ({content_length} chars)")
         
         # Create comprehensive prompt for content polishing
         system_message = """You are a professional technical writer and content editor. Your task is to transform the provided content into a publish-ready, professional article with clean HTML structure.
@@ -1162,6 +1196,7 @@ Create a well-structured, professional article with proper HTML formatting suita
                 'markdown': structured_content,
                 'content': structured_content,
                 'polished': False,
+                'polishing_failed': True,
                 'word_count': len(content.split())
             }
     
@@ -1174,6 +1209,7 @@ Create a well-structured, professional article with proper HTML formatting suita
             'markdown': structured_content,
             'content': structured_content,
             'polished': False,
+            'polishing_error': str(e),
             'word_count': len(content.split())
         }
 

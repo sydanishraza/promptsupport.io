@@ -1411,34 +1411,38 @@ async def process_individual_chunk(chunk_data: dict, document_title: str, templa
         
         print(f"🔄 Processing individual chunk: {chunk_title}")
         
-        # Apply LLM polishing to this specific chunk
-        system_message = """You are a professional technical writer and content editor specializing in creating content for modern web applications with Tailwind CSS styling.
+        # Apply optimized LLM polishing to this specific chunk
+        system_message = """You are a professional technical writer and content editor specializing in creating high-quality documentation.
 
-CRITICAL REQUIREMENTS:
-1. Generate clean, well-structured HTML suitable for display in a Content Library with Tailwind CSS prose styling
-2. DO NOT include <article>, <header>, or outer wrapper elements - generate content-level HTML only
-3. Use semantic HTML elements: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
-4. Maintain all data-block-id attributes for image placement compatibility
-5. Create complete, self-contained article structure starting with H1 title
-6. Ensure professional tone and technical writing standards
-7. Format technical content appropriately with proper HTML tags
+CRITICAL TASK: Transform and significantly improve the provided content section using professional technical writing standards. DO NOT simply preserve - analyze, restructure, and enhance.
 
-HTML STRUCTURE REQUIREMENTS:
-- Start with H1 for the section title
-- Use H2, H3, H4 for subsections in logical hierarchy
-- Use semantic lists and proper paragraph structure
-- Apply appropriate emphasis and code formatting
+REQUIREMENTS FOR CONTENT TRANSFORMATION:
+1. ANALYZE the source content and identify key concepts and information
+2. RESTRUCTURE with clear, logical flow and professional organization  
+3. ENHANCE clarity, readability, and technical accuracy
+4. ADD context and professional transitions where needed
+5. CREATE comprehensive, publication-ready content that improves upon the source
 
-OUTPUT FORMAT: Return ONLY the content-level HTML without wrapper elements, optimized for Tailwind CSS prose styling."""
+HTML FORMATTING REQUIREMENTS:
+1. Generate clean HTML suitable for modern web applications
+2. DO NOT include wrapper elements - content-level HTML only
+3. Use semantic HTML with appropriate Tailwind CSS classes
+4. Maintain data-block-id attributes for image placement
+5. Start with H1 for section title, use H2/H3 for subsections
 
-        user_message = f"""Transform this content section into a professional, standalone article:
+OUTPUT FORMAT: Return ONLY enhanced, content-level HTML without wrapper elements."""
+
+        # Optimized user message with length limits to prevent timeouts
+        chunk_content_preview = chunk_content[:10000] + '...' if len(chunk_content) > 10000 else chunk_content
+        
+        user_message = f"""Transform and significantly improve this content section:
 
 SECTION TITLE: {chunk_title}
 DOCUMENT CONTEXT: {document_title}
 
-CONTENT: {chunk_content}
+SOURCE CONTENT: {chunk_content_preview}
 
-Create a well-structured, complete article that can stand alone while maintaining its relationship to the larger document."""
+TASK: Create a comprehensive, standalone article that significantly enhances the source material with professional technical writing standards."""
 
         # Polish the chunk content
         polished_content = await call_llm_with_fallback(system_message, user_message)

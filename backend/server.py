@@ -979,7 +979,7 @@ class DocumentPreprocessor:
         try:
             for i, chunk_data in enumerate(html_chunks):
                 print(f"🔄 Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
-                print(f"📊 Chunk tokens: ~{chunk_data['token_estimate']:,}")
+                print(f"📊 Chunk tokens: ~{chunk_data.get('token_count', chunk_data.get('token_estimate', 0)):,}")
                 
                 # Process this chunk with AI
                 processed_content = await self._process_chunk_with_ai(chunk_data, template_data, i)

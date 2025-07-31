@@ -1297,7 +1297,7 @@ Create a well-structured, professional article with proper HTML formatting suita
         if polished_content and len(polished_content.strip()) > 100:
             print(f"✅ Content polishing successful: {len(polished_content)} characters")
             
-            # Extract clean HTML and ensure proper structure
+            # Extract clean HTML and ensure proper structure for Content Library
             polished_html = polished_content.strip()
             
             # Remove any remaining code block markers
@@ -1305,9 +1305,29 @@ Create a well-structured, professional article with proper HTML formatting suita
                 lines = polished_html.split('\n')
                 polished_html = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
             
-            # Ensure the content starts with proper article structure
-            if not polished_html.startswith('<article>') and not polished_html.startswith('<header>'):
-                polished_html = f'<article>\n<header><h1>{title}</h1></header>\n{polished_html}\n</article>'
+            # Remove any article/header wrappers if present (Content Library handles these)
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(polished_html, 'html.parser')
+            
+            # Extract content from article/header wrappers if they exist
+            if soup.find('article'):
+                article_content = soup.find('article')
+                # Extract all content from within article, removing the wrapper
+                content_elements = []
+                for child in article_content.children:
+                    if child.name:  # Skip text nodes
+                        if child.name in ['header', 'section']:
+                            # Extract content from header/section wrappers
+                            for inner_child in child.children:
+                                if inner_child.name:
+                                    content_elements.append(str(inner_child))
+                        else:
+                            content_elements.append(str(child))
+                polished_html = '\n'.join(content_elements)
+            
+            # Ensure content starts with H1 title if not present
+            if not polished_html.strip().startswith('<h1'):
+                polished_html = f'<h1>{title}</h1>\n{polished_html}'
             
             return {
                 'html': polished_html,
@@ -1318,12 +1338,21 @@ Create a well-structured, professional article with proper HTML formatting suita
             }
         else:
             print(f"❌ Content polishing failed or produced insufficient content")
-            # Return original content with basic HTML structure
-            structured_content = f'<article>\n<header><h1>{title}</h1></header>\n<section>\n{content}\n</section>\n</article>'
+            # Return original content with proper structure for Content Library
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Create clean HTML structure without wrappers
+            clean_content = f'<h1>{title}</h1>\n'
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
+                if element.name == 'h1':
+                    continue  # Skip additional H1s since we added the title
+                clean_content += str(element) + '\n'
+            
             return {
-                'html': structured_content,
-                'markdown': structured_content,
-                'content': structured_content,
+                'html': clean_content,
+                'markdown': clean_content,
+                'content': clean_content,
                 'polished': False,
                 'polishing_failed': True,
                 'word_count': len(content.split())

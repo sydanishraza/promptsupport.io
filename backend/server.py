@@ -782,6 +782,58 @@ class DocumentPreprocessor:
                 'images': images
             }]
     
+    def _split_large_chunk(self, large_chunk: dict) -> list:
+        """
+        Split a chunk that's too large into smaller, manageable pieces
+        """
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(large_chunk['content'], 'html.parser')
+            
+            sub_chunks = []
+            current_elements = []
+            base_title = large_chunk['title']
+            sub_counter = 1
+            
+            # Split into smaller chunks based on element count and size
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
+                current_elements.append(element)
+                
+                # Check size every 5 elements
+                if len(current_elements) % 5 == 0:
+                    current_html = ''.join(str(el) for el in current_elements)
+                    if len(current_html) > 30000:  # ~7.5K tokens
+                        # Save sub-chunk
+                        sub_chunks.append({
+                            'section_id': f"{large_chunk['section_id']}_part_{sub_counter}",
+                            'title': f"{base_title} (Part {sub_counter})",
+                            'content': current_html,
+                            'images': []  # Images will be distributed later
+                        })
+                        print(f"✅ Sub-chunk created: {base_title} Part {sub_counter} ({len(current_html)} chars)")
+                        
+                        # Reset for next sub-chunk
+                        current_elements = []
+                        sub_counter += 1
+            
+            # Add final sub-chunk
+            if current_elements:
+                final_html = ''.join(str(el) for el in current_elements)
+                if len(final_html) > 500:  # Minimum size
+                    sub_chunks.append({
+                        'section_id': f"{large_chunk['section_id']}_part_{sub_counter}",
+                        'title': f"{base_title} (Part {sub_counter})",
+                        'content': final_html,
+                        'images': []
+                    })
+                    print(f"✅ Final sub-chunk created: {base_title} Part {sub_counter} ({len(final_html)} chars)")
+            
+            return sub_chunks if sub_chunks else [large_chunk]
+            
+        except Exception as e:
+            print(f"❌ Large chunk splitting failed: {e}")
+            return [large_chunk]
+
     def _create_chunk_html(self, elements: list) -> str:
         """Create valid HTML from a list of elements"""
         if not elements:

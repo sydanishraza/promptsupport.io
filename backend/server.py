@@ -451,6 +451,7 @@ class DocumentPreprocessor:
                     # Tokenize images for this chunk
                     tokenized_html = self._tokenize_images_in_chunk(structured_html, chunk_data['images'])
                     
+                    # Create processed chunk with correct field names
                     processed_chunk = {
                         'section_id': chunk_data['section_id'],
                         'title': chunk_data['title'],

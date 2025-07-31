@@ -1251,35 +1251,36 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
         print(f"📝 Content size suitable for standard LLM polishing ({content_length} chars)")
         
         # Create comprehensive prompt for content polishing with proper HTML formatting
-        system_message = """You are a professional technical writer and content editor specializing in creating content for modern web applications with Tailwind CSS styling.
+        system_message = """You are a professional technical writer and content editor specializing in creating high-quality documentation and educational content.
 
-CRITICAL REQUIREMENTS:
-1. Generate clean, well-structured HTML suitable for display in a Content Library with Tailwind CSS prose styling
-2. DO NOT include <article>, <header>, or outer wrapper elements - generate content-level HTML only
-3. Use semantic HTML elements: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
-4. Apply appropriate Tailwind CSS classes for styling and spacing
-5. Maintain all data-block-id attributes for image placement compatibility  
-6. Create proper heading hierarchy starting with H1 for the main title
-7. Ensure professional tone and technical writing standards
-8. Format code examples, API references, and technical details with proper <code> or <pre> tags
-9. Use <strong> and <em> for emphasis appropriately
+CRITICAL TASK: Transform and significantly improve the provided content using professional technical writing standards. DO NOT simply preserve the original content - analyze, restructure, and enhance it.
 
-HTML STRUCTURE REQUIREMENTS:
-- Start with H1 for the article title
-- Use H2, H3, H4 for subsections in logical hierarchy
-- Wrap content in properly styled paragraphs with appropriate spacing
-- Use semantic lists (<ul>, <ol>) with proper structure
-- Apply code formatting for technical content
-- Ensure responsive design compatibility
+REQUIREMENTS FOR CONTENT TRANSFORMATION:
+1. ANALYZE the source content and identify key concepts, procedures, and information
+2. RESTRUCTURE the content with clear, logical flow and professional organization
+3. ENHANCE clarity, readability, and technical accuracy
+4. ADD context, explanations, and professional transitions where needed
+5. IMPROVE sentence structure, terminology, and technical presentation
+6. CREATE comprehensive, publication-ready content that goes beyond the source material
 
-CSS CLASSES TO USE:
-- Headings: Use standard HTML heading tags (they will be styled by prose classes)
-- Paragraphs: Use standard <p> tags with proper spacing
-- Lists: Use standard <ul> and <ol> tags
-- Code: Use <code> for inline code and <pre><code> for code blocks
-- Emphasis: Use <strong> and <em> for emphasis
+HTML FORMATTING REQUIREMENTS:
+1. Generate clean, well-structured HTML suitable for modern web applications
+2. DO NOT include <article>, <header>, or outer wrapper elements - content-level HTML only
+3. Use semantic HTML: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
+4. Apply appropriate Tailwind CSS classes for professional styling
+5. Maintain data-block-id attributes for image placement compatibility
+6. Start with H1 for the main title, use H2/H3 for logical subsections
 
-OUTPUT FORMAT: Return ONLY the content-level HTML without wrapper elements, optimized for Tailwind CSS prose styling."""
+CONTENT IMPROVEMENT STANDARDS:
+- Expand brief explanations into comprehensive guidance
+- Add professional context and background information
+- Improve technical accuracy and completeness
+- Create clear step-by-step procedures where applicable
+- Enhance examples and use cases
+- Add introductory and concluding sections
+- Ensure content meets publication standards for technical documentation
+
+OUTPUT FORMAT: Return ONLY enhanced, content-level HTML optimized for Tailwind CSS styling."""
 
         user_message = f"""Transform this content into a professional, publish-ready article:
 

@@ -1186,62 +1186,75 @@ Focus on clarity, readability, and professional tone."""
 
 async def process_with_html_preprocessing_pipeline(file_path: str, file_extension: str, template_data: dict, training_session: dict) -> list:
     """
-    Process documents using the new HTML preprocessing pipeline
+    Process documents using the new HTML preprocessing pipeline with structural chunking
     """
     try:
-        print(f"🔄 Starting HTML preprocessing pipeline for {file_extension} file")
+        print(f"🔄 Starting HTML preprocessing pipeline with structural chunking for {file_extension} file")
         
         # Initialize the document preprocessor
         session_id = training_session['session_id']
         preprocessor = DocumentPreprocessor(session_id)
         
-        # Phase 1: Convert document to structured HTML with tokenized images
-        tokenized_html, image_assets = await preprocessor.preprocess_document(file_path, file_extension)
+        # Phase 1: Convert document to structural HTML chunks with tokenized images
+        html_chunks, image_assets = await preprocessor.preprocess_document(file_path, file_extension)
         
-        # Phase 2: AI processing that preserves tokens and structure
-        processed_html = await preprocessor.process_with_ai_preserving_tokens(tokenized_html, template_data)
+        # Phase 2: AI processing for each chunk independently
+        processed_chunks = await preprocessor.process_with_ai_preserving_tokens(html_chunks, template_data)
         
-        # Phase 3: Replace tokens with rich image HTML
-        final_html = preprocessor.replace_tokens_with_rich_images(processed_html)
+        # Phase 3: Replace tokens with rich image HTML in all chunks
+        final_chunks = preprocessor.replace_tokens_with_rich_images(processed_chunks)
         
-        # Create article from processed content
-        article = {
-            "id": str(uuid.uuid4()),
-            "title": f"Article From {training_session['filename']}",
-            "html": final_html,
-            "markdown": final_html,  # For now, use HTML as markdown
-            "content": final_html,
-            "media": [
-                {
-                    "url": img_data['url'],
-                    "alt": img_data['alt_text'],
-                    "caption": img_data.get('caption', ''),
-                    "placement": "inline",
-                    "filename": img_data['filename']
+        # Combine chunks into articles
+        articles = []
+        
+        for i, chunk_data in enumerate(final_chunks):
+            # Create article from processed chunk
+            article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{chunk_data['title']} - From {training_session['filename']}",
+                "html": chunk_data['content'],
+                "markdown": chunk_data['content'],  # For now, use HTML as markdown
+                "content": chunk_data['content'],
+                "media": [
+                    {
+                        "url": img_data['url'],
+                        "alt": img_data['alt_text'],
+                        "caption": img_data.get('caption', ''),
+                        "placement": "inline",
+                        "filename": img_data['filename']
+                    }
+                    for img_data in image_assets.values()
+                    if any(img['id'] in chunk_data['content'] for img in [{'id': k} for k in image_assets.keys()])
+                ],
+                "tags": ["extracted", "generated", "html-pipeline", "structural-chunk"],
+                "status": "training",
+                "template_id": training_session['template_id'],
+                "session_id": training_session['session_id'],
+                "word_count": len(chunk_data['content'].split()),
+                "image_count": chunk_data.get('images_replaced', 0),
+                "format": "html",
+                "created_at": datetime.utcnow().isoformat(),
+                "ai_processed": True,
+                "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
+                "training_mode": True,
+                "metadata": {
+                    "source_filename": training_session['filename'],
+                    "template_applied": training_session['template_id'],
+                    "phase": "html_preprocessing_pipeline_structural",
+                    "file_extension": file_extension,
+                    "chunk_index": i + 1,
+                    "total_chunks": len(final_chunks),
+                    "section_id": chunk_data['section_id'],
+                    "images_in_chunk": chunk_data.get('images_replaced', 0)
                 }
-                for img_data in image_assets.values()
-            ],
-            "tags": ["extracted", "generated", "html-pipeline"],
-            "status": "training",
-            "template_id": training_session['template_id'],
-            "session_id": training_session['session_id'],
-            "word_count": len(final_html.split()),
-            "image_count": len(image_assets),
-            "format": "html",
-            "created_at": datetime.utcnow().isoformat(),
-            "ai_processed": True,
-            "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
-            "training_mode": True,
-            "metadata": {
-                "source_filename": training_session['filename'],
-                "template_applied": training_session['template_id'],
-                "phase": "html_preprocessing_pipeline",
-                "file_extension": file_extension
             }
-        }
+            
+            articles.append(article)
+            print(f"📄 Created article {i+1}: {len(chunk_data['content'])} chars, {chunk_data.get('images_replaced', 0)} images")
         
-        print(f"✅ HTML preprocessing pipeline complete: {len(final_html)} chars, {len(image_assets)} images")
-        return [article]
+        total_images = sum(chunk.get('images_replaced', 0) for chunk in final_chunks)
+        print(f"✅ HTML preprocessing pipeline complete: {len(articles)} articles, {total_images} total images")
+        return articles
         
     except Exception as e:
         print(f"❌ HTML preprocessing pipeline failed: {e}")

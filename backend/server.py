@@ -2477,22 +2477,7 @@ async def training_process_document(
     try:
         print(f"🚀 Starting training process for {file.filename}")
         
-        # Read file and check size for optimization decisions
-        file_content = await file.read()
-        file_size = len(file_content)
-        
-        # PERFORMANCE OPTIMIZATION: Determine processing strategy based on file size
-        is_large_file = file_size > 300000  # 300KB threshold
-        is_very_large_file = file_size > 800000  # 800KB threshold
-        
-        if is_very_large_file:
-            print(f"📊 Very large file detected ({file_size:,} bytes) - using maximum optimizations")
-        elif is_large_file:
-            print(f"📊 Large file detected ({file_size:,} bytes) - using optimized processing")
-        else:
-            print(f"📄 Standard file size ({file_size:,} bytes) - using normal processing")
-        
-        # Parse template instructions
+        # Parse template instructions first
         template_data = json.loads(template_instructions)
         print(f"📋 Template data parsed: {len(template_data)} keys")
         
@@ -2508,9 +2493,25 @@ async def training_process_document(
         
         print(f"📝 Created training session: {training_session['session_id']}")
         
-        # Process the uploaded file
+        # Read file content ONCE and check size for optimization decisions
         file_content = await file.read()
-        print(f"📄 File content read: {len(file_content)} bytes")
+        file_size = len(file_content)
+        print(f"📄 File content read: {file_size:,} bytes")
+        
+        # PERFORMANCE OPTIMIZATION: Determine processing strategy based on file size
+        is_large_file = file_size > 300000  # 300KB threshold
+        is_very_large_file = file_size > 800000  # 800KB threshold
+        
+        if is_very_large_file:
+            print(f"📊 Very large file detected ({file_size:,} bytes) - using maximum optimizations")
+        elif is_large_file:
+            print(f"📊 Large file detected ({file_size:,} bytes) - using optimized processing")
+        else:
+            print(f"📄 Standard file size ({file_size:,} bytes) - using normal processing")
+        
+        # Validate file content is not empty
+        if file_size == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
         
         # DEBUG: Check if uploaded file is valid for DOCX
         if file.filename.lower().endswith('.docx'):

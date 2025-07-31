@@ -703,10 +703,10 @@ class DocumentPreprocessor:
                 for element in all_elements:
                     current_chunk_elements.append(element)
                     
-                    # Check chunk size every few elements (8K tokens ≈ 32K characters)
-                    if len(current_chunk_elements) % 10 == 0:  # Check every 10 elements
+                    # Check chunk size every few elements (20K tokens ≈ 80K characters - larger chunks for better content)
+                    if len(current_chunk_elements) % 20 == 0:  # Check every 20 elements
                         chunk_html = self._create_chunk_html(current_chunk_elements)
-                        if len(chunk_html) > 32000:  # ~8K tokens limit
+                        if len(chunk_html) > 80000:  # ~20K tokens limit - larger for better content extraction
                             # Save current chunk
                             if self._is_chunk_valid(chunk_html):
                                 chunks.append({

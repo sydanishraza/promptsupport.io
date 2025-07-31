@@ -1197,17 +1197,40 @@ async def process_with_html_preprocessing_pipeline(file_path: str, file_extensio
         # Phase 3: Replace tokens with rich image HTML in all chunks
         final_chunks = preprocessor.replace_tokens_with_rich_images(processed_chunks)
         
+        # Extract document title for proper article naming
+        document_title = await extract_document_title(file_path, file_extension, 
+                                                     final_chunks[0]['content'] if final_chunks else None)
+        
         # Combine chunks into articles
         articles = []
         
         for i, chunk_data in enumerate(final_chunks):
-            # Create article from processed chunk
+            # Determine article title based on document structure
+            if len(final_chunks) == 1:
+                # Single article - use document title
+                article_title = document_title
+            else:
+                # Multiple articles - use section title with document context
+                section_title = chunk_data['title']
+                if section_title.lower() in ['introduction', 'complete document', 'full document']:
+                    article_title = document_title
+                else:
+                    article_title = f"{section_title} | {document_title}"
+            
+            # Phase 4: Final content polishing for professional output
+            polished_result = await polish_article_content(
+                chunk_data['content'], 
+                article_title, 
+                template_data
+            )
+            
+            # Create article from processed and polished chunk
             article = {
                 "id": str(uuid.uuid4()),
-                "title": f"{chunk_data['title']} - From {training_session['filename']}",
-                "html": chunk_data['content'],
-                "markdown": chunk_data['content'],  # For now, use HTML as markdown
-                "content": chunk_data['content'],
+                "title": article_title,
+                "html": polished_result['html'],
+                "markdown": polished_result['markdown'],
+                "content": polished_result['content'],
                 "media": [
                     {
                         "url": img_data['url'],
@@ -1219,34 +1242,37 @@ async def process_with_html_preprocessing_pipeline(file_path: str, file_extensio
                     for img_data in image_assets.values()
                     if any(img['id'] in chunk_data['content'] for img in [{'id': k} for k in image_assets.keys()])
                 ],
-                "tags": ["extracted", "generated", "html-pipeline", "structural-chunk"],
+                "tags": ["extracted", "generated", "html-pipeline", "structural-chunk", "polished"],
                 "status": "training",
                 "template_id": training_session['template_id'],
                 "session_id": training_session['session_id'],
-                "word_count": len(chunk_data['content'].split()),
+                "word_count": polished_result['word_count'],
                 "image_count": chunk_data.get('images_replaced', 0),
                 "format": "html",
                 "created_at": datetime.utcnow().isoformat(),
                 "ai_processed": True,
                 "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
                 "training_mode": True,
+                "content_polished": polished_result['polished'],
                 "metadata": {
                     "source_filename": training_session['filename'],
                     "template_applied": training_session['template_id'],
-                    "phase": "html_preprocessing_pipeline_structural",
+                    "phase": "html_preprocessing_pipeline_polished",
                     "file_extension": file_extension,
                     "chunk_index": i + 1,
                     "total_chunks": len(final_chunks),
                     "section_id": chunk_data['section_id'],
-                    "images_in_chunk": chunk_data.get('images_replaced', 0)
+                    "images_in_chunk": chunk_data.get('images_replaced', 0),
+                    "document_title": document_title,
+                    "final_polishing_applied": polished_result['polished']
                 }
             }
             
             articles.append(article)
-            print(f"📄 Created article {i+1}: {len(chunk_data['content'])} chars, {chunk_data.get('images_replaced', 0)} images")
+            print(f"📄 Created polished article: {article_title} ({len(polished_result['html'])} chars, {chunk_data.get('images_replaced', 0)} images)")
         
         total_images = sum(chunk.get('images_replaced', 0) for chunk in final_chunks)
-        print(f"✅ HTML preprocessing pipeline complete: {len(articles)} articles, {total_images} total images")
+        print(f"✅ HTML preprocessing pipeline complete: {len(articles)} articles, {total_images} total images, final polishing applied")
         return articles
         
     except Exception as e:

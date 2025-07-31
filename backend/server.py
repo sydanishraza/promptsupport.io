@@ -1242,9 +1242,9 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
         max_single_polishing_size = 25000  # Reduced from 50K to 25K for faster processing
         
         if content_length > max_single_polishing_size:
-            print(f"📊 Large document detected ({content_length} chars > {max_single_polishing_size}), implementing intelligent chunking")
+            print(f"📊 Large document detected ({content_length} chars > {max_single_polishing_size}), implementing H1-based chunking")
             
-            # Chunk the document at heading levels
+            # Chunk the document at H1 boundaries only
             chunks = await chunk_large_document_for_polishing(content, title)
             
             if len(chunks) > 1:

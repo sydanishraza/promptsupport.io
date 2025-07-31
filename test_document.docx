@@ -1,0 +1,57 @@
+# Enhanced Training Engine Article Display Testing
+
+## Introduction
+
+This document is designed to test the comprehensive workflow of the enhanced Training Engine to verify that articles are properly formatted and displayed in the Training Interface view pane.
+
+## Key Features to Test
+
+### Document Upload and Processing
+- Navigate to Training Interface (Lab)
+- Upload test DOCX file
+- Verify processing completes successfully
+- Check that results are displayed
+
+### Article Title Verification
+The article title should be extracted from document heading (not filename). This heading should appear correctly in results list with professional formatting.
+
+### Article Content Display
+When opening article in view pane/preview:
+- HTML content should render properly
+- Clean semantic structure (header, sections, proper headings)
+- No code blocks or markdown artifacts should appear
+- Content should be well-formatted and readable
+
+## Technical Requirements
+
+### HTML Structure Validation
+- Content should use proper HTML5 semantic elements
+- Proper heading hierarchy (H1, H2, H3)
+- Data-block-id attributes preserved for image placement
+- Clean article structure without markdown formatting
+
+### Content Quality Assessment
+- Content should appear professional and polished
+- Proper paragraph structure
+- Enhanced content (if LLM polishing was applied)
+- Technical accuracy maintained
+
+## Testing Scenarios
+
+This document contains multiple sections with different content types to test the Training Engine's ability to:
+
+1. Extract meaningful titles from document headings
+2. Process structured content with proper HTML formatting
+3. Maintain professional appearance in the view pane
+4. Ensure compatibility with Content Editor rendering
+
+## Expected Results
+
+The Training Engine should produce:
+- Article title showing document's actual heading
+- Clean HTML rendering without code blocks
+- Professional content structure and formatting
+- Proper semantic HTML elements display
+- Content Editor compatibility
+
+This comprehensive test document will validate that the enhanced Training Engine produces properly formatted, publication-ready content suitable for display in the Training Interface view pane.

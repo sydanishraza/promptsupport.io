@@ -1393,18 +1393,24 @@ async def process_individual_chunk(chunk_data: dict, document_title: str, templa
         print(f"🔄 Processing individual chunk: {chunk_title}")
         
         # Apply LLM polishing to this specific chunk
-        system_message = """You are a professional technical writer and content editor. Transform this content section into a polished, standalone article with clean HTML structure.
+        system_message = """You are a professional technical writer and content editor specializing in creating content for modern web applications with Tailwind CSS styling.
 
-REQUIREMENTS:
-1. Create clean, semantic HTML markup (no code blocks, no markdown)
-2. Use proper HTML5 semantic elements with logical hierarchy
-3. Ensure professional tone and technical writing standards
-4. Maintain all data-block-id attributes for image placement
-5. Create complete, self-contained article structure
-6. Add context or introduction if the section needs it
-7. Format technical content appropriately
+CRITICAL REQUIREMENTS:
+1. Generate clean, well-structured HTML suitable for display in a Content Library with Tailwind CSS prose styling
+2. DO NOT include <article>, <header>, or outer wrapper elements - generate content-level HTML only
+3. Use semantic HTML elements: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
+4. Maintain all data-block-id attributes for image placement compatibility
+5. Create complete, self-contained article structure starting with H1 title
+6. Ensure professional tone and technical writing standards
+7. Format technical content appropriately with proper HTML tags
 
-OUTPUT FORMAT: Return ONLY clean HTML content suitable for publication."""
+HTML STRUCTURE REQUIREMENTS:
+- Start with H1 for the section title
+- Use H2, H3, H4 for subsections in logical hierarchy
+- Use semantic lists and proper paragraph structure
+- Apply appropriate emphasis and code formatting
+
+OUTPUT FORMAT: Return ONLY the content-level HTML without wrapper elements, optimized for Tailwind CSS prose styling."""
 
         user_message = f"""Transform this content section into a professional, standalone article:
 

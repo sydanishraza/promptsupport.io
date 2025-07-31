@@ -1249,7 +1249,7 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
             
             if len(chunks) > 1:
                 # Return multiple chunks for separate article processing
-                print(f"🔄 Returning {len(chunks)} chunks for separate article processing")
+                print(f"🔄 Returning {len(chunks)} H1-based chunks for individual LLM processing")
                 return {
                     'html': content,  # Original content for fallback
                     'markdown': content,

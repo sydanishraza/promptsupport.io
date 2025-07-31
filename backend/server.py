@@ -1264,8 +1264,8 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
                 print(f"📊 Single large H1 section detected, applying optimized LLM processing")
                 # Continue with optimized single-section processing below
         
-        # For smaller content or single chunks, proceed with standard LLM polishing
-        print(f"📝 Content size suitable for standard LLM polishing ({content_length} chars)")
+        # For manageable content, proceed with optimized LLM polishing
+        print(f"📝 Content suitable for direct LLM processing ({content_length} chars)")
         
         # Create comprehensive prompt for content polishing with proper HTML formatting
         system_message = """You are a professional technical writer and content editor specializing in creating high-quality documentation and educational content.

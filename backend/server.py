@@ -852,32 +852,97 @@ class DocumentPreprocessor:
             print(f"❌ Image tokenization failed: {e}")
             return structured_html
     
-    async def process_with_ai_preserving_tokens(self, tokenized_html: str, template_data: dict) -> str:
+    async def process_with_ai_preserving_tokens(self, html_chunks: list, template_data: dict) -> list:
         """
         Phase 2: AI processing that preserves tokens and block structure
-        Implements content chunking for large documents
+        Processes multiple HTML chunks independently
         """
-        print(f"🤖 Phase 2: Starting AI processing with token preservation")
+        print(f"🤖 Phase 2: Starting AI processing with {len(html_chunks)} structural chunks")
+        
+        processed_chunks = []
         
         try:
-            # Estimate token count (rough approximation: 1 token ≈ 4 characters)
-            estimated_tokens = len(tokenized_html) // 4
-            max_tokens_per_chunk = 100000  # Conservative limit to stay under model limits
+            for i, chunk_data in enumerate(html_chunks):
+                print(f"🔄 Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                print(f"📊 Chunk tokens: ~{chunk_data['token_estimate']:,}")
+                
+                # Process this chunk with AI
+                processed_content = await self._process_chunk_with_ai(chunk_data, template_data, i)
+                
+                # Create processed chunk data
+                processed_chunk = {
+                    'section_id': chunk_data['section_id'],
+                    'title': chunk_data['title'],
+                    'content': processed_content,
+                    'images': chunk_data['images'],
+                    'original_token_estimate': chunk_data['token_estimate']
+                }
+                
+                processed_chunks.append(processed_chunk)
+                print(f"✅ Chunk {i+1} processed successfully")
+                
+                # Small delay between chunks to avoid rate limiting
+                await asyncio.sleep(1)
             
-            print(f"📊 Estimated tokens: {estimated_tokens:,}")
-            
-            if estimated_tokens <= max_tokens_per_chunk:
-                # Small content - process normally
-                print(f"📝 Processing content in single pass ({estimated_tokens:,} tokens)")
-                return await self._process_single_chunk(tokenized_html, template_data)
-            else:
-                # Large content - implement chunking
-                print(f"📚 Large content detected - implementing chunking strategy")
-                return await self._process_chunked_content(tokenized_html, template_data, max_tokens_per_chunk)
+            print(f"✅ All {len(processed_chunks)} chunks processed successfully")
+            return processed_chunks
                 
         except Exception as e:
             print(f"❌ AI processing failed: {e}")
-            return tokenized_html
+            import traceback
+            traceback.print_exc()
+            return html_chunks  # Return original chunks as fallback
+    
+    async def _process_chunk_with_ai(self, chunk_data: dict, template_data: dict, chunk_index: int) -> str:
+        """Process a single HTML chunk with AI while preserving structure"""
+        try:
+            system_message = """You are an expert content writer improving a section of a technical document.
+
+CRITICAL REQUIREMENTS:
+1. PRESERVE ALL <!-- IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear
+2. PRESERVE ALL <!-- END_IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear  
+3. MAINTAIN all data-block-id attributes on HTML elements
+4. PRESERVE the [IMAGE: ...] placeholders within image blocks
+5. Keep the HTML structure intact (headings, paragraphs, lists)
+
+Your task is to:
+- Improve the text content for clarity, readability, and engagement
+- Expand content where appropriate while maintaining focus on this section
+- Ensure professional tone and comprehensive coverage
+- Preserve all structural elements and image tokens
+
+Do NOT:
+- Remove or modify any image tokens or data-block-id attributes
+- Change the basic HTML structure or heading hierarchy
+- Generate new fake images or remove existing image references
+- Merge or split major sections"""
+
+            user_message = f"""Please improve this document section while preserving all structure and tokens:
+
+SECTION: {chunk_data['title']}
+
+{chunk_data['content']}
+
+Focus on:
+- Making content more comprehensive and informative
+- Improving readability and flow within this section
+- Maintaining professional tone
+- Preserving all image positions and tokens exactly as they are"""
+
+            # Use the existing LLM fallback system with chunk-specific session ID
+            chunk_session_id = f"{self.session_id}_chunk_{chunk_index}"
+            improved_content = await call_llm_with_fallback(system_message, user_message, chunk_session_id)
+            
+            if improved_content:
+                print(f"✅ AI processing complete for chunk {chunk_index + 1}: {len(improved_content)} characters")
+                return improved_content
+            else:
+                print(f"⚠️ AI processing failed for chunk {chunk_index + 1}, returning original content")
+                return chunk_data['content']
+                
+        except Exception as e:
+            print(f"❌ AI processing failed for chunk {chunk_index + 1}: {e}")
+            return chunk_data['content']
     
     async def _process_single_chunk(self, content: str, template_data: dict) -> str:
         """Process content in a single AI call"""

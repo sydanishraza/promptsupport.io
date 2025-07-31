@@ -629,45 +629,200 @@ class DocumentPreprocessor:
             print(f"❌ PowerPoint conversion failed: {e}")
             return f"<p>Failed to convert PowerPoint: {str(e)}</p>", []
     
-    def _assign_block_ids(self, html_content: str) -> str:
+    def _create_structural_html_chunks(self, html_content: str, images: list) -> list:
         """
-        Phase 1b: Assign unique data-block-id to every content block
-        Creates hierarchical naming for stability: intro_para_1, heading_1_para_2, etc.
+        Create structural HTML chunks by breaking at logical boundaries (H2 headings)
+        Each chunk groups related data-block-id elements and stays under token limits
         """
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
+            chunks = []
+            current_chunk_content = []
+            current_section_id = "intro"
+            current_title = "Introduction"
+            section_counter = 0
             
-            # Track current section for hierarchical naming
-            current_section = "intro"
-            heading_counter = 0
-            section_counters = {}
+            # Distribute images across chunks based on document position
+            chunk_images = {}  # Will map section_id to list of images
+            
+            # Process each element and group by H2 boundaries
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
+                
+                # Check if this is a major section break (H2)
+                if element.name == 'h2':
+                    # Save current chunk if it has content
+                    if current_chunk_content:
+                        chunk_html = self._create_chunk_html(current_chunk_content)
+                        if self._is_chunk_valid(chunk_html):
+                            chunks.append({
+                                'section_id': current_section_id,
+                                'title': current_title,
+                                'content': chunk_html,
+                                'images': chunk_images.get(current_section_id, [])
+                            })
+                    
+                    # Start new chunk
+                    section_counter += 1
+                    current_section_id = f"section_{section_counter}"
+                    current_title = element.get_text().strip()[:50] + ("..." if len(element.get_text()) > 50 else "")
+                    current_chunk_content = [element]
+                    chunk_images[current_section_id] = []
+                
+                # Check if this is a major section break (H1) - create new chunk
+                elif element.name == 'h1':
+                    # Save current chunk if it has content
+                    if current_chunk_content:
+                        chunk_html = self._create_chunk_html(current_chunk_content)
+                        if self._is_chunk_valid(chunk_html):
+                            chunks.append({
+                                'section_id': current_section_id,
+                                'title': current_title,
+                                'content': chunk_html,
+                                'images': chunk_images.get(current_section_id, [])
+                            })
+                    
+                    # Start new chunk
+                    section_counter += 1  
+                    current_section_id = f"section_{section_counter}"
+                    current_title = element.get_text().strip()[:50] + ("..." if len(element.get_text()) > 50 else "")
+                    current_chunk_content = [element]
+                    chunk_images[current_section_id] = []
+                    
+                else:
+                    # Add to current chunk
+                    current_chunk_content.append(element)
+                    
+                    # Check if chunk is getting too large (6K-8K tokens ≈ 24K-32K chars)
+                    current_chunk_html = self._create_chunk_html(current_chunk_content)
+                    if len(current_chunk_html) > 28000:  # ~7K tokens
+                        # Save current chunk
+                        chunks.append({
+                            'section_id': current_section_id,
+                            'title': current_title,
+                            'content': current_chunk_html,
+                            'images': chunk_images.get(current_section_id, [])
+                        })
+                        
+                        # Start new sub-chunk
+                        section_counter += 1
+                        current_section_id = f"section_{section_counter}"
+                        current_title = f"{current_title} (continued)"
+                        current_chunk_content = []
+                        chunk_images[current_section_id] = []
+            
+            # Add final chunk
+            if current_chunk_content:
+                chunk_html = self._create_chunk_html(current_chunk_content)
+                if self._is_chunk_valid(chunk_html):
+                    chunks.append({
+                        'section_id': current_section_id,
+                        'title': current_title,
+                        'content': chunk_html,
+                        'images': chunk_images.get(current_section_id, [])
+                    })
+            
+            # Distribute images across chunks based on original document position
+            self._distribute_images_to_chunks(chunks, images)
+            
+            print(f"📋 Created {len(chunks)} structural chunks with logical boundaries")
+            return chunks
+            
+        except Exception as e:
+            print(f"❌ Structural chunking failed: {e}")
+            # Fallback: create single chunk
+            return [{
+                'section_id': 'full_document',
+                'title': 'Full Document',
+                'content': html_content,
+                'images': images
+            }]
+    
+    def _create_chunk_html(self, elements: list) -> str:
+        """Create valid HTML from a list of elements"""
+        if not elements:
+            return ""
+        
+        html_parts = []
+        for element in elements:
+            html_parts.append(str(element))
+        
+        return '\n'.join(html_parts)
+    
+    def _is_chunk_valid(self, chunk_html: str) -> bool:
+        """Check if chunk has substantial content"""
+        text_content = BeautifulSoup(chunk_html, 'html.parser').get_text().strip()
+        return len(text_content) > 100  # At least 100 characters of text
+    
+    def _distribute_images_to_chunks(self, chunks: list, images: list):
+        """Distribute images to appropriate chunks based on content proximity"""
+        try:
+            for image in images:
+                image_id = image['id']
+                best_chunk_idx = 0
+                
+                # Simple distribution: spread images evenly across chunks
+                # In a more sophisticated implementation, we could analyze image placement context
+                chunk_idx = len([img for img in images[:images.index(image)]]) % len(chunks)
+                
+                if chunk_idx < len(chunks):
+                    chunks[chunk_idx]['images'].append(image)
+                    print(f"📷 Assigned image {image_id} to chunk {chunk_idx + 1}")
+                
+        except Exception as e:
+            print(f"⚠️ Image distribution failed: {e}, assigning all images to first chunk")
+            if chunks:
+                chunks[0]['images'] = images
+    
+    def _assign_block_ids_to_chunk(self, chunk_html: str, section_id: str) -> str:
+        """
+        Assign unique data-block-id to every content block within a chunk
+        Uses section-specific naming: section_1_para_1, section_1_heading_2, etc.
+        """
+        try:
+            soup = BeautifulSoup(chunk_html, 'html.parser')
+            element_counter = 0
             
             for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
-                self.block_counter += 1
-                
-                # Update section tracking for headings
-                if element.name.startswith('h'):
-                    heading_counter += 1
-                    current_section = f"heading_{heading_counter}"
-                    section_counters[current_section] = 0
-                
-                # Generate hierarchical block ID
-                if current_section not in section_counters:
-                    section_counters[current_section] = 0
-                
-                section_counters[current_section] += 1
-                block_id = f"{current_section}_{element.name}_{section_counters[current_section]}"
-                
-                # Assign the block ID
+                element_counter += 1
+                block_id = f"{section_id}_{element.name}_{element_counter}"
                 element['data-block-id'] = block_id
+                self.block_counter += 1
                 
                 print(f"📋 Assigned block ID: {block_id} to <{element.name}>")
             
             return str(soup)
             
         except Exception as e:
-            print(f"❌ Block ID assignment failed: {e}")
-            return html_content
+            print(f"❌ Block ID assignment failed for chunk: {e}")
+            return chunk_html
+    
+    def _tokenize_images_in_chunk(self, chunk_html: str, chunk_images: list) -> str:
+        """
+        Replace image placeholders with positioned tokens within a specific chunk
+        """
+        try:
+            tokenized_html = chunk_html
+            
+            for image in chunk_images:
+                image_id = image['id']
+                placeholder = f"IMAGE_PLACEHOLDER_{image_id}"
+                
+                if placeholder in tokenized_html:
+                    # Create rich image token with metadata
+                    image_token = f"""<!-- IMAGE_BLOCK:{image_id} -->
+<div data-image-id="{image_id}" data-original-filename="{image.get('filename', '')}" data-alt="{image.get('alt_text', '')}">
+    [IMAGE: {image.get('alt_text', 'Image')}]
+</div>
+<!-- END_IMAGE_BLOCK:{image_id} -->"""
+                    
+                    tokenized_html = tokenized_html.replace(placeholder, image_token)
+                    print(f"🏷️ Tokenized image: {image_id} in chunk")
+            
+            return tokenized_html
+            
+        except Exception as e:
+            print(f"❌ Image tokenization failed for chunk: {e}")
+            return chunk_html
     
     def _tokenize_images(self, structured_html: str, images: list) -> str:
         """

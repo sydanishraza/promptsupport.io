@@ -1260,25 +1260,9 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
                     'word_count': len(content.split())
                 }
             else:
-                # Single chunk but too large - apply basic structure
-                print(f"📊 Single large section detected, applying basic structure without LLM processing")
-                structured_html = f"""<article>
-    <header>
-        <h1>{title}</h1>
-    </header>
-    <section class="content">
-        {content}
-    </section>
-</article>"""
-                
-                return {
-                    'html': structured_html,
-                    'markdown': structured_html,
-                    'content': structured_html,
-                    'polished': False,
-                    'polishing_skipped': 'single_section_too_large',
-                    'word_count': len(content.split())
-                }
+                # Single large section - apply optimized processing
+                print(f"📊 Single large H1 section detected, applying optimized LLM processing")
+                # Continue with optimized single-section processing below
         
         # For smaller content or single chunks, proceed with standard LLM polishing
         print(f"📝 Content size suitable for standard LLM polishing ({content_length} chars)")

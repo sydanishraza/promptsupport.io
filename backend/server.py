@@ -1356,25 +1356,19 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
         if content_length > max_single_polishing_size:
             print(f"📊 Large document detected ({content_length} chars > {max_single_polishing_size}), implementing H1-based chunking")
             
-            # Chunk the document at H1 boundaries only
+            # For large documents, always use chunked processing regardless of H1 structure
             chunks = await chunk_large_document_for_polishing(content, title)
             
-            if len(chunks) > 1:
-                # Return multiple chunks for separate article processing
-                print(f"🔄 Returning {len(chunks)} H1-based chunks for individual LLM processing")
-                return {
-                    'html': content,  # Original content for fallback
-                    'markdown': content,
-                    'content': content,
-                    'polished': False,
-                    'requires_chunked_processing': True,
-                    'chunks': chunks,
-                    'word_count': len(content.split())
-                }
-            else:
-                # Single large section - apply optimized processing
-                print(f"📊 Single large H1 section detected, applying optimized LLM processing")
-                # Continue with optimized single-section processing below
+            print(f"🔄 Large document will be processed as {len(chunks)} separate articles")
+            return {
+                'html': content,
+                'markdown': content,
+                'content': content,
+                'polished': False,
+                'requires_chunked_processing': True,
+                'chunks': chunks,
+                'word_count': len(content.split())
+            }
         
         # For manageable content, proceed with optimized LLM polishing
         print(f"📝 Content suitable for direct LLM processing ({content_length} chars)")

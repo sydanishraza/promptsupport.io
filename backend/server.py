@@ -1299,15 +1299,16 @@ CONTENT IMPROVEMENT STANDARDS:
 
 OUTPUT FORMAT: Return ONLY enhanced, content-level HTML optimized for Tailwind CSS styling."""
 
-        user_message = f"""Transform this content into a professional, publish-ready article:
+        # Optimized user message with content length limits
+        user_message = f"""Transform and significantly improve this content into professional technical documentation:
 
 TITLE: {title}
 
-CONTENT: {content}
+SOURCE CONTENT: {content[:15000]}{'...' if len(content) > 15000 else ''}
 
-TEMPLATE CONTEXT: {json.dumps(template_data, indent=2)}
+CONTEXT: {json.dumps(template_data, indent=2)[:1000]}{'...' if len(json.dumps(template_data, indent=2)) > 1000 else ''}
 
-Create a well-structured, professional article with proper HTML formatting suitable for a knowledge base or documentation platform."""
+TASK: Analyze, restructure, and enhance this content. Create comprehensive, publication-ready documentation that significantly improves upon the source material."""
 
         # Use the LLM fallback system for content polishing
         polished_content = await call_llm_with_fallback(system_message, user_message)

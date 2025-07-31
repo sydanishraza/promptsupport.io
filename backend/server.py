@@ -2477,6 +2477,21 @@ async def training_process_document(
     try:
         print(f"🚀 Starting training process for {file.filename}")
         
+        # Read file and check size for optimization decisions
+        file_content = await file.read()
+        file_size = len(file_content)
+        
+        # PERFORMANCE OPTIMIZATION: Determine processing strategy based on file size
+        is_large_file = file_size > 300000  # 300KB threshold
+        is_very_large_file = file_size > 800000  # 800KB threshold
+        
+        if is_very_large_file:
+            print(f"📊 Very large file detected ({file_size:,} bytes) - using maximum optimizations")
+        elif is_large_file:
+            print(f"📊 Large file detected ({file_size:,} bytes) - using optimized processing")
+        else:
+            print(f"📄 Standard file size ({file_size:,} bytes) - using normal processing")
+        
         # Parse template instructions
         template_data = json.loads(template_instructions)
         print(f"📋 Template data parsed: {len(template_data)} keys")

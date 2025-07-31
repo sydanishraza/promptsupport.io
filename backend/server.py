@@ -633,6 +633,7 @@ class DocumentPreprocessor:
         """
         OPTIMIZED: Create fewer, larger structural HTML chunks for faster processing
         Only break at H1 boundaries with larger chunk sizes to reduce processing time
+        FALLBACK: If no H1 elements exist, create a single chunk with all content
         """
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
@@ -645,67 +646,88 @@ class DocumentPreprocessor:
             # Distribute images across chunks based on document position
             chunk_images = {}  # Will map section_id to list of images
             
-            # OPTIMIZATION: Only split at H1 boundaries (not H2) and allow larger chunks
-            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
-                
-                # ONLY break at H1 boundaries for major sections (removed H2 breaking)
-                if element.name == 'h1':
-                    # Save current chunk if it has content
-                    if current_chunk_content:
-                        chunk_html = self._create_chunk_html(current_chunk_content)
-                        if self._is_chunk_valid(chunk_html):
+            # Check if document has any H1 elements
+            h1_elements = soup.find_all('h1')
+            has_h1_structure = len(h1_elements) > 0
+            
+            print(f"📊 Document analysis: {len(h1_elements)} H1 elements found")
+            
+            if not has_h1_structure:
+                # FALLBACK: No H1 structure - create single chunk with all content
+                print("📄 No H1 structure detected - creating single comprehensive chunk")
+                all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+                if all_elements:
+                    chunk_html = self._create_chunk_html(all_elements)
+                    if self._is_chunk_valid(chunk_html):
+                        chunks.append({
+                            'section_id': 'full_document',
+                            'title': 'Complete Document',
+                            'content': chunk_html,
+                            'images': images  # Assign all images to this single chunk
+                        })
+                        print(f"✅ Created single comprehensive chunk: {len(chunk_html)} characters")
+            else:
+                # OPTIMIZATION: Only split at H1 boundaries (not H2) and allow larger chunks
+                for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
+                    
+                    # ONLY break at H1 boundaries for major sections (removed H2 breaking)
+                    if element.name == 'h1':
+                        # Save current chunk if it has content
+                        if current_chunk_content:
+                            chunk_html = self._create_chunk_html(current_chunk_content)
+                            if self._is_chunk_valid(chunk_html):
+                                chunks.append({
+                                    'section_id': current_section_id,
+                                    'title': current_title,
+                                    'content': chunk_html,
+                                    'images': chunk_images.get(current_section_id, [])
+                                })
+                        
+                        # Start new chunk
+                        section_counter += 1
+                        current_section_id = f"section_{section_counter}"
+                        current_title = element.get_text().strip()[:50] + ("..." if len(element.get_text()) > 50 else "")
+                        current_chunk_content = [element]
+                        chunk_images[current_section_id] = []
+                    
+                    else:
+                        # Add to current chunk - allow much larger chunks
+                        current_chunk_content.append(element)
+                        
+                        # OPTIMIZATION: Increased chunk size limit from 28K to 80K chars (~20K tokens)
+                        # This reduces the number of chunks and API calls significantly
+                        current_chunk_html = self._create_chunk_html(current_chunk_content)
+                        if len(current_chunk_html) > 80000:  # ~20K tokens (nearly double previous limit)
+                            # Save current chunk
                             chunks.append({
                                 'section_id': current_section_id,
                                 'title': current_title,
-                                'content': chunk_html,
+                                'content': current_chunk_html,
                                 'images': chunk_images.get(current_section_id, [])
                             })
-                    
-                    # Start new chunk
-                    section_counter += 1
-                    current_section_id = f"section_{section_counter}"
-                    current_title = element.get_text().strip()[:50] + ("..." if len(element.get_text()) > 50 else "")
-                    current_chunk_content = [element]
-                    chunk_images[current_section_id] = []
+                            
+                            # Start new sub-chunk
+                            section_counter += 1
+                            current_section_id = f"section_{section_counter}"
+                            current_title = f"{current_title} (continued)"
+                            current_chunk_content = []
+                            chunk_images[current_section_id] = []
                 
-                else:
-                    # Add to current chunk - allow much larger chunks
-                    current_chunk_content.append(element)
-                    
-                    # OPTIMIZATION: Increased chunk size limit from 28K to 80K chars (~20K tokens)
-                    # This reduces the number of chunks and API calls significantly
-                    current_chunk_html = self._create_chunk_html(current_chunk_content)
-                    if len(current_chunk_html) > 80000:  # ~20K tokens (nearly double previous limit)
-                        # Save current chunk
+                # Add final chunk if using H1 structure
+                if current_chunk_content:
+                    chunk_html = self._create_chunk_html(current_chunk_content)
+                    if self._is_chunk_valid(chunk_html):
                         chunks.append({
                             'section_id': current_section_id,
                             'title': current_title,
-                            'content': current_chunk_html,
+                            'content': chunk_html,
                             'images': chunk_images.get(current_section_id, [])
                         })
-                        
-                        # Start new sub-chunk
-                        section_counter += 1
-                        current_section_id = f"section_{section_counter}"
-                        current_title = f"{current_title} (continued)"
-                        current_chunk_content = []
-                        chunk_images[current_section_id] = []
+                
+                # Distribute images across chunks based on original document position
+                self._distribute_images_to_chunks(chunks, images)
             
-            # Add final chunk
-            if current_chunk_content:
-                chunk_html = self._create_chunk_html(current_chunk_content)
-                if self._is_chunk_valid(chunk_html):
-                    chunks.append({
-                        'section_id': current_section_id,
-                        'title': current_title,
-                        'content': chunk_html,
-                        'images': chunk_images.get(current_section_id, [])
-                    })
-            
-            # Distribute images across chunks based on original document position
-            self._distribute_images_to_chunks(chunks, images)
-            
-            print(f"📋 OPTIMIZED: Created {len(chunks)} larger structural chunks (H1-only boundaries)")
+            print(f"📋 OPTIMIZED: Created {len(chunks)} larger structural chunks ({'H1-based' if has_h1_structure else 'single-chunk fallback'})")
             return chunks
             
         except Exception as e:

@@ -412,12 +412,12 @@ class DocumentPreprocessor:
         # Ensure asset directory exists
         os.makedirs(self.asset_dir, exist_ok=True)
     
-    async def preprocess_document(self, file_path: str, file_type: str) -> tuple[str, dict]:
+    async def preprocess_document(self, file_path: str, file_type: str) -> tuple[list, dict]:
         """
-        Phase 1: Convert document to structured HTML with block IDs and image tokenization
-        Returns: (tokenized_html, image_assets)
+        Phase 1: Convert document to multiple structured HTML chunks with block IDs and image tokenization
+        Returns: (html_chunks_list, image_assets)
         """
-        print(f"🔄 Phase 1: Starting HTML preprocessing for {file_type} document")
+        print(f"🔄 Phase 1: Starting HTML preprocessing with structural chunking for {file_type} document")
         
         try:
             # Convert document to HTML based on type
@@ -432,15 +432,33 @@ class DocumentPreprocessor:
             
             print(f"📄 Converted to HTML: {len(html_content)} characters, {len(images)} images extracted")
             
-            # Assign structural block IDs
-            structured_html = self._assign_block_ids(html_content)
-            print(f"🏗️ Assigned block IDs: {self.block_counter} blocks created")
+            # NEW APPROACH: Create structural HTML chunks at conversion level
+            html_chunks = self._create_structural_html_chunks(html_content, images)
+            print(f"📚 Created {len(html_chunks)} structural HTML chunks")
             
-            # Tokenize images with positional markers
-            tokenized_html = self._tokenize_images(structured_html, images)
-            print(f"🖼️ Tokenized {len(images)} images with positional markers")
+            # Assign block IDs and tokenize images for each chunk
+            processed_chunks = []
+            for i, chunk_data in enumerate(html_chunks):
+                print(f"🏗️ Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                
+                # Assign structural block IDs
+                structured_html = self._assign_block_ids_to_chunk(chunk_data['content'], chunk_data['section_id'])
+                
+                # Tokenize images for this chunk
+                tokenized_html = self._tokenize_images_in_chunk(structured_html, chunk_data['images'])
+                
+                processed_chunk = {
+                    'section_id': chunk_data['section_id'],
+                    'title': chunk_data['title'],
+                    'content': tokenized_html,
+                    'images': chunk_data['images'],
+                    'token_estimate': len(tokenized_html) // 4
+                }
+                
+                processed_chunks.append(processed_chunk)
+                print(f"✅ Chunk {i+1} processed: ~{processed_chunk['token_estimate']:,} tokens")
             
-            return tokenized_html, self.extracted_images
+            return processed_chunks, self.extracted_images
             
         except Exception as e:
             print(f"❌ Phase 1 preprocessing failed: {e}")

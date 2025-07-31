@@ -15,7 +15,7 @@ load_dotenv('/app/frontend/.env')
 load_dotenv('/app/backend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://44bea725-333c-4e55-8d5e-c0ea803d0b87.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://1624c9e6-2ea4-4da8-9b16-2db1628b7f04.preview.emergentagent.com') + '/api'
 
 class OpenAIIntegrationTest:
     def __init__(self):

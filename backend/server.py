@@ -1140,43 +1140,11 @@ class SaveArticleRequest(BaseModel):
 
 async def call_local_llm(system_message: str, user_message: str) -> Optional[str]:
     """
-    Call local LLM as final fallback option using transformers library
-    Returns the response text or None if it fails
+    DISABLED: Local LLM fallback disabled due to performance issues.
+    The local LLM implementation was causing 30+ minute delays and crashes.
+    Better to fail fast than wait indefinitely for broken fallback.
     """
-    try:
-        # First try external Ollama server if available
-        local_llm_url = os.getenv("LOCAL_LLM_URL", "http://localhost:11434/api/generate")
-        
-        if local_llm_url.startswith("http"):
-            # Format for Ollama API
-            data = {
-                "model": os.getenv("LOCAL_LLM_MODEL", "llama3.1:8b"),
-                "prompt": f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:",
-                "stream": False
-            }
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(local_llm_url, json=data)
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    ai_response = result.get("response", "")
-                    if ai_response:
-                        print(f"✅ External Local LLM response successful: {len(ai_response)} characters")
-                        return ai_response
-        
-        # Fallback to built-in transformers-based local LLM
-        print("🤖 Attempting built-in local LLM with transformers...")
-        return await call_built_in_local_llm(system_message, user_message)
-                        
-    except Exception as e:
-        print(f"❌ Local LLM connection failed: {e}")
-        # Try built-in local LLM as final attempt
-        try:
-            return await call_built_in_local_llm(system_message, user_message)
-        except Exception as built_in_error:
-            print(f"❌ Built-in local LLM also failed: {built_in_error}")
-    
+    print("⚠️ Local LLM fallback is disabled for performance optimization")
     return None
 
 async def call_built_in_local_llm(system_message: str, user_message: str) -> Optional[str]:

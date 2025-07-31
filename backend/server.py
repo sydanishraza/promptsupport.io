@@ -1527,18 +1527,28 @@ Create a well-structured, complete article that can stand alone while maintainin
         
     except Exception as e:
         print(f"❌ Chunk processing error for '{chunk_data.get('title', 'Unknown')}': {e}")
-        # Return basic structured article
+        # Return clean HTML structure for Content Library
         chunk_title = chunk_data.get('title', 'Untitled Section')
         chunk_content = chunk_data.get('content', '')
         
-        structured_content = f'<article>\n<header><h1>{chunk_title}</h1></header>\n<section>\n{chunk_content}\n</section>\n</article>'
+        # Generate clean HTML without wrappers
+        from bs4 import BeautifulSoup
+        try:
+            soup = BeautifulSoup(chunk_content, 'html.parser')
+            clean_content = f'<h1>{chunk_title}</h1>\n'
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
+                if element.name == 'h1':
+                    continue
+                clean_content += str(element) + '\n'
+        except:
+            clean_content = f'<h1>{chunk_title}</h1>\n<p>{chunk_content}</p>'
         
         return {
             "id": str(uuid.uuid4()),
             "title": chunk_title,
-            "html": structured_content,
-            "markdown": structured_content,
-            "content": structured_content,
+            "html": clean_content,
+            "markdown": clean_content,
+            "content": clean_content,
             "media": [],
             "tags": ["extracted", "generated", "chunked-section", "error-fallback"],
             "status": "training",

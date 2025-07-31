@@ -1698,6 +1698,91 @@ TASK: Create a comprehensive, standalone article that significantly enhances the
             }
         }
 
+async def process_chunks_in_parallel(chunks: list, preprocessor, max_concurrent: int = 3) -> list:
+    """
+    Process multiple chunks in parallel for improved performance
+    Limited concurrency to avoid overwhelming the system
+    """
+    import asyncio
+    
+    async def process_single_chunk_async(chunk_data, chunk_index):
+        """Process a single chunk asynchronously"""
+        try:
+            print(f"🔄 Processing chunk {chunk_index + 1}/{len(chunks)}: {chunk_data['title']}")
+            
+            # Phase 1: Assign block IDs
+            chunk_html_with_ids = preprocessor._assign_block_ids_to_chunk(
+                chunk_data['content'], 
+                chunk_data['section_id']
+            )
+            
+            # Phase 2: Tokenize images (if any)
+            chunk_html_with_tokens = preprocessor._tokenize_images_in_chunk(
+                chunk_html_with_ids, 
+                chunk_data.get('images', [])
+            )
+            
+            # Count tokens for monitoring
+            chunk_tokens = len(chunk_html_with_tokens.split()) * 1.3  # Rough token estimate
+            print(f"✅ Chunk {chunk_index + 1} processed: ~{int(chunk_tokens)} tokens")
+            
+            return {
+                'section_id': chunk_data['section_id'],
+                'title': chunk_data['title'],
+                'content': chunk_html_with_tokens,
+                'images': chunk_data.get('images', []),
+                'token_count': int(chunk_tokens)
+            }
+            
+        except Exception as e:
+            print(f"❌ Chunk {chunk_index + 1} processing failed: {e}")
+            return {
+                'section_id': chunk_data.get('section_id', f'error_{chunk_index}'),
+                'title': chunk_data.get('title', f'Error Chunk {chunk_index}'),
+                'content': chunk_data.get('content', ''),
+                'images': [],
+                'token_count': 0,
+                'error': str(e)
+            }
+    
+    # Process chunks in parallel with limited concurrency
+    print(f"🚀 Starting parallel processing of {len(chunks)} chunks (max {max_concurrent} concurrent)")
+    
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def process_with_semaphore(chunk_data, chunk_index):
+        async with semaphore:
+            return await process_single_chunk_async(chunk_data, chunk_index)
+    
+    # Create tasks for all chunks
+    tasks = [
+        process_with_semaphore(chunk_data, i) 
+        for i, chunk_data in enumerate(chunks)
+    ]
+    
+    # Execute all tasks and wait for completion
+    processed_chunks = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Handle any exceptions in results
+    valid_chunks = []
+    for i, result in enumerate(processed_chunks):
+        if isinstance(result, Exception):
+            print(f"❌ Exception in chunk {i + 1}: {result}")
+            # Create fallback chunk
+            valid_chunks.append({
+                'section_id': f'error_{i}',
+                'title': f'Error Chunk {i + 1}',
+                'content': chunks[i].get('content', ''),
+                'images': [],
+                'token_count': 0,
+                'error': str(result)
+            })
+        else:
+            valid_chunks.append(result)
+    
+    print(f"✅ Parallel processing complete: {len(valid_chunks)} chunks processed")
+    return valid_chunks
+
 async def process_with_html_preprocessing_pipeline(file_path: str, file_extension: str, template_data: dict, training_session: dict) -> list:
     """
     Process documents using the new HTML preprocessing pipeline with structural chunking

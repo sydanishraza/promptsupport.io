@@ -723,9 +723,9 @@ class DocumentPreprocessor:
                         # Add to current chunk
                         current_chunk_content.append(element)
                         
-                        # CRITICAL: Check size limits more frequently (8K tokens ≈ 32K characters)
+                        # CRITICAL: Check size limits more frequently (12K tokens ≈ 48K characters)
                         current_chunk_html = self._create_chunk_html(current_chunk_content)
-                        if len(current_chunk_html) > 32000:  # ~8K tokens - practical limit for LLM processing
+                        if len(current_chunk_html) > 48000:  # ~12K tokens - increased but still manageable
                             # Save current chunk before it gets too large
                             chunks.append({
                                 'section_id': current_section_id,

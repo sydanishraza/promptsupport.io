@@ -1117,27 +1117,33 @@ Focus on clarity, readability, and professional tone."""
         
         return chunks
     
-    def replace_tokens_with_rich_images(self, processed_html: str) -> str:
+    def replace_tokens_with_rich_images(self, processed_chunks: list) -> list:
         """
-        Phase 3: Replace image tokens with rich HTML figure elements
+        Phase 3: Replace image tokens with rich HTML figure elements for all chunks
         """
-        print(f"🖼️ Phase 3: Starting token replacement with rich image HTML")
+        print(f"🖼️ Phase 3: Starting token replacement across {len(processed_chunks)} chunks")
+        
+        final_chunks = []
         
         try:
-            result_html = processed_html
-            
-            # Find all image blocks and replace with rich HTML
-            import re
-            
-            pattern = r'<!-- IMAGE_BLOCK:([^>]+) -->(.*?)<!-- END_IMAGE_BLOCK:\1 -->'
-            matches = re.findall(pattern, result_html, re.DOTALL)
-            
-            for image_id, block_content in matches:
-                if image_id in self.extracted_images:
-                    image_data = self.extracted_images[image_id]
-                    
-                    # Create rich figure element
-                    rich_image_html = f"""<figure style="margin: 20px 0; text-align: center;">
+            for i, chunk_data in enumerate(processed_chunks):
+                print(f"🎨 Processing tokens in chunk {i+1}: {chunk_data['title']}")
+                
+                result_html = chunk_data['content']
+                
+                # Find all image blocks and replace with rich HTML
+                import re
+                
+                pattern = r'<!-- IMAGE_BLOCK:([^>]+) -->(.*?)<!-- END_IMAGE_BLOCK:\1 -->'
+                matches = re.findall(pattern, result_html, re.DOTALL)
+                
+                images_replaced = 0
+                for image_id, block_content in matches:
+                    if image_id in self.extracted_images:
+                        image_data = self.extracted_images[image_id]
+                        
+                        # Create rich figure element
+                        rich_image_html = f"""<figure style="margin: 20px 0; text-align: center;">
     <img src="{image_data['url']}" 
          alt="{image_data['alt_text']}" 
          style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
@@ -1145,20 +1151,36 @@ Focus on clarity, readability, and professional tone."""
         {image_data['alt_text']}
     </figcaption>
 </figure>"""
-                    
-                    # Replace the entire image block
-                    full_token = f"<!-- IMAGE_BLOCK:{image_id} -->{block_content}<!-- END_IMAGE_BLOCK:{image_id} -->"
-                    result_html = result_html.replace(full_token, rich_image_html)
-                    
-                    print(f"🎨 Replaced token {image_id} with rich HTML")
-                else:
-                    print(f"⚠️ Image data not found for token: {image_id}")
+                        
+                        # Replace the entire image block
+                        full_token = f"<!-- IMAGE_BLOCK:{image_id} -->{block_content}<!-- END_IMAGE_BLOCK:{image_id} -->"
+                        result_html = result_html.replace(full_token, rich_image_html)
+                        images_replaced += 1
+                        
+                        print(f"🎨 Replaced token {image_id} with rich HTML in chunk {i+1}")
+                    else:
+                        print(f"⚠️ Image data not found for token: {image_id} in chunk {i+1}")
+                
+                # Create final chunk data
+                final_chunk = {
+                    'section_id': chunk_data['section_id'],
+                    'title': chunk_data['title'],
+                    'content': result_html,
+                    'images_replaced': images_replaced,
+                    'original_images': len(chunk_data.get('images', []))
+                }
+                
+                final_chunks.append(final_chunk)
+                print(f"✅ Chunk {i+1} token replacement complete: {images_replaced} images embedded")
             
-            return result_html
+            print(f"🎉 Phase 3 complete: Token replacement finished for all {len(final_chunks)} chunks")
+            return final_chunks
             
         except Exception as e:
             print(f"❌ Token replacement failed: {e}")
-            return processed_html
+            import traceback
+            traceback.print_exc()
+            return processed_chunks  # Return processed chunks without token replacement
 
 # === END HTML PREPROCESSING PIPELINE ===
 

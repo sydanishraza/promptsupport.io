@@ -1149,61 +1149,12 @@ async def call_local_llm(system_message: str, user_message: str) -> Optional[str
 
 async def call_built_in_local_llm(system_message: str, user_message: str) -> Optional[str]:
     """
-    Use transformers library to run a small local model
+    DISABLED: Built-in local LLM disabled due to performance issues.
+    The transformers library was downloading 2GB+ models during processing
+    and causing NumPy compatibility crashes. Better to fail fast.
     """
-    try:
-        # Import transformers only when needed to avoid startup delays
-        from transformers import pipeline
-        import torch
-        
-        # Use a small, fast model that can run in limited resources
-        # Microsoft Phi-3 Mini is perfect for this use case
-        model_name = "microsoft/Phi-3-mini-4k-instruct"
-        
-        print(f"🧠 Loading built-in local model: {model_name}")
-        
-        # Create text generation pipeline with optimizations for speed
-        generator = pipeline(
-            "text-generation",
-            model=model_name,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto" if torch.cuda.is_available() else "cpu",
-            trust_remote_code=True,
-            max_new_tokens=1000,
-            do_sample=True,
-            temperature=0.3,
-            top_p=0.9
-        )
-        
-        # Format prompt for Phi-3
-        prompt = f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:"
-        
-        # Generate response
-        outputs = generator(
-            prompt,
-            max_new_tokens=1000,
-            temperature=0.3,
-            do_sample=True,
-            pad_token_id=generator.tokenizer.eos_token_id
-        )
-        
-        # Extract the generated text (remove the input prompt)
-        generated_text = outputs[0]['generated_text']
-        response = generated_text[len(prompt):].strip()
-        
-        if response:
-            print(f"✅ Built-in local LLM response successful: {len(response)} characters")
-            return response
-        else:
-            print("❌ Built-in local LLM generated empty response")
-            return None
-            
-    except ImportError as e:
-        print(f"❌ Transformers library not available: {e}")
-        return None
-    except Exception as e:
-        print(f"❌ Built-in local LLM failed: {e}")
-        return None
+    print("⚠️ Built-in local LLM is disabled for performance optimization")
+    return None
 
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
     """

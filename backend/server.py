@@ -631,8 +631,8 @@ class DocumentPreprocessor:
     
     def _create_structural_html_chunks(self, html_content: str, images: list) -> list:
         """
-        Create structural HTML chunks by breaking at logical boundaries (H2 headings)
-        Each chunk groups related data-block-id elements and stays under token limits
+        OPTIMIZED: Create fewer, larger structural HTML chunks for faster processing
+        Only break at H1 boundaries with larger chunk sizes to reduce processing time
         """
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
@@ -645,11 +645,11 @@ class DocumentPreprocessor:
             # Distribute images across chunks based on document position
             chunk_images = {}  # Will map section_id to list of images
             
-            # Process each element and group by H2 boundaries
+            # OPTIMIZATION: Only split at H1 boundaries (not H2) and allow larger chunks
             for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
                 
-                # Check if this is a major section break (H2)
-                if element.name == 'h2':
+                # ONLY break at H1 boundaries for major sections (removed H2 breaking)
+                if element.name == 'h1':
                     # Save current chunk if it has content
                     if current_chunk_content:
                         chunk_html = self._create_chunk_html(current_chunk_content)
@@ -668,33 +668,14 @@ class DocumentPreprocessor:
                     current_chunk_content = [element]
                     chunk_images[current_section_id] = []
                 
-                # Check if this is a major section break (H1) - create new chunk
-                elif element.name == 'h1':
-                    # Save current chunk if it has content
-                    if current_chunk_content:
-                        chunk_html = self._create_chunk_html(current_chunk_content)
-                        if self._is_chunk_valid(chunk_html):
-                            chunks.append({
-                                'section_id': current_section_id,
-                                'title': current_title,
-                                'content': chunk_html,
-                                'images': chunk_images.get(current_section_id, [])
-                            })
-                    
-                    # Start new chunk
-                    section_counter += 1  
-                    current_section_id = f"section_{section_counter}"
-                    current_title = element.get_text().strip()[:50] + ("..." if len(element.get_text()) > 50 else "")
-                    current_chunk_content = [element]
-                    chunk_images[current_section_id] = []
-                    
                 else:
-                    # Add to current chunk
+                    # Add to current chunk - allow much larger chunks
                     current_chunk_content.append(element)
                     
-                    # Check if chunk is getting too large (6K-8K tokens ≈ 24K-32K chars)
+                    # OPTIMIZATION: Increased chunk size limit from 28K to 80K chars (~20K tokens)
+                    # This reduces the number of chunks and API calls significantly
                     current_chunk_html = self._create_chunk_html(current_chunk_content)
-                    if len(current_chunk_html) > 28000:  # ~7K tokens
+                    if len(current_chunk_html) > 80000:  # ~20K tokens (nearly double previous limit)
                         # Save current chunk
                         chunks.append({
                             'section_id': current_section_id,
@@ -724,7 +705,7 @@ class DocumentPreprocessor:
             # Distribute images across chunks based on original document position
             self._distribute_images_to_chunks(chunks, images)
             
-            print(f"📋 Created {len(chunks)} structural chunks with logical boundaries")
+            print(f"📋 OPTIMIZED: Created {len(chunks)} larger structural chunks (H1-only boundaries)")
             return chunks
             
         except Exception as e:

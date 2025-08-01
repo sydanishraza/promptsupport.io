@@ -58,34 +58,19 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           console.log('Resource file:', resource.file);
           console.log('File type:', typeof resource.file);
 
-          // Use Knowledge Engine approach - /api/content/upload (CORS-free)
+          // Use Training Engine API (like Legacy Training Interface) - this extracts real content
           const backendUrl = process.env.REACT_APP_BACKEND_URL;
           
-          // Create FormData like Knowledge Engine
+          // Create FormData exactly like Legacy Training Interface
           const formData = new FormData();
+          formData.append('file', resource.file);
+          formData.append('template_id', 'content_extraction_pipeline');
           
-          if (resource.file instanceof File) {
-            formData.append('file', resource.file);
-            console.log('Added File object to FormData for Knowledge Engine API');
-          } else if (typeof resource.file === 'string') {
-            // For URL resources, still use file approach
-            formData.append('url', resource.file);
-            console.log('Added URL to FormData for Knowledge Engine API:', resource.file);
-          }
+          console.log('Making API call to Training Engine endpoint:', `${backendUrl}/api/training/process`);
+          console.log('Using Training Engine API for real content extraction...');
           
-          // Add metadata like Knowledge Engine
-          formData.append('metadata', JSON.stringify({
-            source: 'new_training_engine',
-            extraction_type: 'content_blocks',
-            training_mode: true,
-            pipeline_stage: 'content_extraction'
-          }));
-          
-          console.log('Making API call to Knowledge Engine endpoint:', `${backendUrl}/api/content/upload`);
-          console.log('Using CORS-free Knowledge Engine API...');
-          
-          // Use Knowledge Engine endpoint (no CORS issues)
-          const response = await fetch(`${backendUrl}/api/content/upload`, {
+          // Use Training Engine endpoint (extracts real content)
+          const response = await fetch(`${backendUrl}/api/training/process`, {
             method: 'POST',
             body: formData
           });

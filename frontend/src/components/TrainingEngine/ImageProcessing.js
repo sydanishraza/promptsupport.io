@@ -80,32 +80,35 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
       for (const resource of processingData.chunkingResults) {
         const resourceImageData = [];
         
-        for (const chunk of resource.chunks) {
-          // Extract and process images from the chunk
-          const imageTokens = chunk.html.match(/\[IMAGE:.*?\]/g) || [];
-          const processedImagesList = [];
-          
-          for (let i = 0; i < imageTokens.length; i++) {
-            // Simulate image processing
-            await new Promise(resolve => setTimeout(resolve, 800));
+        if (resource.chunks) {
+          for (const chunk of resource.chunks) {
+            // Extract and process images from the chunk
+            const content = chunk.html || chunk.content || chunk.text || '';
+            const imageTokens = content.match(/\[IMAGE:.*?\]/g) || [];
+            const processedImagesList = [];
             
-            const imageData = await processImageToken(imageTokens[i], chunk, resource, i);
-            processedImagesList.push(imageData);
+            for (let i = 0; i < imageTokens.length; i++) {
+              // Simulate image processing
+              await new Promise(resolve => setTimeout(resolve, 800));
+              
+              const imageData = await processImageToken(imageTokens[i], chunk, resource, i);
+              processedImagesList.push(imageData);
+              
+              processedImages++;
+              setProcessingStats({ processed: processedImages, total: totalImages });
+            }
             
-            processedImages++;
-            setProcessingStats({ processed: processedImages, total: totalImages });
+            // Update chunk content with processed images
+            const updatedContent = replaceImageTokens(content, processedImagesList);
+            
+            resourceImageData.push({
+              chunk_id: chunk.chunk_id || `chunk_${Date.now()}_${Math.random()}`,
+              original_content: content,
+              updated_content: updatedContent,
+              images_processed: processedImagesList.length,
+              processed_images: processedImagesList
+            });
           }
-          
-          // Update chunk content with processed images
-          const updatedContent = replaceImageTokens(chunk.html, processedImagesList);
-          
-          resourceImageData.push({
-            chunk_id: chunk.chunk_id,
-            original_content: chunk.html,
-            updated_content: updatedContent,
-            images_processed: processedImagesList.length,
-            processed_images: processedImagesList
-          });
         }
 
         results.push({

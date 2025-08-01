@@ -139,6 +139,9 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
 
       // Calculate summary statistics
       const avgBlocksPerResource = totalBlocks / results.length;
+      const totalTokens = results.reduce((sum, r) => {
+        return sum + r.contentBlocks.reduce((blockSum, block) => blockSum + (block.tokens || 0), 0);
+      }, 0);
       const totalProcessingTime = results.reduce((sum, r) => {
         const time = parseFloat(r.metadata.processing_time?.replace('s', '') || '0');
         return sum + time;
@@ -147,6 +150,7 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
       setExtractionResults({
         resources: results,
         totalBlocks,
+        totalTokens,
         averageBlocksPerResource: Math.round(avgBlocksPerResource),
         processingTime: `${totalProcessingTime.toFixed(1)}s`,
         timestamp: new Date().toISOString()

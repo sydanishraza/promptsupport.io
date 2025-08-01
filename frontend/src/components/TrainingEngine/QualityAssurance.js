@@ -33,11 +33,11 @@ const QualityAssurance = ({ moduleData, processingData, setProcessingData, onSta
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
-    if (processingData && processingData.imageProcessingResults && processingData.stage === 'images_processed') {
-      // Auto-start quality assurance if image processing results are available
+    if (processingData && processingData.imageProcessingResults && processingData.stage === 'images_processed' && !processing && !qaResults) {
+      // Auto-start quality assurance if image processing results are available and not already processed
       startQualityAssurance();
     }
-  }, [processingData]);
+  }, [processingData, processing, qaResults]);
 
   const startQualityAssurance = async () => {
     if (!processingData || !processingData.imageProcessingResults) {

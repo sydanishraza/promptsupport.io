@@ -126,11 +126,15 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
     // Simulate the LLM rewrite process as per specifications
     const prompt = generateLLMPrompt(chunk);
     
+    // Get content from chunk - handle different property names
+    const chunkContent = chunk.content || chunk.html || chunk.text || chunk.updated_content || '';
+    console.log('Processing chunk content:', chunkContent.length, 'characters');
+    
     // Simulate improved content generation
-    const improvedContent = await simulateLLMRewrite(chunk.content);
+    const improvedContent = await simulateLLMRewrite(chunkContent);
     
     // Calculate quality metrics
-    const qualityScore = calculateQualityScore(improvedContent, chunk.content);
+    const qualityScore = calculateQualityScore(improvedContent, chunkContent);
     
     return {
       article_id: `article_${chunk.chunk_id}`,

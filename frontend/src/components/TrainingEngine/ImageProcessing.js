@@ -37,7 +37,7 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
   }, [processingData, processing, processingResults]);
 
   const startImageProcessing = async () => {
-    if (!processingData || !processingData.generationResults) {
+    if (!processingData || !processingData.chunkingResults) {
       return;
     }
 

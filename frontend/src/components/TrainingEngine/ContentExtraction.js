@@ -408,14 +408,14 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <Layout className="h-6 w-6 mx-auto mb-2 text-blue-600" />
                 <div className="text-2xl font-bold text-blue-600">
-                  {(extractionResults.totalTokens || 0).toLocaleString()}
+                  {extractionResults.totalBlocks || 0}
                 </div>
                 <div className="text-sm text-gray-600">Content Blocks</div>
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <Hash className="h-6 w-6 mx-auto mb-2 text-purple-600" />
                 <div className="text-2xl font-bold text-purple-600">
-                  {extractionResults.totalTokens.toLocaleString()}
+                  {(extractionResults.totalTokens || 0).toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-600">Total Tokens</div>
               </div>

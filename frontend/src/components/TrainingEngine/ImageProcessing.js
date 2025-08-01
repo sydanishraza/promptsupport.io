@@ -93,8 +93,8 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
         results.push({
           resource_id: resource.resource_id,
           resource_name: resource.resource_name,
-          articles: resourceImageData,
-          totalImages: resourceImageData.reduce((sum, art) => sum + art.imageCount, 0),
+          chunks: resourceImageData,
+          totalImages: resourceImageData.reduce((sum, chunk) => sum + chunk.images_processed, 0),
           status: 'processed'
         });
       }

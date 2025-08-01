@@ -17,8 +17,24 @@ import {
   RefreshCw,
   CheckCircle,
   AlertTriangle,
-  Info
+  Info,
+  Upload,
+  Scissors,
+  Hash,
+  Image,
+  FileText,
+  Shield,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
+
+// Import individual pipeline modules
+import UploadInterface from './TrainingEngine/UploadInterface';
+import ContentExtraction from './TrainingEngine/ContentExtraction';
+import TokenizationChunker from './TrainingEngine/TokenizationChunker';
+import ImageProcessing from './TrainingEngine/ImageProcessing';
+import ArticleGeneration from './TrainingEngine/ArticleGeneration';
+import QualityAssurance from './TrainingEngine/QualityAssurance';
 
 const NewTrainingEngine = () => {
   const [selectedPipeline, setSelectedPipeline] = useState(null);

@@ -28,11 +28,11 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
   const [selectedChunk, setSelectedChunk] = useState(null);
 
   useEffect(() => {
-    if (processingData && processingData.extractionResults && processingData.stage === 'extracted') {
-      // Auto-start chunking if extraction results are available
+    if (processingData && processingData.extractionResults && processingData.stage === 'extracted' && !processing && !chunkingResults) {
+      // Auto-start chunking if extraction results are available and not already processed
       startChunking();
     }
-  }, [processingData]);
+  }, [processingData, processing, chunkingResults]);
 
   const startChunking = async () => {
     if (!processingData || !processingData.extractionResults) {

@@ -705,5 +705,6 @@ const TrainingInterface = () => {
     </div>
   );
 };
+}
 
 export default TrainingInterface;

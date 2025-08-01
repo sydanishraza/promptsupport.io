@@ -40,19 +40,114 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
 
     try {
       const results = [];
-      
+      let totalBlocks = 0;
+      let processedResources = 0;
+
+      setProcessingStats({ processed: 0, total: processingData.resources.length });
+
+      // Process each uploaded resource with the backend
       for (const resource of processingData.resources) {
-        // Simulate extraction process
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing time
-        
-        const extractedData = await simulateContentExtraction(resource);
-        results.push(extractedData);
+        try {
+          console.log('Processing resource:', resource.name);
+
+          // Get backend URL from environment
+          const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+          
+          // Create FormData for the API call
+          const formData = new FormData();
+          formData.append('file', resource.file);
+          formData.append('template_id', 'content_extraction_pipeline');
+          formData.append('training_mode', 'true');
+          
+          // Call the backend training/process API
+          const response = await fetch(`${backendUrl}/api/training/process`, {
+            method: 'POST', 
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error(`Backend processing failed: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log('Backend processing result:', result);
+
+          // Process the backend response into our content blocks format
+          const contentBlocks = [];
+          const metadata = {
+            title: result.articles?.[0]?.title || resource.name,
+            word_count: result.articles?.[0]?.word_count || 0,
+            processing_time: result.processing_time || '0s',
+            total_images: result.images_processed || 0
+          };
+
+          // Extract content blocks from the backend response
+          if (result.articles && result.articles.length > 0) {
+            for (const article of result.articles) {
+              // Parse HTML content into structured blocks
+              const blocks = parseHtmlIntoBlocks(article.html || article.content);
+              contentBlocks.push(...blocks);
+            }
+          } else {
+            // Fallback: create basic blocks from response
+            const fallbackContent = result.content || result.html || 'No content extracted';
+            const blocks = parseHtmlIntoBlocks(fallbackContent);
+            contentBlocks.push(...blocks);
+          }
+
+          totalBlocks += contentBlocks.length;
+
+          const extractionResult = {
+            resource_id: resource.resource_id,
+            resource_name: resource.name,
+            resource_type: resource.resource_type || 'file',
+            contentBlocks,
+            metadata,
+            totalBlocks: contentBlocks.length,
+            extraction_method: 'backend_processing',
+            status: 'extracted'
+          };
+
+          results.push(extractionResult);
+          processedResources++;
+          setProcessingStats({ processed: processedResources, total: processingData.resources.length });
+
+          // Add delay between resources to show progress
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+        } catch (error) {
+          console.error(`Error processing resource ${resource.name}:`, error);
+          
+          // Create error result but don't fail entire process
+          const errorResult = {
+            resource_id: resource.resource_id,
+            resource_name: resource.name,
+            resource_type: resource.resource_type || 'file',
+            contentBlocks: [],
+            metadata: { error: error.message },
+            totalBlocks: 0,
+            extraction_method: 'backend_processing',
+            status: 'error'
+          };
+          
+          results.push(errorResult);
+          processedResources++;
+          setProcessingStats({ processed: processedResources, total: processingData.resources.length });
+        }
       }
+
+      // Calculate summary statistics
+      const avgBlocksPerResource = totalBlocks / results.length;
+      const totalProcessingTime = results.reduce((sum, r) => {
+        const time = parseFloat(r.metadata.processing_time?.replace('s', '') || '0');
+        return sum + time;
+      }, 0);
 
       setExtractionResults({
         resources: results,
-        totalBlocks: results.reduce((sum, r) => sum + r.contentBlocks.length, 0),
-        totalTokens: results.reduce((sum, r) => sum + r.totalTokens, 0),
+        totalBlocks,
+        averageBlocksPerResource: Math.round(avgBlocksPerResource),
+        processingTime: `${totalProcessingTime.toFixed(1)}s`,
         timestamp: new Date().toISOString()
       });
 
@@ -66,11 +161,46 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
       onStatusUpdate('completed');
 
     } catch (error) {
-      console.error('Extraction failed:', error);
+      console.error('Content extraction failed:', error);
       onStatusUpdate('error');
     } finally {
       setProcessing(false);
     }
+  };
+
+  // Helper function to parse HTML into structured content blocks
+  const parseHtmlIntoBlocks = (htmlContent) => {
+    const blocks = [];
+    
+    if (!htmlContent) return blocks;
+
+    // Create a temporary DOM element to parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+
+    // Extract elements and convert to blocks
+    const elements = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6, p, ul, ol, table, div, blockquote');
+    
+    elements.forEach((element, index) => {
+      const tagName = element.tagName.toLowerCase();
+      const blockId = element.getAttribute('data-block-id') || `${tagName}_${index + 1}`;
+      
+      // Estimate token count (rough approximation: ~4 characters per token)
+      const textContent = element.textContent || '';
+      const estimatedTokens = Math.max(1, Math.floor(textContent.length / 4));
+
+      blocks.push({
+        block_id: blockId,
+        type: tagName,
+        html: element.outerHTML,
+        text: textContent.trim(),
+        tokens: estimatedTokens,
+        level: tagName.match(/h[1-6]/) ? parseInt(tagName.charAt(1)) : null,
+        length: element.outerHTML.length
+      });
+    });
+
+    return blocks;
   };
 
   const simulateContentExtraction = async (resource) => {

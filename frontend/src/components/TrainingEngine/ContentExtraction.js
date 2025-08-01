@@ -1,0 +1,456 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Database,
+  FileText,
+  Code,
+  Hash,
+  List,
+  Table,
+  Heading,
+  Layout,
+  CheckCircle,
+  RefreshCw,
+  Eye,
+  Download,
+  AlertTriangle,
+  Info
+} from 'lucide-react';
+
+const ContentExtraction = ({ moduleData, processingData, setProcessingData, onStatusUpdate }) => {
+  const [extractionResults, setExtractionResults] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [selectedResource, setSelectedResource] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+
+  useEffect(() => {
+    if (processingData && processingData.resources) {
+      // Auto-start extraction if resources are available
+      startExtraction();
+    }
+  }, [processingData]);
+
+  const startExtraction = async () => {
+    if (!processingData || !processingData.resources) {
+      return;
+    }
+
+    setProcessing(true);
+    onStatusUpdate('processing');
+
+    try {
+      const results = [];
+      
+      for (const resource of processingData.resources) {
+        // Simulate extraction process
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing time
+        
+        const extractedData = await simulateContentExtraction(resource);
+        results.push(extractedData);
+      }
+
+      setExtractionResults({
+        resources: results,
+        totalBlocks: results.reduce((sum, r) => sum + r.contentBlocks.length, 0),
+        totalTokens: results.reduce((sum, r) => sum + r.totalTokens, 0),
+        timestamp: new Date().toISOString()
+      });
+
+      // Update processing data for next module
+      setProcessingData(prev => ({
+        ...prev,
+        extractionResults: results,
+        stage: 'extracted'
+      }));
+
+      onStatusUpdate('completed');
+
+    } catch (error) {
+      console.error('Extraction failed:', error);
+      onStatusUpdate('error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const simulateContentExtraction = async (resource) => {
+    // Simulate the content extraction pipeline as per specifications
+    const contentBlocks = [];
+    const metadata = {};
+    
+    // Generate sample structured HTML with data-block-id
+    const blockTypes = ['h1', 'h2', 'h3', 'p', 'ul', 'table', 'div'];
+    const numBlocks = Math.floor(Math.random() * 20) + 10; // 10-30 blocks
+    
+    for (let i = 0; i < numBlocks; i++) {
+      const blockType = blockTypes[Math.floor(Math.random() * blockTypes.length)];
+      const blockId = `${blockType}_${i + 1}`;
+      
+      let html = '';
+      let tokens = 0;
+      
+      switch (blockType) {
+        case 'h1':
+          html = `<h1 data-block-id="${blockId}">Chapter ${i + 1}: Main Section</h1>`;
+          tokens = Math.floor(Math.random() * 20) + 5;
+          break;
+        case 'h2':
+          html = `<h2 data-block-id="${blockId}">Subsection ${i + 1}</h2>`;
+          tokens = Math.floor(Math.random() * 15) + 3;
+          break;
+        case 'h3':
+          html = `<h3 data-block-id="${blockId}">Sub-topic ${i + 1}</h3>`;
+          tokens = Math.floor(Math.random() * 10) + 2;
+          break;
+        case 'p':
+          html = `<p data-block-id="${blockId}">This is a paragraph containing detailed information about the topic. It includes comprehensive content that would be processed by the training engine.</p>`;
+          tokens = Math.floor(Math.random() * 100) + 20;
+          break;
+        case 'ul':
+          html = `<ul data-block-id="${blockId}"><li>First item</li><li>Second item</li><li>Third item</li></ul>`;
+          tokens = Math.floor(Math.random() * 30) + 10;
+          break;
+        case 'table':
+          html = `<table data-block-id="${blockId}"><tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Data 1</td><td>Data 2</td></tr></table>`;
+          tokens = Math.floor(Math.random() * 50) + 15;
+          break;
+        default:
+          html = `<div data-block-id="${blockId}">General content block with mixed information.</div>`;
+          tokens = Math.floor(Math.random() * 80) + 10;
+      }
+      
+      contentBlocks.push({
+        block_id: blockId,
+        html: html,
+        tokens: tokens,
+        type: blockType
+      });
+    }
+
+    // Extract metadata
+    metadata.title = `Document: ${resource.name}`;
+    metadata.author = 'System Generated';
+    metadata.created = new Date().toISOString();
+    metadata.blocks_count = contentBlocks.length;
+    metadata.structure_detected = true;
+
+    return {
+      resource_id: resource.resource_id,
+      resource_name: resource.name,
+      resource_type: resource.resource_type,
+      contentBlocks,
+      metadata,
+      totalTokens: contentBlocks.reduce((sum, block) => sum + block.tokens, 0),
+      status: 'extracted'
+    };
+  };
+
+  const viewResourceDetails = (resource) => {
+    setSelectedResource(resource);
+    
+    // Generate preview data
+    const preview = {
+      structure: analyzeStructure(resource.contentBlocks),
+      tokenDistribution: analyzeTokens(resource.contentBlocks),
+      blockTypes: analyzeBlockTypes(resource.contentBlocks)
+    };
+    
+    setPreviewData(preview);
+  };
+
+  const analyzeStructure = (blocks) => {
+    const headers = blocks.filter(b => ['h1', 'h2', 'h3'].includes(b.type));
+    return {
+      totalHeaders: headers.length,
+      h1Count: blocks.filter(b => b.type === 'h1').length,
+      h2Count: blocks.filter(b => b.type === 'h2').length,
+      h3Count: blocks.filter(b => b.type === 'h3').length,
+      hasStructure: headers.length > 0
+    };
+  };
+
+  const analyzeTokens = (blocks) => {
+    const tokens = blocks.map(b => b.tokens);
+    return {
+      total: tokens.reduce((sum, t) => sum + t, 0),
+      average: Math.round(tokens.reduce((sum, t) => sum + t, 0) / tokens.length),
+      min: Math.min(...tokens),
+      max: Math.max(...tokens)
+    };
+  };
+
+  const analyzeBlockTypes = (blocks) => {
+    const types = {};
+    blocks.forEach(block => {
+      types[block.type] = (types[block.type] || 0) + 1;
+    });
+    return types;
+  };
+
+  const exportData = () => {
+    const dataStr = JSON.stringify(extractionResults, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = 'content_blocks.json';
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Module Header */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="p-2 bg-green-100 rounded-lg">
+            <Database className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Content Extraction Pipeline</h2>
+            <p className="text-sm text-gray-600">Emergent Module: content_extraction_pipeline</p>
+          </div>
+        </div>
+        <p className="text-gray-700">
+          Parses uploaded files into structured HTML with data-block-id attributes, detects document structure, and extracts metadata.
+        </p>
+      </div>
+
+      {/* Processing Status */}
+      {processingData && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Processing Status</h3>
+          
+          {processing ? (
+            <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
+              <div>
+                <div className="font-medium text-blue-900">Extracting Content...</div>
+                <div className="text-sm text-blue-700">
+                  Processing {processingData.resources?.length || 0} resource(s)
+                </div>
+              </div>
+            </div>
+          ) : extractionResults ? (
+            <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <div>
+                <div className="font-medium text-green-900">Extraction Complete</div>
+                <div className="text-sm text-green-700">
+                  Generated {extractionResults.totalBlocks} content blocks with {extractionResults.totalTokens.toLocaleString()} tokens
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <div>
+                <div className="font-medium text-amber-900">Awaiting Resources</div>
+                <div className="text-sm text-amber-700">
+                  Upload resources in the previous module to begin extraction
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Extraction Results */}
+      {extractionResults && (
+        <div className="space-y-6">
+          {/* Summary Stats */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Extraction Summary</h3>
+              <button
+                onClick={exportData}
+                className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                <Download className="h-4 w-4" />
+                <span>Export JSON</span>
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <Database className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                <div className="text-2xl font-bold text-green-600">
+                  {extractionResults.resources.length}
+                </div>
+                <div className="text-sm text-gray-600">Resources Processed</div>
+              </div>
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <Layout className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                <div className="text-2xl font-bold text-blue-600">
+                  {extractionResults.totalBlocks}
+                </div>
+                <div className="text-sm text-gray-600">Content Blocks</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <Hash className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                <div className="text-2xl font-bold text-purple-600">
+                  {extractionResults.totalTokens.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600">Total Tokens</div>
+              </div>
+              <div className="text-center p-4 bg-amber-50 rounded-lg">
+                <CheckCircle className="h-6 w-6 mx-auto mb-2 text-amber-600" />
+                <div className="text-2xl font-bold text-amber-600">100%</div>
+                <div className="text-sm text-gray-600">Success Rate</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Resource List */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Processed Resources</h3>
+            <div className="space-y-3">
+              {extractionResults.resources.map((resource, index) => (
+                <div
+                  key={resource.resource_id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <FileText className="h-5 w-5 text-gray-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {resource.resource_name}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {resource.contentBlocks.length} blocks • {resource.totalTokens.toLocaleString()} tokens • {resource.resource_type}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => viewResourceDetails(resource)}
+                    className="flex items-center space-x-2 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span>View Details</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resource Details Modal */}
+      {selectedResource && previewData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Resource Details: {selectedResource.resource_name}
+                </h3>
+                <button
+                  onClick={() => setSelectedResource(null)}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                {/* Structure Analysis */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-3 flex items-center">
+                    <Heading className="h-4 w-4 mr-2" />
+                    Document Structure
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>H1 Headers:</span>
+                      <span className="font-medium">{previewData.structure.h1Count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>H2 Headers:</span>
+                      <span className="font-medium">{previewData.structure.h2Count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>H3 Headers:</span>
+                      <span className="font-medium">{previewData.structure.h3Count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Has Structure:</span>
+                      <span className={`font-medium ${previewData.structure.hasStructure ? 'text-green-600' : 'text-red-600'}`}>
+                        {previewData.structure.hasStructure ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Token Analysis */}
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-purple-900 mb-3 flex items-center">
+                    <Hash className="h-4 w-4 mr-2" />
+                    Token Distribution
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Total:</span>
+                      <span className="font-medium">{previewData.tokenDistribution.total.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Average:</span>
+                      <span className="font-medium">{previewData.tokenDistribution.average}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Range:</span>
+                      <span className="font-medium">
+                        {previewData.tokenDistribution.min} - {previewData.tokenDistribution.max}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Block Types */}
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-green-900 mb-3 flex items-center">
+                    <List className="h-4 w-4 mr-2" />
+                    Block Types
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    {Object.entries(previewData.blockTypes).map(([type, count]) => (
+                      <div key={type} className="flex justify-between">
+                        <span className="capitalize">{type}:</span>
+                        <span className="font-medium">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sample Blocks */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3">Sample Content Blocks</h4>
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {selectedResource.contentBlocks.slice(0, 5).map((block, index) => (
+                    <div key={block.block_id} className="bg-white p-3 rounded border">
+                      <div className="flex justify-between items-start mb-2">
+                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          {block.block_id}
+                        </code>
+                        <span className="text-xs text-gray-500">
+                          {block.tokens} tokens
+                        </span>
+                      </div>
+                      <div 
+                        className="text-sm text-gray-800"
+                        dangerouslySetInnerHTML={{ __html: block.html }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ContentExtraction;

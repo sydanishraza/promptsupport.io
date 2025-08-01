@@ -94,14 +94,17 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           
           console.log('Making API call to:', `${backendUrl}/api/training/process`);
           
-          // Call the backend training/process API with timeout
+          // Call the backend training/process API with timeout using AbortController
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+          
           const response = await fetch(`${backendUrl}/api/training/process`, {
             method: 'POST', 
             body: formData,
-            timeout: 120000 // 2 minutes timeout
+            signal: controller.signal
           });
 
-          console.log('API response status:', response.status);
+          clearTimeout(timeoutId);
           console.log('API response headers:', response.headers);
 
           if (!response.ok) {

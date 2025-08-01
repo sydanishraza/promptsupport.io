@@ -252,6 +252,63 @@ Focus on:
     linkElement.click();
   };
 
+  // Article Viewer Functions
+  const viewArticle = (article, resource) => {
+    setSelectedArticle({
+      ...article,
+      resource_name: resource.resource_name,
+      resource_id: resource.resource_id
+    });
+  };
+
+  const closeArticleViewer = () => {
+    setSelectedArticle(null);
+    setViewerMode('formatted');
+    setIsViewerMaximized(false);
+  };
+
+  const copyArticleContent = async (content, type = 'formatted') => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedArticle(type);
+      setTimeout(() => setCopiedArticle(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy content:', err);
+    }
+  };
+
+  const formatArticleForWYSIWYG = (content) => {
+    // Clean and format HTML for WYSIWYG editor compatibility
+    let cleanHTML = content;
+    
+    // Ensure proper structure with div wrapper
+    if (!cleanHTML.trim().startsWith('<div')) {
+      cleanHTML = `<div class="article-content">${cleanHTML}</div>`;
+    }
+    
+    // Clean up any malformed tags
+    cleanHTML = cleanHTML.replace(/<([^>]+)>/g, (match, tag) => {
+      // Ensure proper tag structure
+      return `<${tag.trim()}>`;
+    });
+    
+    // Ensure headings have proper structure
+    cleanHTML = cleanHTML.replace(/<h([1-6])([^>]*)>(.*?)<\/h[1-6]>/g, '<h$1$2>$3</h$1>');
+    
+    // Ensure paragraphs are properly structured
+    cleanHTML = cleanHTML.replace(/<p([^>]*)>(.*?)<\/p>/g, '<p$1>$2</p>');
+    
+    return cleanHTML;
+  };
+
+  const generateArticlePreview = (content, maxLength = 200) => {
+    // Strip HTML tags for preview
+    const textContent = content.replace(/<[^>]*>/g, '');
+    return textContent.length > maxLength 
+      ? textContent.substring(0, maxLength) + '...'
+      : textContent;
+  };
+
   const getQualityColor = (score) => {
     if (score >= 8.5) return 'green';
     if (score >= 7.0) return 'blue';

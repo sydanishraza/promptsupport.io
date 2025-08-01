@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://1624c9e6-2ea4-4da8-9b16-2db1628b7f04.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://ddd742a7-09b8-4460-8dfe-d14e6743ee64.preview.emergentagent.com') + '/api'
 
 def analyze_content_library_media():
     print("🔍 DIRECT CONTENT LIBRARY MEDIA ANALYSIS")

@@ -48,13 +48,6 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
 
       setProcessingStats({ processed: 0, total: processingData.resources.length });
 
-      // Add overall timeout
-      const overallTimeout = setTimeout(() => {
-        console.error('Content extraction timed out after 5 minutes');
-        setProcessing(false);
-        onStatusUpdate('error');
-      }, 300000); // 5 minutes total timeout
-
       // Process each uploaded resource with the backend
       for (const resource of processingData.resources) {
         try {

@@ -50,24 +50,55 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
       for (const resource of processingData.resources) {
         try {
           console.log('Processing resource:', resource.name);
+          console.log('Resource object:', resource);
+          console.log('Resource file:', resource.file);
+          console.log('File type:', typeof resource.file);
+
+          // Validate file object
+          if (!resource.file) {
+            throw new Error('No file object found in resource');
+          }
+
+          if (!(resource.file instanceof File) && typeof resource.file !== 'string') {
+            throw new Error(`Invalid file type: ${typeof resource.file}`);
+          }
 
           // Get backend URL from environment
           const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+          console.log('Backend URL:', backendUrl);
           
           // Create FormData for the API call
           const formData = new FormData();
-          formData.append('file', resource.file);
+          
+          // Handle file vs URL resource
+          if (resource.file instanceof File) {
+            formData.append('file', resource.file);
+            console.log('Added File object to FormData');
+          } else if (typeof resource.file === 'string') {
+            // This is a URL resource
+            formData.append('url', resource.file);
+            console.log('Added URL to FormData:', resource.file);
+          }
+          
           formData.append('template_id', 'content_extraction_pipeline');
           formData.append('training_mode', 'true');
           
-          // Call the backend training/process API
+          console.log('Making API call to:', `${backendUrl}/api/training/process`);
+          
+          // Call the backend training/process API with timeout
           const response = await fetch(`${backendUrl}/api/training/process`, {
             method: 'POST', 
-            body: formData
+            body: formData,
+            timeout: 120000 // 2 minutes timeout
           });
 
+          console.log('API response status:', response.status);
+          console.log('API response headers:', response.headers);
+
           if (!response.ok) {
-            throw new Error(`Backend processing failed: ${response.status}`);
+            const errorText = await response.text();
+            console.error('API error response:', errorText);
+            throw new Error(`Backend processing failed: ${response.status} - ${errorText}`);
           }
 
           const result = await response.json();

@@ -44,8 +44,8 @@ const MainLayout = () => {
         return <Dashboard />;
       case 'knowledge-engine':
         return <KnowledgeEngine />;
-      case 'training':
-        return <TrainingInterface />;
+      case 'lab':
+        return <LabInterface />;
       case 'content-upload':
         return <KnowledgeEngine activeModule="upload" />;
       case 'uploaded-content':

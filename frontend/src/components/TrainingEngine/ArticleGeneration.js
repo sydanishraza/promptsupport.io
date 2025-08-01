@@ -125,8 +125,22 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
     // Simulate the LLM rewrite process as per specifications
     const prompt = generateLLMPrompt(chunk);
     
+    // Debug: Log chunk structure to understand what's available
+    console.log('Processing chunk for article generation:', chunk);
+    console.log('Available chunk properties:', Object.keys(chunk));
+    
     // Get content from chunk - handle different property names
     const chunkContent = chunk.content || chunk.html || chunk.text || chunk.updated_content || '';
+    
+    console.log('Extracted chunk content length:', chunkContent.length);
+    console.log('Chunk content preview:', chunkContent.substring(0, 200) + '...');
+    
+    // If no content, this is a problem - log it
+    if (!chunkContent || chunkContent.length === 0) {
+      console.error('No content found in chunk:', chunk);
+      console.error('Chunk title:', chunk.title);
+      console.error('Chunk properties:', Object.keys(chunk));
+    }
     
     // Simulate improved content generation
     const improvedContent = await simulateLLMRewrite(chunkContent);

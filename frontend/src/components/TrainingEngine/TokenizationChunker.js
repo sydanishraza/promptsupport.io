@@ -178,7 +178,8 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
   };
 
   const createChunk = (chunkData, index, defaultTitle = null) => {
-    const title = chunkData.h1Title || defaultTitle || `Chunk ${index + 1}`;
+    // Use H2 title as primary, fall back to H1 or default
+    const title = chunkData.h2Title || chunkData.parentH1 || defaultTitle || `Chunk ${index + 1}`;
     
     return {
       chunk_id: `chunk_${index + 1}`,
@@ -187,8 +188,11 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
       tokens: chunkData.tokens,
       blockCount: chunkData.blocks.length,
       content: chunkData.blocks.map(b => b.html).join('\n'),
+      html: chunkData.blocks.map(b => b.html).join('\n'), // Add html property for article generation
       firstBlockType: chunkData.blocks[0]?.type || 'unknown',
-      hasH1: chunkData.blocks.some(b => b.type === 'h1')
+      hasH1: chunkData.blocks.some(b => b.type === 'h1'),
+      hasH2: chunkData.blocks.some(b => b.type === 'h2'),
+      parentH1: chunkData.parentH1 // Keep H1 context for reference
     };
   };
 

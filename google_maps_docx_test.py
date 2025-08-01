@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Google Maps DOCX Image Processing Test
-Comprehensive testing for the specific Google Map JavaScript API Tutorial.docx file
-focusing on image detection, extraction, tokenization, and processing time issues.
+Google Maps DOCX Content Processing Pipeline Test
+Tests the actual content processing pipeline using the Google Map JavaScript API Tutorial.docx file
+to verify we get real content instead of test data.
 """
 
 import requests
@@ -20,9 +20,9 @@ BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://75e2f69d-4b6d-467
 class GoogleMapsDocxTest:
     def __init__(self):
         self.base_url = BACKEND_URL
-        self.docx_file_path = '/app/Google_Map_JavaScript_API_Tutorial.docx'
-        print(f"🗺️ Testing Google Maps DOCX at: {self.base_url}")
-        print(f"📄 DOCX file: {self.docx_file_path}")
+        self.docx_url = "https://customer-assets.emergentagent.com/job_training-lab-revamp/artifacts/xq5cp7dr_Google%20Map%20JavaScript%20API%20Tutorial.docx"
+        print(f"🗺️ Testing Google Maps DOCX Content Processing at: {self.base_url}")
+        print(f"📄 DOCX Source: {self.docx_url}")
         
     def test_file_exists(self):
         """Verify the Google Maps DOCX file exists and is accessible"""

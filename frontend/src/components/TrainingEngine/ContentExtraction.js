@@ -58,58 +58,39 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           console.log('Resource file:', resource.file);
           console.log('File type:', typeof resource.file);
 
-          // Use Training Engine API (like Legacy Training Interface) - this extracts real content
-          const backendUrl = process.env.REACT_APP_BACKEND_URL;
+          // PLAN B: Use a working approach - call the same processing function as Legacy Training Interface
+          console.log('Using internal processing approach to bypass CORS...');
           
-          // Create FormData exactly like Legacy Training Interface
-          const formData = new FormData();
-          formData.append('file', resource.file);
-          formData.append('template_id', 'content_extraction_pipeline');
+          // Instead of direct API call, use the same approach as Legacy Training Interface
+          const extractedContent = await processFileWithLegacyMethod(resource.file, resource.name);
           
-          console.log('Making API call to Training Engine endpoint:', `${backendUrl}/api/training/process`);
-          console.log('Using Training Engine API for real content extraction...');
-          
-          // Use Training Engine endpoint (extracts real content)
-          const response = await fetch(`${backendUrl}/api/training/process`, {
-            method: 'POST',
-            body: formData
-          });
-
-          console.log('API response status:', response.status);
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API error response:', errorText);
-            throw new Error(`Training Engine processing failed: ${response.status} - ${errorText}`);
+          if (!extractedContent) {
+            throw new Error('Failed to process file with internal method');
           }
+          
+          console.log('Internal processing result:', extractedContent);
 
-          const result = await response.json();
-          console.log('Training Engine processing result:', result);
-
-          // Process the Training Engine response into our content blocks format
+          // Process the extracted content into our content blocks format
           const contentBlocks = [];
           const metadata = {
-            title: result.articles?.[0]?.title || resource.name,
-            word_count: result.articles?.[0]?.word_count || 0,
-            processing_time: result.processing_time || '0s',
-            total_images: result.images_processed || 0
+            title: extractedContent.title || resource.name,
+            word_count: extractedContent.word_count || 0,
+            processing_time: extractedContent.processing_time || '0s',
+            total_images: extractedContent.images_processed || 0
           };
 
-          // Training Engine returns articles with real content
-          if (result.articles && result.articles.length > 0) {
-            for (const article of result.articles) {
-              // Parse HTML content into structured blocks
+          // Parse the extracted content into blocks
+          if (extractedContent.content || extractedContent.html) {
+            const blocks = parseHtmlIntoBlocks(extractedContent.content || extractedContent.html);
+            contentBlocks.push(...blocks);
+          } else if (extractedContent.articles && extractedContent.articles.length > 0) {
+            // Handle articles format
+            for (const article of extractedContent.articles) {
               const blocks = parseHtmlIntoBlocks(article.html || article.content);
               contentBlocks.push(...blocks);
             }
-          } else if (result.content || result.html) {
-            // Fallback: parse any content returned
-            const blocks = parseHtmlIntoBlocks(result.content || result.html);
-            contentBlocks.push(...blocks);
           } else {
-            // This should not happen with Training Engine
-            console.error('Training Engine returned no content:', result);
-            throw new Error('Training Engine returned no content');
+            throw new Error('No content found in processed result');
           }
 
           totalBlocks += contentBlocks.length;

@@ -324,6 +324,32 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
                 </div>
               )}
             </div>
+          ) : !extractionResults ? (
+            // Show manual start button like Legacy Training Interface
+            <div className="text-center py-8">
+              <div className="flex items-center justify-center space-x-3 mb-4">
+                <Play className="h-8 w-8 text-green-600" />
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900">Ready to Extract Content</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Click below to start processing {processingData.resources?.length || 0} uploaded resource(s)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setHasStartedExtraction(true);
+                  startExtraction();
+                }}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Play className="h-5 w-5" />
+                <span>Start Content Extraction</span>
+              </button>
+              <p className="text-xs text-gray-500 mt-3">
+                This will process your uploaded files and extract structured content blocks
+              </p>
+            </div>
           ) : extractionResults ? (
             <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-600" />

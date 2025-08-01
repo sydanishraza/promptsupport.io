@@ -800,11 +800,11 @@ class DocumentPreprocessor:
                 # Distribute images across chunks based on original document position
                 self._distribute_images_to_chunks(chunks, images)
             
-            # Validate all chunks are within processing limits
+            # Validate all chunks are within processing limits - increased thresholds
             valid_chunks = []
             for chunk in chunks:
                 chunk_size = len(chunk['content'])
-                if chunk_size > 60000:  # ~15K tokens - still manageable for modern LLMs
+                if chunk_size > 150000:  # ~35K tokens - much higher threshold to avoid over-splitting
                     print(f"⚠️ Chunk too large, splitting further: {chunk['title']} ({chunk_size} chars)")
                     # Split large chunk into smaller pieces
                     sub_chunks = self._split_large_chunk(chunk)
@@ -812,7 +812,7 @@ class DocumentPreprocessor:
                 else:
                     valid_chunks.append(chunk)
             
-            print(f"📋 OPTIMIZED: Created {len(valid_chunks)} manageable chunks (max ~15K tokens each)")
+            print(f"📋 OPTIMIZED: Created {len(valid_chunks)} manageable H1-based chunks")
             return valid_chunks
             
         except Exception as e:

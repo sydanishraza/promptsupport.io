@@ -586,6 +586,7 @@ const TrainingInterface = () => {
       )}
     </div>
   );
+  };
 
   return (
     <div className="h-full bg-gray-50">

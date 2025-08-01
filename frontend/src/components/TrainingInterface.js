@@ -431,19 +431,24 @@ const TrainingInterface = () => {
   );
 
   // Results panel
-  const ResultsPanel = () => (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Processing Results</h3>
-        {activeSession && (
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Clock className="h-4 w-4" />
-            <span>{new Date(activeSession.timestamp).toLocaleTimeString()}</span>
-          </div>
-        )}
-      </div>
-      
-      {processingResults.length > 0 ? (
+  const ResultsPanel = () => {
+    // Debug logging for troubleshooting
+    console.log('ResultsPanel rendering with:', processingResults.length, 'articles');
+    console.log('Processing results:', processingResults);
+    
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Processing Results</h3>
+          {activeSession && (
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Clock className="h-4 w-4" />
+              <span>{new Date(activeSession.timestamp).toLocaleTimeString()}</span>
+            </div>
+          )}
+        </div>
+        
+        {processingResults.length > 0 ? (
         <div className="space-y-4">
           {/* Summary */}
           <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">

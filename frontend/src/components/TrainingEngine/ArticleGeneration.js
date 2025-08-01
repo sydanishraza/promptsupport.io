@@ -119,7 +119,6 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
     
     // Get content from chunk - handle different property names
     const chunkContent = chunk.content || chunk.html || chunk.text || chunk.updated_content || '';
-    console.log('Processing chunk content:', chunkContent.length, 'characters');
     
     // Simulate improved content generation
     const improvedContent = await simulateLLMRewrite(chunkContent);

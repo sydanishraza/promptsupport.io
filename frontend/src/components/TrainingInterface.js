@@ -702,7 +702,6 @@ const TrainingInterface = () => {
           </div>
         </div>
       )}
-    }
     </div>
   );
 };

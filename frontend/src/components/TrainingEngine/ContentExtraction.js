@@ -56,23 +56,13 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           console.log('Resource file:', resource.file);
           console.log('File type:', typeof resource.file);
 
-          // Validate file object
-          if (!resource.file) {
-            throw new Error('No file object found in resource');
-          }
-
-          if (!(resource.file instanceof File) && typeof resource.file !== 'string') {
-            throw new Error(`Invalid file type: ${typeof resource.file}`);
-          }
-
-          // Get backend URL from environment
-          const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-          console.log('Backend URL:', backendUrl);
+          // Get backend URL exactly like Legacy Training Interface
+          const backendUrl = process.env.REACT_APP_BACKEND_URL;
           
-          // Create FormData for the API call
+          // Create FormData exactly like Legacy Training Interface
           const formData = new FormData();
           
-          // Handle file vs URL resource
+          // Handle file vs URL resource exactly like Legacy Training Interface
           if (resource.file instanceof File) {
             formData.append('file', resource.file);
             console.log('Added File object to FormData');
@@ -85,10 +75,10 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           formData.append('template_id', 'content_extraction_pipeline');
           formData.append('training_mode', 'true');
           
-          // Use the same approach as Legacy Training Interface
           console.log('Making API call to:', `${backendUrl}/api/training/process`);
           console.log('Starting API call - this may take several minutes for large files...');
           
+          // Use exact same fetch call as Legacy Training Interface
           const response = await fetch(`${backendUrl}/api/training/process`, {
             method: 'POST',
             body: formData

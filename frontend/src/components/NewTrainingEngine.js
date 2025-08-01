@@ -168,9 +168,9 @@ const NewTrainingEngine = () => {
                 <Brain className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Training Engine</h1>
+                <h1 className="text-2xl font-bold text-gray-900">New Training Engine</h1>
                 <p className="text-sm text-gray-600 mt-1">
-                  Advanced AI model training and optimization platform
+                  Modular AI training pipeline with sequential workflow
                 </p>
               </div>
             </div>
@@ -180,116 +180,181 @@ const NewTrainingEngine = () => {
               NEW
             </div>
             <div className="text-sm text-gray-500">
-              Ready for training
+              Step {currentStep + 1} of {pipelineSteps.length}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Pipeline Progress */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Training Pipeline Progress</h2>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={previousStep}
+              disabled={currentStep === 0}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                currentStep === 0
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Previous</span>
+            </button>
+            <button
+              onClick={nextStep}
+              disabled={currentStep === pipelineSteps.length - 1 || stepStatuses[pipelineSteps[currentStep].id] !== 'completed'}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                currentStep === pipelineSteps.length - 1 || stepStatuses[pipelineSteps[currentStep].id] !== 'completed'
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              <span>Next</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-4 overflow-x-auto pb-2">
+          {pipelineSteps.map((step, index) => {
+            const IconComponent = step.icon;
+            const isActive = index === currentStep;
+            const isCompleted = stepStatuses[step.id] === 'completed';
+            const isProcessing = stepStatuses[step.id] === 'processing';
+            const canNavigate = canNavigateToStep(index);
+            
+            return (
+              <div key={step.id} className="flex items-center flex-shrink-0">
+                <div
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                    isActive
+                      ? `bg-${step.color}-100 border-2 border-${step.color}-500`
+                      : canNavigate
+                      ? 'bg-white border border-gray-200 hover:border-gray-300'
+                      : 'bg-gray-50 border border-gray-200 opacity-50 cursor-not-allowed'
+                  }`}
+                  onClick={() => canNavigate && goToStep(index)}
+                >
+                  <div className={`p-2 rounded-lg ${
+                    isActive
+                      ? `bg-${step.color}-200`
+                      : isCompleted
+                      ? 'bg-green-100'
+                      : 'bg-gray-100'
+                  }`}>
+                    <IconComponent className={`h-5 w-5 ${
+                      isActive
+                        ? `text-${step.color}-700`
+                        : isCompleted
+                        ? 'text-green-600'
+                        : 'text-gray-500'
+                    }`} />
+                  </div>
+                  <div>
+                    <div className={`text-sm font-medium ${
+                      isActive
+                        ? `text-${step.color}-900`
+                        : isCompleted
+                        ? 'text-green-900'
+                        : 'text-gray-700'
+                    }`}>
+                      {step.name}
+                    </div>
+                    <div className="flex items-center space-x-2 mt-1">
+                      {getStatusIcon(getStepStatus(step.id))}
+                      <span className="text-xs text-gray-500">
+                        {getStepStatus(step.id) === 'completed' ? 'Complete' : 
+                         getStepStatus(step.id) === 'processing' ? 'Processing...' :
+                         getStepStatus(step.id) === 'error' ? 'Error' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {index < pipelineSteps.length - 1 && (
+                  <ChevronRight className="h-5 w-5 text-gray-400 mx-2 flex-shrink-0" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
       <div className="p-6">
-        {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start space-x-3">
-            <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+        {/* Current Step Info */}
+        <div className="mb-6 bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className={`p-2 bg-${pipelineSteps[currentStep].color}-100 rounded-lg`}>
+              {React.createElement(pipelineSteps[currentStep].icon, {
+                className: `h-6 w-6 text-${pipelineSteps[currentStep].color}-600`
+              })}
+            </div>
             <div>
-              <h3 className="text-sm font-medium text-blue-900 mb-1">
-                Fresh Start - New Training Engine
-              </h3>
-              <p className="text-sm text-blue-700">
-                This is the foundation for our new training system. Select a pipeline below to begin training AI models 
-                for enhanced content processing, generation, and quality assurance.
+              <h2 className="text-xl font-semibold text-gray-900">
+                {pipelineSteps[currentStep].name}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {pipelineSteps[currentStep].description}
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Pipeline Selection */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Training Pipelines
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-            {trainingPipelines.map((pipeline) => (
-              <PipelineCard
-                key={pipeline.id}
-                pipeline={pipeline}
-                isSelected={selectedPipeline === pipeline.id}
-                onSelect={setSelectedPipeline}
-                onStart={handlePipelineStart}
-              />
-            ))}
+          
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700">Status:</span>
+              {getStatusIcon(getStepStatus(pipelineSteps[currentStep].id))}
+              <span className={`text-sm font-medium ${
+                getStepStatus(pipelineSteps[currentStep].id) === 'completed' ? 'text-green-600' :
+                getStepStatus(pipelineSteps[currentStep].id) === 'processing' ? 'text-blue-600' :
+                getStepStatus(pipelineSteps[currentStep].id) === 'error' ? 'text-red-600' :
+                'text-gray-600'
+              }`}>
+                {getStepStatus(pipelineSteps[currentStep].id) === 'completed' ? 'Completed' : 
+                 getStepStatus(pipelineSteps[currentStep].id) === 'processing' ? 'Processing...' :
+                 getStepStatus(pipelineSteps[currentStep].id) === 'error' ? 'Error occurred' : 'Ready to start'}
+              </span>
+            </div>
+            <div className="text-sm text-gray-500">
+              Module: {pipelineSteps[currentStep].id}_pipeline
+            </div>
           </div>
         </div>
 
-        {/* Training Status */}
-        {pipelineStatus !== 'idle' && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Training Status
-            </h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
-                  Pipeline: {trainingPipelines.find(p => p.id === selectedPipeline)?.name}
-                </span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  pipelineStatus === 'running'
-                    ? 'bg-blue-100 text-blue-800'
-                    : pipelineStatus === 'completed'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {pipelineStatus}
-                </span>
+        {/* Step Component */}
+        <div className="mb-6">
+          {getCurrentStepComponent()}
+        </div>
+
+        {/* Pipeline Overview */}
+        {currentStep === 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-start space-x-3">
+              <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-medium text-blue-900 mb-2">
+                  Welcome to the New Training Engine
+                </h3>
+                <p className="text-sm text-blue-700 mb-3">
+                  This modular training pipeline will guide you through the complete process of content training:
+                </p>
+                <ol className="text-sm text-blue-700 space-y-1">
+                  <li>1. <strong>Upload Resources:</strong> Start by uploading documents or providing URLs</li>
+                  <li>2. <strong>Extract Content:</strong> Parse and structure your content with block IDs</li>
+                  <li>3. <strong>Chunk & Tokenize:</strong> Split content intelligently based on document structure</li>
+                  <li>4. <strong>Process Images:</strong> Handle image extraction and contextual placement</li>
+                  <li>5. <strong>Generate Articles:</strong> Use AI to create improved, comprehensive articles</li>
+                  <li>6. <strong>Quality Assurance:</strong> Evaluate and score the generated content</li>
+                </ol>
+                <p className="text-sm text-blue-700 mt-3">
+                  Each step builds on the previous one, creating a comprehensive training dataset for your AI models.
+                </p>
               </div>
-              
-              {pipelineStatus === 'running' && (
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '45%' }}></div>
-                </div>
-              )}
-              
-              {pipelineStatus === 'completed' && (
-                <div className="flex items-center space-x-2 text-green-600">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="text-sm font-medium">Training completed successfully!</span>
-                </div>
-              )}
             </div>
           </div>
         )}
-
-        {/* Future Features Preview */}
-        <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Coming Soon
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-gray-400" />
-              <div>
-                <div className="text-sm font-medium text-gray-900">Training Analytics</div>
-                <div className="text-xs text-gray-500">Performance metrics & insights</div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              <Settings className="h-5 w-5 text-gray-400" />
-              <div>
-                <div className="text-sm font-medium text-gray-900">Custom Pipelines</div>
-                <div className="text-xs text-gray-500">Build your own training workflows</div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              <Rocket className="h-5 w-5 text-gray-400" />
-              <div>
-                <div className="text-sm font-medium text-gray-900">Auto-scaling</div>
-                <div className="text-xs text-gray-500">Dynamic resource allocation</div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

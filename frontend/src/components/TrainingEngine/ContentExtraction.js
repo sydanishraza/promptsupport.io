@@ -105,6 +105,8 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           });
 
           clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
+          console.log('API response status:', response.status);
           console.log('API response headers:', response.headers);
 
           if (!response.ok) {

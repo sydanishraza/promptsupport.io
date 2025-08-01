@@ -101,10 +101,10 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
 
       const totalProcessedImages = results.reduce((sum, r) => sum + r.totalImages, 0);
       const avgCaptionLength = results.reduce((sum, r) => 
-        sum + r.articles.reduce((artSum, art) => 
-          artSum + art.images.reduce((imgSum, img) => imgSum + (img.caption?.length || 0), 0), 0
+        sum + r.chunks.reduce((chunkSum, chunk) => 
+          chunkSum + chunk.processed_images.reduce((imgSum, img) => imgSum + (img.caption?.length || 0), 0), 0
         ), 0
-      ) / totalProcessedImages;
+      ) / Math.max(totalProcessedImages, 1);
 
       setProcessingResults({
         resources: results,

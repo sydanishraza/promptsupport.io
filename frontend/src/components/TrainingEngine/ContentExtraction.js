@@ -349,14 +349,36 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Processing Status</h3>
           
           {processing ? (
-            <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
-              <div>
-                <div className="font-medium text-blue-900">Extracting Content...</div>
-                <div className="text-sm text-blue-700">
-                  Processing {processingData.resources?.length || 0} resource(s)
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
+                <div>
+                  <div className="font-medium text-blue-900">Extracting Content...</div>
+                  <div className="text-sm text-blue-700">
+                    Processing {processingData.resources?.length || 0} resource(s) • Large files may take 3-5 minutes
+                  </div>
                 </div>
               </div>
+              
+              {processingStats && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-blue-900">Progress</span>
+                    <span className="text-sm text-blue-700">
+                      {processingStats.processed} / {processingStats.total} files
+                    </span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${(processingStats.processed / processingStats.total) * 100}%` }}
+                    ></div>
+                  </div>
+                  <div className="text-xs text-blue-600 mt-2">
+                    💡 Large DOCX files with images may require extra processing time
+                  </div>
+                </div>
+              )}
             </div>
           ) : extractionResults ? (
             <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">

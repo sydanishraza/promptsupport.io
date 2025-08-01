@@ -127,6 +127,15 @@ const TrainingInterface = () => {
     };
   }, [isProcessing, processingStartTime]);
 
+  // FIXED: Add useEffect to properly handle results display synchronization
+  useEffect(() => {
+    // Only show results when we actually have processing results
+    if (processingResults.length > 0 && !showResults) {
+      console.log('Results available, showing results panel:', processingResults.length, 'articles');
+      setShowResults(true);
+    }
+  }, [processingResults, showResults]);
+
   // File upload handler
   const handleFileUpload = (event) => {
     const file = event.target.files[0];

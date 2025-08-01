@@ -88,11 +88,6 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
             images_processed: processedImagesList.length,
             processed_images: processedImagesList
           });
-            title: article.title,
-            images: processedImages,
-            updatedContent: updatedContent,
-            imageCount: processedImages.length
-          });
         }
 
         results.push({

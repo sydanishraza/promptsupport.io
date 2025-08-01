@@ -672,8 +672,9 @@ class DocumentPreprocessor:
     
     def _create_structural_html_chunks(self, html_content: str, images: list) -> list:
         """
-        OPTIMIZED: Create properly-sized chunks for large document processing
-        Breaks at H1 boundaries OR when chunks exceed manageable token limits (8K tokens max)
+        FIXED: Create logical article chunks based ONLY on H1 headings
+        Each H1 section becomes exactly ONE article, regardless of size
+        This ensures documents generate the expected number of logical articles
         """
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
@@ -691,55 +692,31 @@ class DocumentPreprocessor:
             has_h1_structure = len(h1_elements) > 0
             
             print(f"📊 Document analysis: {len(h1_elements)} H1 elements found")
+            print(f"🎯 LOGICAL CHUNKING: Each H1 section will become exactly ONE article")
             
             if not has_h1_structure:
-                # FALLBACK: No H1 structure - create size-based chunks
-                print("📄 No H1 structure detected - using size-based chunking")
+                # FALLBACK: No H1 structure - create single comprehensive chunk
+                print("📄 No H1 structure detected - creating single comprehensive article")
                 all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
                 
-                current_chunk_elements = []
-                chunk_counter = 1
-                
-                for element in all_elements:
-                    current_chunk_elements.append(element)
-                    
-                    # Check chunk size every few elements (20K tokens ≈ 80K characters - larger chunks for better content)
-                    if len(current_chunk_elements) % 20 == 0:  # Check every 20 elements
-                        chunk_html = self._create_chunk_html(current_chunk_elements)
-                        if len(chunk_html) > 80000:  # ~20K tokens limit - larger for better content extraction
-                            # Save current chunk
-                            if self._is_chunk_valid(chunk_html):
-                                chunks.append({
-                                    'section_id': f'chunk_{chunk_counter}',
-                                    'title': f'Section {chunk_counter}',
-                                    'content': chunk_html,
-                                    'images': []
-                                })
-                                print(f"✅ Size-based chunk created: Section {chunk_counter} ({len(chunk_html)} chars)")
-                            
-                            # Start new chunk
-                            chunk_counter += 1
-                            current_chunk_elements = []
-                
-                # Add final chunk
-                if current_chunk_elements:
-                    chunk_html = self._create_chunk_html(current_chunk_elements)
-                    if self._is_chunk_valid(chunk_html):
-                        chunks.append({
-                            'section_id': f'chunk_{chunk_counter}',
-                            'title': f'Section {chunk_counter}',
-                            'content': chunk_html,
-                            'images': []
-                        })
-                        print(f"✅ Final size-based chunk created: Section {chunk_counter} ({len(chunk_html)} chars)")
+                # Create one comprehensive chunk for the entire document
+                chunk_html = self._create_chunk_html(all_elements)
+                if self._is_chunk_valid(chunk_html):
+                    chunks.append({
+                        'section_id': 'full_document',
+                        'title': 'Complete Document',
+                        'content': chunk_html,
+                        'images': images  # All images go to this single chunk
+                    })
+                    print(f"✅ Comprehensive article created: Complete Document ({len(chunk_html)} chars)")
             
             else:
-                # H1-based chunking with size limits
-                print("📄 H1 structure detected - using H1-based chunking with size limits")
+                # H1-based chunking - LOGICAL STRUCTURE ONLY (no size limits)
+                print("📄 H1 structure detected - using PURE H1-based logical chunking")
                 
                 for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
                     
-                    # Break at H1 boundaries
+                    # Break ONLY at H1 boundaries - ignore size limits for logical structure
                     if element.name == 'h1':
                         # Save current chunk if it has content
                         if current_chunk_content:
@@ -751,39 +728,20 @@ class DocumentPreprocessor:
                                     'content': chunk_html,
                                     'images': chunk_images.get(current_section_id, [])
                                 })
-                                print(f"✅ H1 chunk created: {current_title} ({len(chunk_html)} chars)")
+                                print(f"✅ LOGICAL H1 article created: {current_title} ({len(chunk_html)} chars)")
                         
                         # Start new chunk
                         section_counter += 1
                         current_section_id = f"section_{section_counter}"
-                        current_title = element.get_text().strip()[:50] + ("..." if len(element.get_text()) > 50 else "")
+                        # Get clean title from H1 text
+                        h1_text = element.get_text().strip()
+                        current_title = h1_text[:100] + ("..." if len(h1_text) > 100 else "")
                         current_chunk_content = [element]
                         chunk_images[current_section_id] = []
                     
                     else:
-                        # Add to current chunk
+                        # Add to current chunk - NO SIZE LIMITS for logical structure
                         current_chunk_content.append(element)
-                        
-                        # CRITICAL: Check size limits with larger thresholds for better content (30K tokens ≈ 120K characters)
-                        current_chunk_html = self._create_chunk_html(current_chunk_content)
-                        if len(current_chunk_html) > 120000:  # ~30K tokens - much larger chunks for meaningful content
-                            # Save current chunk before it gets too large
-                            chunks.append({
-                                'section_id': current_section_id,
-                                'title': current_title,
-                                'content': current_chunk_html,
-                                'images': chunk_images.get(current_section_id, [])
-                            })
-                            print(f"✅ Size-limited H1 chunk created: {current_title} ({len(current_chunk_html)} chars)")
-                            
-                            # FIXED: Create clean sub-chunk title without accumulation
-                            section_counter += 1
-                            base_title = current_title.split(' (Part')[0]  # Get original title without parts
-                            part_number = 2  # This is part 2 of the original section
-                            current_section_id = f"section_{section_counter}"
-                            current_title = f"{base_title} (Part {part_number})"
-                            current_chunk_content = []
-                            chunk_images[current_section_id] = []
                 
                 # Add final chunk
                 if current_chunk_content:
@@ -795,25 +753,15 @@ class DocumentPreprocessor:
                             'content': chunk_html,
                             'images': chunk_images.get(current_section_id, [])
                         })
-                        print(f"✅ Final H1 chunk created: {current_title} ({len(chunk_html)} chars)")
+                        print(f"✅ Final LOGICAL H1 article created: {current_title} ({len(chunk_html)} chars)")
                 
                 # Distribute images across chunks based on original document position
                 self._distribute_images_to_chunks(chunks, images)
             
-            # Validate all chunks are within processing limits - increased thresholds
-            valid_chunks = []
-            for chunk in chunks:
-                chunk_size = len(chunk['content'])
-                if chunk_size > 150000:  # ~35K tokens - much higher threshold to avoid over-splitting
-                    print(f"⚠️ Chunk too large, splitting further: {chunk['title']} ({chunk_size} chars)")
-                    # Split large chunk into smaller pieces
-                    sub_chunks = self._split_large_chunk(chunk)
-                    valid_chunks.extend(sub_chunks)
-                else:
-                    valid_chunks.append(chunk)
-            
-            print(f"📋 OPTIMIZED: Created {len(valid_chunks)} manageable H1-based chunks")
-            return valid_chunks
+            # NO sub-chunking validation - preserve logical structure
+            print(f"🎯 LOGICAL CHUNKING COMPLETE: Created {len(chunks)} articles based on document structure")
+            print(f"📋 Articles: {[chunk['title'] for chunk in chunks]}")
+            return chunks
             
         except Exception as e:
             print(f"❌ Structural chunking failed: {e}")

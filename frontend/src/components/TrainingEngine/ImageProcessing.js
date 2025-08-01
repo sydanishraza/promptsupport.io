@@ -541,7 +541,7 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
                         ) : (
                           <div className="text-center py-4 text-gray-500">
                             <Image className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                            <p className="text-sm">No images found in this article</p>
+                            <p className="text-sm">No images found in this chunk</p>
                           </div>
                         )}
                       </div>

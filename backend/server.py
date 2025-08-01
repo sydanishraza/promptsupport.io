@@ -828,6 +828,7 @@ class DocumentPreprocessor:
     def _split_large_chunk(self, large_chunk: dict) -> list:
         """
         Split a chunk that's too large into smaller, manageable pieces
+        FIXED: Prevent recursive title accumulation
         """
         try:
             from bs4 import BeautifulSoup
@@ -835,21 +836,23 @@ class DocumentPreprocessor:
             
             sub_chunks = []
             current_elements = []
-            base_title = large_chunk['title']
+            
+            # FIXED: Get base title without accumulated parts
+            base_title = large_chunk['title'].split(' (Part')[0]
             sub_counter = 1
             
-            # Split into smaller chunks based on element count and size
+            # Split into larger sub-chunks (50K chars instead of 30K)
             for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
                 current_elements.append(element)
                 
-                # Check size every 5 elements
-                if len(current_elements) % 5 == 0:
+                # Check size every 10 elements (increased from 5)
+                if len(current_elements) % 10 == 0:
                     current_html = ''.join(str(el) for el in current_elements)
-                    if len(current_html) > 30000:  # ~7.5K tokens
-                        # Save sub-chunk
+                    if len(current_html) > 50000:  # ~12K tokens (increased from 7.5K)
+                        # Save sub-chunk with clean title
                         sub_chunks.append({
                             'section_id': f"{large_chunk['section_id']}_part_{sub_counter}",
-                            'title': f"{base_title} (Part {sub_counter})",
+                            'title': f"{base_title} (Part {sub_counter})",  # Clean title
                             'content': current_html,
                             'images': []  # Images will be distributed later
                         })
@@ -862,10 +865,10 @@ class DocumentPreprocessor:
             # Add final sub-chunk
             if current_elements:
                 final_html = ''.join(str(el) for el in current_elements)
-                if len(final_html) > 500:  # Minimum size
+                if len(final_html) > 1000:  # Minimum size (increased from 500)
                     sub_chunks.append({
                         'section_id': f"{large_chunk['section_id']}_part_{sub_counter}",
-                        'title': f"{base_title} (Part {sub_counter})",
+                        'title': f"{base_title} (Part {sub_counter})",  # Clean title
                         'content': final_html,
                         'images': []
                     })

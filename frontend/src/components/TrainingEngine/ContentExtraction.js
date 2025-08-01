@@ -105,6 +105,7 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
             contentBlocks,
             metadata,
             totalBlocks: contentBlocks.length,
+            totalTokens: contentBlocks.reduce((sum, block) => sum + (block.tokens || 0), 0),
             extraction_method: 'backend_processing',
             status: 'extracted'
           };

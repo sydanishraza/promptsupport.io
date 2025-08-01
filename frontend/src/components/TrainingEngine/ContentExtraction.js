@@ -167,13 +167,22 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
         } catch (error) {
           console.error(`Error processing resource ${resource.name}:`, error);
           
+          // Clear timeout on error
+          if (error.name === 'AbortError') {
+            console.error('Processing timed out - file may be too large or backend overloaded');
+          }
+          
           // Create error result but don't fail entire process
           const errorResult = {
             resource_id: resource.resource_id,
             resource_name: resource.name,
             resource_type: resource.resource_type || 'file',
             contentBlocks: [],
-            metadata: { error: error.message },
+            metadata: { 
+              error: error.message,
+              error_type: error.name || 'ProcessingError',
+              timestamp: new Date().toISOString()
+            },
             totalBlocks: 0,
             totalTokens: 0,
             extraction_method: 'backend_processing',

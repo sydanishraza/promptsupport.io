@@ -58,30 +58,34 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           console.log('Resource file:', resource.file);
           console.log('File type:', typeof resource.file);
 
-          // Get backend URL exactly like Legacy Training Interface
+          // Use Knowledge Engine approach - /api/content/upload (CORS-free)
           const backendUrl = process.env.REACT_APP_BACKEND_URL;
           
-          // Create FormData exactly like Legacy Training Interface
+          // Create FormData like Knowledge Engine
           const formData = new FormData();
           
-          // Handle file vs URL resource exactly like Legacy Training Interface
           if (resource.file instanceof File) {
             formData.append('file', resource.file);
-            console.log('Added File object to FormData');
+            console.log('Added File object to FormData for Knowledge Engine API');
           } else if (typeof resource.file === 'string') {
-            // This is a URL resource
+            // For URL resources, still use file approach
             formData.append('url', resource.file);
-            console.log('Added URL to FormData:', resource.file);
+            console.log('Added URL to FormData for Knowledge Engine API:', resource.file);
           }
           
-          formData.append('template_id', 'content_extraction_pipeline');
-          formData.append('training_mode', 'true');
+          // Add metadata like Knowledge Engine
+          formData.append('metadata', JSON.stringify({
+            source: 'new_training_engine',
+            extraction_type: 'content_blocks',
+            training_mode: true,
+            pipeline_stage: 'content_extraction'
+          }));
           
-          console.log('Making API call to:', `${backendUrl}/api/training/process`);
-          console.log('Starting API call - this may take several minutes for large files...');
+          console.log('Making API call to Knowledge Engine endpoint:', `${backendUrl}/api/content/upload`);
+          console.log('Using CORS-free Knowledge Engine API...');
           
-          // Use exact same fetch call as Legacy Training Interface
-          const response = await fetch(`${backendUrl}/api/training/process`, {
+          // Use Knowledge Engine endpoint (no CORS issues)
+          const response = await fetch(`${backendUrl}/api/content/upload`, {
             method: 'POST',
             body: formData
           });

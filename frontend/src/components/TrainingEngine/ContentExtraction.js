@@ -128,6 +128,7 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
             contentBlocks: [],
             metadata: { error: error.message },
             totalBlocks: 0,
+            totalTokens: 0,
             extraction_method: 'backend_processing',
             status: 'error'
           };

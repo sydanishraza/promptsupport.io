@@ -175,6 +175,7 @@
     stuck_count: 1
     priority: "critical"
     needs_retesting: false
+    needs_retesting: false
     status_history:
         -working: true
         -agent: "main"

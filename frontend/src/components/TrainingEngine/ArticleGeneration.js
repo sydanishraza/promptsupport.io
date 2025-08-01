@@ -40,7 +40,7 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
   }, [processingData, processing, generationResults]);
 
   const startGeneration = async () => {
-    if (!processingData || !processingData.chunkingResults) {
+    if (!processingData || !processingData.imageProcessingResults) {
       return;
     }
 
@@ -53,13 +53,13 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
       let processedChunks = 0;
 
       // Count total chunks
-      processingData.chunkingResults.forEach(resource => {
+      processingData.imageProcessingResults.forEach(resource => {
         totalChunks += resource.chunks.length;
       });
 
       setProcessingProgress({ current: 0, total: totalChunks });
       
-      for (const resource of processingData.chunkingResults) {
+      for (const resource of processingData.imageProcessingResults) {
         const resourceArticles = [];
         
         for (const chunk of resource.chunks) {

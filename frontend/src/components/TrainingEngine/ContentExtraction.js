@@ -103,8 +103,6 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
             body: formData
           });
 
-          clearTimeout(timeoutId);
-          clearTimeout(timeoutId);
           console.log('API response status:', response.status);
           console.log('API response headers:', response.headers);
 

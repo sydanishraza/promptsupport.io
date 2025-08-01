@@ -139,7 +139,7 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
     return {
       article_id: `article_${chunk.chunk_id}`,
       title: chunk.title,
-      originalContent: chunk.content,
+      originalContent: chunkContent,
       improvedContent: improvedContent,
       tokens: chunk.tokens,
       qualityScore: qualityScore,

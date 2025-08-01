@@ -167,8 +167,23 @@ const TrainingInterface = () => {
       if (response.ok) {
         setProcessingStatus('Processing complete! Generating results...');
         const results = await response.json();
-        setProcessingResults(results.articles || []);
-        setShowResults(true);
+        
+        // Debug logging to track the issue
+        console.log('Backend response:', results);
+        console.log('Articles received:', results.articles?.length || 0);
+        
+        // FIXED: Only show results if we actually have articles
+        const articles = results.articles || [];
+        if (articles.length > 0) {
+          setProcessingResults(articles);
+          // Use setTimeout to ensure state update completes before showing results
+          setTimeout(() => {
+            setShowResults(true);
+          }, 100);
+        } else {
+          console.warn('No articles returned from backend processing');
+          setProcessingStatus('Processing completed but no articles were generated. Please check the document format.');
+        }
         
         // Create training session using the session_id returned from backend
         const session = {

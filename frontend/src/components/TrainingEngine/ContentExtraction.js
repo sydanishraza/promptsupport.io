@@ -92,8 +92,6 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           formData.append('template_id', 'content_extraction_pipeline');
           formData.append('training_mode', 'true');
           
-          console.log('Making API call to:', `${backendUrl}/api/training/process`);
-          
           // Use the same approach as Legacy Training Interface
           console.log('Making API call to:', `${backendUrl}/api/training/process`);
           console.log('Starting API call - this may take several minutes for large files...');

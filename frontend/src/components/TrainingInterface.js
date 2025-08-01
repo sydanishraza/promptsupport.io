@@ -356,6 +356,7 @@ const TrainingInterface = () => {
               <>
                 <TemplateSelector />
                 <FileUploadArea />
+                <ProcessingControl />
               </>
             )}
           </div>

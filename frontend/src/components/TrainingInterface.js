@@ -28,113 +28,54 @@ import {
   ChevronRight,
   Filter,
   Search,
-  Plus,
-  Minus,
-  Info
+  BookOpen,
+  CheckSquare,
+  Star,
+  TrendingUp,
+  Award,
+  Lightbulb,
+  Gauge
 } from 'lucide-react';
 
 const TrainingInterface = () => {
-  // Core state
-  const [selectedTemplate, setSelectedTemplate] = useState('document_upload');
-  const [templates, setTemplates] = useState([]);
+  // State management
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [processingResults, setProcessingResults] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
-  const [processingStartTime, setProcessingStartTime] = useState(null);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [activeSession, setActiveSession] = useState(null);
-  
-  // UI state
-  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const [processingResults, setProcessingResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [activeSession, setActiveSession] = useState(null);
   const [selectedResult, setSelectedResult] = useState(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  
-  // Training state
-  const [trainingHistory, setTrainingHistory] = useState([]);
   const [currentIteration, setCurrentIteration] = useState(0);
-  const [benchmarkScores, setBenchmarkScores] = useState({});
-  
-  // Get backend URL
-  const backendUrl = process.env.REACT_APP_BACKEND_URL;
+  const [trainingHistory, setTrainingHistory] = useState([]);
+  const [processingStartTime, setProcessingStartTime] = useState(null);
+  const [processingDuration, setProcessingDuration] = useState(0);
 
-  // Load default templates
-  useEffect(() => {
-    setTemplates([
-      {
-        id: 'document_upload',
-        name: 'Document Upload Processing',
-        category: 'File Processing',
-        description: 'Phase 1 template for processing uploaded documents (DOCX, PDF, PPT, Markdown, HTML)',
-        status: 'active',
-        version: '1.0',
-        template: {
-          input_context: 'Uploaded file containing structured documentation content (e.g., DOCX, PDF, Markdown, or HTML). May include headings, paragraphs, lists, tables, media, multiple topics, and metadata.',
-          processing_instructions: [
-            'Parse all text, layout, and structure from the source file',
-            'Classify and chunk content into logically grouped topics',
-            'Identify boundaries between sections, chapters, topics',
-            'Distribute extracted content into multiple articles if distinct topics are present',
-            'Discard boilerplate metadata like file info, TOC, author name, etc.',
-            'Apply smart formatting: use structured output (headings, lists, tables, callouts)',
-            'Insert relevant images/media in correct context'
-          ],
-          output_requirements: {
-            format: 'markdown',
-            structure: [
-              'Clear title (based on section or heading)',
-              'Hierarchical headings (H2, H3, H4)',
-              'Bulleted or numbered lists where appropriate',
-              'Code blocks or inline code if technical content is present',
-              'Callouts (Note, Tip, Caution) for emphasis'
-            ],
-            compatibility: ['HTML', 'WYSIWYG', 'Content Library']
-          },
-          media_handling: {
-            extraction: 'Detect and extract all embedded images/media',
-            storage: 'Save each image in the Assets Library with original filename and extension',
-            placement: 'Insert images at appropriate location in article content (not at the end)',
-            format: 'Image format must NOT be base64 — embed by reference to the stored asset',
-            captions: 'If captions exist, convert to paragraph or figcaption-style text'
-          },
-          target_module: 'Knowledge Base',
-          quality_benchmarks: [
-            'All sections from input doc are represented',
-            'No truncation or omission of important content',
-            'No duplication across articles',
-            'Images used = images extracted',
-            'Output matches tone and formatting of professional help center'
-          ]
-        }
-      }
-    ]);
-  }, []);
+  // Templates
+  const templates = [
+    {
+      id: 'doc_upload',
+      name: 'Document Upload Processing',
+      description: 'Process uploaded documents for knowledge extraction and article generation.',
+      icon: Upload,
+      color: 'blue'
+    }
+  ];
 
-  // Timer for processing elapsed time
+  // Timer for processing duration
   useEffect(() => {
     let timer;
     if (isProcessing && processingStartTime) {
       timer = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - processingStartTime) / 1000));
+        setProcessingDuration(Math.floor((Date.now() - processingStartTime) / 1000));
       }, 1000);
     } else {
-      setElapsedTime(0);
+      clearInterval(timer);
     }
-    
-    return () => {
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [isProcessing, processingStartTime]);
-
-  // FIXED: Add useEffect to properly handle results display synchronization
-  useEffect(() => {
-    // Only show results when we actually have processing results
-    if (processingResults.length > 0 && !showResults) {
-      console.log('Results available, showing results panel:', processingResults.length, 'articles');
-      setShowResults(true);
-    }
-  }, [processingResults, showResults]);
 
   // File upload handler
   const handleFileUpload = (event) => {
@@ -147,245 +88,143 @@ const TrainingInterface = () => {
 
   // Process with template
   const processWithTemplate = async () => {
-    if (!uploadedFile || !selectedTemplate) return;
-    
+    if (!uploadedFile || !selectedTemplate) {
+      alert('Please select a template and upload a file.');
+      return;
+    }
+
     setIsProcessing(true);
-    setProcessingResults([]);
-    setProcessingStatus('Preparing document for processing...');
+    setProcessingStatus('Starting document processing...');
     setProcessingStartTime(Date.now());
-    
+    setShowResults(false);
+
     try {
-      const template = templates.find(t => t.id === selectedTemplate);
       const formData = new FormData();
       formData.append('file', uploadedFile);
       formData.append('template_id', selectedTemplate);
-      formData.append('training_mode', 'true');
-      
-      // Add template instructions as metadata
-      formData.append('template_instructions', JSON.stringify(template.template));
-      
-      setProcessingStatus('Uploading document and extracting content...');
-      
-      const response = await fetch(`${backendUrl}/api/training/process`, {
+
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/training/process`, {
         method: 'POST',
         body: formData,
-        // Add timeout handling for long-running processing  
-        signal: AbortSignal.timeout(600000) // 10 minutes timeout (increased from 5 minutes)
+        timeout: 600000 // 10 minutes timeout
       });
-      
+
       if (response.ok) {
         setProcessingStatus('Processing complete! Generating results...');
         const results = await response.json();
-        console.log('Backend response received:', results.articles?.length, 'articles');
+        console.log('🔍 Backend response received:', results.articles?.length || 0, 'articles');
         setProcessingResults(results.articles || []);
         setShowResults(true);
-        
-        // Create training session using the session_id returned from backend
+
+        // Create training session
         const session = {
-          id: results.session_id || Date.now().toString(), // Use backend session_id
-          session_id: results.session_id, // Store the actual session_id for PDF downloads
-          template_id: selectedTemplate,
+          id: results.session_id || Date.now().toString(),
           filename: uploadedFile.name,
+          template_id: selectedTemplate,
           timestamp: new Date().toISOString(),
           articles_generated: results.articles?.length || 0,
           images_processed: results.images_processed || 0,
-          processing_time: results.processing_time || 0
+          processing_time: results.processing_time || 0,
+          status: 'completed'
         };
-        
+
         setActiveSession(session);
         setTrainingHistory(prev => [session, ...prev]);
-        
-        setProcessingStatus(`Successfully generated ${results.articles?.length || 0} articles in ${results.processing_time || 0}s`);
-        
+        setProcessingStatus(`✅ Processing completed successfully! Generated ${results.articles?.length || 0} articles in ${results.processing_time || 0}s`);
+
       } else {
-        console.error('Processing failed:', response.status);
-        setProcessingStatus('Processing failed. Please try again.');
+        const errorData = await response.json();
+        setProcessingStatus(`❌ Error: ${errorData.detail || 'Processing failed'}`);
       }
     } catch (error) {
-      if (error.name === 'TimeoutError') {
-        setProcessingStatus('Processing timed out. The document may be too large or complex.');
-      } else {
-        console.error('Error processing file:', error);
-        setProcessingStatus('An error occurred during processing. Please try again.');
-      }
+      console.error('Processing error:', error);
+      setProcessingStatus(`❌ Error: ${error.message || 'Processing failed'}`);
     } finally {
       setIsProcessing(false);
       setProcessingStartTime(null);
     }
   };
 
-  // Download PDF function
-  const downloadArticlePDF = async (sessionId, articleIndex, articleTitle) => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/training/article/${sessionId}/${articleIndex}/download-pdf`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
-      }
-      
-      // Create blob from response
-      const blob = await response.blob();
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Lab_${articleTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      console.log('PDF downloaded successfully');
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      alert('Failed to download PDF. Please try again.');
-    }
-  };
-
-  // Evaluate result
-  const evaluateResult = async (resultId, evaluation) => {
-    try {
-      const response = await fetch(`${backendUrl}/api/training/evaluate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          session_id: activeSession?.id,
-          result_id: resultId,
-          evaluation: evaluation, // 'accept', 'reject', 'flag'
-          feedback: evaluation.feedback || ''
-        })
-      });
-      
-      if (response.ok) {
-        // Update local state
-        setProcessingResults(prev => 
-          prev.map(result => 
-            result.id === resultId 
-              ? { ...result, evaluation: evaluation.status }
-              : result
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error evaluating result:', error);
-    }
-  };
-
-  // Template selector
+  // Template Selector Component
   const TemplateSelector = () => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Lab Templates</h3>
-      
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Template</h3>
       <div className="space-y-3">
-        {templates.map(template => (
-          <div
-            key={template.id}
-            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-              selectedTemplate === template.id
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => setSelectedTemplate(template.id)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2">
+        {templates.map((template) => {
+          const IconComponent = template.icon;
+          return (
+            <div
+              key={template.id}
+              className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                selectedTemplate === template.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setSelectedTemplate(template.id)}
+            >
+              <div className="flex items-center space-x-3">
+                <IconComponent className={`h-5 w-5 text-${template.color}-600`} />
+                <div className="flex-1">
                   <h4 className="font-medium text-gray-900">{template.name}</h4>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    template.status === 'active' 
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {template.status}
-                  </span>
+                  <p className="text-sm text-gray-600">{template.description}</p>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                  <span>Category: {template.category}</span>
-                  <span>Version: {template.version}</span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <Settings className="h-5 w-5 text-gray-400" />
+                {selectedTemplate === template.id && (
+                  <CheckCircle className="h-5 w-5 text-blue-600" />
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      
-      <button
-        onClick={() => setShowTemplateEditor(true)}
-        className="mt-4 flex items-center space-x-2 text-blue-600 hover:text-blue-800 text-sm"
-      >
-        <Plus className="h-4 w-4" />
-        <span>Add New Template</span>
-      </button>
     </div>
   );
 
-  // File upload area
+  // File Upload Area Component
   const FileUploadArea = () => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Test Document</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload Document</h3>
       
-      <div className="space-y-4">
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-          <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <div className="space-y-2">
-            <p className="text-sm text-gray-600">
-              Upload a document to test with the selected template
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+        <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        {uploadedFile ? (
+          <div>
+            <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 mb-2">
+              Drop your document here or click to browse
             </p>
             <p className="text-xs text-gray-500">
-              Supports: DOCX, PDF, PPT, Markdown, HTML
+              Supports DOCX, PDF, PPT, TXT files
             </p>
-          </div>
-          <input
-            type="file"
-            accept=".docx,.pdf,.ppt,.pptx,.md,.html,.txt"
-            onChange={handleFileUpload}
-            className="hidden"
-            id="file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="mt-4 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
-          >
-            Choose File
-          </label>
-        </div>
-        
-        {uploadedFile && (
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            <FileText className="h-5 w-5 text-blue-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
-              <p className="text-xs text-gray-500">
-                {(uploadedFile.size / 1024).toFixed(1)} KB
-              </p>
-            </div>
-            <button
-              onClick={() => setUploadedFile(null)}
-              className="text-red-600 hover:text-red-800"
-            >
-              <XCircle className="h-5 w-5" />
-            </button>
-          </div>
+          </>
         )}
-        
+        <input
+          type="file"
+          onChange={handleFileUpload}
+          accept=".docx,.pdf,.ppt,.pptx,.txt"
+          className="mt-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
+      </div>
+
+      {selectedTemplate && uploadedFile && (
         <button
           onClick={processWithTemplate}
-          disabled={!uploadedFile || !selectedTemplate || isProcessing}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          disabled={isProcessing}
+          className={`mt-4 w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium ${
+            isProcessing
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
         >
           {isProcessing ? (
             <>
               <RefreshCw className="h-4 w-4 animate-spin" />
-              <span>Processing...</span>
+              <span>Processing... ({processingDuration}s)</span>
             </>
           ) : (
             <>
@@ -394,47 +233,30 @@ const TrainingInterface = () => {
             </>
           )}
         </button>
-        
-        {/* Processing Status Display */}
-        {isProcessing && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center space-x-2 mb-2">
-              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-              <h3 className="font-medium text-blue-900">Processing Document</h3>
-            </div>
-            <p className="text-sm text-blue-700 mb-2">{processingStatus}</p>
-            {processingStartTime && (
-              <div className="text-xs text-blue-600">
-                Elapsed: {elapsedTime}s
-                <br />
-                <span className="text-amber-600">This may take 1-3 minutes for comprehensive processing...</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      )}
+
+      {processingStatus && (
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-700">{processingStatus}</p>
+        </div>
+      )}
     </div>
   );
 
-  // Results panel
-  const ResultsPanel = () => {
-    // Debug logging for troubleshooting
-    console.log('ResultsPanel rendering with:', processingResults.length, 'articles');
-    console.log('Processing results:', processingResults);
-    
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Processing Results</h3>
-          {activeSession && (
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Clock className="h-4 w-4" />
-              <span>{new Date(activeSession.timestamp).toLocaleTimeString()}</span>
-            </div>
-          )}
-        </div>
-        
-        {processingResults.length > 0 ? (
+  // Results Panel Component  
+  const ResultsPanel = () => (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Processing Results</h3>
+        {activeSession && (
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <Clock className="h-4 w-4" />
+            <span>{new Date(activeSession.timestamp).toLocaleTimeString()}</span>
+          </div>
+        )}
+      </div>
+      
+      {processingResults.length > 0 ? (
         <div className="space-y-4">
           {/* Summary */}
           <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
@@ -457,131 +279,33 @@ const TrainingInterface = () => {
               <div className="text-sm text-gray-600">Processing Time</div>
             </div>
           </div>
-          
-          {/* Results List */}
+
+          {/* Articles List */}
           <div className="space-y-3">
+            <h4 className="font-medium text-gray-900">Generated Articles:</h4>
             {processingResults.map((result, index) => (
               <div
                 key={result.id || index}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+                className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 cursor-pointer"
+                onClick={() => setSelectedResult(result)}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 mb-2">
-                      {result.title || `Article ${index + 1}`}
-                    </h4>
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                      {result.content ? result.content.substring(0, 200) + '...' : 'No content preview'}
+                    <h5 className="font-medium text-gray-900">{result.title}</h5>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {result.content ? `${Math.min(result.content.length, 150)} characters` : 'No content'}
                     </p>
-                    
-                    {/* Metadata */}
-                    <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3">
-                      <span>Words: {result.word_count || 0}</span>
-                      <span>Images: {result.image_count || 0}</span>
-                      <span>Format: {result.format || 'HTML'}</span>
-                    </div>
                   </div>
-                  
-                  {/* Action buttons */}
-                  <div className="flex items-center space-x-2 ml-4">
-                    <button
-                      onClick={() => setSelectedResult(result)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="View Details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => downloadArticlePDF(activeSession?.session_id || activeSession?.id, index, result.title)}
-                      className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                      title="Download PDF"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => evaluateResult(result.id, { status: 'accept' })}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                      title="Accept"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => evaluateResult(result.id, { status: 'reject' })}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Reject"
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => evaluateResult(result.id, { status: 'flag' })}
-                      className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                      title="Flag for Review"
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <Eye className="h-4 w-4 text-gray-400" />
                 </div>
-                
-                {/* Evaluation status */}
-                {result.evaluation && (
-                  <div className={`mt-3 p-2 rounded-lg text-sm ${
-                    result.evaluation === 'accept' 
-                      ? 'bg-green-100 text-green-800'
-                      : result.evaluation === 'reject'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    Status: {result.evaluation}
-                  </div>
-                )}
               </div>
             ))}
           </div>
         </div>
       ) : (
         <div className="text-center py-8 text-gray-500">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <p>No results yet. Upload a document and process it to see results.</p>
-        </div>
-      )}
-    </div>
-  );
-
-  // Training history
-  const LabHistory = () => (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Lab History</h3>
-      
-      {trainingHistory.length > 0 ? (
-        <div className="space-y-3">
-          {trainingHistory.map((session, index) => (
-            <div key={session.id} className="p-3 border border-gray-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{session.filename}</h4>
-                  <p className="text-sm text-gray-600">
-                    Template: {templates.find(t => t.id === session.template_id)?.name}
-                  </p>
-                  <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                    <span>{session.articles_generated} articles</span>
-                    <span>{session.images_processed} images</span>
-                    <span>{new Date(session.timestamp).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setActiveSession(session)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  <Eye className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-gray-500">
           <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <p>No lab sessions yet.</p>
+          <p>No results yet. Process a document to see articles.</p>
         </div>
       )}
     </div>
@@ -612,16 +336,17 @@ const TrainingInterface = () => {
         </div>
       </div>
 
-      <div className="flex h-full">
+      <div className="flex h-full pt-0">
         {/* Sidebar */}
         <div className={`${sidebarCollapsed ? 'w-16' : 'w-80'} bg-white border-r border-gray-200 transition-all duration-300 overflow-y-auto`}>
-          {!sidebarCollapsed && (
-            <div className="p-4 space-y-4">
-              <TemplateSelector />
-              <FileUploadArea />
-              <LabHistory />
-            </div>
-          )}
+          <div className="p-4 space-y-4">
+            {!sidebarCollapsed && (
+              <>
+                <TemplateSelector />
+                <FileUploadArea />
+              </>
+            )}
+          </div>
         </div>
 
         {/* Main Content */}
@@ -680,23 +405,6 @@ const TrainingInterface = () => {
               
               <div className="wysiwyg-content max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: selectedResult.content || 'No content available' }} />
-              </div>
-              
-              <div className="mt-6 flex items-center justify-end space-x-3">
-                <button
-                  onClick={() => evaluateResult(selectedResult.id, { status: 'accept' })}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  <span>Accept</span>
-                </button>
-                <button
-                  onClick={() => evaluateResult(selectedResult.id, { status: 'reject' })}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  <XCircle className="h-4 w-4" />
-                  <span>Reject</span>
-                </button>
               </div>
             </div>
           </div>

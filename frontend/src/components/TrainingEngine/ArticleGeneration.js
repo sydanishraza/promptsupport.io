@@ -168,6 +168,12 @@ Focus on:
   };
 
   const simulateLLMRewrite = async (originalContent) => {
+    // Ensure originalContent is a string
+    if (!originalContent || typeof originalContent !== 'string') {
+      console.warn('simulateLLMRewrite received invalid content:', originalContent);
+      return originalContent || '';
+    }
+    
     // Simulate LLM improvements
     let improved = originalContent;
     

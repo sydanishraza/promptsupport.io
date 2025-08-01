@@ -210,31 +210,43 @@ const TrainingInterface = () => {
           className="mt-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
         />
       </div>
+    </div>
+  );
 
-      {selectedTemplate && uploadedFile && (
-        <button
-          onClick={processWithTemplate}
-          disabled={isProcessing}
-          className={`mt-4 w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium ${
-            isProcessing
-              ? 'bg-gray-400 text-white cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {isProcessing ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              <span>Processing... ({processingDuration}s)</span>
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" />
-              <span>Process with Template</span>
-            </>
-          )}
-        </button>
+  // Processing Control Component - Always visible
+  const ProcessingControl = () => (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Process with Template</h3>
+      
+      <button
+        onClick={processWithTemplate}
+        disabled={!selectedTemplate || !uploadedFile || isProcessing}
+        className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium ${
+          !selectedTemplate || !uploadedFile || isProcessing
+            ? 'bg-gray-400 text-white cursor-not-allowed'
+            : 'bg-blue-600 text-white hover:bg-blue-700'
+        }`}
+      >
+        {isProcessing ? (
+          <>
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span>Processing... ({processingDuration}s)</span>
+          </>
+        ) : (
+          <>
+            <Play className="h-4 w-4" />
+            <span>Process with Template</span>
+          </>
+        )}
+      </button>
+
+      {!selectedTemplate && (
+        <p className="text-sm text-gray-500 mt-2">Please select a template above</p>
       )}
-
+      {!uploadedFile && selectedTemplate && (
+        <p className="text-sm text-gray-500 mt-2">Please upload a document above</p>
+      )}
+      
       {processingStatus && (
         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-700">{processingStatus}</p>

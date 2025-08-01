@@ -49,20 +49,20 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
       let totalImages = 0;
       let processedImages = 0;
 
-      // Count total images
-      processingData.generationResults.forEach(resource => {
-        resource.articles.forEach(article => {
-          const imageTokens = article.improvedContent.match(/\[IMAGE:.*?\]/g) || [];
+      // Count total images  
+      processingData.chunkingResults.forEach(resource => {
+        resource.chunks.forEach(chunk => {
+          const imageTokens = chunk.html.match(/\[IMAGE:.*?\]/g) || [];
           totalImages += imageTokens.length;
         });
       });
 
       setProcessingStats({ processed: 0, total: totalImages });
       
-      for (const resource of processingData.generationResults) {
+      for (const resource of processingData.chunkingResults) {
         const resourceImageData = [];
         
-        for (const article of resource.articles) {
+        for (const chunk of resource.chunks) {
           // Extract and process images from the article
           const imageTokens = article.improvedContent.match(/\[IMAGE:.*?\]/g) || [];
           const processedImages = [];

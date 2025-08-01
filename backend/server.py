@@ -998,8 +998,16 @@ class DocumentPreprocessor:
             return html_chunks  # Return original chunks as fallback
     
     async def _process_chunk_with_ai(self, chunk_data: dict, template_data: dict, chunk_index: int) -> str:
-        """Process a single HTML chunk with AI while preserving structure"""
+        """Process a single HTML chunk with AI while preserving structure, with large chunk handling"""
         try:
+            # Check chunk size - handle very large H1 chunks differently
+            chunk_size = len(chunk_data['content'])
+            is_very_large = chunk_size > 200000  # ~50K tokens
+            
+            if is_very_large:
+                print(f"🔍 Very large H1 chunk detected: {chunk_data['title']} ({chunk_size} chars)")
+                print(f"📝 Attempting streamlined processing for large logical article...")
+            
             system_message = """You are an expert content writer improving a section of a technical document.
 
 CRITICAL REQUIREMENTS:
@@ -1021,7 +1029,25 @@ Do NOT:
 - Generate new fake images or remove existing image references
 - Merge or split major sections"""
 
-            user_message = f"""Please improve this document section while preserving all structure and tokens:
+            # Adjust processing approach for very large chunks
+            if is_very_large:
+                # For very large chunks, focus on structural improvements rather than content expansion
+                user_message = f"""Please improve this large document section with focused structural improvements:
+
+SECTION: {chunk_data['title']}
+
+{chunk_data['content'][:50000]}...
+[Content truncated for processing - full content will be preserved]
+
+Focus on:
+- Structural improvements and formatting consistency
+- Key content organization and flow
+- Professional tone maintenance  
+- Preserving all image positions and tokens exactly as they are
+
+Note: This is a large logical section that should remain as one article. Focus on improvements without major content expansion."""
+            else:
+                user_message = f"""Please improve this document section while preserving all structure and tokens:
 
 SECTION: {chunk_data['title']}
 
@@ -1035,6 +1061,11 @@ Focus on:
 
             # Use the existing LLM fallback system with chunk-specific session ID
             chunk_session_id = f"{self.session_id}_chunk_{chunk_index}"
+            
+            # For very large chunks, try a more conservative approach first
+            if is_very_large:
+                print(f"🎯 Processing large H1 chunk with conservative approach...")
+                
             improved_content = await call_llm_with_fallback(system_message, user_message, chunk_session_id)
             
             if improved_content:

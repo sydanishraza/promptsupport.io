@@ -33,7 +33,16 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
+    console.log('ArticleGeneration useEffect - processingData:', processingData);
+    if (processingData) {
+      console.log('ArticleGeneration - has imageProcessingResults:', !!processingData.imageProcessingResults);
+      console.log('ArticleGeneration - stage:', processingData.stage);
+      console.log('ArticleGeneration - processing:', processing);
+      console.log('ArticleGeneration - generationResults:', !!generationResults);
+    }
+    
     if (processingData && processingData.imageProcessingResults && processingData.stage === 'images_processed' && !processing && !generationResults) {
+      console.log('ArticleGeneration - Starting article generation...');
       // Auto-start article generation if image processing results are available and not already processed
       startGeneration();
     }

@@ -37,134 +37,124 @@ import ArticleGeneration from './TrainingEngine/ArticleGeneration';
 import QualityAssurance from './TrainingEngine/QualityAssurance';
 
 const NewTrainingEngine = () => {
-  const [selectedPipeline, setSelectedPipeline] = useState(null);
-  const [pipelineStatus, setPipelineStatus] = useState('idle');
+  const [currentStep, setCurrentStep] = useState(0);
+  const [processingData, setProcessingData] = useState(null);
+  const [stepStatuses, setStepStatuses] = useState({});
 
-  // Training pipelines configuration
-  const trainingPipelines = [
+  // Training pipeline steps
+  const pipelineSteps = [
     {
-      id: 'content-extraction',
-      name: 'Content Extraction Pipeline',
-      description: 'Train models to better extract and structure content from various document types',
-      icon: Database,
+      id: 'upload',
+      name: 'Resource Upload',
+      description: 'Upload files or provide URLs for processing',
+      icon: Upload,
       color: 'blue',
-      status: 'ready',
-      progress: 0,
-      features: ['Document parsing', 'Content structure detection', 'Metadata extraction']
+      component: UploadInterface
     },
     {
-      id: 'article-generation',
-      name: 'Article Generation Pipeline',
-      description: 'Improve AI models for generating high-quality, coherent articles from source content',
-      icon: Brain,
-      color: 'purple',
-      status: 'ready',
-      progress: 0,
-      features: ['Natural language generation', 'Content coherence', 'Style consistency']
-    },
-    {
-      id: 'image-processing',
-      name: 'Image Processing Pipeline',
-      description: 'Enhanced image recognition, captioning, and contextual placement within articles',
-      icon: Target,
+      id: 'extraction',
+      name: 'Content Extraction',
+      description: 'Parse and structure content with block IDs',
+      icon: Database,
       color: 'green',
-      status: 'ready',
-      progress: 0,
-      features: ['Image recognition', 'Context understanding', 'Caption generation']
+      component: ContentExtraction
     },
     {
-      id: 'quality-assurance',
-      name: 'Quality Assurance Pipeline',
-      description: 'Train quality scoring models to automatically evaluate and improve generated content',
-      icon: CheckCircle,
+      id: 'chunking',
+      name: 'Tokenization & Chunking',
+      description: 'Split content into manageable chunks by H1 structure',
+      icon: Scissors,
+      color: 'purple',
+      component: TokenizationChunker
+    },
+    {
+      id: 'images',
+      name: 'Image Processing',
+      description: 'Process and contextually place images',
+      icon: Image,
+      color: 'pink',
+      component: ImageProcessing
+    },
+    {
+      id: 'generation',
+      name: 'Article Generation',
+      description: 'Generate improved articles using AI',
+      icon: Brain,
+      color: 'indigo',
+      component: ArticleGeneration
+    },
+    {
+      id: 'quality',
+      name: 'Quality Assurance',
+      description: 'Evaluate and score generated content',
+      icon: Shield,
       color: 'amber',
-      status: 'ready',
-      progress: 0,
-      features: ['Content quality scoring', 'Error detection', 'Improvement suggestions']
+      component: QualityAssurance
     }
   ];
 
-  const handlePipelineStart = (pipelineId) => {
-    setSelectedPipeline(pipelineId);
-    setPipelineStatus('running');
-    // Simulate training progress
-    setTimeout(() => {
-      setPipelineStatus('completed');
-    }, 3000);
+  const handleStepStatusUpdate = (stepId, status) => {
+    setStepStatuses(prev => ({
+      ...prev,
+      [stepId]: status
+    }));
   };
 
-  const PipelineCard = ({ pipeline, isSelected, onSelect, onStart }) => {
-    const IconComponent = pipeline.icon;
+  const canNavigateToStep = (stepIndex) => {
+    if (stepIndex === 0) return true; // Can always navigate to first step
+    
+    // Can navigate to next step if current step is completed
+    const previousStep = pipelineSteps[stepIndex - 1];
+    return stepStatuses[previousStep.id] === 'completed';
+  };
+
+  const getCurrentStepComponent = () => {
+    const step = pipelineSteps[currentStep];
+    const StepComponent = step.component;
     
     return (
-      <div 
-        className={`bg-white rounded-lg border-2 p-6 cursor-pointer transition-all duration-200 ${
-          isSelected 
-            ? `border-${pipeline.color}-500 bg-${pipeline.color}-50` 
-            : 'border-gray-200 hover:border-gray-300'
-        }`}
-        onClick={() => onSelect(pipeline.id)}
-      >
-        <div className="flex items-start justify-between mb-4">
-          <div className={`p-3 rounded-lg bg-${pipeline.color}-100`}>
-            <IconComponent className={`h-6 w-6 text-${pipeline.color}-600`} />
-          </div>
-          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-            pipeline.status === 'ready' 
-              ? 'bg-green-100 text-green-800'
-              : pipeline.status === 'running'
-              ? 'bg-blue-100 text-blue-800'
-              : 'bg-gray-100 text-gray-800'
-          }`}>
-            {pipeline.status}
-          </div>
-        </div>
-        
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          {pipeline.name}
-        </h3>
-        
-        <p className="text-sm text-gray-600 mb-4">
-          {pipeline.description}
-        </p>
-        
-        <div className="space-y-2 mb-4">
-          {pipeline.features.map((feature, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span className="text-sm text-gray-700">{feature}</span>
-            </div>
-          ))}
-        </div>
-        
-        {isSelected && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onStart(pipeline.id);
-            }}
-            disabled={pipelineStatus === 'running'}
-            className={`w-full flex items-center justify-center space-x-2 py-2 px-4 rounded-lg font-medium ${
-              pipelineStatus === 'running'
-                ? 'bg-gray-400 text-white cursor-not-allowed'
-                : `bg-${pipeline.color}-600 text-white hover:bg-${pipeline.color}-700`
-            }`}
-          >
-            {pipelineStatus === 'running' ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                <span>Training...</span>
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4" />
-                <span>Start Training</span>
-              </>
-            )}
-          </button>
-        )}
-      </div>
+      <StepComponent
+        moduleData={step}
+        processingData={processingData}
+        setProcessingData={setProcessingData}
+        onStatusUpdate={(status) => handleStepStatusUpdate(step.id, status)}
+      />
     );
+  };
+
+  const nextStep = () => {
+    if (currentStep < pipelineSteps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const previousStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const goToStep = (stepIndex) => {
+    if (canNavigateToStep(stepIndex)) {
+      setCurrentStep(stepIndex);
+    }
+  };
+
+  const getStepStatus = (stepId) => {
+    return stepStatuses[stepId] || 'idle';
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'processing':
+        return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />;
+      case 'error':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      default:
+        return <div className="h-4 w-4 rounded-full border-2 border-gray-300" />;
+    }
   };
 
   return (

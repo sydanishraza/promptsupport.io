@@ -88,18 +88,27 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
     const chunks = [];
     
     if (chunkingConfig.chunkByH1) {
-      // Chunk by H1 boundaries as per specifications
+      // Chunk by H2 boundaries for better article granularity
       let currentChunk = {
         blocks: [],
         tokens: 0,
-        h1Title: null
+        h2Title: null,
+        parentH1: null
       };
       
       let chunkCounter = 0;
+      let currentH1Title = null;
       
       for (const block of contentBlocks) {
-        // Start new chunk on H1
+        // Track H1 for context but don't chunk by it
         if (block.type === 'h1') {
+          currentH1Title = block.html.replace(/<[^>]*>/g, '').trim();
+          // Add H1 to current chunk (don't start new chunk)
+          currentChunk.blocks.push(block);
+          currentChunk.tokens += block.tokens;
+        }
+        // Start new chunk on H2
+        else if (block.type === 'h2') {
           // Save current chunk if it has content
           if (currentChunk.blocks.length > 0) {
             chunks.push(createChunk(currentChunk, chunkCounter++));
@@ -109,7 +118,8 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
           currentChunk = {
             blocks: [block],
             tokens: block.tokens,
-            h1Title: block.html.replace(/<[^>]*>/g, '').trim()
+            h2Title: block.html.replace(/<[^>]*>/g, '').trim(),
+            parentH1: currentH1Title
           };
         } else {
           // Add to current chunk

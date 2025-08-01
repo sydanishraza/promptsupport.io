@@ -2081,7 +2081,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
                 "https://api.anthropic.com/v1/messages",
                 headers=headers,
                 json=data,
-                timeout=120  # Increased to 120 seconds to reduce timeout issues
+                timeout=300  # Increased to 300 seconds (5 minutes) for very large chunks
             )
             
             if response.status_code == 200:

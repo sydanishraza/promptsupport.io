@@ -36,6 +36,9 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
     improveStructure: true
   });
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
+  const [viewerMode, setViewerMode] = useState('formatted'); // 'formatted', 'html', 'comparison'
+  const [isViewerMaximized, setIsViewerMaximized] = useState(false);
+  const [copiedArticle, setCopiedArticle] = useState(null);
 
   useEffect(() => {
     if (processingData && processingData.imageProcessingResults && processingData.stage === 'images_processed' && !processing && !generationResults) {

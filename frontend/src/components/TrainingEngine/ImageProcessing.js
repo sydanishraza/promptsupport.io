@@ -30,11 +30,11 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
   const [processingStats, setProcessingStats] = useState({ processed: 0, total: 0 });
 
   useEffect(() => {
-    if (processingData && processingData.generationResults && processingData.stage === 'generated' && !processing && !imageResults) {
+    if (processingData && processingData.generationResults && processingData.stage === 'generated' && !processing && !processingResults) {
       // Auto-start image processing if generation results are available and not already processed
       startImageProcessing();
     }
-  }, [processingData, processing, imageResults]);
+  }, [processingData, processing, processingResults]);
 
   const startImageProcessing = async () => {
     if (!processingData || !processingData.generationResults) {

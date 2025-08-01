@@ -547,8 +547,7 @@ const TrainingInterface = () => {
     </div>
   );
 
-  // Training history - temporarily disabled
-  /*
+  // Training history
   const LabHistory = () => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Lab History</h3>
@@ -587,7 +586,6 @@ const TrainingInterface = () => {
       )}
     </div>
   );
-  */
 
   return (
     <div className="h-full bg-gray-50">
@@ -621,7 +619,7 @@ const TrainingInterface = () => {
             <div className="p-4 space-y-4">
               <TemplateSelector />
               <FileUploadArea />
-              {/* <LabHistory /> */}
+              <LabHistory />
             </div>
           )}
         </div>

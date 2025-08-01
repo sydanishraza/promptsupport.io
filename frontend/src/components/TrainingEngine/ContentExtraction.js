@@ -141,6 +141,8 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
       images_processed: 0
     };
   };
+
+  const startExtraction = async () => {
     if (!processingData || !processingData.resources) {
       return;
     }

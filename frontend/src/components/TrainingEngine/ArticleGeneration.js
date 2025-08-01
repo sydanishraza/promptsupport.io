@@ -15,7 +15,12 @@ import {
   Settings,
   Award,
   TrendingUp,
-  MessageSquare
+  MessageSquare,
+  Copy,
+  ExternalLink,
+  X,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onStatusUpdate }) => {

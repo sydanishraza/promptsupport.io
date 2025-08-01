@@ -26,11 +26,8 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
   const [hasStartedExtraction, setHasStartedExtraction] = useState(false);
 
   useEffect(() => {
-    if (processingData && processingData.resources && processingData.stage !== 'extracted' && !processing && !extractionResults && !hasStartedExtraction) {
-      // Auto-start extraction if resources are available and not already processed
-      setHasStartedExtraction(true);
-      startExtraction();
-    }
+    // Don't auto-start - wait for user interaction like Legacy Training Interface
+    // This prevents CORS issues caused by automatic useEffect triggering
   }, [processingData, processing, extractionResults, hasStartedExtraction]);
 
   const startExtraction = async () => {

@@ -175,9 +175,6 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
         }
       }
 
-      // Clear the overall timeout
-      clearTimeout(overallTimeout);
-
       // Calculate summary statistics
       const avgBlocksPerResource = totalBlocks / results.length;
       const totalTokens = results.reduce((sum, r) => {

@@ -23,13 +23,15 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
   const [processingStats, setProcessingStats] = useState({ processed: 0, total: 0 });
   const [selectedResource, setSelectedResource] = useState(null);
   const [previewData, setPreviewData] = useState(null);
+  const [hasStartedExtraction, setHasStartedExtraction] = useState(false);
 
   useEffect(() => {
-    if (processingData && processingData.resources && processingData.stage !== 'extracted' && !processing && !extractionResults) {
+    if (processingData && processingData.resources && processingData.stage !== 'extracted' && !processing && !extractionResults && !hasStartedExtraction) {
       // Auto-start extraction if resources are available and not already processed
+      setHasStartedExtraction(true);
       startExtraction();
     }
-  }, [processingData, processing, extractionResults]);
+  }, [processingData, processing, extractionResults, hasStartedExtraction]);
 
   const startExtraction = async () => {
     if (!processingData || !processingData.resources) {

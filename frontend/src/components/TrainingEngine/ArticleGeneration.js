@@ -33,11 +33,11 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
-    if (processingData && processingData.chunkingResults && processingData.stage === 'chunked') {
-      // Auto-start article generation if chunking results are available
+    if (processingData && processingData.chunkingResults && processingData.stage === 'chunked' && !processing && !generationResults) {
+      // Auto-start article generation if chunking results are available and not already processed
       startGeneration();
     }
-  }, [processingData]);
+  }, [processingData, processing, generationResults]);
 
   const startGeneration = async () => {
     if (!processingData || !processingData.chunkingResults) {

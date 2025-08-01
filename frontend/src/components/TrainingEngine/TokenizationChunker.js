@@ -304,7 +304,7 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
                 className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
               />
               <label htmlFor="chunkByH1" className="ml-2 block text-sm text-gray-900">
-                Chunk by H1 boundaries (recommended)
+                Chunk by H2 boundaries (recommended for granular articles)
               </label>
             </div>
             

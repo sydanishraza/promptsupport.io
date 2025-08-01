@@ -484,7 +484,7 @@ class DocumentPreprocessor:
                         'title': chunk_data['title'],
                         'content': tokenized_html,
                         'images': chunk_data['images'],
-                        'token_count': len(tokenized_html) // 4
+                        'token_count': len(tokenized_html.split()) * 1.3  # Better token estimation
                     }
                     
                     processed_chunks.append(processed_chunk)

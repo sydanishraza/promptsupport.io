@@ -3123,6 +3123,13 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
             file_list = zip_ref.namelist()
             print(f"📁 ZIP contains {len(file_list)} files")
             
+            # Debug: List all files in ZIP for debugging
+            print("📋 All files in DOCX ZIP:")
+            for file in file_list[:20]:  # Show first 20 files
+                print(f"  - {file}")
+            if len(file_list) > 20:
+                print(f"  ... and {len(file_list) - 20} more files")
+            
             # Debug: Check for media files
             media_files = [f for f in file_list if f.startswith('word/media/')]
             print(f"🖼️ Found {len(media_files)} media files:")
@@ -3130,7 +3137,22 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
                 print(f"  - {media_file}")
                 
             if len(media_files) == 0:
-                print("❌ No media files found in DOCX")
+                print("❌ No media files found in DOCX - checking for embedded objects...")
+                # Check for embedded objects that might contain images
+                embedded_files = [f for f in file_list if 'embed' in f.lower() or 'object' in f.lower()]
+                print(f"📎 Found {len(embedded_files)} embedded object files:")
+                for embed_file in embedded_files:
+                    print(f"  - {embed_file}")
+                    
+                if len(embedded_files) == 0:
+                    print("❌ No embedded objects found either")
+                    # Check for any image-like files anywhere in the ZIP
+                    image_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.tiff']
+                    all_image_files = [f for f in file_list if any(f.lower().endswith(ext) for ext in image_extensions)]
+                    print(f"🔍 Searching for any image files in ZIP: {len(all_image_files)} found:")
+                    for img_file in all_image_files:
+                        print(f"  - {img_file}")
+                    
                 return []
             # Get document relationships to map images to content
             try:

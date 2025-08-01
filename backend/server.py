@@ -764,9 +764,9 @@ class DocumentPreprocessor:
                         # Add to current chunk
                         current_chunk_content.append(element)
                         
-                        # CRITICAL: Check size limits with larger thresholds for better content (20K tokens ≈ 80K characters)
+                        # CRITICAL: Check size limits with larger thresholds for better content (30K tokens ≈ 120K characters)
                         current_chunk_html = self._create_chunk_html(current_chunk_content)
-                        if len(current_chunk_html) > 80000:  # ~20K tokens - larger chunks for better content extraction
+                        if len(current_chunk_html) > 120000:  # ~30K tokens - much larger chunks for meaningful content
                             # Save current chunk before it gets too large
                             chunks.append({
                                 'section_id': current_section_id,
@@ -774,12 +774,14 @@ class DocumentPreprocessor:
                                 'content': current_chunk_html,
                                 'images': chunk_images.get(current_section_id, [])
                             })
-                            print(f"✅ Size-limited chunk created: {current_title} ({len(current_chunk_html)} chars)")
+                            print(f"✅ Size-limited H1 chunk created: {current_title} ({len(current_chunk_html)} chars)")
                             
-                            # Start new sub-chunk
+                            # FIXED: Create clean sub-chunk title without accumulation
                             section_counter += 1
+                            base_title = current_title.split(' (Part')[0]  # Get original title without parts
+                            part_number = 2  # This is part 2 of the original section
                             current_section_id = f"section_{section_counter}"
-                            current_title = f"{current_title} (Part {section_counter})"
+                            current_title = f"{base_title} (Part {part_number})"
                             current_chunk_content = []
                             chunk_images[current_section_id] = []
                 

@@ -94,16 +94,13 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           
           console.log('Making API call to:', `${backendUrl}/api/training/process`);
           
-          // Call the backend training/process API with timeout using AbortController
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout for large files
-          
+          // Use the same approach as Legacy Training Interface
+          console.log('Making API call to:', `${backendUrl}/api/training/process`);
           console.log('Starting API call - this may take several minutes for large files...');
           
           const response = await fetch(`${backendUrl}/api/training/process`, {
-            method: 'POST', 
-            body: formData,
-            signal: controller.signal
+            method: 'POST',
+            body: formData
           });
 
           clearTimeout(timeoutId);

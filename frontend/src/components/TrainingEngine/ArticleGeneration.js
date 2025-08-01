@@ -585,11 +585,11 @@ Focus on:
                           
                           <div className="flex items-center justify-between">
                             <button
-                              onClick={() => viewArticleDetails(resource, article)}
+                              onClick={() => viewArticle(article, resource)}
                               className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-800 text-sm"
                             >
                               <Eye className="h-3 w-3" />
-                              <span>View</span>
+                              <span>View Article</span>
                             </button>
                             <button
                               onClick={() => regenerateArticle(resource, article)}

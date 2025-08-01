@@ -152,6 +152,7 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
   };
 
   const generateLLMPrompt = (chunk) => {
+    const chunkContent = chunk.content || chunk.html || chunk.text || chunk.updated_content || '';
     return `Improve the following HTML for clarity and structure. Follow professional technical writing standards. 
 
 CRITICAL REQUIREMENTS:
@@ -162,7 +163,7 @@ CRITICAL REQUIREMENTS:
 5. Enhance content clarity and flow
 
 Content to improve:
-${chunk.content}
+${chunkContent}
 
 Focus on:
 - Making content more comprehensive and informative

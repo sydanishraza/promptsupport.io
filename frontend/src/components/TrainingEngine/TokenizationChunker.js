@@ -327,7 +327,7 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
                 <span className="text-sm font-medium text-purple-900">Chunking Strategy</span>
               </div>
               <p className="text-xs text-purple-700 mt-1">
-                H1-based chunking creates logical sections while respecting token limits for optimal LLM processing.
+                H2-based chunking creates granular articles from document sections while respecting token limits for optimal LLM processing.
               </p>
             </div>
           </div>

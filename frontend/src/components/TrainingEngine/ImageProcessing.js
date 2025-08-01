@@ -399,9 +399,9 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
             <div className="flex items-center space-x-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               <div>
-                <div className="font-medium text-amber-900">Awaiting Generated Articles</div>
+                <div className="font-medium text-amber-900">Awaiting Chunked Content</div>
                 <div className="text-sm text-amber-700">
-                  Complete article generation in the previous module to begin image processing
+                  Complete content chunking in the previous module to begin image processing
                 </div>
               </div>
             </div>

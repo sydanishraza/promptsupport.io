@@ -443,7 +443,7 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
                         {resource.resource_name}
                       </div>
                       <div className="text-sm text-gray-600">
-                        {resource.contentBlocks.length} blocks • {resource.totalTokens.toLocaleString()} tokens • {resource.resource_type}
+                        {resource.contentBlocks?.length || 0} blocks • {(resource.totalTokens || 0).toLocaleString()} tokens • {resource.resource_type || 'file'}
                       </div>
                     </div>
                   </div>

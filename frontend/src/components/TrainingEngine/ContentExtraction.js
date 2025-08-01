@@ -14,7 +14,8 @@ import {
   Eye,
   Download,
   AlertTriangle,
-  Info
+  Info,
+  Play
 } from 'lucide-react';
 
 const ContentExtraction = ({ moduleData, processingData, setProcessingData, onStatusUpdate }) => {

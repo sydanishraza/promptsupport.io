@@ -63,26 +63,31 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
         const resourceImageData = [];
         
         for (const chunk of resource.chunks) {
-          // Extract and process images from the article
-          const imageTokens = article.improvedContent.match(/\[IMAGE:.*?\]/g) || [];
-          const processedImages = [];
+          // Extract and process images from the chunk
+          const imageTokens = chunk.html.match(/\[IMAGE:.*?\]/g) || [];
+          const processedImagesList = [];
           
           for (let i = 0; i < imageTokens.length; i++) {
             // Simulate image processing
             await new Promise(resolve => setTimeout(resolve, 800));
             
-            const imageData = await processImageToken(imageTokens[i], article, resource, i);
-            processedImages.push(imageData);
+            const imageData = await processImageToken(imageTokens[i], chunk, resource, i);
+            processedImagesList.push(imageData);
             
             processedImages++;
             setProcessingStats({ processed: processedImages, total: totalImages });
           }
           
-          // Update article content with processed images
-          const updatedContent = replaceImageTokens(article.improvedContent, processedImages);
+          // Update chunk content with processed images
+          const updatedContent = replaceImageTokens(chunk.html, processedImagesList);
           
           resourceImageData.push({
-            article_id: article.article_id,
+            chunk_id: chunk.chunk_id,
+            original_content: chunk.html,
+            updated_content: updatedContent,
+            images_processed: processedImagesList.length,
+            processed_images: processedImagesList
+          });
             title: article.title,
             images: processedImages,
             updatedContent: updatedContent,

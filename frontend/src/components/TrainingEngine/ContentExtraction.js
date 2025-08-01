@@ -20,6 +20,7 @@ import {
 const ContentExtraction = ({ moduleData, processingData, setProcessingData, onStatusUpdate }) => {
   const [extractionResults, setExtractionResults] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [processingStats, setProcessingStats] = useState({ processed: 0, total: 0 });
   const [selectedResource, setSelectedResource] = useState(null);
   const [previewData, setPreviewData] = useState(null);
 

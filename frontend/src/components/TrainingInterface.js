@@ -619,7 +619,7 @@ const TrainingInterface = () => {
             <div className="p-4 space-y-4">
               <TemplateSelector />
               <FileUploadArea />
-              <LabHistory />
+              {/* <LabHistory /> */}
             </div>
           )}
         </div>

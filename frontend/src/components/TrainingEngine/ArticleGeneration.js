@@ -33,8 +33,8 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
-    if (processingData && processingData.chunkingResults && processingData.stage === 'chunked' && !processing && !generationResults) {
-      // Auto-start article generation if chunking results are available and not already processed
+    if (processingData && processingData.imageProcessingResults && processingData.stage === 'images_processed' && !processing && !generationResults) {
+      // Auto-start article generation if image processing results are available and not already processed
       startGeneration();
     }
   }, [processingData, processing, generationResults]);

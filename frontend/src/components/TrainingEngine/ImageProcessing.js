@@ -492,20 +492,20 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
                   </div>
                   
                   <div className="space-y-4">
-                    {resource.articles.map((article) => (
-                      <div key={article.article_id} className="bg-gray-50 p-4 rounded-lg">
-                        <h5 className="font-medium text-gray-900 mb-3">{article.title}</h5>
+                    {(resource.chunks || []).map((chunk) => (
+                      <div key={chunk.chunk_id} className="bg-gray-50 p-4 rounded-lg">
+                        <h5 className="font-medium text-gray-900 mb-3">{chunk.title || 'Untitled Chunk'}</h5>
                         
-                        {article.images.length > 0 ? (
+                        {(chunk.processed_images || []).length > 0 ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {article.images.map((image) => {
-                              const contextColor = getContextQualityColor(image.context_score);
+                            {(chunk.processed_images || []).map((image) => {
+                              const contextColor = getContextQualityColor(image.context_score || 0.5);
                               
                               return (
                                 <div
                                   key={image.image_id}
                                   className="p-3 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors cursor-pointer"
-                                  onClick={() => viewImageDetails(resource, article, image)}
+                                  onClick={() => viewImageDetails(resource, chunk, image)}
                                 >
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="text-sm font-medium text-gray-900">

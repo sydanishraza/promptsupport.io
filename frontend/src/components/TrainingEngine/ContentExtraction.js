@@ -167,39 +167,45 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           console.log('Resource file:', resource.file);
           console.log('File type:', typeof resource.file);
 
-          // PLAN B: Use a working approach - call the same processing function as Legacy Training Interface
-          console.log('Using internal processing approach to bypass CORS...');
+          // REAL SOLUTION: Make actual API call like Legacy Training Interface
+          console.log('Making real API call to extract actual document content...');
           
-          // Instead of direct API call, use the same approach as Legacy Training Interface
-          const extractedContent = await processFileWithLegacyMethod(resource.file, resource.name);
-          
-          if (!extractedContent) {
-            throw new Error('Failed to process file with internal method');
-          }
-          
-          console.log('Internal processing result:', extractedContent);
+          // Use exact same approach as Legacy Training Interface
+          const formData = new FormData();
+          formData.append('file', resource.file);
+          formData.append('template_id', 'content_extraction_pipeline');
 
-          // Process the extracted content into our content blocks format
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/training/process`, {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API error response:', errorText);
+            throw new Error(`Training Engine processing failed: ${response.status} - ${errorText}`);
+          }
+
+          const result = await response.json();
+          console.log('Real backend processing result:', result);
+
+          // Process the real backend response
           const contentBlocks = [];
           const metadata = {
-            title: extractedContent.title || resource.name,
-            word_count: extractedContent.word_count || 0,
-            processing_time: extractedContent.processing_time || '0s',
-            total_images: extractedContent.images_processed || 0
+            title: result.articles?.[0]?.title || resource.name,
+            word_count: result.articles?.[0]?.word_count || 0,
+            processing_time: result.processing_time || '0s',
+            total_images: result.images_processed || 0
           };
 
-          // Parse the extracted content into blocks
-          if (extractedContent.content || extractedContent.html) {
-            const blocks = parseHtmlIntoBlocks(extractedContent.content || extractedContent.html);
-            contentBlocks.push(...blocks);
-          } else if (extractedContent.articles && extractedContent.articles.length > 0) {
-            // Handle articles format
-            for (const article of extractedContent.articles) {
+          // Extract real content blocks from backend response
+          if (result.articles && result.articles.length > 0) {
+            for (const article of result.articles) {
               const blocks = parseHtmlIntoBlocks(article.html || article.content);
               contentBlocks.push(...blocks);
             }
           } else {
-            throw new Error('No content found in processed result');
+            throw new Error('Backend returned no articles');
           }
 
           totalBlocks += contentBlocks.length;

@@ -30,7 +30,16 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
   const [processingStats, setProcessingStats] = useState({ processed: 0, total: 0 });
 
   useEffect(() => {
+    console.log('ImageProcessing useEffect - processingData:', processingData);
+    if (processingData) {
+      console.log('ImageProcessing - has chunkingResults:', !!processingData.chunkingResults);
+      console.log('ImageProcessing - stage:', processingData.stage);
+      console.log('ImageProcessing - processing:', processing);  
+      console.log('ImageProcessing - processingResults:', !!processingResults);
+    }
+    
     if (processingData && processingData.chunkingResults && processingData.stage === 'chunked' && !processing && !processingResults) {
+      console.log('ImageProcessing - Starting image processing...');
       // Auto-start image processing if chunking results are available and not already processed
       startImageProcessing();
     }

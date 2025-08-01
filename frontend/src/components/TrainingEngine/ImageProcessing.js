@@ -50,6 +50,8 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
       return;
     }
 
+    console.log('ImageProcessing - chunkingResults structure:', processingData.chunkingResults);
+
     setProcessing(true);
     onStatusUpdate('processing');
 
@@ -60,10 +62,17 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
 
       // Count total images  
       processingData.chunkingResults.forEach(resource => {
-        resource.chunks.forEach(chunk => {
-          const imageTokens = chunk.html.match(/\[IMAGE:.*?\]/g) || [];
-          totalImages += imageTokens.length;
-        });
+        console.log('ImageProcessing - resource:', resource);
+        if (resource.chunks) {
+          resource.chunks.forEach(chunk => {
+            console.log('ImageProcessing - chunk:', chunk);
+            // Check if chunk has html property, if not use content
+            const content = chunk.html || chunk.content || chunk.text || '';
+            console.log('ImageProcessing - content:', content);
+            const imageTokens = content.match(/\[IMAGE:.*?\]/g) || [];
+            totalImages += imageTokens.length;
+          });
+        }
       });
 
       setProcessingStats({ processed: 0, total: totalImages });

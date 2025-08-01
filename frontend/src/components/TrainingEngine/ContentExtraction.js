@@ -210,77 +210,7 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
     return blocks;
   };
 
-  const simulateContentExtraction = async (resource) => {
-    // Simulate the content extraction pipeline as per specifications
-    const contentBlocks = [];
-    const metadata = {};
-    
-    // Generate sample structured HTML with data-block-id
-    const blockTypes = ['h1', 'h2', 'h3', 'p', 'ul', 'table', 'div'];
-    const numBlocks = Math.floor(Math.random() * 20) + 10; // 10-30 blocks
-    
-    for (let i = 0; i < numBlocks; i++) {
-      const blockType = blockTypes[Math.floor(Math.random() * blockTypes.length)];
-      const blockId = `${blockType}_${i + 1}`;
-      
-      let html = '';
-      let tokens = 0;
-      
-      switch (blockType) {
-        case 'h1':
-          html = `<h1 data-block-id="${blockId}">Chapter ${i + 1}: Main Section</h1>`;
-          tokens = Math.floor(Math.random() * 20) + 5;
-          break;
-        case 'h2':
-          html = `<h2 data-block-id="${blockId}">Subsection ${i + 1}</h2>`;
-          tokens = Math.floor(Math.random() * 15) + 3;
-          break;
-        case 'h3':
-          html = `<h3 data-block-id="${blockId}">Sub-topic ${i + 1}</h3>`;
-          tokens = Math.floor(Math.random() * 10) + 2;
-          break;
-        case 'p':
-          html = `<p data-block-id="${blockId}">This is a paragraph containing detailed information about the topic. It includes comprehensive content that would be processed by the training engine.</p>`;
-          tokens = Math.floor(Math.random() * 100) + 20;
-          break;
-        case 'ul':
-          html = `<ul data-block-id="${blockId}"><li>First item</li><li>Second item</li><li>Third item</li></ul>`;
-          tokens = Math.floor(Math.random() * 30) + 10;
-          break;
-        case 'table':
-          html = `<table data-block-id="${blockId}"><tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Data 1</td><td>Data 2</td></tr></table>`;
-          tokens = Math.floor(Math.random() * 50) + 15;
-          break;
-        default:
-          html = `<div data-block-id="${blockId}">General content block with mixed information.</div>`;
-          tokens = Math.floor(Math.random() * 80) + 10;
-      }
-      
-      contentBlocks.push({
-        block_id: blockId,
-        html: html,
-        tokens: tokens,
-        type: blockType
-      });
-    }
 
-    // Extract metadata
-    metadata.title = `Document: ${resource.name}`;
-    metadata.author = 'System Generated';
-    metadata.created = new Date().toISOString();
-    metadata.blocks_count = contentBlocks.length;
-    metadata.structure_detected = true;
-
-    return {
-      resource_id: resource.resource_id,
-      resource_name: resource.name,
-      resource_type: resource.resource_type,
-      contentBlocks,
-      metadata,
-      totalTokens: contentBlocks.reduce((sum, block) => sum + block.tokens, 0),
-      status: 'extracted'
-    };
-  };
 
   const viewResourceDetails = (resource) => {
     setSelectedResource(resource);

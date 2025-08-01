@@ -486,7 +486,7 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
                     <div>
                       <h4 className="font-medium text-gray-900">{resource.resource_name}</h4>
                       <p className="text-sm text-gray-600">
-                        {resource.totalImages} images processed across {resource.articles.length} articles
+                        {resource.totalImages} images processed across {resource.chunks?.length || 0} chunks
                       </p>
                     </div>
                   </div>

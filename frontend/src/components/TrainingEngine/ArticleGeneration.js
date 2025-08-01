@@ -611,82 +611,219 @@ Focus on:
         </div>
       )}
 
-      {/* Article Details Modal */}
+      {/* Enhanced Article Viewer Modal */}
       {selectedArticle && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Article: {selectedArticle.article.title}
-                </h3>
-                <button
-                  onClick={() => setSelectedArticle(null)}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-indigo-50 p-3 rounded-lg">
-                  <div className="text-sm font-medium text-indigo-900">Quality Score</div>
-                  <div className="text-lg font-bold text-indigo-700">
-                    {selectedArticle.article.qualityScore}/10
-                  </div>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <div className="text-sm font-medium text-blue-900">Token Count</div>
-                  <div className="text-lg font-bold text-blue-700">
-                    {selectedArticle.article.tokens}
-                  </div>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <div className="text-sm font-medium text-green-900">Image Tokens</div>
-                  <div className="text-lg font-bold text-green-700">
-                    {selectedArticle.article.preservedTokens.imageTokens}
-                  </div>
-                </div>
-                <div className="bg-purple-50 p-3 rounded-lg">
-                  <div className="text-sm font-medium text-purple-900">Processing Time</div>
-                  <div className="text-lg font-bold text-purple-700">
-                    {selectedArticle.article.processingTime.toFixed(1)}s
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={`bg-white rounded-lg w-full max-h-[90vh] overflow-hidden flex flex-col ${
+            isViewerMaximized ? 'max-w-full h-full' : 'max-w-6xl h-[80vh]'
+          }`}>
+            {/* Header */}
+            <div className="p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Original Content</h4>
-                  <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
-                    <div 
-                      className="prose prose-sm max-w-none text-gray-800"
-                      dangerouslySetInnerHTML={{ __html: selectedArticle.article.originalContent }}
-                    />
-                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900">{selectedArticle.title}</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    From: {selectedArticle.resource_name} • Quality Score: {selectedArticle.qualityScore}/10 
+                    • {selectedArticle.tokens} tokens
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsViewerMaximized(!isViewerMaximized)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                    title={isViewerMaximized ? "Minimize" : "Maximize"}
+                  >
+                    {isViewerMaximized ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                  </button>
+                  <button
+                    onClick={closeArticleViewer}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* View Mode Tabs */}
+              <div className="flex items-center space-x-4 mt-4">
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewerMode('formatted')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                      viewerMode === 'formatted'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Formatted View
+                  </button>
+                  <button
+                    onClick={() => setViewerMode('html')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                      viewerMode === 'html'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    HTML Source
+                  </button>
+                  <button
+                    onClick={() => setViewerMode('comparison')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                      viewerMode === 'comparison'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Before/After
+                  </button>
                 </div>
                 
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Improved Content</h4>
-                  <div className="bg-green-50 p-4 rounded-lg max-h-96 overflow-y-auto">
+                {/* Action Buttons */}
+                <div className="flex items-center space-x-2 ml-auto">
+                  <button
+                    onClick={() => copyArticleContent(
+                      formatArticleForWYSIWYG(selectedArticle.improvedContent), 'wysiwyg'
+                    )}
+                    className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      copiedArticle === 'wysiwyg'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200'
+                    }`}
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span>{copiedArticle === 'wysiwyg' ? 'Copied!' : 'Copy for WYSIWYG'}</span>
+                  </button>
+                  <button
+                    onClick={() => copyArticleContent(selectedArticle.improvedContent, 'html')}
+                    className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      copiedArticle === 'html'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span>{copiedArticle === 'html' ? 'Copied!' : 'Copy HTML'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden">
+              {viewerMode === 'formatted' && (
+                <div className="h-full overflow-y-auto p-6">
+                  <div className="prose prose-lg max-w-none">
                     <div 
-                      className="prose prose-sm max-w-none text-gray-800"
-                      dangerouslySetInnerHTML={{ __html: selectedArticle.article.improvedContent }}
+                      className="article-content"
+                      dangerouslySetInnerHTML={{ __html: formatArticleForWYSIWYG(selectedArticle.improvedContent) }}
                     />
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="mt-6 bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Improvements Applied</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  {selectedArticle.article.improvements.map((improvement, index) => (
-                    <li key={index} className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-blue-600" />
-                      <span>{improvement}</span>
-                    </li>
-                  ))}
-                </ul>
+              {viewerMode === 'html' && (
+                <div className="h-full overflow-y-auto p-6">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-900">WYSIWYG-Compatible HTML</h4>
+                      <button
+                        onClick={() => copyArticleContent(formatArticleForWYSIWYG(selectedArticle.improvedContent), 'wysiwyg-html')}
+                        className={`text-xs px-2 py-1 rounded ${
+                          copiedArticle === 'wysiwyg-html'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {copiedArticle === 'wysiwyg-html' ? 'Copied!' : 'Copy Clean HTML'}
+                      </button>
+                    </div>
+                    <pre className="text-xs text-gray-800 whitespace-pre-wrap overflow-x-auto">
+                      {formatArticleForWYSIWYG(selectedArticle.improvedContent)}
+                    </pre>
+                  </div>
+                  
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-900">Raw Generated HTML</h4>
+                      <button
+                        onClick={() => copyArticleContent(selectedArticle.improvedContent, 'raw-html')}
+                        className={`text-xs px-2 py-1 rounded ${
+                          copiedArticle === 'raw-html'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {copiedArticle === 'raw-html' ? 'Copied!' : 'Copy Raw HTML'}
+                      </button>
+                    </div>
+                    <pre className="text-xs text-gray-800 whitespace-pre-wrap overflow-x-auto">
+                      {selectedArticle.improvedContent}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {viewerMode === 'comparison' && (
+                <div className="h-full overflow-y-auto p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                    {/* Original Content */}
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-red-900 mb-3 flex items-center">
+                        <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                        Original Content
+                      </h4>
+                      <div className="prose prose-sm max-w-none">
+                        <div 
+                          className="original-content text-gray-700"
+                          dangerouslySetInnerHTML={{ __html: selectedArticle.originalContent }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Improved Content */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-green-900 mb-3 flex items-center">
+                        <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                        Improved Content
+                      </h4>
+                      <div className="prose prose-sm max-w-none">
+                        <div 
+                          className="improved-content text-gray-700"
+                          dangerouslySetInnerHTML={{ __html: formatArticleForWYSIWYG(selectedArticle.improvedContent) }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Improvements List */}
+                  <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-blue-900 mb-3">Applied Improvements</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {selectedArticle.improvements.map((improvement, index) => (
+                        <div key={index} className="flex items-center space-x-2 text-sm text-blue-800">
+                          <CheckCircle className="h-3 w-3 text-blue-600" />
+                          <span>{improvement}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between text-xs text-gray-600">
+                <div className="flex items-center space-x-4">
+                  <span>Processing Time: {selectedArticle.processingTime.toFixed(1)}s</span>
+                  <span>LLM Model: {selectedArticle.llmModel}</span>
+                  <span>Status: {selectedArticle.status}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span>WYSIWYG Compatible</span>
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                </div>
               </div>
             </div>
           </div>

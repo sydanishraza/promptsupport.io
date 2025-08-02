@@ -298,41 +298,14 @@
   test_sequence: 5
   run_ui: true
 
-  - task: "Fix Training Engine Single Article Issue"
-    implemented: false
-    working: false
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "critical"
-    needs_retesting: true
-    status_history:
-        -working: false
-        -agent: "main"
-        -comment: "CRITICAL BUG IDENTIFIED: Training Engine currently generating only single summarized articles instead of comprehensive multi-article output. Issue located in polish_article_content function where large content triggers single document processing instead of maintaining logical H1-based structure. Need to fix chunking logic to ensure multiple comprehensive articles with complete content coverage."
-
-  - task: "Fix Training Engine Broken Images Issue"
-    implemented: false
-    working: false
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "critical"
-    needs_retesting: true
-    status_history:
-        -working: false
-        -agent: "main"
-        -comment: "CRITICAL BUG IDENTIFIED: Images appearing as broken in Training Engine output. Should be extracted, saved to Asset Library, and contextually embedded in correct positions based on source document placement. Need to fix image tokenization and replacement pipeline."
-
-  - task: "Fix Training Engine Article Title Issue"
-    implemented: false
-    working: false
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "critical"
-    needs_retesting: true
-    status_history:
-        -working: false
-        -agent: "main"
-        -comment: "CRITICAL BUG IDENTIFIED: Article titles should always come from first H1 heading in content, not random filenames or placeholders. Need to ensure H1-based title extraction is working correctly in the training pipeline."
+## test_plan:
+  current_focus:
+    - "Fix Training Engine Single Article Issue"
+    - "Fix Training Engine Broken Images Issue" 
+    - "Fix Training Engine Article Title Issue"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "critical_first"
 
 ## agent_communication:
     -agent: "main"

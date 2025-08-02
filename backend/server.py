@@ -6790,9 +6790,20 @@ CRITICAL IMAGE DISTRIBUTION REQUIREMENTS:
                             # Insert image contextually every few paragraphs
                             if image_index < total_images and (i + 1) % paragraphs_per_image == 0:
                                 image_data = embedded_media[image_index]
+                                
+                                # Use the correct image URL - prioritize 'url' field, fallback to 'data'
+                                image_src = image_data.get('url', image_data.get('data', ''))
+                                
+                                if not image_src:
+                                    print(f"⚠️ No image source found for image {image_index + 1}, skipping")
+                                    image_index += 1
+                                    continue
+                                
+                                print(f"🖼️ CONTEXTUAL PLACEMENT: Inserting image {image_index + 1} with URL: {image_src[:50]}...")
+                                
                                 contextual_image_html = f"""
 <figure class="image-contextual" style="margin: 20px 0; text-align: center;">
-    <img src="{image_data['url']}" alt="Figure {image_index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <img src="{image_src}" alt="Figure {image_index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
     <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
         Figure {image_index + 1}: Image from {file.filename} (contextually placed)
     </figcaption>

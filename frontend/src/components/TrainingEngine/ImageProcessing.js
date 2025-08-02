@@ -143,10 +143,20 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
                 imageUrl = urlMatch[1];
                 if (imageUrl.startsWith('/api/static/uploads/')) {
                   imageUrl = `${backendUrl}${imageUrl}`;
+                } else if (resource.session_id) {
+                  // Build proper session-based URL for tokens
+                  const filename = imageUrl.split('/').pop();
+                  imageUrl = `${backendUrl}/api/static/uploads/session_${resource.session_id}/${filename}`;
                 }
+                console.log(`🎯 Processing image token with real URL: ${imageUrl}`);
+              } else if (resource.session_id) {
+                // Generate session-based URL for tokens without explicit URLs
+                imageUrl = `${backendUrl}/api/static/uploads/session_${resource.session_id}/img_${i + 1}.png`;
+                console.log(`📷 Generated session-based URL for token: ${imageUrl}`);
               } else {
-                // Generate placeholder URL for tokens without real URLs
+                // Fallback placeholder
                 imageUrl = `${backendUrl}/api/static/uploads/placeholder_${i}.png`;
+                console.log(`❓ Using placeholder URL for token: ${imageUrl}`);
               }
               
               const imageData = {

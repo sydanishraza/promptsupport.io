@@ -112,7 +112,10 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
             totalBlocks: contentBlocks.length,
             totalTokens: contentBlocks.reduce((sum, block) => sum + (block.tokens || 0), 0),
             extraction_method: 'backend_processing',
-            status: 'extracted'
+            status: 'extracted',
+            // Store the raw backend response for image processing
+            raw_backend_response: result,
+            session_id: result.session_id // Important for image URLs
           };
 
           results.push(extractionResult);

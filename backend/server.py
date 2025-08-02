@@ -6478,8 +6478,13 @@ async def inject_real_images_into_articles():
     print("🎯 STARTING: Real image injection into existing articles")
     
     try:
-        # Get all articles from Content Library that need image injection
-        articles_cursor = db.content_library.find({})
+        # Get all articles from Content Library that DON'T already have real images
+        articles_cursor = db.content_library.find({
+            "$or": [
+                {"has_images": {"$ne": True}},
+                {"has_images": {"$exists": False}}
+            ]
+        })
         articles = await articles_cursor.to_list(length=None)
         
         print(f"📚 Found {len(articles)} articles to process for image injection")
@@ -6491,14 +6496,17 @@ async def inject_real_images_into_articles():
         if os.path.exists(uploads_dir):
             for filename in os.listdir(uploads_dir):
                 if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                    # Skip session directory images for now, focus on direct uploads
-                    if not filename.startswith('session_'):
-                        image_url = f"/api/static/uploads/{filename}"
-                        available_images.append({
-                            'filename': filename,
-                            'url': image_url,
-                            'source_name': filename.split('_img_')[0] if '_img_' in filename else filename.split('.')[0]
-                        })
+                    # Include ALL images - both direct uploads and session images
+                    image_url = f"/api/static/uploads/{filename}"
+                    # Create a more generic source name for matching
+                    source_parts = filename.replace('_img_', '_').split('_')
+                    source_name = source_parts[0] if source_parts else filename.split('.')[0]
+                    
+                    available_images.append({
+                        'filename': filename,
+                        'url': image_url,
+                        'source_name': source_name.lower()
+                    })
         
         print(f"🖼️ Found {len(available_images)} real images available for injection")
         
@@ -6509,53 +6517,61 @@ async def inject_real_images_into_articles():
             title = article.get('title', '')
             content = article.get('content', '')
             
-            # Skip articles that already have images
-            if '/api/static/uploads/' in content and '<img' in content:
+            # Skip articles that already have contextual images or are too short
+            if 'contextual-image' in content or len(content) < 500:
                 continue
                 
-            # Find matching images based on title or content keywords
+            # Find matching images - be more generous with matching
             matching_images = []
             
-            # Extract key terms from title for matching
-            title_words = title.lower().split()
-            content_words = content.lower().split()[:100]  # First 100 words
+            # Extract key terms for matching
+            title_lower = title.lower()
+            content_lower = content.lower()
             
+            # Try to match images by source name
             for image in available_images:
-                source_name = image['source_name'].lower()
+                source_name = image['source_name']
                 
-                # Match by source name similarity
-                for word in title_words + content_words:
-                    if len(word) > 3 and word in source_name:
-                        matching_images.append(image)
-                        break
-                
-                # Also include general images if no specific matches
-                if len(matching_images) == 0 and ('img' in source_name or 'image' in source_name):
+                # Match by keywords
+                if (any(word in source_name for word in ['billing', 'management', 'google', 'map', 'javascript', 'api', 'test']) or
+                    any(word in title_lower for word in [source_name]) or
+                    any(part in content_lower for part in source_name.split('-')[:2] if len(part) > 3)):
                     matching_images.append(image)
+                    if len(matching_images) >= 3:  # Max 3 per article
+                        break
             
-            # If no specific matches, use some general images
+            # If no specific matches, use some available images anyway
             if len(matching_images) == 0:
                 matching_images = available_images[:2]  # Use first 2 available images
             
             if matching_images:
-                # Inject images contextually into the article
-                enhanced_content = inject_images_contextually(content, matching_images[:3])  # Max 3 images per article
+                print(f"📝 Processing article: '{title[:50]}...' with {len(matching_images)} images")
                 
-                if enhanced_content != content:
+                # Inject images contextually into the article
+                enhanced_content = inject_images_contextually(content, matching_images)
+                
+                if enhanced_content != content and len(enhanced_content) > len(content):
                     # Update article in database
                     await db.content_library.update_one(
                         {"_id": article_id},
-                        {"$set": {"content": enhanced_content, "has_images": True, "image_injection_timestamp": datetime.utcnow()}}
+                        {"$set": {
+                            "content": enhanced_content, 
+                            "has_images": True, 
+                            "image_injection_timestamp": datetime.utcnow(),
+                            "injected_image_count": len(matching_images)
+                        }}
                     )
                     
                     injection_count += 1
-                    print(f"✅ Injected {len(matching_images[:3])} images into article: '{title[:50]}...'")
+                    print(f"✅ Injected {len(matching_images)} images into: '{title[:50]}...'")
         
         print(f"🎉 COMPLETED: Successfully injected images into {injection_count} articles")
         return injection_count
         
     except Exception as e:
         print(f"❌ Image injection failed: {e}")
+        import traceback
+        print(traceback.format_exc())
         return 0
 
 def inject_images_contextually(content: str, images: list) -> str:

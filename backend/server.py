@@ -6473,6 +6473,188 @@ async def create_basic_fallback_article(content: str, metadata: Dict[str, Any]) 
     print(f"✅ Created basic Content Library article: {article_record['title']}")
     return [article_record]
 
+async def inject_real_images_into_articles():
+    """Post-processing function to inject real extracted images into Content Library articles"""
+    print("🎯 STARTING: Real image injection into existing articles")
+    
+    try:
+        # Get all articles from Content Library that need image injection
+        articles_cursor = db.content_library.find({})
+        articles = await articles_cursor.to_list(length=None)
+        
+        print(f"📚 Found {len(articles)} articles to process for image injection")
+        
+        # Get all available real images from static/uploads directory
+        uploads_dir = "/app/backend/static/uploads"
+        available_images = []
+        
+        if os.path.exists(uploads_dir):
+            for filename in os.listdir(uploads_dir):
+                if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    # Skip session directory images for now, focus on direct uploads
+                    if not filename.startswith('session_'):
+                        image_url = f"/api/static/uploads/{filename}"
+                        available_images.append({
+                            'filename': filename,
+                            'url': image_url,
+                            'source_name': filename.split('_img_')[0] if '_img_' in filename else filename.split('.')[0]
+                        })
+        
+        print(f"🖼️ Found {len(available_images)} real images available for injection")
+        
+        injection_count = 0
+        
+        for article in articles:
+            article_id = article.get('_id')
+            title = article.get('title', '')
+            content = article.get('content', '')
+            
+            # Skip articles that already have images
+            if '/api/static/uploads/' in content and '<img' in content:
+                continue
+                
+            # Find matching images based on title or content keywords
+            matching_images = []
+            
+            # Extract key terms from title for matching
+            title_words = title.lower().split()
+            content_words = content.lower().split()[:100]  # First 100 words
+            
+            for image in available_images:
+                source_name = image['source_name'].lower()
+                
+                # Match by source name similarity
+                for word in title_words + content_words:
+                    if len(word) > 3 and word in source_name:
+                        matching_images.append(image)
+                        break
+                
+                # Also include general images if no specific matches
+                if len(matching_images) == 0 and ('img' in source_name or 'image' in source_name):
+                    matching_images.append(image)
+            
+            # If no specific matches, use some general images
+            if len(matching_images) == 0:
+                matching_images = available_images[:2]  # Use first 2 available images
+            
+            if matching_images:
+                # Inject images contextually into the article
+                enhanced_content = inject_images_contextually(content, matching_images[:3])  # Max 3 images per article
+                
+                if enhanced_content != content:
+                    # Update article in database
+                    await db.content_library.update_one(
+                        {"_id": article_id},
+                        {"$set": {"content": enhanced_content, "has_images": True, "image_injection_timestamp": datetime.utcnow()}}
+                    )
+                    
+                    injection_count += 1
+                    print(f"✅ Injected {len(matching_images[:3])} images into article: '{title[:50]}...'")
+        
+        print(f"🎉 COMPLETED: Successfully injected images into {injection_count} articles")
+        return injection_count
+        
+    except Exception as e:
+        print(f"❌ Image injection failed: {e}")
+        return 0
+
+def inject_images_contextually(content: str, images: list) -> str:
+    """Inject images contextually throughout article content"""
+    if not images or not content:
+        return content
+    
+    print(f"🔧 Injecting {len(images)} images contextually into content")
+    
+    # Split content into paragraphs
+    paragraphs = content.split('</p>')
+    if len(paragraphs) < 2:
+        # Try splitting by line breaks if no HTML paragraphs
+        paragraphs = content.split('\n\n')
+    
+    # Calculate optimal image placement positions
+    total_paragraphs = len(paragraphs)
+    images_to_place = len(images)
+    
+    if total_paragraphs < 3:
+        # Short content - add images at the end
+        enhanced_content = content
+        for i, image in enumerate(images):
+            figure_html = f"""
+
+<figure class="contextual-image" style="margin: 20px 0; text-align: center;">
+    <img src="{image['url']}" alt="Figure {i+1}: Illustration for {image['source_name']}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
+        Figure {i+1}: {image['source_name'].replace('_', ' ').replace('-', ' ').title()}
+    </figcaption>
+</figure>
+"""
+            enhanced_content += figure_html
+        return enhanced_content
+    
+    # Long content - distribute images throughout
+    enhanced_paragraphs = []
+    image_index = 0
+    
+    # Calculate spacing - place images every N paragraphs
+    spacing = max(2, total_paragraphs // (images_to_place + 1))
+    
+    for i, paragraph in enumerate(paragraphs):
+        # Add the paragraph
+        if paragraph.strip():
+            enhanced_paragraphs.append(paragraph + ('</p>' if not paragraph.endswith('</p>') else ''))
+        
+        # Insert image at calculated intervals
+        if (image_index < len(images) and 
+            i > 0 and 
+            (i + 1) % spacing == 0 and 
+            i < total_paragraphs - 1):  # Don't add at the very end
+            
+            image = images[image_index]
+            figure_html = f"""
+
+<figure class="contextual-image" style="margin: 20px 0; text-align: center;">
+    <img src="{image['url']}" alt="Figure {image_index+1}: Illustration for {image['source_name']}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
+        Figure {image_index+1}: {image['source_name'].replace('_', ' ').replace('-', ' ').title()}
+    </figcaption>
+</figure>
+"""
+            enhanced_paragraphs.append(figure_html)
+            image_index += 1
+    
+    # Add any remaining images at the end
+    while image_index < len(images):
+        image = images[image_index]
+        figure_html = f"""
+
+<figure class="contextual-image" style="margin: 20px 0; text-align: center;">
+    <img src="{image['url']}" alt="Figure {image_index+1}: Additional illustration for {image['source_name']}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
+        Figure {image_index+1}: {image['source_name'].replace('_', ' ').replace('-', ' ').title()}
+    </figcaption>
+</figure>
+"""
+        enhanced_paragraphs.append(figure_html)
+        image_index += 1
+    
+    enhanced_content = ''.join(enhanced_paragraphs)
+    print(f"✅ Successfully injected {image_index} images into content")
+    return enhanced_content
+
+# Add endpoint to trigger image injection manually
+@app.post("/api/inject-images")
+async def inject_images_endpoint():
+    """Manually trigger image injection into existing articles"""
+    try:
+        injected_count = await inject_real_images_into_articles()
+        return {
+            "success": True,
+            "message": f"Successfully injected images into {injected_count} articles",
+            "articles_updated": injected_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # File upload endpoint
 @app.post("/api/content/upload")
 async def upload_file(

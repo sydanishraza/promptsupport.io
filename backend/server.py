@@ -1924,15 +1924,29 @@ async def process_with_html_preprocessing_pipeline(file_path: str, file_extensio
         for i, chunk_data in enumerate(final_chunks):
             # Determine article title based on document structure
             if len(final_chunks) == 1:
-                # Single article - use document title
-                article_title = document_title
+                # Single article - use document title or extract from first H1
+                if document_title and document_title != "Untitled Document":
+                    article_title = document_title
+                else:
+                    # Extract title from first H1 in content
+                    extracted_h1_title = await extract_h1_title_from_content(chunk_data['content'])
+                    article_title = extracted_h1_title if extracted_h1_title else document_title
             else:
-                # Multiple articles - use section title with document context
-                section_title = chunk_data['title']
+                # Multiple articles - extract H1 title from each chunk for section-specific titles
+                section_title = await extract_h1_title_from_content(chunk_data['content'])
+                if not section_title:
+                    # Fallback to chunk title
+                    section_title = chunk_data['title']
+                
+                # Clean up section title
                 if section_title.lower() in ['introduction', 'complete document', 'full document']:
                     article_title = document_title
                 else:
-                    article_title = f"{section_title} | {document_title}"
+                    # Use section title with document context
+                    if document_title and document_title != "Untitled Document":
+                        article_title = f"{section_title} | {document_title}"
+                    else:
+                        article_title = section_title
             
             # Phase 4: Final content polishing for professional output
             polished_result = await polish_article_content(

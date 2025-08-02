@@ -355,6 +355,100 @@ Focus on:
       : textContent;
   };
 
+  // Article merging functions
+  const toggleArticleSelection = (resourceId, articleId) => {
+    const articleKey = `${resourceId}:${articleId}`;
+    setSelectedArticlesForMerging(prev => 
+      prev.includes(articleKey)
+        ? prev.filter(key => key !== articleKey)
+        : [...prev, articleKey]
+    );
+  };
+
+  const mergeSelectedArticles = async () => {
+    if (selectedArticlesForMerging.length < 2) {
+      alert('Please select at least 2 articles to merge');
+      return;
+    }
+
+    setMergingInProgress(true);
+    
+    try {
+      // Collect selected articles
+      const articlesToMerge = [];
+      
+      for (const resource of generationResults.resources) {
+        for (const article of resource.articles) {
+          const articleKey = `${resource.resource_id}:${article.article_id}`;
+          if (selectedArticlesForMerging.includes(articleKey)) {
+            articlesToMerge.push({
+              ...article,
+              resource_name: resource.resource_name,
+              resource_id: resource.resource_id
+            });
+          }
+        }
+      }
+
+      // Create merged article
+      const mergedTitle = articlesToMerge.map(a => a.title).join(' + ');
+      const mergedContent = articlesToMerge
+        .map(article => `<section data-source="${article.resource_name}">
+          <h2>${article.title}</h2>
+          ${article.improvedContent}
+        </section>`)
+        .join('\n\n');
+
+      const mergedArticle = {
+        article_id: `merged_${Date.now()}`,
+        title: `Merged Article: ${mergedTitle}`,
+        improvedContent: `<div class="merged-article">
+          <div class="merge-info" style="background: #f0f9ff; padding: 15px; border-left: 4px solid #0ea5e9; margin-bottom: 20px;">
+            <h3 style="margin: 0 0 10px 0; color: #0c4a6e;">📝 Merged Article</h3>
+            <p style="margin: 0; color: #075985; font-size: 14px;">
+              Combined from ${articlesToMerge.length} articles: 
+              ${articlesToMerge.map(a => `"${a.title}"`).join(', ')}
+            </p>
+          </div>
+          ${mergedContent}
+        </div>`,
+        originalContent: articlesToMerge.map(a => a.originalContent).join('\n\n'),
+        qualityScore: Math.round(articlesToMerge.reduce((sum, a) => sum + a.qualityScore, 0) / articlesToMerge.length * 10) / 10,
+        tokens: articlesToMerge.reduce((sum, a) => sum + a.tokens, 0),
+        processingTime: articlesToMerge.reduce((sum, a) => sum + a.processingTime, 0),
+        llmModel: 'merger',
+        improvements: [
+          ...new Set(articlesToMerge.flatMap(a => a.improvements)),
+          'Content merged from multiple sources',
+          'Cross-referenced information combined'
+        ],
+        preservedTokens: {
+          preserved: true,
+          imageTokens: articlesToMerge.reduce((sum, a) => sum + (a.preservedTokens?.imageTokens || 0), 0)
+        },
+        status: 'merged'
+      };
+
+      // Add merged article to results
+      setMergedArticles(prev => [...prev, mergedArticle]);
+      
+      // Clear selection
+      setSelectedArticlesForMerging([]);
+      
+      console.log('Successfully merged articles:', mergedArticle);
+
+    } catch (error) {
+      console.error('Error merging articles:', error);
+      alert('Failed to merge articles. Please try again.');
+    } finally {
+      setMergingInProgress(false);
+    }
+  };
+
+  const deleteMergedArticle = (articleId) => {
+    setMergedArticles(prev => prev.filter(article => article.article_id !== articleId));
+  };
+
   const getQualityColor = (score) => {
     if (score >= 8.5) return 'green';
     if (score >= 7.0) return 'blue';

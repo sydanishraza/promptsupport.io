@@ -2480,6 +2480,19 @@ async def get_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 # Training endpoints
+@app.options("/api/training/process")
+async def training_process_options():
+    """Handle CORS preflight requests for training process endpoint"""
+    return Response(
+        content="OK",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
+
 @app.post("/api/training/process")
 async def training_process_document(
     file: UploadFile = File(...),

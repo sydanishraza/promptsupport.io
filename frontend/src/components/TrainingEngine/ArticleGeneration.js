@@ -39,6 +39,12 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
   const [viewerMode, setViewerMode] = useState('formatted'); // 'formatted', 'html', 'comparison'
   const [isViewerMaximized, setIsViewerMaximized] = useState(false);
   const [copiedArticle, setCopiedArticle] = useState(null);
+  
+  // Article merging states
+  const [showMergingInterface, setShowMergingInterface] = useState(false);
+  const [selectedArticlesForMerging, setSelectedArticlesForMerging] = useState([]);
+  const [mergedArticles, setMergedArticles] = useState([]);
+  const [mergingInProgress, setMergingInProgress] = useState(false);
 
   useEffect(() => {
     if (processingData && processingData.imageProcessingResults && processingData.stage === 'images_processed' && !processing && !generationResults) {

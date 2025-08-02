@@ -907,7 +907,8 @@ Focus on:
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Merged Articles Display */}

@@ -6816,9 +6816,20 @@ CRITICAL IMAGE DISTRIBUTION REQUIREMENTS:
                         # Add any remaining images at the end
                         while image_index < total_images:
                             image_data = embedded_media[image_index]
+                            
+                            # Use the correct image URL - prioritize 'url' field, fallback to 'data'
+                            image_src = image_data.get('url', image_data.get('data', ''))
+                            
+                            if not image_src:
+                                print(f"⚠️ No image source found for remaining image {image_index + 1}, skipping")
+                                image_index += 1
+                                continue
+                            
+                            print(f"🖼️ REMAINING PLACEMENT: Adding image {image_index + 1} with URL: {image_src[:50]}...")
+                            
                             remaining_image_html = f"""
 <figure class="image-remaining" style="margin: 20px 0; text-align: center;">
-    <img src="{image_data['url']}" alt="Figure {image_index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <img src="{image_src}" alt="Figure {image_index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
     <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
         Figure {image_index + 1}: Additional image from {file.filename}
     </figcaption>

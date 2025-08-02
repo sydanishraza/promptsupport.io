@@ -172,8 +172,8 @@ class KnowledgeEngineTest:
                         print(f"✅ Upload successful!")
                         print(f"📋 Response keys: {list(result.keys())}")
                         
-                        # Check for expected response structure
-                        if 'success' in result and result['success']:
+                        # Check for expected response structure (Knowledge Engine format)
+                        if result.get('status') == 'completed':
                             self.test_results['content_upload']['status'] = 'passed'
                             self.test_results['content_upload']['details'].append(f"Upload successful with {len(file_data)} bytes")
                             
@@ -181,17 +181,20 @@ class KnowledgeEngineTest:
                             self.upload_response = result
                             
                             # Check for processing details
-                            if 'articles' in result:
-                                articles_count = len(result['articles']) if isinstance(result['articles'], list) else 0
-                                self.test_results['content_upload']['details'].append(f"Generated {articles_count} articles")
+                            if 'chunks_created' in result:
+                                chunks_count = result['chunks_created']
+                                self.test_results['content_upload']['details'].append(f"Created {chunks_count} content chunks")
                             
-                            if 'images_processed' in result:
-                                images_count = result['images_processed']
-                                self.test_results['content_upload']['details'].append(f"Processed {images_count} images")
+                            if 'extracted_content_length' in result:
+                                content_length = result['extracted_content_length']
+                                self.test_results['content_upload']['details'].append(f"Extracted {content_length} characters of content")
+                            
+                            # Store job_id for further testing
+                            self.job_id = result.get('job_id')
                                 
                         else:
                             self.test_results['content_upload']['status'] = 'failed'
-                            self.test_results['content_upload']['details'].append(f"Upload returned success=false: {result}")
+                            self.test_results['content_upload']['details'].append(f"Upload failed with status: {result.get('status', 'unknown')}")
                             
                     except json.JSONDecodeError as e:
                         print(f"❌ Invalid JSON response: {e}")

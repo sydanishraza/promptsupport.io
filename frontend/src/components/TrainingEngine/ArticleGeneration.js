@@ -792,7 +792,8 @@ Focus on:
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

@@ -355,9 +355,8 @@
 ## test_plan:
   current_focus:
     - "Fix Training Engine Single Article Issue"
-    - "Fix Training Engine Broken Images Issue" 
-    - "Fix Training Engine Article Title Issue"
-  stuck_tasks: []
+  stuck_tasks:
+    - "Fix Training Engine Single Article Issue"
   test_all: false
   test_priority: "critical_first"
 

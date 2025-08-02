@@ -553,12 +553,50 @@ class DocumentPreprocessor:
                     # Update paths to use session directory
                     image_path = os.path.join(session_dir, image_filename)
                     
-                    # Save image to correct location
+                    # Save image to correct location AND Asset Library
                     if image_bytes:
                         try:
+                            # Save to session directory for immediate use
                             with open(image_path, "wb") as img_file:
                                 img_file.write(image_bytes)
-                            print(f"💾 Saved image: {image_path} ({len(image_bytes)} bytes)")
+                            print(f"💾 Saved image to session: {image_path} ({len(image_bytes)} bytes)")
+                            
+                            # ENHANCED: Also save to Asset Library for long-term storage
+                            try:
+                                asset_id = str(uuid.uuid4())
+                                asset_filename = f"{asset_id}_{image_filename}"
+                                asset_path = f"static/uploads/{asset_filename}"
+                                
+                                # Save to main assets directory
+                                with open(asset_path, "wb") as asset_file:
+                                    asset_file.write(image_bytes)
+                                
+                                # Store in Asset Library database (sync version)
+                                asset_doc = {
+                                    "id": asset_id,
+                                    "filename": image_filename,
+                                    "original_filename": image_filename,
+                                    "asset_type": "image", 
+                                    "file_size": len(image_bytes),
+                                    "content_type": content_type,
+                                    "url": f"/api/static/uploads/{asset_filename}",
+                                    "session_url": f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                                    "created_at": datetime.utcnow().isoformat(),
+                                    "source": "training_engine_extraction",
+                                    "session_id": self.session_id
+                                }
+                                
+                                # Note: Asset Library insertion will be handled by the calling async function
+                                # Store asset_doc for later insertion
+                                if not hasattr(self, 'pending_assets'):
+                                    self.pending_assets = []
+                                self.pending_assets.append(asset_doc)
+                                print(f"📚 Prepared for Asset Library: {asset_filename}")
+                                
+                            except Exception as asset_error:
+                                print(f"⚠️ Failed to prepare Asset Library entry: {asset_error}")
+                                # Continue processing even if Asset Library preparation fails
+                                
                         except Exception as save_error:
                             print(f"❌ Failed to save image {image_filename}: {save_error}")
                     

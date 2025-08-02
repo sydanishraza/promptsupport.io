@@ -135,7 +135,7 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "Implementing HTML Preprocessing Pipeline for Accurate Image Reinsertion - Revolutionary 3-Phase approach to solve image placement issues in Knowledge Engine"
+## user_problem_statement: "Critical Training Engine Issues: Single Article Generation, Broken Images, and Incorrect Titles - Need comprehensive multi-article output with contextual image embedding and H1-based titles"
 
 ## backend:
   - task: "HTML Preprocessing Pipeline Implementation"

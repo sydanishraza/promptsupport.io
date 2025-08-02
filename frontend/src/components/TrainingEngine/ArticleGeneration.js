@@ -765,6 +765,147 @@ Focus on:
         </div>
       )}
 
+      {/* Article Merging Interface */}
+      {showMergingInterface && generationResults && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Article Merging Interface</h3>
+            <div className="flex items-center space-x-3">
+              <div className="text-sm text-gray-600">
+                {selectedArticlesForMerging.length} article(s) selected
+              </div>
+              <button
+                onClick={mergeSelectedArticles}
+                disabled={selectedArticlesForMerging.length < 2 || mergingInProgress}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedArticlesForMerging.length >= 2 && !mergingInProgress
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {mergingInProgress ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Layers className="h-4 w-4" />
+                )}
+                <span>{mergingInProgress ? 'Merging...' : 'Merge Selected'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Info className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-900">Merging Instructions</span>
+            </div>
+            <p className="text-xs text-purple-700 mt-1">
+              Select 2 or more articles to combine them into a single comprehensive article with cross-referenced content.
+            </p>
+          </div>
+
+          {/* Article Selection Grid */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-gray-900">Select Articles to Merge:</h4>
+            {generationResults.resources.map((resource) => (
+              <div key={resource.resource_id} className="border border-gray-200 rounded-lg p-4">
+                <h5 className="font-medium text-gray-900 mb-3">{resource.resource_name}</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {resource.articles.map((article) => {
+                    const articleKey = `${resource.resource_id}:${article.article_id}`;
+                    const isSelected = selectedArticlesForMerging.includes(articleKey);
+                    
+                    return (
+                      <div
+                        key={article.article_id}
+                        className={`p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                          isSelected
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                        onClick={() => toggleArticleSelection(resource.resource_id, article.article_id)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h6 className="font-medium text-sm text-gray-900 leading-tight">
+                              {article.title}
+                            </h6>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {generateArticlePreview(article.improvedContent, 100)}
+                            </p>
+                          </div>
+                          <div className={`ml-2 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                            isSelected
+                              ? 'border-purple-500 bg-purple-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {isSelected && (
+                              <CheckCircle className="h-3 w-3 text-white" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Quality: {article.qualityScore}/10</span>
+                          <span>{article.tokens} tokens</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Merged Articles Display */}
+          {mergedArticles.length > 0 && (
+            <div className="mt-6 border-t border-gray-200 pt-6">
+              <h4 className="font-medium text-gray-900 mb-4">
+                Merged Articles ({mergedArticles.length})
+              </h4>
+              <div className="space-y-3">
+                {mergedArticles.map((mergedArticle) => (
+                  <div
+                    key={mergedArticle.article_id}
+                    className="p-4 bg-purple-50 border border-purple-200 rounded-lg"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h5 className="font-medium text-purple-900 mb-1">
+                          {mergedArticle.title}
+                        </h5>
+                        <div className="text-sm text-purple-700 mb-2">
+                          Quality Score: {mergedArticle.qualityScore}/10 • 
+                          {mergedArticle.tokens} tokens • 
+                          {mergedArticle.improvements.length} improvements
+                        </div>
+                        <p className="text-xs text-purple-600">
+                          {generateArticlePreview(mergedArticle.improvedContent, 150)}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2 ml-4">
+                        <button
+                          onClick={() => viewArticle(mergedArticle, { resource_name: 'Merged Articles', resource_id: 'merged' })}
+                          className="flex items-center space-x-1 px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+                        >
+                          <Eye className="h-3 w-3" />
+                          <span>View</span>
+                        </button>
+                        <button
+                          onClick={() => deleteMergedArticle(mergedArticle.article_id)}
+                          className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                        >
+                          <X className="h-3 w-3" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Enhanced Article Viewer Modal */}
       {selectedArticle && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

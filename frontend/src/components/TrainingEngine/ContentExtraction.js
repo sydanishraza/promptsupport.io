@@ -83,7 +83,9 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
           const metadata = {
             title: result.articles?.[0]?.title || resource.name,
             word_count: result.articles?.[0]?.word_count || 0,
-            processing_time: result.processing_time || '0s',
+            processing_time: typeof result.processing_time === 'number' 
+              ? `${result.processing_time.toFixed(1)}s` 
+              : result.processing_time || '0s',
             total_images: result.images_processed || 0
           };
 

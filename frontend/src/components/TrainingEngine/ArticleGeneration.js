@@ -20,7 +20,8 @@ import {
   ExternalLink,
   X,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Layers
 } from 'lucide-react';
 
 const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onStatusUpdate }) => {

@@ -220,7 +220,10 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
     return blocks;
   };
 
-
+  // Helper function to estimate tokens
+  const estimateTokens = (text) => {
+    return Math.ceil((text || '').length / 4);
+  };
 
   const viewResourceDetails = (resource) => {
     setSelectedResource(resource);

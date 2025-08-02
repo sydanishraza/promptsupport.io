@@ -300,6 +300,32 @@ Focus on:
       cleanHTML = `<div class="article-content">${cleanHTML}</div>`;
     }
     
+    // Convert image tokens to actual images
+    // Look for image URLs in the format /api/static/uploads/session_id/img_X.png
+    cleanHTML = cleanHTML.replace(/src=["']\/api\/static\/uploads\/([^"']+)["']/g, (match, imagePath) => {
+      // Convert relative URLs to absolute URLs
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
+      const fullImageUrl = `${backendUrl}/api/static/uploads/${imagePath}`;
+      return `src="${fullImageUrl}"`;
+    });
+    
+    // Also handle any figure elements with image tokens
+    cleanHTML = cleanHTML.replace(/\[IMAGE:([^\]]+)\]/g, (match, imageInfo) => {
+      // Extract image URL from token if possible
+      try {
+        const imageMatch = imageInfo.match(/src="([^"]+)"/);
+        if (imageMatch) {
+          const imageSrc = imageMatch[1];
+          const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
+          const fullImageUrl = imageSrc.startsWith('http') ? imageSrc : `${backendUrl}${imageSrc}`;
+          return `<img src="${fullImageUrl}" alt="Document Image" style="max-width: 100%; height: auto; margin: 10px 0;" />`;
+        }
+      } catch (e) {
+        console.warn('Could not parse image token:', imageInfo);
+      }
+      return `<div class="image-placeholder" style="background: #f0f0f0; padding: 20px; text-align: center; margin: 10px 0; border: 1px dashed #ccc;">[Image: ${imageInfo}]</div>`;
+    });
+    
     // Clean up any malformed tags
     cleanHTML = cleanHTML.replace(/<([^>]+)>/g, (match, tag) => {
       // Ensure proper tag structure

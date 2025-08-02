@@ -298,7 +298,9 @@ const NewTrainingEngine = () => {
               <div className="mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0 mb-2">
                   <div className="flex items-center space-x-3">
-                    <stages[currentStage].icon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
+                    {React.createElement(stages[currentStage].icon, {
+                      className: "h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0"
+                    })}
                     <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
                       {stages[currentStage].title}
                     </h2>

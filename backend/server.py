@@ -75,13 +75,14 @@ import os
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/api/static", StaticFiles(directory=static_dir), name="static")
 
-# CORS middleware
+# CORS middleware - DEFINITIVE FIX for all origin issues
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"]  # Expose all headers
 )
 
 # === DOCUMENT PROCESSING HELPER FUNCTIONS ===

@@ -428,11 +428,16 @@ Focus on:
           preserved: true,
           imageTokens: articlesToMerge.reduce((sum, a) => sum + (a.preservedTokens?.imageTokens || 0), 0)
         },
-        status: 'merged'
+        status: 'merged',
+        source_articles: articlesToMerge.map(a => `${a.resource_name}:${a.article_id}`)
       };
 
       // Add merged article to results
       setMergedArticles(prev => [...prev, mergedArticle]);
+      
+      // Track merged article IDs to hide them from available list
+      const mergedIds = articlesToMerge.map(a => `${a.resource_id}:${a.article_id}`);
+      setMergedArticleIds(prev => new Set([...prev, ...mergedIds]));
       
       // Clear selection
       setSelectedArticlesForMerging([]);

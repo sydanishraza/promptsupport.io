@@ -453,6 +453,19 @@ Focus on:
   };
 
   const deleteMergedArticle = (articleId) => {
+    // Find the merged article to get its source articles
+    const mergedArticle = mergedArticles.find(a => a.article_id === articleId);
+    
+    if (mergedArticle && mergedArticle.source_articles) {
+      // Remove the source article IDs from the merged set to make them available again
+      setMergedArticleIds(prev => {
+        const newSet = new Set(prev);
+        mergedArticle.source_articles.forEach(sourceId => newSet.delete(sourceId));
+        return newSet;
+      });
+    }
+    
+    // Remove the merged article
     setMergedArticles(prev => prev.filter(article => article.article_id !== articleId));
   };
 

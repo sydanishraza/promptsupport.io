@@ -743,10 +743,16 @@ class DocumentPreprocessor:
     def _create_structural_html_chunks(self, html_content: str, images: list) -> list:
         """
         FIXED: Create logical article chunks based ONLY on H1 headings
+        Enhanced to support both HTML <h1> tags and Markdown # syntax
         Each H1 section becomes exactly ONE article, regardless of size
         This ensures documents generate the expected number of logical articles
         """
         try:
+            # ENHANCED: Detect if content is Markdown and convert to HTML first
+            if self._is_markdown_content(html_content):
+                print("📝 Markdown content detected - converting to HTML for H1 detection")
+                html_content = self._convert_markdown_to_html(html_content)
+            
             soup = BeautifulSoup(html_content, 'html.parser')
             chunks = []
             current_chunk_content = []

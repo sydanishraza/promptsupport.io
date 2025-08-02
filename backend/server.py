@@ -1876,18 +1876,34 @@ async def process_with_html_preprocessing_pipeline(file_path: str, file_extensio
             if polished_result.get('requires_chunked_processing'):
                 print(f"🔄 Large document detected - processing {len(polished_result['chunks'])} chunks separately")
                 
-                # Process each chunk as separate article
+                # FIXED: Process each chunk as separate article with proper title extraction
                 for chunk_info in polished_result['chunks']:
+                    # Extract H1-based title from chunk content
+                    chunk_title = await extract_h1_title_from_content(chunk_info.get('content', ''))
+                    if not chunk_title:
+                        chunk_title = chunk_info.get('title', article_title)
+                    
+                    # Ensure chunk title includes document context for clarity
+                    if chunk_title != document_title and document_title not in chunk_title:
+                        final_chunk_title = f"{chunk_title} | {document_title}"
+                    else:
+                        final_chunk_title = chunk_title
+                    
                     chunk_article = await process_individual_chunk(
                         chunk_info, 
-                        document_title, 
+                        final_chunk_title, 
                         template_data, 
                         training_session, 
                         image_assets
                     )
                     articles.append(chunk_article)
+                    
+                    print(f"✅ Created article: '{chunk_article['title']}' ({chunk_article['word_count']} words)")
                 
                 print(f"✅ Large document chunked into {len(polished_result['chunks'])} separate articles")
+                
+                # CRITICAL: Skip the single article creation since we've created multiple
+                continue
                 
             else:
                 # Standard single article processing

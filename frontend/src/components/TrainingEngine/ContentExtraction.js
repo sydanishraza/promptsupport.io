@@ -66,7 +66,9 @@ const ContentExtraction = ({ moduleData, processingData, setProcessingData, onSt
 
           const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/training/process`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            // Remove timeout to let browser handle it, or use very long timeout
+            signal: AbortSignal.timeout(600000) // 10 minutes timeout
           });
 
           if (!response.ok) {

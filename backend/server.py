@@ -5698,7 +5698,122 @@ async def process_content(request: ContentProcessRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
-    """Process text content into chunks"""
+    """ENHANCED: Process text content into comprehensive chunks with better coverage"""
+    try:
+        print(f"🚀 ENHANCED CHUNKING: Processing {len(content)} characters of content")
+        
+        # ENHANCEMENT 1: Intelligent chunking based on content structure
+        chunks = []
+        
+        # Split by headers first (for structured content)
+        sections = []
+        if '\n# ' in content or '\n## ' in content or '\n### ' in content:
+            # Markdown-style headers detected
+            import re
+            header_pattern = r'\n(#{1,6})\s+(.+?)(?=\n#{1,6}|\n\n|\Z)'
+            current_section = ""
+            
+            for match in re.finditer(header_pattern, content, re.DOTALL):
+                if current_section.strip():
+                    sections.append(current_section.strip())
+                current_section = match.group(0)
+            
+            if current_section.strip():
+                sections.append(current_section.strip())
+                
+            # If no sections found, use the whole content
+            if not sections:
+                sections = [content]
+        else:
+            # No clear headers, split by paragraphs
+            paragraphs = content.split('\n\n')
+            current_section = ""
+            
+            for paragraph in paragraphs:
+                if len(current_section + paragraph) > 2000 and current_section:  # Larger chunks for better coverage
+                    sections.append(current_section.strip())
+                    current_section = paragraph
+                else:
+                    current_section += "\n\n" + paragraph if current_section else paragraph
+            
+            if current_section.strip():
+                sections.append(current_section.strip())
+        
+        print(f"📚 ENHANCED: Created {len(sections)} content sections for processing")
+        
+        # ENHANCEMENT 2: Create comprehensive chunks with overlap for better coverage
+        for i, section in enumerate(sections):
+            if not section.strip():
+                continue
+                
+            # For large sections, create multiple overlapping chunks
+            section_words = section.split()
+            if len(section_words) > 300:  # Large section - create overlapping chunks
+                chunk_size = 250  # words per chunk
+                overlap = 50      # words overlap
+                
+                start_word = 0
+                chunk_num = 1
+                
+                while start_word < len(section_words):
+                    end_word = min(start_word + chunk_size, len(section_words))
+                    chunk_words = section_words[start_word:end_word]
+                    chunk_text = ' '.join(chunk_words)
+                    
+                    if chunk_text.strip():
+                        chunk = DocumentChunk(
+                            content=chunk_text,
+                            metadata={
+                                **metadata,
+                                "section_number": i + 1,
+                                "chunk_number": chunk_num,
+                                "total_sections": len(sections),
+                                "chunk_type": "overlapping",
+                                "word_count": len(chunk_words)
+                            }
+                        )
+                        chunks.append(chunk)
+                        await db.document_chunks.insert_one(chunk.dict())
+                        chunk_num += 1
+                    
+                    # Move start position (with overlap for continuity)
+                    start_word = end_word - overlap if end_word < len(section_words) else end_word
+                    
+                    if start_word >= len(section_words):
+                        break
+                        
+            else:
+                # Small section - single chunk
+                chunk = DocumentChunk(
+                    content=section,
+                    metadata={
+                        **metadata,
+                        "section_number": i + 1,
+                        "total_sections": len(sections),
+                        "chunk_type": "single",
+                        "word_count": len(section.split())
+                    }
+                )
+                chunks.append(chunk)
+                await db.document_chunks.insert_one(chunk.dict())
+        
+        print(f"✅ ENHANCED CHUNKING COMPLETE: Created {len(chunks)} comprehensive chunks with overlapping coverage")
+        
+        # ENHANCEMENT 3: Create comprehensive Content Library article
+        try:
+            await create_content_library_article_from_chunks(chunks, metadata)
+        except Exception as e:
+            print(f"Warning: Could not create Content Library article: {e}")
+        
+        return chunks
+        
+    except Exception as e:
+        print(f"❌ Enhanced chunking failed: {e}")
+        # Fallback to basic chunking
+        return await basic_process_text_content(content, metadata)
+
+async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
+    """Fallback: Basic chunking strategy (original implementation)"""
     try:
         # Simple chunking strategy (split by sentences, max 500 chars)
         sentences = content.split('.')

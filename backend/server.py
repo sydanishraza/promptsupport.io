@@ -1228,6 +1228,28 @@ async def extract_document_title(file_path: str, file_extension: str, html_conte
         print(f"❌ Title extraction failed: {e}")
         return "Untitled Document"
 
+async def extract_h1_title_from_content(content: str) -> str:
+    """
+    Extract the first H1 heading from HTML content
+    Returns the text content of the first H1 element found
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find the first H1 element
+        h1_element = soup.find('h1')
+        if h1_element and h1_element.get_text().strip():
+            title = h1_element.get_text().strip()
+            print(f"📋 Extracted H1 title from content: {title}")
+            return title
+        
+        return ""
+        
+    except Exception as e:
+        print(f"❌ H1 title extraction failed: {e}")
+        return ""
+
 async def chunk_large_document_for_polishing(content: str, title: str) -> list:
     """
     Chunk large documents ONLY at H1 boundaries for individual LLM processing

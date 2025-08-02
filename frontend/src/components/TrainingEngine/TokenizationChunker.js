@@ -173,7 +173,10 @@ const TokenizationChunker = ({ moduleData, processingData, setProcessingData, on
       chunks,
       totalTokens: chunks.reduce((sum, chunk) => sum + chunk.tokens, 0),
       chunkingMethod: chunkingConfig.chunkByH1 ? 'H1-based' : 'Token-based',
-      status: 'chunked'
+      status: 'chunked',
+      // Preserve session information for image processing
+      session_id: resource.session_id,
+      raw_backend_response: resource.raw_backend_response
     };
   };
 

@@ -840,11 +840,32 @@ Focus on:
           {/* Article Selection Grid */}
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900">Select Articles to Merge:</h4>
-            {generationResults.resources.map((resource) => (
-              <div key={resource.resource_id} className="border border-gray-200 rounded-lg p-4">
-                <h5 className="font-medium text-gray-900 mb-3">{resource.resource_name}</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {resource.articles.map((article) => {
+            {generationResults.resources.map((resource) => {
+              // Filter out articles that have been merged
+              const availableArticles = resource.articles.filter(article => 
+                !mergedArticleIds.has(`${resource.resource_id}:${article.article_id}`)
+              );
+              
+              // Only show resource section if it has available articles
+              if (availableArticles.length === 0) {
+                return (
+                  <div key={resource.resource_id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h5 className="font-medium text-gray-500 mb-3">{resource.resource_name}</h5>
+                    <p className="text-sm text-gray-500 italic">All articles from this source have been merged.</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div key={resource.resource_id} className="border border-gray-200 rounded-lg p-4">
+                  <h5 className="font-medium text-gray-900 mb-3">
+                    {resource.resource_name} 
+                    <span className="text-sm text-gray-600 font-normal ml-2">
+                      ({availableArticles.length} available)
+                    </span>
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {availableArticles.map((article) => {
                     const articleKey = `${resource.resource_id}:${article.article_id}`;
                     const isSelected = selectedArticlesForMerging.includes(articleKey);
                     

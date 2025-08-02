@@ -89,10 +89,19 @@ const ImageProcessing = ({ moduleData, processingData, setProcessingData, onStat
               if (srcMatch && srcMatch[1]) {
                 let imageUrl = srcMatch[1];
                 
-                // Ensure the URL is absolute
+                // Ensure the URL is absolute and properly formatted
                 if (imageUrl.startsWith('/api/static/uploads/')) {
                   imageUrl = `${backendUrl}${imageUrl}`;
+                } else if (imageUrl.includes('/api/static/uploads/')) {
+                  // Already contains domain, use as is
+                  imageUrl = imageUrl;
+                } else if (resource.session_id) {
+                  // Build proper session-based URL
+                  const filename = imageUrl.split('/').pop();
+                  imageUrl = `${backendUrl}/api/static/uploads/session_${resource.session_id}/${filename}`;
                 }
+                
+                console.log(`🖼️ Processing real image: ${imageUrl}`);
                 
                 const imageData = {
                   image_id: `real_img_${i}_${Date.now()}`,

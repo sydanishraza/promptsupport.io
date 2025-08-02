@@ -6701,6 +6701,11 @@ CRITICAL IMAGE DISTRIBUTION REQUIREMENTS:
 - Images should be embedded using the exact HTML format provided above
 - Do not create articles without images unless absolutely necessary
 - Ensure all {len(embedded_media)} images are used across the complete set of articles
+
+MANDATORY: YOU MUST USE ONLY THE EXACT IMAGE URLs PROVIDED BELOW - DO NOT GENERATE NEW URLS:
+{image_references}
+
+CRITICAL: Use only these exact <img src="..."> tags with the URLs shown above. Do not modify URLs or create new ones.
 """
                 
                 # Process document content cleanly without metadata

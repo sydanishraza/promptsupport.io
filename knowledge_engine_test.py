@@ -19,7 +19,7 @@ import io
 import base64
 
 # Get backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://c14dc277-70df-425b-a9d5-f1d91d1168d4.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://10a49d77-8e5f-47eb-bb1c-2abe3d39e381.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class KnowledgeEngineTest:

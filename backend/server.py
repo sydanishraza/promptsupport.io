@@ -223,7 +223,7 @@ async def regenerate_articles_with_enhanced_context(extracted_content: dict, con
             elif block_type == 'h2' and len(current_article['content_blocks']) > 0:
                 # H2 might trigger new article if current is getting long
                 current_word_count = sum(len(b['content'].split()) for b in current_article['content_blocks'])
-                if current_word_count > 3000:  # Increased from 800 to 3000 words per article
+                if current_word_count > 8000:  # PERFORMANCE BOOST: Increased from 3000 to 8000 words per article for fewer LLM calls
                     # Save current article and start new one
                     articles_data.append(current_article)
                     current_article = {

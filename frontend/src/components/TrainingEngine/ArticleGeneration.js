@@ -632,13 +632,26 @@ Focus on:
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Generation Summary</h3>
-              <button
-                onClick={exportArticles}
-                className="flex items-center space-x-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                <Download className="h-4 w-4" />
-                <span>Export Articles</span>
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowMergingInterface(!showMergingInterface)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                    showMergingInterface 
+                      ? 'bg-purple-600 text-white hover:bg-purple-700'
+                      : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                  }`}
+                >
+                  <Layers className="h-4 w-4" />
+                  <span>{showMergingInterface ? 'Hide Merge' : 'Merge Articles'}</span>
+                </button>
+                <button
+                  onClick={exportArticles}
+                  className="flex items-center space-x-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Export Articles</span>
+                </button>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

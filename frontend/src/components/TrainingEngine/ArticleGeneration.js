@@ -710,19 +710,33 @@ Focus on:
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Generated Articles</h3>
             <div className="space-y-6">
-              {generationResults.resources.map((resource) => (
-                <div key={resource.resource_id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{resource.resource_name}</h4>
-                      <p className="text-sm text-gray-600">
-                        {resource.articles.length} articles generated
-                      </p>
+              {generationResults.resources.map((resource) => {
+                // Filter out articles that have been merged
+                const availableArticles = resource.articles.filter(article => 
+                  !mergedArticleIds.has(`${resource.resource_id}:${article.article_id}`)
+                );
+                
+                // Only show resource section if it has available articles
+                if (availableArticles.length === 0) return null;
+                
+                return (
+                  <div key={resource.resource_id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{resource.resource_name}</h4>
+                        <p className="text-sm text-gray-600">
+                          {availableArticles.length} articles available 
+                          {resource.articles.length > availableArticles.length && (
+                            <span className="text-purple-600 ml-1">
+                              ({resource.articles.length - availableArticles.length} merged)
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {resource.articles.map((article) => {
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {availableArticles.map((article) => {
                       const qualityColor = getQualityColor(article.qualityScore);
                       
                       return (

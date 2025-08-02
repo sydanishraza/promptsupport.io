@@ -46,6 +46,7 @@ const ArticleGeneration = ({ moduleData, processingData, setProcessingData, onSt
   const [selectedArticlesForMerging, setSelectedArticlesForMerging] = useState([]);
   const [mergedArticles, setMergedArticles] = useState([]);
   const [mergingInProgress, setMergingInProgress] = useState(false);
+  const [mergedArticleIds, setMergedArticleIds] = useState(new Set()); // Track merged article IDs
 
   useEffect(() => {
     if (processingData && processingData.imageProcessingResults && processingData.stage === 'images_processed' && !processing && !generationResults) {

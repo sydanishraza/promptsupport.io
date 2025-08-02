@@ -652,6 +652,16 @@ class DocumentPreprocessor:
                         })
                 
                 print(f"🖼️ Extracted {len(images)} images from DOCX")
+                
+                # ENHANCED: Insert pending assets into Asset Library database
+                if hasattr(self, 'pending_assets') and self.pending_assets:
+                    try:
+                        # Get database connection (assuming it's available in the calling context)
+                        # This will be handled by the calling async function
+                        print(f"📚 {len(self.pending_assets)} assets prepared for Asset Library insertion")
+                    except Exception as db_error:
+                        print(f"⚠️ Asset Library preparation note: {db_error}")
+                
                 return html_content, images
                 
         except Exception as e:

@@ -424,6 +424,27 @@ class DocumentPreprocessor:
             # Convert document to HTML based on type
             if file_type.lower() in ['docx', 'doc']:
                 html_content, images = await self._convert_docx_to_html(file_path)
+                
+                # ENHANCED: Insert pending assets into Asset Library database
+                if hasattr(self, 'pending_assets') and self.pending_assets:
+                    try:
+                        # Get database connection from global scope
+                        from motor.motor_asyncio import AsyncIOMotorClient
+                        client = AsyncIOMotorClient(MONGO_URL)
+                        db = client[DATABASE_NAME]
+                        
+                        # Insert all pending assets
+                        if self.pending_assets:
+                            await db.assets.insert_many(self.pending_assets)
+                            print(f"📚 Successfully added {len(self.pending_assets)} assets to Asset Library")
+                            
+                        # Clear pending assets
+                        self.pending_assets = []
+                        
+                    except Exception as db_error:
+                        print(f"⚠️ Failed to insert assets into Asset Library: {db_error}")
+                        # Continue processing even if Asset Library insertion fails
+                        
             elif file_type.lower() == 'pdf':
                 html_content, images = await self._convert_pdf_to_html(file_path)
             elif file_type.lower() in ['ppt', 'pptx']:

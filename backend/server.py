@@ -8907,6 +8907,51 @@ def generate_contextual_caption(image_context: dict, paragraph_contexts: list) -
     image_type = determine_image_type(image_context)
     return f"{image_type.title()} from {chapter}"
 
+def extract_image_references_from_text(content: str) -> list:
+    """
+    Extract image references from text content that contains image indicators
+    Returns a list of image reference objects
+    """
+    try:
+        image_refs = []
+        
+        # Common image reference patterns
+        patterns = [
+            r'\[image:\s*([^\]]+)\]',  # [image: description]
+            r'!\[([^\]]*)\]\([^)]+\)',  # ![alt](url) markdown format
+            r'<img[^>]+alt=["\']([^"\']*)["\'][^>]*>',  # <img alt="...">
+            r'image\.(?:png|jpg|jpeg|gif|bmp)',  # image.extension
+            r'figure\s+\d+',  # figure 1, figure 2, etc.
+        ]
+        
+        for i, pattern in enumerate(patterns):
+            matches = re.finditer(pattern, content, re.IGNORECASE)
+            for match in matches:
+                # Extract description or use generic description
+                if match.groups():
+                    description = match.group(1).strip()
+                else:
+                    description = f"Image reference {len(image_refs) + 1}"
+                
+                # Create image reference object
+                image_ref = {
+                    'id': f"text_ref_{len(image_refs) + 1}",
+                    'filename': f"extracted_image_{len(image_refs) + 1}.png",
+                    'url': f"/api/static/placeholder_image_{len(image_refs) + 1}.png",
+                    'alt_text': description or f"Referenced Image {len(image_refs) + 1}",
+                    'caption': description,
+                    'placement': 'inline',
+                    'source': 'text_extraction'
+                }
+                
+                image_refs.append(image_ref)
+        
+        return image_refs
+        
+    except Exception as e:
+        print(f"❌ Error extracting image references from text: {e}")
+        return []
+
 
 
 def create_fallback_segment(segment_content: str, segment_images: list) -> str:

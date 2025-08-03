@@ -5209,6 +5209,27 @@ async def create_articles_with_template(content: str, images: list, template_dat
         print(f"📝 Identified {len(natural_sections)} natural content sections")
         
         # Enhanced image distribution with contextual matching
+        distributed_images = []
+        
+        # ENHANCED: For text files, check for image references in content
+        if not images and any(indicator in content.lower() for indicator in ['[image:', '![', '<img', 'image.png', 'image.jpg', 'figure']):
+            print("🖼️ Text content contains image references - attempting to extract image information")
+            # Extract potential image references from text content
+            image_refs = extract_image_references_from_text(content)
+            if image_refs:
+                distributed_images = image_refs
+                print(f"📸 Found {len(image_refs)} image references in text content")
+        elif images:
+            # Existing image distribution logic for actual images
+            if len(natural_sections) > 1 and len(images) > 0:
+                images_per_section = max(1, len(images) // len(natural_sections))
+                for i, section in enumerate(natural_sections):
+                    start_idx = i * images_per_section
+                    end_idx = min(start_idx + images_per_section, len(images))
+                    section_images = images[start_idx:end_idx]
+                    distributed_images.extend(section_images)
+            else:
+                distributed_images = images
         section_images = distribute_images_contextually(natural_sections, images)
         
         # Create articles from natural sections with enhanced processing

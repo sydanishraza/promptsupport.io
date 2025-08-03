@@ -2835,8 +2835,13 @@ async def training_process_document(
         
         # Use HTML preprocessing pipeline for supported document types
         if file_extension in ['docx', 'doc', 'pdf', 'ppt', 'pptx']:
-            print(f"🔄 Using HTML preprocessing pipeline for {file_extension}")
+            print(f"🔄 DEBUG: Using HTML preprocessing pipeline for {file_extension}")
+            print(f"🔍 DEBUG: File path: {temp_file_path}")
+            print(f"📋 DEBUG: Session ID: {training_session.get('session_id', 'unknown')}")
             articles = await process_with_html_preprocessing_pipeline(temp_file_path, file_extension, template_data, training_session)
+            print(f"✅ DEBUG: HTML pipeline returned {len(articles)} articles")
+            for i, article in enumerate(articles):
+                print(f"   Article {i+1}: '{article.get('title', 'No Title')}' ({article.get('word_count', 0)} words)")
         elif file_extension in ['xls', 'xlsx']:
             print("🔍 Processing Excel file")
             articles = await process_excel_with_template(temp_file_path, template_data, training_session)

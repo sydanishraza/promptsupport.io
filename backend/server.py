@@ -6689,7 +6689,11 @@ RESPONSE FORMAT - Return valid JSON:
 async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
     """Create a single comprehensive article from content using LLM with fallback"""
     
-    system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. Respond ONLY with valid JSON."""
+    system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
+
+CRITICAL: PRESERVE THE ORIGINAL DOCUMENT STRUCTURE AND TITLE. Do not create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Extract and use the EXACT title from the source content (typically the first H1 heading).
+
+Respond ONLY with valid JSON."""
     
     user_message = f"""Transform this content into a comprehensive, production-ready knowledge base article with clean HTML formatting.
 

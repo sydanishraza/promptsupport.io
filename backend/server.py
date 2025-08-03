@@ -6578,8 +6578,8 @@ CRITICAL INSTRUCTIONS:
 
 3. REAL IMAGES ONLY: {"Distribute the real image URLs provided above across the articles contextually. Use ONLY these real URLs." if image_references else "Do NOT create fake image URLs or placeholder images. If no real images are provided above, do not include any image tags."}
 
-Original Content:
-{content[:30000]}
+Original Content (Complete Document):
+{content}
 
 TRANSFORMATION REQUIREMENTS:
 

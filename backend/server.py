@@ -6762,8 +6762,8 @@ CRITICAL INSTRUCTIONS:
 
 3. REAL IMAGES ONLY: {"Use ONLY the real image URLs provided above. Include them contextually in the article where they belong." if image_references else "Do NOT create fake image URLs or placeholder images. If no real images are provided above, do not include any image tags."}
 
-Original Content:
-{content[:25000]}
+Original Content (Complete Document):
+{content}
 
 TRANSFORMATION REQUIREMENTS:
 

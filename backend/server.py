@@ -6697,24 +6697,37 @@ Respond ONLY with valid JSON."""
     
     user_message = f"""Transform this content into a comprehensive, production-ready knowledge base article with clean HTML formatting.
 
-CRITICAL: This content may contain embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations.
+CRITICAL INSTRUCTIONS:
+1. PRESERVE THE ORIGINAL TITLE: Extract the exact title from the source content (usually the first H1 or main heading). DO NOT create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Use the actual document title.
+
+2. PRESERVE ALL ORIGINAL CONTENT: Do NOT summarize or condense the content. Maintain ALL details, steps, code examples, specific instructions, and technical specifications from the original document. This should be a comprehensive reproduction, not a summary.
+
+3. REAL IMAGES ONLY: Do NOT create fake image URLs or placeholder images. ONLY use images that are actually extracted from the document and have real accessible URLs. If no real images are provided, do not include any image tags.
 
 Original Content:
-{content[:20000]}
+{content[:25000]}
 
 TRANSFORMATION REQUIREMENTS:
 
-1. **Media Contextual Embedding & Preservation**:
-   - PRESERVE and EMBED all available images, charts, diagrams, and media
-   - Distribute images throughout the article at contextually appropriate locations
-   - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
-   - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
-   - Add proper figure captions: <p><em>Figure X: Descriptive caption explaining the image relevance</em></p>
-   - Reference images in surrounding text: "As illustrated in Figure X below..."
-   - CRITICAL: Use ALL provided images in the article - do not skip any images
-   - Never place images at the end - embed them where they contextually belong
+1. **Title Preservation**:
+   - Extract the EXACT title from the source content (typically the first heading)
+   - DO NOT use generic phrases like "Comprehensive Guide to", "Complete Guide to", "Understanding", etc.
+   - Use the actual document title as-is
 
-2. **HTML Content Formatting (NOT Markdown)**:
+2. **Complete Content Preservation**:
+   - Include ALL original details, not a summary
+   - Preserve ALL code examples, steps, and technical specifications
+   - Maintain ALL specific values, coordinates, API keys references, etc.
+   - Keep ALL numbered steps and sub-steps
+   - Do NOT compress or condense any information
+
+3. **Real Images Only**:
+   - ONLY include images that are actually provided in the source content
+   - Use real image URLs that have been extracted from the document
+   - DO NOT generate placeholder images or fake URLs like '/api/static/uploads/image.png'
+   - If the content mentions images but no real URLs are provided, reference them in text but don't create fake img tags
+
+4. **HTML Content Formatting (NOT Markdown)**:
    - Generate clean HTML suitable for WYSIWYG editor display
    - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
    - Format lists as <ul> and <ol> with <li> elements
@@ -6725,33 +6738,19 @@ TRANSFORMATION REQUIREMENTS:
    - Use <code> for inline code, <pre><code> for code blocks
    - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
 
-3. **Content Enhancement & Professional Writing**:
-   - Completely rewrite content for clarity, flow, and technical accuracy
-   - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
-   - Add context, explanations, and helpful details where needed
-   - Improve technical language while maintaining original intent
-   - Add smooth transitions and logical connections between concepts
-   - Include troubleshooting tips, best practices, and common scenarios
-
-4. **Professional Article Structure**:
-   - Start with compelling <h1> title and introduction explaining purpose
-   - Include "What You'll Learn" and "Prerequisites" sections where relevant
-   - Organize content with clear heading hierarchy and logical flow
-   - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
-   - Create actionable content that users can immediately implement
-
-5. **Clean Metadata Management**:
-   - Generate descriptive, SEO-friendly title (no filename references)
-   - Write detailed summary (3-4 sentences) explaining value proposition
-   - Create comprehensive tag list including technical terms and processes
-   - Generate practical takeaways highlighting key learning points
-   - Keep ALL source metadata OUT of article content
+5. **Professional Article Structure**:
+   - Start with the EXACT original title as <h1>
+   - Preserve the original document structure and flow
+   - Maintain all original sections and subsections
+   - Keep all original technical details and examples
+   - Do not add generic "What You'll Learn" or "Key Takeaways" unless present in original
 
 CRITICAL OUTPUT RULES:
 - Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
 - NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
 - NEVER mention filenames, dates, byte counts, or metadata
-- Images: Use <img src="URL" alt="description" style="max-width:100%;">
+- Real images only: Use actual extracted image URLs, never fake placeholder URLs
+- Complete content: Include ALL original details, do not summarize
 
 RESPONSE FORMAT - Return valid JSON:
 {{

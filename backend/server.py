@@ -6724,7 +6724,8 @@ RESPONSE FORMAT - Return valid JSON:
     
     # Fallback to single article
     print("🔄 Falling back to single article creation...")
-    return [await create_single_article_from_content(content, metadata)]
+    contextual_images = metadata.get('contextual_images', [])
+    return [await create_single_article_from_content(content, metadata, contextual_images)]
 
 async def create_single_article_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> Dict:
     """Create a single comprehensive article from content using LLM with fallback"""

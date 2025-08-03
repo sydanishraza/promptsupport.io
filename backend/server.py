@@ -6713,18 +6713,29 @@ RESPONSE FORMAT - Return valid JSON:
     print("🔄 Falling back to single article creation...")
     return [await create_single_article_from_content(content, metadata)]
 
-async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
+async def create_single_article_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> Dict:
     """Create a single comprehensive article from content using LLM with fallback"""
     
-    # Extract real image URLs from content
+    # Extract real image URLs from content AND use provided contextual images
     import re
     image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
     image_references = []
+    
+    # Add images found in content
     for i, url in enumerate(image_urls, 1):
         if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
             image_references.append(f"Image {i}: {url}")
     
-    print(f"🖼️ Found {len(image_references)} real images in content: {image_references}")
+    # CRITICAL FIX: Add contextual images from DOCX extraction
+    if contextual_images:
+        for i, img_data in enumerate(contextual_images, len(image_references) + 1):
+            img_url = img_data.get('url') or img_data.get('data', '')
+            if img_url:
+                img_desc = img_data.get('title', img_data.get('alt_text', f'Extracted Image {i}'))
+                image_references.append(f"Image {i}: {img_url} (Description: {img_desc})")
+        print(f"🖼️ Added {len(contextual_images)} contextual images from document extraction")
+    
+    print(f"🖼️ Total real images available: {len(image_references)}: {image_references}")
     
     system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
 

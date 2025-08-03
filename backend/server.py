@@ -6754,9 +6754,11 @@ CRITICAL OUTPUT RULES:
 
 RESPONSE FORMAT - Return valid JSON:
 {{
-    "title": "Professional, descriptive title focused on the content topic (no filename references)",
+    "title": "EXACT title from the original document (typically the first H1 heading) - NO generic phrases like 'Comprehensive Guide To...'",
     "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides",
-    "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose, scope, and importance...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context and examples...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance</em></p><p>As shown in Figure 1 above...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
+    "content": "<h1>Exact Original Title</h1><h2>Section From Original</h2><p>Complete original content with ALL details preserved...</p><ol><li><strong>Step 1:</strong> Exact original step with all details</li><li><strong>Step 2:</strong> Complete original instructions</li></ol><pre><code>// Exact original code examples
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;...&lt;/html&gt;</code></pre><p>All original technical details, coordinates, API references preserved exactly...</p><h2>Next Original Section</h2><p>All original content maintained...</p>",
     "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
     "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
 }}"""

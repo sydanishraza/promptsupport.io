@@ -6273,14 +6273,16 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     should_create_multiple = await should_split_into_multiple_articles(full_content, file_extension)
     
     if should_create_multiple:
-        articles = await create_multiple_articles_from_content(full_content, metadata)
+        contextual_images = metadata.get('contextual_images', [])
+        articles = await create_multiple_articles_from_content(full_content, metadata, contextual_images)
         for article in articles:
             await db.content_library.insert_one(article)
             print(f"✅ Created AI-enhanced Content Library article: '{article['title']}'")
         return articles
     else:
         # Create single comprehensive article
-        article = await create_single_article_from_content(full_content, metadata)
+        contextual_images = metadata.get('contextual_images', [])
+        article = await create_single_article_from_content(full_content, metadata, contextual_images)
         if article:
             print(f"🔍 DEBUG: Before DB insert - article keys: {list(article.keys())}")
             print(f"🔍 DEBUG: Before DB insert - has content: {'content' in article}")

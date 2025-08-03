@@ -520,6 +520,119 @@ class DocumentPreprocessor:
             traceback.print_exc()
             raise
     
+    def _save_docx_image(self, image):
+        """Save DOCX image and return placeholder for mammoth inline processing"""
+        try:
+            self.image_counter += 1
+            
+            # Determine file extension from content type
+            content_type = getattr(image, 'content_type', 'image/png')
+            if 'jpeg' in content_type or 'jpg' in content_type:
+                ext = 'jpg'
+            elif 'png' in content_type:
+                ext = 'png'
+            elif 'gif' in content_type:
+                ext = 'gif'
+            else:
+                ext = 'png'  # Default to PNG
+            
+            image_filename = f"img_{self.image_counter}.{ext}"
+            image_path = os.path.join(self.asset_dir, image_filename)
+            
+            # Get image data - mammoth uses different attribute names
+            try:
+                # Try different possible attribute names for image data
+                if hasattr(image, 'open'):
+                    # mammoth Image object has 'open' method
+                    with image.open() as image_data:
+                        image_bytes = image_data.read()
+                elif hasattr(image, 'bytes'):
+                    image_bytes = image.bytes
+                elif hasattr(image, 'data'):
+                    image_bytes = image.data
+                else:
+                    print(f"⚠️ Unknown image data format for image {self.image_counter}")
+                    # Create a placeholder to continue processing
+                    image_bytes = b''
+            except Exception as img_error:
+                print(f"❌ Failed to extract image {self.image_counter}: {img_error}")
+                # Create a placeholder to continue processing
+                image_bytes = b''
+            
+            # Store image metadata with correct URL path
+            image_id = f"doc_{self.session_id}_img_{self.image_counter}"
+            
+            # Ensure correct directory structure for serving
+            session_dir = f"static/uploads/session_{self.session_id}"
+            os.makedirs(session_dir, exist_ok=True)
+            
+            # Update paths to use session directory
+            image_path = os.path.join(session_dir, image_filename)
+            
+            # Save image to correct location AND Asset Library
+            if image_bytes:
+                try:
+                    # Save to session directory for immediate use
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(image_bytes)
+                    print(f"💾 Saved image to session: {image_path} ({len(image_bytes)} bytes)")
+                    
+                    # ENHANCED: Also save to Asset Library for long-term storage
+                    try:
+                        asset_id = str(uuid.uuid4())
+                        asset_filename = f"{asset_id}_{image_filename}"
+                        asset_path = f"static/uploads/{asset_filename}"
+                        
+                        # Save to main assets directory
+                        with open(asset_path, "wb") as asset_file:
+                            asset_file.write(image_bytes)
+                        
+                        # Store in Asset Library database (sync version)
+                        asset_doc = {
+                            "id": asset_id,
+                            "filename": image_filename,
+                            "original_filename": image_filename,
+                            "asset_type": "image", 
+                            "file_size": len(image_bytes),
+                            "content_type": content_type,
+                            "url": f"/api/static/uploads/{asset_filename}",
+                            "session_url": f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                            "created_at": datetime.utcnow().isoformat(),
+                            "source": "training_engine_extraction",
+                            "session_id": self.session_id
+                        }
+                        
+                        # Note: Asset Library insertion will be handled by the calling async function
+                        # Store asset_doc for later insertion
+                        if not hasattr(self, 'pending_assets'):
+                            self.pending_assets = []
+                        self.pending_assets.append(asset_doc)
+                        print(f"📚 Prepared for Asset Library: {asset_filename}")
+                        
+                    except Exception as asset_error:
+                        print(f"⚠️ Failed to prepare Asset Library entry: {asset_error}")
+                        # Continue processing even if Asset Library preparation fails
+                        
+                except Exception as save_error:
+                    print(f"❌ Failed to save image {image_filename}: {save_error}")
+            
+            self.extracted_images[image_id] = {
+                'filename': image_filename,
+                'path': image_path,
+                'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                'alt_text': f"Image {self.image_counter}",
+                'content_type': content_type,
+                'size_bytes': len(image_bytes) if image_bytes else 0
+            }
+            
+            return {
+                "src": f"IMAGE_PLACEHOLDER_{image_id}"  # Placeholder for tokenization
+            }
+            
+        except Exception as e:
+            print(f"❌ Failed to save DOCX image: {e}")
+            return {"src": ""}
+
     async def _convert_docx_to_html(self, file_path: str) -> tuple[str, list]:
         """Convert DOCX to HTML using mammoth with enhanced image extraction"""
         try:

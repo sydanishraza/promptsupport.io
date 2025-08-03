@@ -6540,33 +6540,44 @@ Respond ONLY with valid JSON."""
     
     user_message = f"""Transform this content into multiple, well-structured, production-ready articles with clean HTML formatting for WYSIWYG editor.
 
-CRITICAL: This content contains embedded media (images, diagrams, charts) that MUST be preserved and embedded at their contextually appropriate locations.
+CRITICAL INSTRUCTIONS:
+1. PRESERVE ORIGINAL TITLES: Extract exact section titles from the source content (usually H1/H2 headings). DO NOT create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Use the actual document section titles.
+
+2. PRESERVE ALL ORIGINAL CONTENT: Do NOT summarize or condense the content. Maintain ALL details, steps, code examples, specific instructions, and technical specifications from the original document. This should be comprehensive reproduction, not summaries.
+
+3. REAL IMAGES ONLY: Do NOT create fake image URLs or placeholder images. ONLY use images that are actually extracted from the document and have real accessible URLs. If no real images are provided, do not include any image tags.
 
 Original Content:
-{content[:25000]}
+{content[:30000]}
 
 TRANSFORMATION REQUIREMENTS:
 
 1. **Content Analysis & Intelligent Splitting**:
-   - Identify ALL distinct topics, chapters, sections, or processes
-   - Create 6-15 focused articles for rich documents (prefer more specific articles over long ones)
-   - Each article should cover ONE specific topic/process in depth
-   - Split by logical boundaries: procedures, concepts, features, components, chapters
-   - Prioritize user-friendly, digestible article lengths (600-1500 words each)
-   - For documents with 6+ chapters, create 1 article per chapter plus overview/conclusion articles
+   - Identify ALL distinct topics, chapters, sections, or processes based on original headings
+   - Create focused articles based on the original document structure
+   - Each article should preserve ONE complete original section with ALL its details
+   - Split by the original logical boundaries: procedures, concepts, features, components, chapters
+   - Maintain complete original content in each section
 
-2. **Media Contextual Embedding & Distribution**:
-   - PRESERVE and DISTRIBUTE all embedded images across ALL articles
-   - Each article MUST include 2-4 images relevant to its content
-   - Place images at their ORIGINAL contextual location within the content flow
-   - For URL-based images: <img src="/api/static/uploads/filename.ext" alt="descriptive alt text" style="max-width: 100%; height: auto;">
-   - For SVG images: <img src="data:image/svg+xml;base64,..." alt="descriptive alt text" style="max-width: 100%; height: auto;">
-   - Add proper figure captions: <p><em>Figure X: Descriptive caption explaining the image relevance</em></p>
-   - Reference images in surrounding text: "As illustrated in Figure X below..."
-   - CRITICAL: All provided images must be distributed across the complete article set
-   - Never create articles without images if images are available in the source content
+2. **Title Preservation**:
+   - Extract EXACT section titles from the source content (typically H1/H2 headings)
+   - DO NOT use generic phrases like "Comprehensive Guide to", "Complete Guide to", "Understanding", etc.
+   - Use the actual document section titles as-is
 
-3. **HTML Content Formatting (NOT Markdown)**:
+3. **Complete Content Preservation**:
+   - Include ALL original details from each section, not summaries
+   - Preserve ALL code examples, steps, and technical specifications
+   - Maintain ALL specific values, coordinates, API keys references, etc.
+   - Keep ALL numbered steps and sub-steps
+   - Do NOT compress or condense any information
+
+4. **Real Images Only**:
+   - ONLY include images that are actually provided in the source content
+   - Use real image URLs that have been extracted from the document
+   - DO NOT generate placeholder images or fake URLs like '/api/static/uploads/filename.ext'
+   - If the content mentions images but no real URLs are provided, reference them in text but don't create fake img tags
+
+5. **HTML Content Formatting (NOT Markdown)**:
    - Generate clean HTML suitable for WYSIWYG editor display
    - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
    - Format lists as <ul> and <ol> with <li> elements
@@ -6577,21 +6588,13 @@ TRANSFORMATION REQUIREMENTS:
    - Use <code> for inline code, <pre><code> for code blocks
    - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
 
-4. **Content Enhancement & Professional Writing**:
-   - Completely rewrite content for clarity, flow, and technical accuracy
-   - Remove ALL source metadata from article content (no filenames, timestamps, byte counts)
-   - Add context, explanations, and helpful details where needed
-   - Improve technical language while maintaining original intent
-   - Add smooth transitions and logical connections between concepts
-   - Include troubleshooting tips, best practices, and common scenarios
-
-5. **Professional Article Structure**:
-   - Start with compelling <h1> title and introduction explaining purpose
-   - Include "What You'll Learn" and "Prerequisites" sections where relevant
-   - Organize content with clear heading hierarchy and logical flow
-   - Add comprehensive conclusions with "Key Takeaways" and "Next Steps"
-   - Create actionable content that users can immediately implement
-   - Cross-reference related topics without hardcoded links
+CRITICAL OUTPUT RULES:
+- Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
+- NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
+- NEVER mention filenames, dates, byte counts, or metadata
+- Real images only: Use actual extracted image URLs, never fake placeholder URLs
+- Complete content: Include ALL original details from each section, do not summarize
+- Original structure: Maintain the document's original organization and flow
 
 6. **Clean Metadata Management**:
    - Generate descriptive, SEO-friendly titles (no filename references)

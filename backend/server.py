@@ -5132,6 +5132,19 @@ async def create_articles_with_template(content: str, images: list, template_dat
         # Analyze content for natural breaking points
         natural_sections = []
         
+        # CRITICAL FIX: Add Markdown to HTML conversion before content analysis
+        # Check if content contains Markdown H1 headers and convert to HTML for proper chunking
+        if '#' in content and re.search(r'^#+\s', content, re.MULTILINE):
+            print(f"📝 Markdown H1 headers detected - converting to HTML for proper chunking")
+            original_content = content
+            content = convert_markdown_to_html_for_text_processing(content)
+            h1_count = len(re.findall(r'<h1>', content))
+            print(f"✅ Markdown conversion complete - {h1_count} H1 tags found")
+            
+            # If we found H1 tags after conversion, we should create multiple articles
+            if h1_count > 1:
+                print(f"🎯 Multiple H1 sections detected - will create {h1_count} separate articles")
+        
         # Look for major headings and section breaks
         if '<h1>' in content or '<h2>' in content or '\n\n' in content:
             # Content has structure, split intelligently

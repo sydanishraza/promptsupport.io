@@ -6943,9 +6943,19 @@ RESPONSE FORMAT - Return valid JSON:
             
         except json.JSONDecodeError as e:
             print(f"❌ JSON parsing error: {e}")
-            print(f"Raw AI response: {ai_response[:500]}...")
+            print(f"Raw AI response snippet: {ai_response[:500]}...")
+            
+            # ENHANCED FALLBACK: Try to preserve AI content even with JSON parsing failure
+            if ai_response and len(ai_response.strip()) > 50:
+                print(f"🔧 Attempting to create fallback article with AI content...")
+                return await create_enhanced_fallback_article(content, metadata, ai_response)
+            else:
+                print(f"🔄 Using basic fallback due to insufficient AI response")
+                
         except Exception as e:
             print(f"❌ Error processing AI response: {e}")
+            if ai_response and len(ai_response.strip()) > 50:
+                return await create_enhanced_fallback_article(content, metadata, ai_response)
     else:
         print("❌ No AI response available from either OpenAI or Claude")
     

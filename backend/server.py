@@ -6532,20 +6532,40 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:
     """Create multiple structured articles from content using LLM with fallback"""
     
+    # Extract real image URLs from content
+    import re
+    image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
+    image_references = []
+    for i, url in enumerate(image_urls, 1):
+        if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
+            image_references.append(f"Image {i}: {url}")
+    
+    print(f"🖼️ Found {len(image_references)} real images in content for multiple articles: {image_references}")
+    
     system_message = """You are a professional technical content writer creating a comprehensive knowledge base. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
 
 CRITICAL: PRESERVE THE ORIGINAL DOCUMENT STRUCTURE AND TITLES. Do not create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Extract and use EXACT section titles from the source content.
 
 Respond ONLY with valid JSON."""
     
+    image_instruction = ""
+    if image_references:
+        image_instruction = f"""
+REAL IMAGES AVAILABLE:
+{chr(10).join(image_references)}
+
+CRITICAL: Distribute these real image URLs across the articles contextually. Use ONLY these real URLs, do NOT create fake URLs."""
+    
     user_message = f"""Transform this content into multiple, well-structured, production-ready articles with clean HTML formatting for WYSIWYG editor.
+
+{image_instruction}
 
 CRITICAL INSTRUCTIONS:
 1. PRESERVE ORIGINAL TITLES: Extract exact section titles from the source content (usually H1/H2 headings). DO NOT create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Use the actual document section titles.
 
 2. PRESERVE ALL ORIGINAL CONTENT: Do NOT summarize or condense the content. Maintain ALL details, steps, code examples, specific instructions, and technical specifications from the original document. This should be comprehensive reproduction, not summaries.
 
-3. REAL IMAGES ONLY: Do NOT create fake image URLs or placeholder images. ONLY use images that are actually extracted from the document and have real accessible URLs. If no real images are provided, do not include any image tags.
+3. REAL IMAGES ONLY: {"Distribute the real image URLs provided above across the articles contextually. Use ONLY these real URLs." if image_references else "Do NOT create fake image URLs or placeholder images. If no real images are provided above, do not include any image tags."}
 
 Original Content:
 {content[:30000]}

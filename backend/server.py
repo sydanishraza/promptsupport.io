@@ -6529,18 +6529,29 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
         (len(content) > 8000 and heading_count >= 4)  # Rich documents with multiple headings
     )
 
-async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:
+async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
     """Create multiple structured articles from content using LLM with fallback"""
     
-    # Extract real image URLs from content
+    # Extract real image URLs from content AND use provided contextual images
     import re
     image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
     image_references = []
+    
+    # Add images found in content
     for i, url in enumerate(image_urls, 1):
         if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
             image_references.append(f"Image {i}: {url}")
     
-    print(f"🖼️ Found {len(image_references)} real images in content for multiple articles: {image_references}")
+    # CRITICAL FIX: Add contextual images from DOCX extraction
+    if contextual_images:
+        for i, img_data in enumerate(contextual_images, len(image_references) + 1):
+            img_url = img_data.get('url') or img_data.get('data', '')
+            if img_url:
+                img_desc = img_data.get('title', img_data.get('alt_text', f'Extracted Image {i}'))
+                image_references.append(f"Image {i}: {img_url} (Description: {img_desc})")
+        print(f"🖼️ Added {len(contextual_images)} contextual images for multiple articles")
+    
+    print(f"🖼️ Total real images available for multiple articles: {len(image_references)}: {image_references}")
     
     system_message = """You are a professional technical content writer creating a comprehensive knowledge base. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
 

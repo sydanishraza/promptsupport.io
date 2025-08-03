@@ -6981,7 +6981,8 @@ RESPONSE FORMAT - Return valid JSON:
         except Exception as e:
             print(f"❌ Error processing AI response: {e}")
             if ai_response and len(ai_response.strip()) > 50:
-                return await create_enhanced_fallback_article(content, metadata, ai_response)
+                contextual_images = metadata.get('contextual_images', [])
+                return await create_enhanced_fallback_article(content, metadata, ai_response, contextual_images)
     else:
         print("❌ No AI response available from either OpenAI or Claude")
     

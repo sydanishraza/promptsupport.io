@@ -5149,19 +5149,26 @@ async def create_articles_with_template(content: str, images: list, template_dat
         if '<h1>' in content or '<h2>' in content or '\n\n' in content:
             # Content has structure, split intelligently
             
-            # CRITICAL FIX: Prevent multiple H1 tags in single article
-            # First try splitting on major headings
+            # ENHANCED FIX: Create separate articles for each H1 section
             if '<h1>' in content:
-                sections = content.split('<h1>')
-                for i, section in enumerate(sections):
+                h1_sections = content.split('<h1>')
+                print(f"🔍 Splitting content on H1 tags - found {len(h1_sections)} sections")
+                
+                for i, section in enumerate(h1_sections):
                     if section.strip():
-                        if i == 0:
-                            # First section without H1 prefix
-                            natural_sections.append(section)
+                        if i == 0 and not section.startswith('<h1>'):
+                            # First section without H1 prefix - could be intro content
+                            if len(section.strip()) > 200:  # Only include substantial intro content
+                                natural_sections.append(section)
+                                print(f"✅ Added intro section: {len(section)} chars")
                         else:
-                            # Convert H1 to H2 for subsequent sections to avoid multiple H1s
-                            section = '<h2>' + section.replace('</h1>', '</h2>', 1)
+                            # Restore H1 tag and treat as separate article
+                            if not section.startswith('<h1>'):
+                                section = '<h1>' + section
                             natural_sections.append(section)
+                            print(f"✅ Added H1 section {i}: {len(section)} chars")
+                            
+                print(f"🎯 Created {len(natural_sections)} separate sections from H1 content")
             elif '<h2>' in content:
                 sections = content.split('<h2>')
                 for i, section in enumerate(sections):

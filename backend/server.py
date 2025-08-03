@@ -6813,6 +6813,7 @@ RESPONSE FORMAT - Return valid JSON:
             
             # Clean up AI response to extract JSON
             import re
+            import json
             
             # Remove any markdown code blocks
             json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
@@ -6821,8 +6822,86 @@ RESPONSE FORMAT - Return valid JSON:
             else:
                 json_str = ai_response
             
+            # CRITICAL FIX: Sanitize JSON string to handle control characters
+            def sanitize_json_content(json_text):
+                """Sanitize JSON content to handle control characters and escaping issues"""
+                try:
+                    # First, try to fix common JSON issues
+                    # Replace unescaped newlines in content fields
+                    json_text = re.sub(r'(?<!\\)\n', '\\n', json_text)
+                    json_text = re.sub(r'(?<!\\)\r', '\\r', json_text)
+                    json_text = re.sub(r'(?<!\\)\t', '\\t', json_text)
+                    
+                    # Fix any unescaped quotes in content
+                    # This is more complex, so we'll handle it after initial parsing attempt
+                    
+                    return json_text
+                except Exception as e:
+                    print(f"⚠️ JSON sanitization warning: {e}")
+                    return json_text
+            
+            # Attempt to sanitize and parse JSON
+            try:
+                sanitized_json = sanitize_json_content(json_str)
+                article_data = json.loads(sanitized_json)
+                print(f"✅ JSON parsing successful after sanitization")
+                
+            except json.JSONDecodeError as initial_error:
+                print(f"⚠️ Initial JSON parsing failed: {initial_error}")
+                print(f"🔄 Attempting advanced JSON recovery...")
+                
+                # ADVANCED FIX: Try to extract content even from malformed JSON
+                try:
+                    # Extract title using regex if JSON parsing fails
+                    title_match = re.search(r'"title":\s*"([^"]*(?:\\.[^"]*)*)"', json_str)
+                    content_match = re.search(r'"content":\s*"(.*?)"(?:\s*,\s*"(?:summary|tags|takeaways)"|$)', json_str, re.DOTALL)
+                    summary_match = re.search(r'"summary":\s*"([^"]*(?:\\.[^"]*)*)"', json_str)
+                    tags_match = re.search(r'"tags":\s*\[(.*?)\]', json_str)
+                    takeaways_match = re.search(r'"takeaways":\s*\[(.*?)\]', json_str)
+                    
+                    # Build recovered article data
+                    article_data = {}
+                    
+                    if title_match:
+                        article_data["title"] = title_match.group(1).replace('\\"', '"')
+                        print(f"🔧 Recovered title: {article_data['title'][:50]}...")
+                    
+                    if content_match:
+                        recovered_content = content_match.group(1)
+                        # Un-escape the content
+                        recovered_content = recovered_content.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t').replace('\\"', '"')
+                        article_data["content"] = recovered_content
+                        print(f"🔧 Recovered content: {len(recovered_content)} characters")
+                    
+                    if summary_match:
+                        article_data["summary"] = summary_match.group(1).replace('\\"', '"')
+                    
+                    if tags_match:
+                        try:
+                            tags_str = '[' + tags_match.group(1) + ']'
+                            article_data["tags"] = json.loads(tags_str)
+                        except:
+                            article_data["tags"] = ["recovered-content"]
+                    
+                    if takeaways_match:
+                        try:
+                            takeaways_str = '[' + takeaways_match.group(1) + ']'
+                            article_data["takeaways"] = json.loads(takeaways_str)
+                        except:
+                            article_data["takeaways"] = []
+                    
+                    if article_data and "content" in article_data:
+                        print(f"✅ JSON recovery successful - recovered {len(article_data)} fields")
+                    else:
+                        raise Exception("Could not recover essential content from malformed JSON")
+                        
+                except Exception as recovery_error:
+                    print(f"❌ JSON recovery also failed: {recovery_error}")
+                    print(f"Raw AI response snippet: {ai_response[:1000]}...")
+                    raise initial_error  # Re-raise original error to trigger fallback
+            
             # Parse JSON
-            article_data = json.loads(json_str)
+            # article_data = json.loads(json_str)  # REMOVED - already handled above
             
             print(f"✅ Parsed article data: title='{article_data.get('title', 'N/A')}', tags={article_data.get('tags', [])}")
             print(f"🔍 DEBUG: Article data keys: {list(article_data.keys())}")

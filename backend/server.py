@@ -6807,7 +6807,7 @@ RESPONSE FORMAT - Return valid JSON:
 {{
     "title": "EXACT title from the original document (typically the first H1 heading) - NO generic phrases like 'Comprehensive Guide To...'",
     "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides",
-    "content": "<h1>Exact Original Title</h1><h2>Section From Original</h2><p>Complete original content with ALL details preserved...</p>{"<img src='REAL_URL' alt='description' style='max-width: 100%; height: auto;'>" if image_references else ""}<ol><li><strong>Step 1:</strong> Exact original step with all details</li><li><strong>Step 2:</strong> Complete original instructions</li></ol><pre><code>// Exact original code examples
+    "content": "<h2>First Section From Original</h2><p>Complete original content with ALL details preserved...</p>{"<img src='REAL_URL' alt='description' style='max-width: 100%; height: auto;'>" if image_references else ""}<ol><li><strong>Step 1:</strong> Exact original step with all details</li><li><strong>Step 2:</strong> Complete original instructions</li></ol><pre><code>// Exact original code examples
 &lt;!DOCTYPE html&gt;
 &lt;html&gt;...&lt;/html&gt;</code></pre><p>All original technical details, coordinates, API references preserved exactly...</p><h2>Next Original Section</h2><p>All original content maintained...</p>",
     "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],

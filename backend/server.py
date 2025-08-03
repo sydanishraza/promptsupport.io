@@ -699,8 +699,16 @@ class DocumentPreprocessor:
                 
                 print(f"📝 DOCX converted to HTML: {len(html_content)} characters")
                 
-                # Get images that were extracted during conversion
-                images = getattr(self, 'extracted_images', [])
+                # Extract image placeholders and create image list
+                images = []
+                for image_id, image_data in self.extracted_images.items():
+                    if f"IMAGE_PLACEHOLDER_{image_id}" in html_content:
+                        images.append({
+                            'id': image_id,
+                            'filename': image_data['filename'],
+                            'url': image_data['url'],
+                            'alt_text': image_data['alt_text']
+                        })
                 
                 print(f"🖼️ Extracted {len(images)} images from DOCX")
                 

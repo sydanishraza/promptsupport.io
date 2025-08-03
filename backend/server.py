@@ -521,156 +521,78 @@ class DocumentPreprocessor:
             raise
     
     async def _convert_docx_to_html(self, file_path: str) -> tuple[str, list]:
-        """Convert DOCX to HTML using mammoth with image extraction"""
+        """Convert DOCX to HTML using mammoth with enhanced image extraction"""
         try:
-            print(f"📄 Starting DOCX conversion: {file_path}")
+            print(f"🔍 Converting DOCX file: {file_path}")
             
+            # ENHANCED: Add file validation before processing
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"DOCX file not found: {file_path}")
+            
+            file_size = os.path.getsize(file_path)
+            print(f"📊 DOCX file size: {file_size} bytes")
+            
+            # Check if file is actually a valid zip file (DOCX format)
+            import zipfile
+            try:
+                with zipfile.ZipFile(file_path, 'r') as test_zip:
+                    # Basic validation - check for required DOCX files
+                    required_files = ['word/document.xml', '[Content_Types].xml']
+                    zip_contents = test_zip.namelist()
+                    
+                    has_required = any(req in zip_contents for req in required_files)
+                    if not has_required:
+                        print(f"⚠️ File appears to be text content with .docx extension, treating as text")
+                        # Read as text file and convert to basic HTML
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            text_content = f.read()
+                        
+                        # Convert text to basic HTML structure
+                        html_content = self._convert_text_to_basic_html(text_content)
+                        return html_content, []
+                    
+            except zipfile.BadZipFile:
+                print(f"⚠️ File is not a valid zip file, treating as text content")
+                # Read as text file and convert to basic HTML
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    text_content = f.read()
+                
+                # Convert text to basic HTML structure  
+                html_content = self._convert_text_to_basic_html(text_content)
+                return html_content, []
+            
+            # Continue with standard DOCX processing using mammoth
+            import mammoth
+            
+            # Prepare custom converter for better HTML structure
+            style_map = """
+                p[style-name='Heading 1'] => h1:fresh
+                p[style-name='Heading 2'] => h2:fresh  
+                p[style-name='Heading 3'] => h3:fresh
+                p[style-name='Title'] => h1:fresh
+            """
+            
+            # Convert DOCX to HTML with image extraction
             with open(file_path, "rb") as docx_file:
-                # Use mammoth to convert with image handling
-                def image_handler(image):
-                    self.image_counter += 1
-                    
-                    # Determine file extension from content type
-                    content_type = getattr(image, 'content_type', 'image/png')
-                    if 'jpeg' in content_type or 'jpg' in content_type:
-                        ext = 'jpg'
-                    elif 'png' in content_type:
-                        ext = 'png'
-                    elif 'gif' in content_type:
-                        ext = 'gif'
-                    else:
-                        ext = 'png'  # Default to PNG
-                    
-                    image_filename = f"img_{self.image_counter}.{ext}"
-                    image_path = os.path.join(self.asset_dir, image_filename)
-                    
-                    # Get image data - mammoth uses different attribute names
-                    try:
-                        # Try different possible attribute names for image data
-                        if hasattr(image, 'open'):
-                            # mammoth Image object has 'open' method
-                            with image.open() as image_data:
-                                image_bytes = image_data.read()
-                        elif hasattr(image, 'bytes'):
-                            image_bytes = image.bytes
-                        elif hasattr(image, 'data'):
-                            image_bytes = image.data
-                        else:
-                            print(f"⚠️ Unknown image data format for image {self.image_counter}")
-                            # Create a placeholder to continue processing
-                            image_bytes = b''
-                    except Exception as img_error:
-                        print(f"❌ Failed to extract image {self.image_counter}: {img_error}")
-                        # Create a placeholder to continue processing
-                        image_bytes = b''
-                    
-                    # Store image metadata with correct URL path
-                    image_id = f"doc_{self.session_id}_img_{self.image_counter}"
-                    
-                    # Ensure correct directory structure for serving
-                    session_dir = f"static/uploads/session_{self.session_id}"
-                    os.makedirs(session_dir, exist_ok=True)
-                    
-                    # Update paths to use session directory
-                    image_path = os.path.join(session_dir, image_filename)
-                    
-                    # Save image to correct location AND Asset Library
-                    if image_bytes:
-                        try:
-                            # Save to session directory for immediate use
-                            with open(image_path, "wb") as img_file:
-                                img_file.write(image_bytes)
-                            print(f"💾 Saved image to session: {image_path} ({len(image_bytes)} bytes)")
-                            
-                            # ENHANCED: Also save to Asset Library for long-term storage
-                            try:
-                                asset_id = str(uuid.uuid4())
-                                asset_filename = f"{asset_id}_{image_filename}"
-                                asset_path = f"static/uploads/{asset_filename}"
-                                
-                                # Save to main assets directory
-                                with open(asset_path, "wb") as asset_file:
-                                    asset_file.write(image_bytes)
-                                
-                                # Store in Asset Library database (sync version)
-                                asset_doc = {
-                                    "id": asset_id,
-                                    "filename": image_filename,
-                                    "original_filename": image_filename,
-                                    "asset_type": "image", 
-                                    "file_size": len(image_bytes),
-                                    "content_type": content_type,
-                                    "url": f"/api/static/uploads/{asset_filename}",
-                                    "session_url": f"/api/static/uploads/session_{self.session_id}/{image_filename}",
-                                    "created_at": datetime.utcnow().isoformat(),
-                                    "source": "training_engine_extraction",
-                                    "session_id": self.session_id
-                                }
-                                
-                                # Note: Asset Library insertion will be handled by the calling async function
-                                # Store asset_doc for later insertion
-                                if not hasattr(self, 'pending_assets'):
-                                    self.pending_assets = []
-                                self.pending_assets.append(asset_doc)
-                                print(f"📚 Prepared for Asset Library: {asset_filename}")
-                                
-                            except Exception as asset_error:
-                                print(f"⚠️ Failed to prepare Asset Library entry: {asset_error}")
-                                # Continue processing even if Asset Library preparation fails
-                                
-                        except Exception as save_error:
-                            print(f"❌ Failed to save image {image_filename}: {save_error}")
-                    
-                    self.extracted_images[image_id] = {
-                        'filename': image_filename,
-                        'path': image_path,
-                        'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
-                        'alt_text': f"Image {self.image_counter}",
-                        'content_type': content_type,
-                        'size_bytes': len(image_bytes) if image_bytes else 0
-                    }
-                    
-                    return {
-                        "src": f"IMAGE_PLACEHOLDER_{image_id}"  # Placeholder for tokenization
-                    }
+                result = mammoth.convert_to_html(
+                    docx_file,
+                    style_map=style_map,
+                    convert_image=mammoth.images.inline(self._save_docx_image)
+                )
                 
-                try:
-                    # Convert with image handling
-                    result = mammoth.convert_to_html(docx_file, convert_image=image_handler)
-                    html_content = result.value
-                    messages = result.messages
-                    
-                    # Log any conversion messages
-                    if messages:
-                        for message in messages:
-                            if message.type == "warning":
-                                print(f"⚠️ Mammoth warning: {message.message}")
-                            elif message.type == "error":
-                                print(f"❌ Mammoth error: {message.message}")
-                    
-                    print(f"✅ DOCX converted to HTML: {len(html_content)} characters")
-                    
-                except Exception as conversion_error:
-                    print(f"❌ Mammoth conversion failed: {conversion_error}")
-                    # Fallback: try to extract text without images
-                    try:
-                        result = mammoth.convert_to_html(docx_file)
-                        html_content = result.value
-                        print(f"⚠️ Fallback conversion successful (no images): {len(html_content)} characters")
-                    except Exception as fallback_error:
-                        print(f"❌ Fallback conversion also failed: {fallback_error}")
-                        return f"<p>Failed to convert DOCX: {str(fallback_error)}</p>", []
+                html_content = result.value
+                messages = result.messages
                 
-                # Extract image placeholders and create image list
-                images = []
-                for image_id, image_data in self.extracted_images.items():
-                    if f"IMAGE_PLACEHOLDER_{image_id}" in html_content:
-                        images.append({
-                            'id': image_id,
-                            'filename': image_data['filename'],
-                            'url': image_data['url'],
-                            'alt_text': image_data['alt_text']
-                        })
+                # Log any conversion messages
+                if messages:
+                    print(f"📋 Mammoth conversion messages: {len(messages)}")
+                    for msg in messages[:5]:  # Show first 5 messages
+                        print(f"   - {msg}")
+                
+                print(f"📝 DOCX converted to HTML: {len(html_content)} characters")
+                
+                # Get images that were extracted during conversion
+                images = getattr(self, 'extracted_images', [])
                 
                 print(f"🖼️ Extracted {len(images)} images from DOCX")
                 
@@ -689,8 +611,20 @@ class DocumentPreprocessor:
             print(f"❌ DOCX conversion failed: {e}")
             import traceback
             traceback.print_exc()
-            # Fallback to basic text extraction
-            return f"<p>Failed to convert DOCX: {str(e)}</p>", []
+            
+            # ENHANCED: Fallback to text processing if DOCX conversion fails
+            try:
+                print(f"🔄 Attempting text fallback for DOCX file")
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    text_content = f.read()
+                
+                html_content = self._convert_text_to_basic_html(text_content)
+                print(f"✅ Text fallback successful: {len(html_content)} characters")
+                return html_content, []
+                
+            except Exception as fallback_error:
+                print(f"❌ Text fallback also failed: {fallback_error}")
+                return f"<p>Failed to convert DOCX: {str(e)}</p>", []
     
     def _convert_text_to_basic_html(self, text_content: str) -> str:
         """Convert plain text content to basic HTML structure"""

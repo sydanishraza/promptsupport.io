@@ -1,0 +1,40 @@
+Advanced JSON Recovery Test Document
+
+# Testing JSON Recovery Mechanisms
+
+This document tests the advanced JSON recovery system that uses regex-based content extraction when standard JSON parsing fails.
+
+## Scenario 1: Complex Nested Content
+This section contains complex nested structures that might challenge JSON serialization:
+
+### Subsection A
+Content with "quotes" and 'single quotes' and special characters like & < > that might affect JSON.
+
+### Subsection B  
+Content with backslashes \ and forward slashes / and other potentially problematic characters.
+
+## Scenario 2: Large Content Blocks
+This is a very large content block that contains extensive information about various topics including technical documentation, code examples, configuration details, and comprehensive explanations that might exceed typical JSON parsing limits or cause issues with content serialization and deserialization processes.
+
+## Scenario 3: Mixed Character Encoding
+Content with various character encodings and special symbols: © ® ™ € £ ¥ § ¶ † ‡ • … ‰ ′ ″ ‹ › « » ¡ ¿ À Á Â Ã Ä Å Æ Ç È É Ê Ë
+
+## Scenario 4: Code and Technical Content
+```python
+def complex_function(data):
+    """
+    This function processes complex data structures
+    with various edge cases and special handling
+    """
+    result = {
+        "status": "processing",
+        "data": data,
+        "metadata": {
+            "timestamp": "2024-01-01T00:00:00Z",
+            "version": "1.0.0"
+        }
+    }
+    return json.dumps(result, ensure_ascii=False)
+```
+
+The system should be able to recover content even if JSON parsing initially fails.

@@ -1,0 +1,11 @@
+Backend Logs Verification Test
+
+This simple test document should trigger the JSON parsing pipeline and generate appropriate log messages indicating that the regression fixes are working correctly.
+
+The system should log success messages for:
+1. JSON sanitization
+2. Content recovery (if needed)
+3. Enhanced fallback creation (if used)
+4. Overall processing success
+
+This test helps verify that the backend is properly logging the fix operations.

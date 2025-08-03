@@ -296,7 +296,7 @@
     implemented: true
     working: false
     file: "backend/server.py"
-    stuck_count: 2
+    stuck_count: 3
     priority: "critical"
     needs_retesting: false
     status_history:
@@ -315,6 +315,9 @@
         -working: false
         -agent: "testing"
         -comment: "❌ CRITICAL ROOT CAUSE IDENTIFIED - MARKDOWN FIX IN WRONG LOCATION: Conducted comprehensive testing of the final Markdown support fix. RESULTS: ❌ MARKDOWN SUPPORT FIX NOT WORKING. DETAILED ROOT CAUSE ANALYSIS: 1) ❌ The Markdown support fix (_is_markdown_content, _convert_markdown_to_html) was implemented in HTML preprocessing pipeline (_create_structural_html_chunks), 2) ❌ Text files (.txt, .md) don't use HTML preprocessing pipeline - they use process_text_with_template() which bypasses the fix, 3) ❌ Only DOCX/PDF files trigger HTML preprocessing pipeline, but when fake DOCX files are used for testing, DOCX conversion fails and returns error message instead of original content, 4) ❌ Backend logs show 'Markdown detection: 0/1 lines (0.00%) - Plain text' because it receives 53-character error message instead of actual Markdown content. TECHNICAL ISSUE: The fix is in the wrong processing path. Text files with Markdown content need the fix in process_text_with_template() or create_articles_with_template() functions, not just in HTML preprocessing pipeline. CRITICAL IMPACT: Users uploading .txt or .md files with multiple # headers will still get single articles because the Markdown support fix is never executed for these file types. SOLUTION NEEDED: Extend Markdown support to text file processing path (process_text_with_template function) or modify routing to use HTML preprocessing pipeline for Markdown files."
+        -working: false
+        -agent: "testing"
+        -comment: "❌ CRITICAL ISSUE CONFIRMED THROUGH COMPREHENSIVE TESTING: Conducted detailed analysis of Training Engine with multi-H1 documents. RESULTS: ❌ SINGLE ARTICLE ISSUE PERSISTS. ROOT CAUSE IDENTIFIED: The chunking logic in create_articles_with_template() function (line 5095-5135) looks for HTML <h1> tags but receives raw markdown content with # headers. The _convert_markdown_to_html() function exists (line 889) and works correctly (verified with test), but it's NEVER CALLED in the text processing pipeline. TECHNICAL ANALYSIS: 1) ❌ Text files (.txt, .md) use process_text_with_template() → create_articles_with_template() path, 2) ❌ create_articles_with_template() checks for '<h1>' in content (line 5100) but gets '# Header' format, 3) ❌ Falls back to single section processing (line 5134-5135), 4) ✅ Markdown conversion function exists and works but is in DocumentPreprocessor class only used for DOCX files. SOLUTION: Add markdown-to-HTML conversion in create_articles_with_template() before chunking analysis OR modify text processing to use HTML preprocessing pipeline. Backend logs confirm: 'Identified 1 natural content sections' for 4-H1 document, proving chunking logic failure."
 
   - task: "Fix Training Engine Broken Images Issue"
     implemented: true

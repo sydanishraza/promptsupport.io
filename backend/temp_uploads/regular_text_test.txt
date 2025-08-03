@@ -1,9 +1,0 @@
-Regular Text File Test
-
-This is a regular text file to verify normal text processing still works.
-
-# Text Processing Section 1
-Regular text processing should work normally without any issues.
-
-# Text Processing Section 2  
-This serves as a control test to ensure text processing functionality is preserved.

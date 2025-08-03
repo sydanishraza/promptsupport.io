@@ -1,0 +1,22 @@
+Enhanced Image Processing Test Document
+
+This document tests the enhanced mammoth integration with proper image extraction and Asset Library storage.
+
+Image Section 1:
+This section should contain an image that gets extracted and saved to the Asset Library.
+The image should be accessible via proper URLs and render correctly in the generated articles.
+
+Image Section 2: 
+Another image should be processed here, demonstrating the system's ability to handle multiple images.
+Each image should be saved to both session directory and Asset Library for long-term storage.
+
+Image Section 3:
+The final image tests the complete pipeline from extraction to embedding in articles.
+All images should have proper metadata and be accessible through the API endpoints.
+
+Technical Requirements:
+- Images extracted using enhanced mammoth integration
+- Saved to /api/static/uploads/session_{session_id}/ directory
+- Also saved to Asset Library with proper metadata
+- Embedded in articles with correct URLs
+- Accessible through static file serving endpoint

@@ -927,6 +927,47 @@ class DocumentPreprocessor:
             print(f"❌ Markdown conversion failed: {e}")
             return markdown_content  # Return original if conversion fails
 
+def convert_markdown_to_html_for_text_processing(content: str) -> str:
+    """
+    Convert Markdown content to HTML for text processing and chunking
+    This is a standalone function for use outside the DocumentPreprocessor class
+    """
+    try:
+        html_content = content
+        
+        # Convert headers (most important for H1 detection)
+        html_content = re.sub(r'^# (.*)$', r'<h1>\1</h1>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^## (.*)$', r'<h2>\1</h2>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^### (.*)$', r'<h3>\1</h3>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^#### (.*)$', r'<h4>\1</h4>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^##### (.*)$', r'<h5>\1</h5>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^###### (.*)$', r'<h6>\1</h6>', html_content, flags=re.MULTILINE)
+        
+        # Convert paragraphs (wrap non-tag lines in <p> tags)
+        lines = html_content.split('\n')
+        processed_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                processed_lines.append('')
+            elif line.startswith('<h') or line.startswith('</'):
+                processed_lines.append(line)
+            elif not any(line.startswith(tag) for tag in ['<', '*', '-', '+']):
+                # Wrap non-empty, non-header lines in paragraph tags
+                processed_lines.append(f'<p>{line}</p>')
+            else:
+                processed_lines.append(line)
+        
+        html_content = '\n'.join(processed_lines)
+        
+        print(f"📝 Converted Markdown to HTML for text processing - {len(re.findall(r'<h1>', html_content))} H1 tags found")
+        return html_content
+        
+    except Exception as e:
+        print(f"❌ Markdown conversion for text processing failed: {e}")
+        return content  # Return original if conversion fails
+
     def _split_large_chunk(self, large_chunk: dict) -> list:
         """
         Split a chunk that's too large into smaller, manageable pieces

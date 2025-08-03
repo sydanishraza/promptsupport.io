@@ -6983,6 +6983,99 @@ async def create_basic_fallback_article(content: str, metadata: Dict[str, Any]) 
     print(f"✅ Created basic Content Library article: {article_record['title']}")
     return [article_record]
 
+async def create_enhanced_fallback_article(content: str, metadata: Dict[str, Any], ai_response: str) -> Dict:
+    """Create enhanced fallback article preserving AI content even with JSON parsing failure"""
+    try:
+        print(f"🔧 Creating enhanced fallback article with AI content preservation...")
+        
+        title = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
+        if title.startswith('Website:'):
+            title = title.replace('Website: ', '')
+        
+        source_type = metadata.get('type', 'text_processing')
+        
+        # Try to extract useful content from AI response even if JSON parsing failed
+        enhanced_content = content  # Start with original content
+        enhanced_summary = f"Content processed from {source_type}"
+        enhanced_tags = [source_type]
+        enhanced_takeaways = []
+        
+        if ai_response and len(ai_response.strip()) > 50:
+            # Try to extract meaningful content from AI response
+            try:
+                # Look for common patterns in AI responses
+                lines = ai_response.split('\n')
+                potential_content = []
+                potential_summary = ""
+                potential_takeaways = []
+                
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    # Skip JSON-like syntax that failed to parse
+                    if line.startswith(('{', '}', '"', '[', ']')) and len(line) < 100:
+                        continue
+                    
+                    # Look for content that looks like article text
+                    if len(line) > 30 and not line.startswith(('Error:', 'Failed:', '❌', '⚠️')):
+                        potential_content.append(line)
+                    
+                    # Look for summary-like content
+                    if 'summary' in line.lower() and len(line) > 20:
+                        potential_summary = line.replace('summary:', '').replace('Summary:', '').strip()
+                    
+                    # Look for takeaways or key points
+                    if any(keyword in line.lower() for keyword in ['takeaway', 'key point', 'important', 'conclusion']):
+                        if len(line) > 15:
+                            potential_takeaways.append(line)
+                
+                # Use extracted content if substantial
+                if potential_content and len('\n'.join(potential_content)) > 100:
+                    enhanced_content = '\n\n'.join(potential_content)
+                    print(f"✅ Extracted {len(potential_content)} content sections from AI response")
+                
+                if potential_summary and len(potential_summary) > 20:
+                    enhanced_summary = potential_summary
+                    print(f"✅ Extracted summary from AI response")
+                
+                if potential_takeaways:
+                    enhanced_takeaways = potential_takeaways[:5]  # Limit to 5 takeaways
+                    print(f"✅ Extracted {len(enhanced_takeaways)} takeaways from AI response")
+                
+            except Exception as extraction_error:
+                print(f"⚠️ Content extraction from AI response failed: {extraction_error}")
+                # Fall back to original content
+        
+        article_record = {
+            "id": str(uuid.uuid4()),
+            "title": title,
+            "content": enhanced_content,
+            "summary": enhanced_summary,
+            "tags": enhanced_tags,
+            "takeaways": enhanced_takeaways,
+            "source_type": source_type,
+            "status": "draft",
+            "metadata": {
+                **metadata,
+                "ai_processed": True,
+                "ai_model": "enhanced_fallback_extraction",
+                "fallback_reason": "json_parsing_failure_with_content_preservation",
+                "processing_timestamp": datetime.utcnow().isoformat()
+            },
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        print(f"✅ Created enhanced fallback article: {article_record['title']} ({len(enhanced_content)} chars)")
+        return article_record
+        
+    except Exception as e:
+        print(f"❌ Enhanced fallback article creation failed: {e}")
+        # Ultimate fallback - create basic article
+        return await create_basic_fallback_article(content, metadata)
+
 async def inject_real_images_into_articles():
     """Post-processing function to inject real extracted images into Content Library articles"""
     print("🎯 STARTING: Real image injection into existing articles")

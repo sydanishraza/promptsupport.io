@@ -7887,7 +7887,7 @@ File Information:
 - Upload date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
 - Source: Knowledge Engine File Upload"""
 
-        # Process the extracted content
+        # Process the extracted content  
         enhanced_metadata = {
             **file_metadata,
             "original_filename": file.filename,
@@ -7895,6 +7895,11 @@ File Information:
             "file_size": len(file_content),
             "extraction_method": "automated"
         }
+        
+        # CRITICAL FIX: Add contextual images to metadata for DOCX files
+        if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
+            enhanced_metadata['contextual_images'] = embedded_media
+            print(f"🖼️ Added {len(embedded_media)} contextual images to metadata for article generation")
         
         chunks = await process_text_content(enriched_content, enhanced_metadata)
         

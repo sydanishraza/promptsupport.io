@@ -6696,20 +6696,40 @@ RESPONSE FORMAT - Return valid JSON:
 async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
     """Create a single comprehensive article from content using LLM with fallback"""
     
+    # Extract real image URLs from content
+    import re
+    image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
+    image_references = []
+    for i, url in enumerate(image_urls, 1):
+        if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
+            image_references.append(f"Image {i}: {url}")
+    
+    print(f"🖼️ Found {len(image_references)} real images in content: {image_references}")
+    
     system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
 
 CRITICAL: PRESERVE THE ORIGINAL DOCUMENT STRUCTURE AND TITLE. Do not create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Extract and use the EXACT title from the source content (typically the first H1 heading).
 
 Respond ONLY with valid JSON."""
     
+    image_instruction = ""
+    if image_references:
+        image_instruction = f"""
+REAL IMAGES AVAILABLE:
+{chr(10).join(image_references)}
+
+CRITICAL: Use ONLY these real image URLs in the article. Do NOT create fake URLs."""
+    
     user_message = f"""Transform this content into a comprehensive, production-ready knowledge base article with clean HTML formatting.
+
+{image_instruction}
 
 CRITICAL INSTRUCTIONS:
 1. PRESERVE THE ORIGINAL TITLE: Extract the exact title from the source content (usually the first H1 or main heading). DO NOT create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Use the actual document title.
 
 2. PRESERVE ALL ORIGINAL CONTENT: Do NOT summarize or condense the content. Maintain ALL details, steps, code examples, specific instructions, and technical specifications from the original document. This should be a comprehensive reproduction, not a summary.
 
-3. REAL IMAGES ONLY: Do NOT create fake image URLs or placeholder images. ONLY use images that are actually extracted from the document and have real accessible URLs. If no real images are provided, do not include any image tags.
+3. REAL IMAGES ONLY: {"Use ONLY the real image URLs provided above. Include them contextually in the article where they belong." if image_references else "Do NOT create fake image URLs or placeholder images. If no real images are provided above, do not include any image tags."}
 
 Original Content:
 {content[:25000]}
@@ -6728,11 +6748,11 @@ TRANSFORMATION REQUIREMENTS:
    - Keep ALL numbered steps and sub-steps
    - Do NOT compress or condense any information
 
-3. **Real Images Only**:
-   - ONLY include images that are actually provided in the source content
-   - Use real image URLs that have been extracted from the document
-   - DO NOT generate placeholder images or fake URLs like '/api/static/uploads/image.png'
-   - If the content mentions images but no real URLs are provided, reference them in text but don't create fake img tags
+3. **Real Images Integration**:
+   {"- Use the provided real image URLs exactly as given" if image_references else "- Do not include any images since none were provided"}
+   {"- Place images contextually where they belong in the content" if image_references else ""}
+   {"- Use proper img tags: <img src='EXACT_URL_FROM_ABOVE' alt='descriptive text' style='max-width: 100%; height: auto;'>" if image_references else ""}
+   {"- Add figure captions where appropriate" if image_references else ""}
 
 4. **HTML Content Formatting (NOT Markdown)**:
    - Generate clean HTML suitable for WYSIWYG editor display
@@ -6745,25 +6765,18 @@ TRANSFORMATION REQUIREMENTS:
    - Use <code> for inline code, <pre><code> for code blocks
    - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
 
-5. **Professional Article Structure**:
-   - Start with the EXACT original title as <h1>
-   - Preserve the original document structure and flow
-   - Maintain all original sections and subsections
-   - Keep all original technical details and examples
-   - Do not add generic "What You'll Learn" or "Key Takeaways" unless present in original
-
 CRITICAL OUTPUT RULES:
 - Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
 - NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
 - NEVER mention filenames, dates, byte counts, or metadata
-- Real images only: Use actual extracted image URLs, never fake placeholder URLs
+- Real images only: Use exact URLs provided above, never create fake placeholder URLs
 - Complete content: Include ALL original details, do not summarize
 
 RESPONSE FORMAT - Return valid JSON:
 {{
     "title": "EXACT title from the original document (typically the first H1 heading) - NO generic phrases like 'Comprehensive Guide To...'",
     "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides",
-    "content": "<h1>Exact Original Title</h1><h2>Section From Original</h2><p>Complete original content with ALL details preserved...</p><ol><li><strong>Step 1:</strong> Exact original step with all details</li><li><strong>Step 2:</strong> Complete original instructions</li></ol><pre><code>// Exact original code examples
+    "content": "<h1>Exact Original Title</h1><h2>Section From Original</h2><p>Complete original content with ALL details preserved...</p>{"<img src='REAL_URL' alt='description' style='max-width: 100%; height: auto;'>" if image_references else ""}<ol><li><strong>Step 1:</strong> Exact original step with all details</li><li><strong>Step 2:</strong> Complete original instructions</li></ol><pre><code>// Exact original code examples
 &lt;!DOCTYPE html&gt;
 &lt;html&gt;...&lt;/html&gt;</code></pre><p>All original technical details, coordinates, API references preserved exactly...</p><h2>Next Original Section</h2><p>All original content maintained...</p>",
     "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],

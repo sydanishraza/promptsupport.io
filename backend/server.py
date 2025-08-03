@@ -6532,7 +6532,11 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any]) -> List[Dict]:
     """Create multiple structured articles from content using LLM with fallback"""
     
-    system_message = """You are a professional technical content writer creating a comprehensive knowledge base. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. Respond ONLY with valid JSON."""
+    system_message = """You are a professional technical content writer creating a comprehensive knowledge base. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
+
+CRITICAL: PRESERVE THE ORIGINAL DOCUMENT STRUCTURE AND TITLES. Do not create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Extract and use EXACT section titles from the source content.
+
+Respond ONLY with valid JSON."""
     
     user_message = f"""Transform this content into multiple, well-structured, production-ready articles with clean HTML formatting for WYSIWYG editor.
 

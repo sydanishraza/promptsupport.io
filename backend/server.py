@@ -770,6 +770,11 @@ class DocumentPreprocessor:
             print(f"📊 Document analysis: {len(h1_elements)} H1 elements found")
             print(f"🎯 LOGICAL CHUNKING: Each H1 section will become exactly ONE article")
             
+            if len(h1_elements) > 0:
+                print(f"🔍 DEBUG: H1 elements found:")
+                for i, h1 in enumerate(h1_elements):
+                    print(f"   H1 #{i+1}: '{h1.get_text().strip()[:50]}'")
+            
             if not has_h1_structure:
                 # FALLBACK: No H1 structure - create single comprehensive chunk
                 print("📄 No H1 structure detected - creating single comprehensive article")

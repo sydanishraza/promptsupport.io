@@ -2051,6 +2051,8 @@ async def process_with_html_preprocessing_pipeline(file_path: str, file_extensio
         # Combine chunks into articles
         articles = []
         
+        print(f"📊 DEBUG: Processing {len(final_chunks)} final chunks into articles")
+        
         for i, chunk_data in enumerate(final_chunks):
             # Determine article title based on document structure
             if len(final_chunks) == 1:

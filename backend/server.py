@@ -6973,7 +6973,8 @@ RESPONSE FORMAT - Return valid JSON:
             # ENHANCED FALLBACK: Try to preserve AI content even with JSON parsing failure
             if ai_response and len(ai_response.strip()) > 50:
                 print(f"🔧 Attempting to create fallback article with AI content...")
-                return await create_enhanced_fallback_article(content, metadata, ai_response)
+                contextual_images = metadata.get('contextual_images', [])
+                return await create_enhanced_fallback_article(content, metadata, ai_response, contextual_images)
             else:
                 print(f"🔄 Using basic fallback due to insufficient AI response")
                 

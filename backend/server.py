@@ -6990,7 +6990,7 @@ RESPONSE FORMAT - Return valid JSON:
     print("🔄 Falling back to basic article creation...")
     return await create_basic_fallback_article(content, metadata)
 
-async def create_enhanced_fallback_article(content: str, metadata: Dict[str, Any], ai_response: str) -> Dict:
+async def create_enhanced_fallback_article(content: str, metadata: Dict[str, Any], ai_response: str, contextual_images: List[Dict] = None) -> Dict:
     """Create enhanced fallback article preserving AI content even with JSON parsing failure"""
     try:
         print(f"🔧 Creating enhanced fallback article with AI content preservation...")

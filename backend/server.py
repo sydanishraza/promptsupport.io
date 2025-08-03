@@ -692,6 +692,34 @@ class DocumentPreprocessor:
             # Fallback to basic text extraction
             return f"<p>Failed to convert DOCX: {str(e)}</p>", []
     
+    def _convert_text_to_basic_html(self, text_content: str) -> str:
+        """Convert plain text content to basic HTML structure"""
+        try:
+            lines = text_content.split('\n')
+            html_parts = []
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Simple heuristics for basic structure
+                if len(line) < 100 and line.isupper():
+                    # All caps short lines might be headings
+                    html_parts.append(f"<h2>{line}</h2>")
+                elif line.endswith(':') and len(line) < 80:
+                    # Lines ending with colon might be subheadings
+                    html_parts.append(f"<h3>{line}</h3>")
+                else:
+                    # Regular paragraph
+                    html_parts.append(f"<p>{line}</p>")
+            
+            return '\n'.join(html_parts)
+            
+        except Exception as e:
+            print(f"❌ Text to HTML conversion failed: {e}")
+            return f"<p>{text_content}</p>"
+    
     async def _convert_pdf_to_html(self, file_path: str) -> tuple[str, list]:
         """Convert PDF to HTML using basic text extraction"""
         try:

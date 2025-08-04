@@ -8345,10 +8345,28 @@ File Information:
             "extraction_method": "automated"
         }
         
-        # CRITICAL FIX: Add contextual images to metadata for DOCX files
+        # CRITICAL FIX: Convert embedded_media to contextual_images format for semantic placement
         if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
-            enhanced_metadata['contextual_images'] = embedded_media
-            print(f"🖼️ Added {len(embedded_media)} contextual images to metadata for article generation")
+            contextual_images = []
+            for i, media in enumerate(embedded_media):
+                # Convert embedded media to contextual image format
+                contextual_image = {
+                    'id': f"docx_img_{i+1}",
+                    'filename': f"image_{i+1}",
+                    'url': media.get('url', media.get('data', '')),
+                    'alt_text': f"Figure {i+1} from document",
+                    'caption': f"Image {i+1} extracted from {file.filename}",
+                    'semantic_context': f"Document image {i+1}",
+                    'confidence_score': 0.5,  # Medium confidence for direct extraction
+                    'associated_chunk': f'chunk_{i}',
+                    'placement': 'after',
+                    'content_type': media.get('content_type', 'image/png'),
+                    'size': media.get('size', 0)
+                }
+                contextual_images.append(contextual_image)
+            
+            enhanced_metadata['contextual_images'] = contextual_images
+            print(f"🖼️ Converted {len(embedded_media)} embedded media to contextual images format for semantic placement")
         
         chunks = await process_text_content(enriched_content, enhanced_metadata)
         

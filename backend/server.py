@@ -7944,19 +7944,24 @@ async def upload_file(
                             image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
                             print(f"🔍 DEBUG: Added image {i} base64 HTML reference for AI positioning")
                     
-                    # Create distribution instructions for AI
+                    # Create semantic image distribution instructions for AI
                     image_distribution_info = f"""
-CRITICAL IMAGE DISTRIBUTION REQUIREMENTS:
-- This document contains {len(embedded_media)} images that MUST be distributed across ALL articles
-- Each article should include 2-4 images contextually relevant to its topic
-- Images should be embedded using the exact HTML format provided above
-- Do not create articles without images unless absolutely necessary
-- Ensure all {len(embedded_media)} images are used across the complete set of articles
+SEMANTIC IMAGE PLACEMENT INSTRUCTIONS:
+- This document contains {len(embedded_media)} images with semantic chunk tagging
+- Each image is tagged with its most relevant content chunk and placement information
+- Place each image ONLY in the article section where it is contextually relevant
+- Do NOT duplicate images across multiple articles - each image should appear exactly ONCE
+- Use semantic chunk information to match images to their appropriate article sections
+- Images with low confidence scores may be omitted if they don't fit contextually
 
-MANDATORY: YOU MUST USE ONLY THE EXACT IMAGE URLs PROVIDED BELOW - DO NOT GENERATE NEW URLS:
+SEMANTIC IMAGE TAGS AVAILABLE:
 {image_references}
 
-CRITICAL: Use only these exact <img src="..."> tags with the URLs shown above. Do not modify URLs or create new ones.
+PLACEMENT RULES:
+- Only include images that are contextually relevant to each specific article
+- Position images near their related content, not at the beginning or end
+- Use the exact HTML format with proper alt text and captions
+- Respect the semantic chunk associations provided
 """
                 
                 # Process document content cleanly without metadata

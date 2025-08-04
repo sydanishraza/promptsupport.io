@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://10a49d77-8e5f-47eb-bb1c-2abe3d39e381.preview.emergentagent.com')
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://81ee4b70-33a2-4cdd-a9be-c5f4b7ab4d25.preview.emergentagent.com')
 
 def test_static_image_serving():
     """Test serving actual images from the static uploads directory"""

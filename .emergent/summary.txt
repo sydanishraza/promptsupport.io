@@ -1,97 +1,97 @@
 <analysis>
-The AI engineer's work primarily involved a major restructuring of the Lab (Training Interface) into a modular New Training Engine and extensive debugging to ensure its functionality. Initial efforts focused on correctly integrating various pipeline modules and addressing a critical  infinite loop that caused processing to get stuck. A significant portion of the work revolved around resolving persistent CORS errors during API calls, which was eventually fixed by mirroring the successful manual triggering pattern of the Legacy Training Engine. Subsequently, the focus shifted to fixing content issues, first by replacing simulated data with real backend calls, and then by correcting content extraction from the backend (which initially returned placeholders). The engineer also implemented H2-based chunking for finer granularity and added a comprehensive article viewer feature. The most recent efforts are directed at fixing broken image rendering and implementing an article merging feature, alongside addressing a new file upload error (details pending).
+The AI engineer's trajectory primarily revolved around two core features: the New Training Engine and the Knowledge Engine. Initially, the focus was on the New Training Engine, addressing issues like  loops, API integration, and CORS errors. However, due to persistent CORS problems, the user redirected efforts to the Knowledge Engine. The engineer then debugged critical issues within the Knowledge Engine, specifically incomplete content coverage, broken image rendering, and incorrect article titles. This involved enhancing LLM prompts, implementing JSON parsing sanitization, improving DOCX image extraction and embedding, and refining content chunking. The process was iterative, with several bug reports and subsequent fixes, highlighting the complexity of ensuring AI-generated content met strict quality, fidelity, and structural requirements.
 </analysis>
 
 <product_requirements>
-The PromptSupport application aims to be an AI-native platform for autonomously generating, updating, and scaling support documentation. Its Knowledge Engine must ingest diverse content (PDF, DOCX, HTML), extract, analyze, organize, and regenerate improved, media-rich articles with high fidelity, technical accuracy, and contextual image embedding. Non-meaningful content must be filtered, and output should be balanced HTML/Markdown. The internal Lab (formerly Training Interface) is crucial for refining the Knowledge Engine. Core functionalities like multi-tier LLM fallbacks, WYSIWYG editor rendering, contextual titles, image extraction/embedding, and robust PDF downloads are established. The immediate and ongoing focus is perfecting the Training Interface's DOCX processing, ensuring proper image reinsertion, comprehensive content generation from large documents, correct title extraction, clean HTML formatting, and LLM-enhanced content output. The Lab has been restructured into a New Training Engine with modular pipeline components for better processing.
+The PromptSupport application aims to be an AI-native platform for support documentation, leveraging a Knowledge Engine to ingest diverse content (PDF, DOCX, HTML). This engine must extract, analyze, organize, and regenerate improved, media-rich articles with high fidelity, technical accuracy, contextual image embedding, and balanced HTML/Markdown output, while filtering non-meaningful content.
+The internal Lab (Training Interface) refines the Knowledge Engine, incorporating features like multi-tier LLM fallbacks, WYSIWYG editor rendering, contextual titles, and robust PDF downloads. The immediate challenge was perfecting the Training Interface's DOCX processing, ensuring correct image reinsertion, comprehensive content generation from large documents, accurate title extraction, clean HTML, and LLM-enhanced output. Due to persistent issues with the New Training Engine, the focus shifted to the existing Knowledge Engine to ensure complete content coverage and contextual image placement within generated articles.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS, Framer Motion.
--   **Backend**: FastAPI, MongoDB, , , , , , .
--   **LLM Integration**: OpenAI (GPT-4o/mini), Anthropic (Claude 3.5 Sonnet), Microsoft (Phi-3-mini).
--   **Deployment**: Kubernetes, Supervisor.
--   **Content Processing**: HTML Preprocessing, Block ID Anchoring, Image Tokenization, Structural HTML Chunking (H1/H2-based), Parallel Chunk Processing, Base64 image encoding.
+- **Frontend**: React.js, TailwindCSS, Framer Motion.
+- **Backend**: FastAPI, MongoDB, , , , , .
+- **LLM Integration**: OpenAI (GPT-4o/mini), Anthropic (Claude 3.5 Sonnet), Microsoft (Phi-3-mini).
+- **Content Processing**: HTML Preprocessing, Structural HTML Chunking (H1/H2-based), Post-processing image injection, Markdown conversion, JSON sanitization.
 </key_technical_concepts>
 
 <code_architecture>
 
 -   ****:
-    *   **Importance**: Core backend for API routes and document processing.
-    *   **Changes**:  was debugged for better error handling and ZIP inspection. Confirmed it correctly extracts content (1.2M chars) from DOCX when  is called.
+    *   **Importance**: The core backend application, handling API routes, document processing, and AI integrations.
+    *   **Changes**: Initially debugged , increased LLM , optimized LLM processing timeout, and enhanced CORS. Key changes during the trajectory focused on the Knowledge Engine:
+        *   Improved DOCX processing for contextual image placement, ensuring real image URLs.
+        *   Enhanced content coverage by improving chunking strategy (overlapping 250-word chunks).
+        *   Added  post-processing for image injection.
+        *   Modified  and  to use real images, prevent generic AI titles, and ensure full content.
+        *   Implemented JSON sanitization and enhanced error recovery for AI responses.
+        *   Updated image extraction and handling logic within the DOCX processing pipeline to correctly pass  to article generation functions.
+        *   Added  and  functions (though later found to be on the wrong execution path for DOCX).
 -   ****:
-    *   **Importance**: Original Lab UI, now deprecated. Used as a reference for successful backend API calls.
-    *   **Changes**: Renamed from . Its fetch pattern for  was crucial for debugging CORS issues in the .
+    *   **Importance**: Original Lab UI, now deprecated but used as a reference for backend API calls.
+    *   **Changes**: Renamed from .
 -   ****:
-    *   **Importance**: Manages the display of articles.
-    *   **Changes**: Updated PDF download function. Confirmed functional after cache issue.
+    *   **Importance**: Manages the display and interaction with generated articles.
+    *   **Changes**: Updated PDF download function.
 -   ****:
-    *   **Importance**: Python dependencies.
+    *   **Importance**: Python dependencies for the backend.
     *   **Changes**: Added , , , .
 -   ****:
-    *   **Importance**: Records test protocols and agent communications.
-    *   **Changes**: Continuously updated with bug identifications, resolutions, and test results, including backend API confirmations.
+    *   **Importance**: Crucial for tracking task progress, identified bugs, resolutions, and communication with testing agents.
+    *   **Changes**: Continuously updated to reflect the status of bug fixes and test results.
 -   ****:
-    *   **Importance**: Defines the main layout and routing.
+    *   **Importance**: Defines the main application layout and routing.
     *   **Changes**: Updated routing for , , and .
 -   ****:
-    *   **Importance**: Main navigation.
+    *   **Importance**: Provides main navigation for the application.
     *   **Changes**: Updated navigation for Lab parent with Training Engine and Legacy Training Engine children.
 -   ****:
     *   **Importance**: New top-level component for the Lab section.
     *   **Changes**: Newly created as the entry point, displaying options for New Training Engine and Legacy Training Engine.
 -   ****:
-    *   **Importance**: Foundation for the modular training engine.
-    *   **Changes**: Newly created. Designed to integrate pipeline modules. Debugged for  and updated to sequentially render and process data through its child modules.
--   ****:
-    *   **Importance**: Directory for modular pipeline components.
-    *   **Changes**: Contains newly created , , , , , and .
--   ****:
-    *   **Importance**: Handles initial content extraction from uploaded files.
-    *   **Changes**: Fixed  infinite loop. Initially switched to  (Knowledge Engine API) then switched back to  (Legacy Training Engine API) to get real content, fixing CORS by implementing a manual start button. Fixed  errors and processing time assignment.
--   ****:
-    *   **Importance**: Chunks content into smaller, manageable units.
-    *   **Changes**: Fixed  infinite loop. Modified chunking logic from H1-based to H2-based for finer granularity, updating  and UI labels accordingly.
--   ****:
-    *   **Importance**: Processes and embeds images.
-    *   **Changes**: Fixed  infinite loop. Corrected data flow sequence ( checks) and variable references (e.g.,  to ,  to ). Added null checks for image data.  are processed, but image rendering is still broken.
--   ****:
-    *   **Importance**: Generates improved articles using AI.
-    *   **Changes**: Fixed  infinite loop. Updated dependencies and data source. Fixed  by ensuring  is defined and robustly accessed (). Added a multi-mode article viewer with WYSIWYG compatibility features.
--   ****:
-    *   **Importance**: Evaluates article quality.
-    *   **Changes**: Fixed  infinite loop.
+    *   **Importance**: Foundation for the modular training engine (initial focus, later deprioritized).
+    *   **Changes**: Newly created, designed to integrate pipeline modules, debugged for , and later completely replaced with a new responsive UI version.
+-   ** (and its sub-components like , , , )**:
+    *   **Importance**: Directory for modular pipeline components of the New Training Engine.
+    *   **Changes**: These files were newly created. They involved fixes for  infinite loops, integration with real backend APIs, updated chunking logic, and corrections for data flow and image rendering (though the root cause of image issues was later found in the Knowledge Engine path).  also gained a multi-mode article viewer and merge functionality.
 </code_architecture>
 
 <pending_tasks>
--   Full implementation of Enhanced Content Engine (remaining UX/UI improvements).
--   Implement the Developer Docs System.
--   Develop the AI Agent System (all 5 agents).
--   Full implementation of the Quick Setup Wizard's multi-step flow.
--   Develop the AI Chatbot, Community, Ticketing, and Unified Portal modules.
--   Build the Admin Console and Analytics dashboards.
--   Enhance the tabular view in Content Library for sorting and filtering.
--   Optimize mouse wheel scrolling within the editor after image insertion.
--   Further training and testing of the Knowledge Engine for other ingestion types (website/link, video/audio, developer spec, integration sync).
--   Migrate Training Interface improvements to the customer-facing Knowledge Engine.
--   Add an advanced template editor for the Training Interface.
--   Implement Training Analytics (metrics dashboard).
--   Implement Batch Processing for multiple file uploads.
--   Add Template Export/Import functionality.
--   Enhance other resource types like links, API specifications, and third-party integrations.
--   Continue creating remaining pipeline modules for the New Training Engine as specified in the  instructions.
+- Full implementation of Enhanced Content Engine (remaining UX/UI improvements).
+- Implement the Developer Docs System.
+- Develop the AI Agent System (all 5 agents).
+- Full implementation of the Quick Setup Wizard's multi-step flow.
+- Develop the AI Chatbot, Community, Ticketing, and Unified Portal modules.
+- Build the Admin Console and Analytics dashboards.
+- Enhance the tabular view in Content Library for sorting and filtering.
+- Optimize mouse wheel scrolling within the editor after image insertion.
+- Further training and testing of the Knowledge Engine for other ingestion types (website/link, video/audio, developer spec, integration sync).
+- Migrate Training Interface improvements to the customer-facing Knowledge Engine.
+- Add an advanced template editor for the Training Interface.
+- Implement Training Analytics (metrics dashboard).
+- Implement Batch Processing for multiple file uploads.
+- Add Template Export/Import functionality.
+- Enhance other resource types like links, API specifications, and third-party integrations.
+- Continue creating remaining pipeline modules for the New Training Engine as specified in the  instructions.
 </pending_tasks>
 
 <current_work>
-Immediately before this summary request, the AI engineer successfully resolved a critical CORS issue and a data type error in the New Training Engine, making its Content Extraction step fully functional and able to process real DOCX content by replicating the manual triggering pattern of the Legacy Training Engine. The  display error was also fixed. The engineer also addressed the user's request to change the chunking logic from H1-based to H2-based in the  to create more granular articles. A comprehensive multi-mode article viewer was implemented in  for WYSIWYG editor compatibility.
+Immediately before this summary, the AI engineer successfully resolved several critical issues within the **Knowledge Engine**, pivoting from previous attempts on the New Training Engine which had persistent CORS problems. The user reported that articles were still showing broken images, lacking comprehensive content, and having duplicate/incorrect titles (e.g., Comprehensive Guide To...).
 
-Currently, the engineer is working on two new requests:
-1.  **Fixing broken image rendering:** The system is currently showing image placeholders instead of actual images in the generated articles. The backend has been confirmed to be extracting and saving images, suggesting the issue is frontend rendering.
-2.  **Adding article merging functionality:** An interface is being developed in  to allow users to select and combine multiple generated articles.
-3.  **Investigating a new file upload error:** The user mentioned another throws this error when uploading a different file, but the specific error details are yet to be provided by the user. The engineer has not yet started working on this.
-The trajectory ends with the engineer adding the merge button and interface to the UI.
+The root causes were identified as:
+1.  **AI generating fake image URLs**: The LLM was creating placeholder image URLs instead of using real, extracted images.
+2.  **Incomplete content due to AI summarization/truncation**: The LLM was not preserving the full technical detail from source documents.
+3.  **Incorrect/duplicate article titles**: Titles were either AI-generated generic phrases or included filenames, sometimes duplicated in the content.
+4.  **JSON parsing regression**: A critical bug where unescaped control characters in AI responses caused JSON parsing failures, leading to content loss and only headers appearing.
+
+To address these, the engineer made significant changes to :
+*   **Image Embedding**: Modified  and  to accept and utilize a  parameter, ensuring real image URLs () are passed to and used by the AI. The image extraction from DOCX was confirmed and its integration with article generation improved.
+*   **Content Comprehensiveness**: Removed content truncation limits (e.g., ) in backend functions to ensure the AI processes the entire document. LLM prompts were adjusted to emphasize preservation of technical details.
+*   **Title Handling**: Removed the duplicate H1 from AI prompt templates and ensured AI systems were instructed to preserve original H1 titles or generate clean, single titles in the JSON field.
+*   **JSON Parsing & Content Loss**: Implemented robust JSON sanitization in  to handle unescaped control characters. An enhanced fallback mechanism was introduced to preserve AI-generated content even if initial JSON parsing failed, preventing content loss and articles with only headers.
+
+The final verification confirmed that all issues were resolved: articles now feature full content (e.g., 3268 words from 747-word input), contextually embedded real images, and clean, single titles derived from the content (e.g., Introduction to Google Maps API). The Knowledge Engine is currently deemed fully functional for DOCX processing.
 </current_work>
 
 <optional_next_step>
-The next step is to continue implementing the article merging feature in .
+No immediate next steps are explicitly requested by the user, as all reported critical issues have been resolved.
 </optional_next_step>

@@ -3819,6 +3819,46 @@ def get_content_type_from_filename(filename):
         'webp': 'image/webp'
     }
     return content_types.get(ext, 'image/png')
+get_image_content_type = get_content_type_from_filename  # Alias for backward compatibility
+
+
+def find_image_positions_in_docx(zip_ref, doc):
+    """Find image positions and context within the DOCX structure"""
+    image_positions = {}
+    
+    try:
+        # Get document relationships to map images to content
+        rels_xml = zip_ref.read('word/_rels/document.xml.rels')
+        rels_tree = etree.fromstring(rels_xml)
+        image_relationships = {}
+        
+        for rel in rels_tree.findall('.//{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'):
+            if 'image' in rel.get('Type', ''):
+                image_relationships[rel.get('Id')] = rel.get('Target')
+                
+        # Parse document XML to find image references and context
+        doc_xml = zip_ref.read('word/document.xml')
+        doc_tree = etree.fromstring(doc_xml)
+        
+        # Find all drawing/image elements and extract surrounding context
+        for i, paragraph in enumerate(doc.paragraphs):
+            text = paragraph.text.strip()
+            if text:
+                # Check if this paragraph contains image references
+                # This is a simplified approach - in practice, you'd need more sophisticated XML parsing
+                for img_id, img_path in image_relationships.items():
+                    filename = img_path.split('/')[-1]
+                    # Create position mapping with context
+                    image_positions[filename] = {
+                        'context': text,
+                        'paragraph_index': i,
+                        'relationship_id': img_id
+                    }
+                    
+    except Exception as e:
+        print(f"⚠️ Error finding image positions: {e}")
+    
+    return image_positions
 
 
 

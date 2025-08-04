@@ -7179,200 +7179,174 @@ def insert_image_at_appropriate_position(content: str, img_html: str) -> str:
 
 
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
-    """Create multiple structured articles from content using LLM with fallback"""
+    """Create multiple structured articles from content using smart chunking and LLM enhancement"""
     
-    # Extract real image URLs from content AND use provided contextual images
-    import re
-    image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
-    image_references = []
+    print(f"📝 SIMPLIFIED APPROACH: Creating articles with smart chunking (no automatic image embedding)")
     
-    # Add images found in content
-    for i, url in enumerate(image_urls, 1):
-        if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
-            image_references.append(f"Image {i}: {url}")
+    # STEP 1: Smart chunking based on character limits (6,000-8,000 chars per chunk)
+    content_chunks = smart_chunk_content(content, max_chars=8000, min_chars=6000)
     
-    # CRITICAL FIX: Add contextual images from DOCX extraction
-    if contextual_images:
-        for i, img_data in enumerate(contextual_images, len(image_references) + 1):
-            img_url = img_data.get('url') or img_data.get('data', '')
-            if img_url:
-                img_desc = img_data.get('title', img_data.get('alt_text', f'Extracted Image {i}'))
-                image_references.append(f"Image {i}: {img_url} (Description: {img_desc})")
-        print(f"🖼️ Added {len(contextual_images)} contextual images for multiple articles")
+    print(f"📊 Smart chunking created {len(content_chunks)} chunks from {len(content)} characters")
     
-    print(f"🖼️ Total real images available for multiple articles: {len(image_references)}: {image_references}")
+    # STEP 2: Process each chunk with LLM for clean HTML output
+    articles = []
     
-    system_message = """You are a professional technical content writer creating a comprehensive knowledge base. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
+    for i, chunk in enumerate(content_chunks):
+        print(f"🔄 Processing chunk {i+1}/{len(content_chunks)} ({len(chunk)} characters)")
+        
+        # Simplified system message focused on clean HTML output
+        system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG editor display. 
+        
+CRITICAL REQUIREMENTS:
+1. Use ONLY HTML tags: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+2. NEVER use Markdown syntax (no ##, **, [], (), ```, ---)
+3. Create proper heading hierarchy starting with <h1>
+4. Structure content professionally with clear sections
+5. NO IMAGES in content (images are managed separately in Asset Library)
+6. Generate clean, editor-compatible HTML that renders properly
 
-CRITICAL: PRESERVE THE ORIGINAL DOCUMENT STRUCTURE AND TITLES. Do not create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Extract and use EXACT section titles from the source content.
+Respond with valid JSON containing title and HTML content."""
+        
+        user_message = f"""Transform this content chunk into a clean, well-structured article with professional HTML formatting:
 
-Respond ONLY with valid JSON."""
-    
-    image_instruction = ""
-    if image_references:
-        image_instruction = f"""
-REAL IMAGES AVAILABLE:
-{chr(10).join(image_references)}
+CONTENT CHUNK:
+{chunk}
 
-CRITICAL: Distribute these real image URLs across the articles contextually. Use ONLY these real URLs, do NOT create fake URLs."""
-    
-    user_message = f"""Transform this content into multiple, well-structured, production-ready articles with clean HTML formatting for WYSIWYG editor.
+REQUIREMENTS:
+1. Create a descriptive title based on the main topic of this chunk
+2. Structure content with proper HTML heading hierarchy (<h1>, <h2>, <h3>)
+3. Use appropriate HTML tags for formatting (paragraphs, lists, emphasis)
+4. Ensure content is comprehensive and well-organized
+5. NO image tags - images are handled separately in Asset Library
+6. Generate clean HTML suitable for WYSIWYG editor
 
-{image_instruction}
-
-CRITICAL INSTRUCTIONS:
-1. PRESERVE ORIGINAL TITLES: Extract exact section titles from the source content (usually H1/H2 headings). DO NOT create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Use the actual document section titles.
-
-2. PRESERVE ALL ORIGINAL CONTENT: Do NOT summarize or condense the content. Maintain ALL details, steps, code examples, specific instructions, and technical specifications from the original document. This should be comprehensive reproduction, not summaries.
-
-3. REAL IMAGES ONLY: {"Distribute the real image URLs provided above across the articles contextually. Use ONLY these real URLs." if image_references else "Do NOT create fake image URLs or placeholder images. If no real images are provided above, do not include any image tags."}
-
-Original Content (Complete Document):
-{content}
-
-TRANSFORMATION REQUIREMENTS:
-
-1. **Content Analysis & Intelligent Splitting**:
-   - Identify ALL distinct topics, chapters, sections, or processes based on original headings
-   - Create focused articles based on the original document structure
-   - Each article should preserve ONE complete original section with ALL its details
-   - Split by the original logical boundaries: procedures, concepts, features, components, chapters
-   - Maintain complete original content in each section
-
-2. **Title Preservation**:
-   - Extract EXACT section titles from the source content (typically H1/H2 headings)
-   - DO NOT use generic phrases like "Comprehensive Guide to", "Complete Guide to", "Understanding", etc.
-   - Use the actual document section titles as-is
-
-3. **Complete Content Preservation**:
-   - Include ALL original details from each section, not summaries
-   - Preserve ALL code examples, steps, and technical specifications
-   - Maintain ALL specific values, coordinates, API keys references, etc.
-   - Keep ALL numbered steps and sub-steps
-   - Do NOT compress or condense any information
-
-4. **Real Images Only**:
-   - ONLY include images that are actually provided in the source content
-   - Use real image URLs that have been extracted from the document
-   - DO NOT generate placeholder images or fake URLs like '/api/static/uploads/filename.ext'
-   - If the content mentions images but no real URLs are provided, reference them in text but don't create fake img tags
-
-5. **HTML Content Formatting (NOT Markdown)**:
-   - Generate clean HTML suitable for WYSIWYG editor display
-   - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
-   - Format lists as <ul> and <ol> with <li> elements
-   - Use <p> tags for paragraphs with proper spacing
-   - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
-   - Use <blockquote> for callouts and important notes
-   - Add <strong> for emphasis, <em> for italics
-   - Use <code> for inline code, <pre><code> for code blocks
-   - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
-
-CRITICAL OUTPUT RULES:
-- Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
-- NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
-- NEVER mention filenames, dates, byte counts, or metadata
-- Real images only: Use actual extracted image URLs, never fake placeholder URLs
-- Complete content: Include ALL original details from each section, do not summarize
-- Original structure: Maintain the document's original organization and flow
-
-6. **Clean Metadata Management**:
-   - Generate descriptive, SEO-friendly titles (no filename references)
-   - Write detailed summaries (3-4 sentences) explaining value proposition
-   - Create comprehensive tag lists including technical terms, processes, categories
-   - Generate practical takeaways that highlight key learning points
-   - Keep ALL source metadata OUT of article content
-
-CRITICAL OUTPUT RULES:
-- Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
-- NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
-- NEVER mention filenames, dates, byte counts, or metadata
-- Images: Use <img src="URL" alt="description" style="max-width:100%;">
-
-RESPONSE FORMAT - Return valid JSON:
+RESPONSE FORMAT:
 {{
-    "articles": [
-        {{
-            "title": "Professional, descriptive title focused on the specific topic (no filename references)",
-            "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what value it provides",
-            "content": "<h1>Article Title</h1><h2>Overview</h2><p>Detailed introduction explaining the purpose and scope...</p><h2>What You'll Learn</h2><ul><li>Learning objective 1</li><li>Learning objective 2</li></ul><h2>Main Content</h2><h3>Section 1</h3><p>Detailed explanation with context...</p><img src='/api/static/uploads/image.png' alt='Descriptive alt text' style='max-width: 100%; height: auto;'><p><em>Figure 1: Caption explaining image relevance and content</em></p><p>As shown in Figure 1 above, the process demonstrates...</p><h3>Section 2</h3><blockquote><strong>💡 Pro Tip:</strong> Include helpful insights and best practices</blockquote><ol><li><strong>Step 1:</strong> Detailed explanation with specifics</li><li><strong>Step 2:</strong> More comprehensive details</li></ol><h2>Key Takeaways</h2><ul><li>Specific, actionable takeaway 1</li><li>Practical insight 2</li></ul><h2>Next Steps</h2><p>Recommended follow-up actions and related topics to explore.</p>",
-            "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
-            "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
-        }}
-    ]
+    "title": "Descriptive title for this content section",
+    "content": "<h1>Title</h1><p>Introduction paragraph...</p><h2>Section Header</h2><p>Content...</p>",
+    "summary": "Brief summary of what this article covers",
+    "tags": ["topic1", "topic2", "topic3"],
+    "takeaways": ["Key point 1", "Key point 2", "Key point 3"]
 }}"""
-
-    # Try to get AI response using fallback system
-    session_id = str(uuid.uuid4())
-    ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
-    
-    if ai_response:
-        try:
-            print(f"✅ AI response received: {len(ai_response)} characters")
-            
-            # Clean up AI response to extract JSON
-            import re
-            
-            # Remove any markdown code blocks
-            json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
-            if json_match:
-                json_str = json_match.group(1)
-            else:
-                json_str = ai_response
-            
-            # Parse JSON
-            articles_data = json.loads(json_str)
-            
-            # Create article records
-            articles = []
-            for i, article_info in enumerate(articles_data.get('articles', [])):
-                # Clean title and content using post-processing functions
-                raw_title = article_info.get("title", f"Article {i+1}")
-                raw_content = article_info.get("content", "Content not available")
+        
+        # Get LLM response
+        session_id = str(uuid.uuid4())
+        ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+        
+        if ai_response:
+            try:
+                # Parse JSON response
+                import re
+                json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
+                if json_match:
+                    json_str = json_match.group(1)
+                else:
+                    json_str = ai_response
                 
-                cleaned_title = clean_article_title(raw_title)
-                cleaned_content = clean_article_content(raw_content)
+                article_data = json.loads(json_str)
                 
-                # Determine which AI model was used
-                ai_model = "gpt-4o-mini (with claude + local llm fallback)" if OPENAI_API_KEY else "claude-3-5-sonnet (with local llm fallback)"
-                
+                # Create article record
                 article_record = {
                     "id": str(uuid.uuid4()),
-                    "title": cleaned_title,
-                    "content": cleaned_content,
-                    "summary": article_info.get("summary", "Generated from uploaded content"),
-                    "tags": article_info.get("tags", [metadata.get('type', 'upload')]),
-                    "takeaways": article_info.get("takeaways", []),
+                    "title": clean_article_title(article_data.get("title", f"Article Part {i+1}")),
+                    "content": clean_article_content(article_data.get("content", chunk)),
+                    "summary": article_data.get("summary", "Generated from uploaded content"),
+                    "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
+                    "takeaways": article_data.get("takeaways", []),
                     "source_type": metadata.get('type', 'text_processing'),
                     "status": "draft",
                     "metadata": {
                         **metadata,
                         "ai_processed": True,
-                        "ai_model": ai_model,
-                        "article_index": i + 1,
-                        "total_articles": len(articles_data.get('articles', [])),
+                        "ai_model": "gpt-4o-mini (with fallback)",
+                        "chunk_index": i + 1,
+                        "total_chunks": len(content_chunks),
+                        "chunk_chars": len(chunk),
+                        "processing_approach": "smart_chunking_simplified",
                         "processing_timestamp": datetime.utcnow().isoformat()
                     },
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 }
+                
                 articles.append(article_record)
-            
-            print(f"✅ Generated {len(articles)} articles from content")
-            return articles
-            
-        except json.JSONDecodeError as e:
-            print(f"❌ JSON parsing error: {e}")
-            print(f"Raw AI response: {ai_response[:500]}...")
-        except Exception as e:
-            print(f"❌ Error processing AI response: {e}")
-    else:
-        print("❌ No AI response available from either OpenAI or Claude")
+                print(f"✅ Created article {i+1}: '{article_record['title']}'")
+                
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON parsing error for chunk {i+1}: {e}")
+                # Fallback: create basic article
+                fallback_article = create_fallback_article_from_chunk(chunk, metadata, i+1, len(content_chunks))
+                articles.append(fallback_article)
+            except Exception as e:
+                print(f"❌ Error processing chunk {i+1}: {e}")
+                # Fallback: create basic article  
+                fallback_article = create_fallback_article_from_chunk(chunk, metadata, i+1, len(content_chunks))
+                articles.append(fallback_article)
+        else:
+            print(f"❌ No AI response for chunk {i+1}, creating fallback article")
+            # Fallback: create basic article
+            fallback_article = create_fallback_article_from_chunk(chunk, metadata, i+1, len(content_chunks))
+            articles.append(fallback_article)
     
-    # Fallback to single article
-    print("🔄 Falling back to single article creation...")
-    contextual_images = metadata.get('contextual_images', [])
-    return [await create_single_article_from_content(content, metadata, contextual_images)]
+    print(f"✅ Successfully created {len(articles)} articles using smart chunking approach")
+    return articles
+
+def create_fallback_article_from_chunk(chunk: str, metadata: Dict[str, Any], chunk_index: int, total_chunks: int) -> Dict:
+    """Create a basic fallback article when LLM processing fails"""
+    
+    # Extract a title from the first line or heading
+    lines = chunk.split('\n')
+    title = None
+    
+    for line in lines:
+        line = line.strip()
+        if line:
+            # Check if it looks like a heading
+            if line.startswith('#'):
+                title = line.lstrip('#').strip()
+                break
+            elif len(line) < 100 and not line.endswith('.'):
+                title = line
+                break
+    
+    if not title:
+        title = f"Content Section {chunk_index}"
+    
+    # Convert basic markdown to HTML
+    content_html = chunk
+    content_html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^\- (.+)$', r'<li>\1</li>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'\n\n', '</p><p>', content_html)
+    content_html = f'<p>{content_html}</p>'
+    
+    # Clean up
+    content_html = content_html.replace('<p><h', '<h').replace('</h1></p>', '</h1>')
+    content_html = content_html.replace('<p><h2>', '<h2>').replace('</h2></p>', '</h2>')
+    content_html = content_html.replace('<p><h3>', '<h3>').replace('</h3></p>', '</h3>')
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": clean_article_title(title),
+        "content": content_html,
+        "summary": f"Content section {chunk_index} of {total_chunks} from uploaded document",
+        "tags": [metadata.get('type', 'upload'), 'content-chunk'],
+        "takeaways": [],
+        "source_type": metadata.get('type', 'text_processing'),
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "ai_processed": False,
+            "chunk_index": chunk_index,
+            "total_chunks": total_chunks,
+            "chunk_chars": len(chunk),
+            "processing_approach": "fallback_chunking",
+            "processing_timestamp": datetime.utcnow().isoformat()
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
 
 async def create_single_article_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> Dict:
     """Create a single comprehensive article from content using LLM with fallback"""

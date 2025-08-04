@@ -6630,6 +6630,90 @@ def clean_article_title(title: str) -> str:
     return title.strip()
 
 
+def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 6000) -> List[str]:
+    """
+    Split content into chunks with smart context-aware breaks.
+    - Target: 6,000-8,000 characters per chunk  
+    - Never break mid-paragraph, mid-step, or mid-list
+    - Prefer breaking at section boundaries (H2s, logical groups)
+    """
+    
+    if len(content) <= max_chars:
+        return [content]
+    
+    chunks = []
+    current_chunk = ""
+    
+    # Split by double newlines first (paragraph breaks)
+    paragraphs = content.split('\n\n')
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+            
+        # Check if adding this paragraph would exceed max_chars
+        potential_chunk = current_chunk + '\n\n' + paragraph if current_chunk else paragraph
+        
+        if len(potential_chunk) <= max_chars:
+            # Safe to add
+            current_chunk = potential_chunk
+        else:
+            # Adding this paragraph would exceed limit
+            if len(current_chunk) >= min_chars:
+                # Current chunk is good size, save it and start new chunk
+                chunks.append(current_chunk.strip())
+                current_chunk = paragraph
+            else:
+                # Current chunk is too small, check if we can break the paragraph
+                if len(paragraph) > max_chars:
+                    # Very long paragraph - split by sentences
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                        current_chunk = ""
+                    
+                    # Split long paragraph into sentences
+                    sentences = paragraph.split('. ')
+                    temp_chunk = ""
+                    
+                    for sentence in sentences:
+                        sentence = sentence.strip()
+                        if not sentence:
+                            continue
+                        
+                        # Add period back if it was split
+                        if not sentence.endswith('.') and sentence != sentences[-1]:
+                            sentence += '.'
+                        
+                        potential_temp = temp_chunk + ' ' + sentence if temp_chunk else sentence
+                        
+                        if len(potential_temp) <= max_chars:
+                            temp_chunk = potential_temp
+                        else:
+                            if temp_chunk:
+                                chunks.append(temp_chunk.strip())
+                                temp_chunk = sentence
+                            else:
+                                # Single sentence is too long - force add it
+                                chunks.append(sentence.strip())
+                                temp_chunk = ""
+                    
+                    if temp_chunk:
+                        current_chunk = temp_chunk
+                else:
+                    # Add anyway to avoid losing content
+                    current_chunk = potential_chunk
+    
+    # Don't forget the last chunk
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+    
+    print(f"📊 Smart chunking: {len(content)} chars → {len(chunks)} chunks")
+    for i, chunk in enumerate(chunks):
+        print(f"   Chunk {i+1}: {len(chunk)} characters")
+    
+    return chunks
+
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
     """Determine if content should be split based on CHARACTER LIMITS and context-aware breaks"""
     

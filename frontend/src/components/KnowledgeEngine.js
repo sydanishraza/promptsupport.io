@@ -786,69 +786,42 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           Upload and process content from multiple sources to build your knowledge base
         </p>
 
-        {/* Upload Methods Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* New Upload Hub Button */}
+        <div className="text-center">
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="group relative inline-flex items-center justify-center px-8 py-6 text-lg font-semibold text-white transition-all duration-300 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-3xl hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-3xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <Brain className="w-8 h-8 mr-3 group-hover:scale-110 transition-transform duration-300" />
+            <span className="relative z-10">Open Content Upload Hub</span>
+            <div className="ml-3 p-2 bg-white/20 rounded-full group-hover:rotate-12 transition-transform duration-300">
+              <Plus className="w-5 h-5" />
+            </div>
+          </button>
           
-          {/* File Upload */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-               onClick={() => fileInputRef.current?.click()}>
-            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">File Upload</h3>
-            <p className="text-sm text-gray-500">
-              Upload documents, images, audio, and video files
-            </p>
-            <p className="text-xs text-blue-600 mt-2">✅ Creates Content Library articles</p>
-          </div>
-
-          {/* Website/Link Upload */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-               onClick={() => setShowUrlModal(true)}>
-            <Globe className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Website/Link</h3>
-            <p className="text-sm text-gray-500">
-              Scrape websites, YouTube videos, GitHub repos
-            </p>
-            <p className="text-xs text-blue-600 mt-2">✅ Creates Content Library articles</p>
-          </div>
+          <p className="mt-4 text-sm text-gray-600">
+            ✨ New modern interface with file upload, text input, URLs, and integrations
+          </p>
         </div>
 
-        {/* Manual Text Processing Section - Separate from File/URL Processing */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            <FileText className="w-5 h-5 inline-block mr-2" />
-            Manual Text Processing
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Paste or type text content directly for immediate processing into structured articles.
-          </p>
-          <textarea
-            placeholder="Paste or type your text content here for processing..."
-            rows="6"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey && e.target.value.trim()) {
-                handleTextProcessing(e.target.value);
-                e.target.value = '';
-              }
-            }}
-          />
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-gray-500">
-              Press Ctrl+Enter to process • Creates Content Library articles
-            </span>
+        {/* Legacy Quick Access (Optional) */}
+        <div className="mt-8 p-4 bg-gray-50 rounded-2xl">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Actions</h3>
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={(e) => {
-                const textarea = e.target.closest('.bg-gray-50').querySelector('textarea');
-                if (textarea.value.trim()) {
-                  handleTextProcessing(textarea.value);
-                  textarea.value = '';
-                }
-              }}
-              disabled={isProcessing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
             >
-              {isProcessing ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
-              Process Text
+              <Upload className="w-4 h-4 mr-2" />
+              Quick File Upload
+            </button>
+            <button
+              onClick={() => setShowUrlModal(true)}
+              className="flex items-center px-4 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+            >
+              <Globe className="w-4 h-4 mr-2" />
+              Quick URL
             </button>
           </div>
         </div>

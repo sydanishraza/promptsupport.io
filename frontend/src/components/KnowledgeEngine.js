@@ -509,12 +509,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     }
   };
 
-  const formatDuration = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const viewDocument = (doc) => {
     console.log('Viewing document:', doc);
     // TODO: Implement document preview modal

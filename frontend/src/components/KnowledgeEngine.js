@@ -434,58 +434,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     setIsProcessing(false);
   };
 
-  const handleRecordingAction = async (action, type = 'screen') => {
-    if (action === 'start') {
-      setRecordingType(type);
-      setIsRecording(true);
-      console.log(`Started ${type} recording`);
-    } else if (action === 'stop') {
-      setIsProcessing(true);
-      
-      try {
-        const formData = new FormData();
-        formData.append('recording_type', recordingType);
-        formData.append('duration', recordingDuration.toString());
-        formData.append('title', `${recordingType} recording ${new Date().toLocaleString()}`);
-        formData.append('metadata', JSON.stringify({
-          processed_at: new Date().toISOString(),
-          source: 'knowledge_engine_ui',
-          type: 'recording_processing'
-        }));
-
-        const response = await fetch(`${backendUrl}/api/content/process-recording`, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setUploadedFiles(prev => [...prev, {
-            id: result.job_id,
-            name: `${recordingType} Recording (${recordingDuration}s)`,
-            status: result.status,
-            chunksCreated: result.chunks_created,
-            type: 'recording',
-            uploadTime: new Date(),
-            processingComplete: true
-          }]);
-          
-          console.log(`✅ Recording processed → Created ${result.chunks_created} chunks`);
-          
-          // Refresh data
-          fetchDocuments();
-          fetchProcessingJobs();
-          fetchContentLibraryArticles();
-        }
-      } catch (error) {
-        console.error('Recording processing error:', error);
-      }
-      
-      setIsRecording(false);
-      setIsProcessing(false);
-    }
-  };
-
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     

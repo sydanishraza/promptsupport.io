@@ -148,7 +148,7 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "Knowledge Engine Frontend Revamp: Complete redesign of upload interface with Gen Z aesthetics, modern upload blocks, integration cards, and processing modal flow"
+## user_problem_statement: "Knowledge Engine Final Frontend Cleanup & UI Overhaul: Complete Gen Z aesthetic redesign with legacy element removal, expanded file format support, integrations manager, and modern processing modal flow"
 
 ## backend:
   - task: "HTML Preprocessing Pipeline Implementation"

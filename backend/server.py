@@ -8220,78 +8220,8 @@ async def upload_file(
                         
                         extracted_content += "\n"
                         
-                # ENHANCEMENT: Add contextual image placement throughout content
-                if embedded_media:
-                    enhanced_content_with_images = ""
-                    content_paragraphs = extracted_content.split('\n\n')
-                    image_index = 0
-                    total_images = len(embedded_media)
-                    
-                    print(f"📍 ENHANCEMENT: Placing {total_images} images contextually across {len(content_paragraphs)} content sections")
-                    
-                    # Calculate optimal image distribution
-                    if len(content_paragraphs) > 0 and total_images > 0:
-                        # Place images throughout content, not just at the end
-                        paragraphs_per_image = max(2, len(content_paragraphs) // total_images) if total_images > 0 else len(content_paragraphs)
-                        
-                        for i, paragraph in enumerate(content_paragraphs):
-                            enhanced_content_with_images += paragraph + "\n\n"
-                            
-                            # Insert image contextually every few paragraphs
-                            if image_index < total_images and (i + 1) % paragraphs_per_image == 0:
-                                image_data = embedded_media[image_index]
-                                
-                                # Use the correct image URL - prioritize 'url' field, fallback to 'data'
-                                image_src = image_data.get('url', image_data.get('data', ''))
-                                
-                                if not image_src:
-                                    print(f"⚠️ No image source found for image {image_index + 1}, skipping")
-                                    image_index += 1
-                                    continue
-                                
-                                print(f"🖼️ CONTEXTUAL PLACEMENT: Inserting image {image_index + 1} with URL: {image_src[:50]}...")
-                                
-                                contextual_image_html = f"""
-<figure class="image-contextual" style="margin: 20px 0; text-align: center;">
-    <img src="{image_src}" alt="Figure {image_index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
-    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
-        Figure {image_index + 1}: Image from {file.filename} (contextually placed)
-    </figcaption>
-</figure>
-
-"""
-                                enhanced_content_with_images += contextual_image_html
-                                image_index += 1
-                        
-                        # Add any remaining images at the end
-                        while image_index < total_images:
-                            image_data = embedded_media[image_index]
-                            
-                            # Use the correct image URL - prioritize 'url' field, fallback to 'data'
-                            image_src = image_data.get('url', image_data.get('data', ''))
-                            
-                            if not image_src:
-                                print(f"⚠️ No image source found for remaining image {image_index + 1}, skipping")
-                                image_index += 1
-                                continue
-                            
-                            print(f"🖼️ REMAINING PLACEMENT: Adding image {image_index + 1} with URL: {image_src[:50]}...")
-                            
-                            remaining_image_html = f"""
-<figure class="image-remaining" style="margin: 20px 0; text-align: center;">
-    <img src="{image_src}" alt="Figure {image_index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
-    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
-        Figure {image_index + 1}: Additional image from {file.filename}
-    </figcaption>
-</figure>
-
-"""
-                            enhanced_content_with_images += remaining_image_html
-                            image_index += 1
-                            
-                        # Update extracted content with contextually placed images
-                        extracted_content = enhanced_content_with_images
-                        print(f"✅ ENHANCED: Contextually placed {image_index} images throughout content sections")
+                # SEMANTIC PROCESSING: Let the semantic placement system handle image distribution
+                print(f"🎯 SEMANTIC PROCESSING: Skipping direct image injection, {len(embedded_media)} images will be handled by semantic placement system")
                         
                 print(f"✅ Simplified extraction: {len(extracted_content)} characters from Word document, {len(embedded_media)} images provided for AI contextual positioning")
             except ImportError:

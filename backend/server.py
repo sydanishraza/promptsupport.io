@@ -6631,73 +6631,18 @@ def clean_article_title(title: str) -> str:
 
 
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
-    """Determine if content should be split into multiple articles - Enhanced for better topic separation"""
+    """Determine if content should be split based on CHARACTER LIMITS and context-aware breaks"""
     
-    # Make splitting more aggressive for better content organization
-    if len(content) < 800:  # Further lowered threshold
+    # REVISED LOGIC: Focus on character count limits (6,000-8,000 chars per article)
+    MAX_SINGLE_ARTICLE_CHARS = 6000  # Maximum characters for a single article
+    
+    # If content is under 6,000 characters, keep as single article
+    if len(content) <= MAX_SINGLE_ARTICLE_CHARS:
         return False
     
-    # Always split presentations
-    if file_extension in ['ppt', 'pptx']:
-        return True
-    
-    # Always split multi-sheet spreadsheets
-    if file_extension in ['xls', 'xlsx'] and 'Sheet:' in content:
-        return True
-    
-    # Enhanced heading detection with more patterns including chapter indicators
-    heading_patterns = [
-        '===', '##', '# ', '####', '##### ', 
-        'Chapter', 'Section', 'Part ', 'Module', 'Unit', 'Lesson',
-        'Overview', 'Introduction', 'Conclusion', 'Summary',
-        'Getting Started', 'Configuration', 'Setup', 'Installation',
-        'Administration', 'Management', 'Process', 'Procedure',
-        'Step ', 'Phase ', 'Stage ', 'Level ', 'Activity ',
-        'Tutorial', 'Guide', 'How to', 'Instructions',
-        'Requirements', 'Prerequisites', 'Implementation',
-        'Architecture', 'Design', 'Structure', 'Framework',
-        'API', 'Reference', 'Documentation', 'Specification',
-        'Fundamentals', 'Basics', 'Advanced', 'Best Practices',
-        'Tips', 'Techniques', 'Methods', 'Strategies',
-        'Analysis', 'Planning', 'Execution', 'Monitoring'
-    ]
-    
-    heading_count = 0
-    content_lower = content.lower()
-    
-    for pattern in heading_patterns:
-        heading_count += content_lower.count(pattern.lower())
-    
-    # Check for document structure indicators (more comprehensive)
-    has_table_of_contents = any(toc in content_lower for toc in [
-        'table of contents', 'contents:', 'index:', 'toc', 
-        'outline:', 'structure:', 'agenda:'
-    ])
-    
-    has_multiple_sections = content.count('\n\n') > 5  # Reduced threshold
-    has_enumerated_sections = len([line for line in content.split('\n') 
-                                 if line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.'))]) > 2
-    
-    # Check for topic transitions (common transitional phrases)
-    topic_transitions = [
-        'moving on to', 'next topic', 'another important', 'in addition',
-        'furthermore', 'meanwhile', 'on the other hand', 'alternatively',
-        'let\'s discuss', 'now we\'ll cover', 'another aspect', 'different approach'
-    ]
-    
-    transition_count = sum(content_lower.count(phrase) for phrase in topic_transitions)
-    
-    # More aggressive splitting logic - prioritize multiple focused articles
-    return (
-        heading_count >= 2 or  # Just 2 headings needed
-        has_table_of_contents or
-        (has_multiple_sections and len(content) > 1200) or  # Further reduced length threshold  
-        has_enumerated_sections or
-        transition_count >= 1 or  # Single topic transition indicates multiple topics
-        len(content) > 4000 or  # Reduced from 6000 - split documents earlier
-        (file_extension == 'docx' and len(content) > 2000) or  # DOCX files split more aggressively
-        (len(content) > 8000 and heading_count >= 4)  # Rich documents with multiple headings
-    )
+    # If content is over 6,000 characters, we need to split
+    print(f"📏 Content length: {len(content)} characters - exceeds {MAX_SINGLE_ARTICLE_CHARS} limit, will split")
+    return True
 
 def sanitize_json_response(json_text):
     """Sanitize JSON content to handle control characters and escaping issues"""

@@ -149,7 +149,7 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "Knowledge Engine Final Frontend Cleanup & UI Overhaul: Complete Gen Z aesthetic redesign with legacy element removal, expanded file format support, integrations manager, and modern processing modal flow"
+## user_problem_statement: "DOCX Processing Pipeline - Complete End-to-End Frontend Testing: Test complete DOCX processing pipeline against all requirements including contextual image placement, intelligent chunking, section boundary tracking, image-to-text proximity preservation, captioning and alignment, Documentation Rewrite and Distribution LLM system, and quality matching reference standards"
 
 ## backend:
   - task: "HTML Preprocessing Pipeline Implementation"

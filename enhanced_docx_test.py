@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://81ee4b70-33a2-4cdd-a9be-c5f4b7ab4d25.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://404d0371-ecd8-49d3-b3e6-1bf697a10fe7.preview.emergentagent.com') + '/api'
 
 class EnhancedDOCXProcessingTest:
     def __init__(self):

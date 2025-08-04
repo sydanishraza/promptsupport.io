@@ -66,7 +66,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   const [uploadQueue, setUploadQueue] = useState([]);
   
   const fileInputRef = useRef(null);
-  const recordingInterval = useRef(null);
 
   // Get backend URL from environment
   const backendUrl = process.env.REACT_APP_BACKEND_URL;

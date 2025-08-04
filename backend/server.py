@@ -6695,7 +6695,7 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
 
     # Try to get AI response using fallback system
     session_id = str(uuid.uuid4())
-    ai_response = await call_llm_with_fallback(system_message, user_message, session_id, max_tokens=4000)
+    ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
     
     if ai_response:
         try:

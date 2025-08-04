@@ -6541,6 +6541,28 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
         (len(content) > 8000 and heading_count >= 4)  # Rich documents with multiple headings
     )
 
+def sanitize_json_response(json_text):
+    """Sanitize JSON content to handle control characters and escaping issues"""
+    try:
+        import re
+        # First, try to fix common JSON issues
+        # Replace unescaped newlines in content fields
+        json_text = re.sub(r'(?<!\\)\n', '\\n', json_text)
+        json_text = re.sub(r'(?<!\\)\r', '\\r', json_text)
+        json_text = re.sub(r'(?<!\\)\t', '\\t', json_text)
+        
+        # Fix any unescaped quotes in content - this is complex, so we'll handle it after initial parsing attempt
+        # Remove any potential markdown code blocks that might interfere
+        json_match = re.search(r'```json\s*(.*?)\s*```', json_text, re.DOTALL | re.IGNORECASE)
+        if json_match:
+            json_text = json_match.group(1)
+        
+        return json_text
+    except Exception as e:
+        print(f"⚠️ JSON sanitization warning: {e}")
+        return json_text
+
+
 async def create_documentation_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
     """
     Create multiple structured documentation articles using the enhanced documentation rewrite system

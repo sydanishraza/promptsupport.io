@@ -6727,32 +6727,8 @@ async def create_documentation_articles_from_content(content: str, metadata: Dic
     Based on the provided prompt specification for "Documentation Rewrite and Distribution"
     """
     
-    # Extract real image URLs from content AND use provided contextual images
-    import re
-    image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
-    image_references = []
-    
-    # Add images found in content
-    for i, url in enumerate(image_urls, 1):
-        if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
-            image_references.append(f"Image {i}: {url}")
-    
-    # CRITICAL: Add contextual images from DOCX extraction with semantic tagging
-    if contextual_images:
-        for i, img_data in enumerate(contextual_images, len(image_references) + 1):
-            img_url = img_data.get('url') or img_data.get('data', '')
-            if img_url:
-                # Include semantic tagging information in image reference
-                chunk_id = img_data.get('associated_chunk', f'chunk_{i}')
-                placement = img_data.get('placement', 'after')
-                confidence = img_data.get('confidence_score', 0.0)
-                semantic_context = img_data.get('semantic_context', '')[:100]
-                
-                img_desc = img_data.get('alt_text', img_data.get('title', f'Figure {i}'))
-                image_references.append(f"Image {i}: {img_url} (Chunk: {chunk_id}, Placement: {placement}, Confidence: {confidence:.2f}, Context: {semantic_context})")
-        print(f"🖼️ Added {len(contextual_images)} semantically-tagged images for documentation articles")
-    
-    print(f"🖼️ Total semantically-tagged images available: {len(image_references)}")
+    # Phase 1: Create articles without images first
+    print(f"🚀 Phase 1: Creating articles structure without images")
     
     system_message = """You are an expert technical documentation writer specializing in creating comprehensive, user-ready articles from internal documentation. Your task is to analyze, split, rewrite, and format documentation using best technical writing practices inspired by leading documentation systems (Woolf, Eltropy, etc.).
 
@@ -6760,36 +6736,14 @@ CORE DIRECTIVE: Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use
 
 CRITICAL: Split, rewrite, and format internal documentation into clean, user-ready articles using technical writing standards.
 
-SEMANTIC IMAGE PLACEMENT: Images have been pre-tagged with semantic chunk information. Use this information to place images CONTEXTUALLY within the most relevant article sections, not in every article.
+PHASE 1: Create article structure WITHOUT images first. Images will be added in a separate phase for optimal contextual placement.
 
 Respond ONLY with valid JSON."""
     
-    image_instruction = ""
-    if image_references:
-        image_instruction = f"""
-SEMANTICALLY-TAGGED IMAGES AVAILABLE:
-{chr(10).join(image_references)}
-
-CRITICAL CONTEXTUAL PLACEMENT RULES:
-1. Each image should appear in ONLY ONE article where it's most contextually relevant
-2. Use the Chunk ID and Context information to determine which article should contain each image
-3. Place images near the content they relate to, not at the beginning or end of articles
-4. Include proper alt text and captions based on semantic context
-5. Use ONLY these real URLs, do NOT create fake URLs
-6. If an image doesn't match any article content well, place it in the Overview article
-
-SEMANTIC MATCHING GUIDELINES:
-- Match images to articles based on chunk context and confidence scores
-- Higher confidence scores indicate stronger contextual relationships
-- Consider placement hints (before/after/inline) for positioning within the article
-- Ensure each image appears exactly once across all generated articles"""
-    
-    # Enhanced documentation processing prompt exactly as specified
+    # Enhanced documentation processing prompt without images
     user_message = f"""prompt_type: "Documentation Rewrite and Distribution"
 input_type: "Structured Guide (DOCX, HTML, Markdown, or Raw Export)"
 goal: "Split, rewrite, and format internal documentation into clean, user-ready articles using technical writing standards"
-
-{image_instruction}
 
 instructions:
   - Analyze the input guide and automatically split it into logically separate articles (e.g., by features, modules, or topics).
@@ -6802,7 +6756,7 @@ instructions:
   - Remove redundancy, fix grammar, clarify vague steps, and ensure accurate transitions.
   - Format final output in clean, standalone HTML ready for publication or preview.
   - Include a separate overview/introduction page linking all split articles.
-  - Maintain any existing instructional visuals as `<img>` placeholders with `alt` text referencing the figure.
+  - DO NOT include any images in this phase - focus on content structure and quality.
 
 output_format: "Multiple HTML files (one per article) + TOC Overview Page"
 output_naming: 
@@ -6841,19 +6795,13 @@ CRITICAL REQUIREMENTS FOR PROCESSING:
    - Apply consistent styling with inline styles where needed
    - NO MARKDOWN - Only HTML tags
 
-5. **Visual Content Integration**:
-   - Include existing instructional visuals using provided real image URLs
-   - Add descriptive alt text for accessibility
-   - Include captions explaining image relevance
-   - Position images contextually within the content flow
-
-6. **Overview Page Creation**:
+5. **Overview Page Creation**:
    - Create a comprehensive overview/introduction page
    - Include links to all split articles
    - Provide clear navigation structure
    - Explain the relationship between different articles
 
-RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
+RESPONSE FORMAT - Return valid JSON with both overview and individual articles (WITHOUT IMAGES):
 {{
     "overview": {{
         "title": "{{Module/System Name}} Overview",
@@ -6866,7 +6814,7 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
         {{
             "title": "{{Specific Topic/Feature Title}}",
             "summary": "Detailed explanation of what this article covers and its importance",
-            "content": "<h1>🛠️ {{Topic Title}}</h1><p>Clear introduction...</p><h2>{{Major Section}}</h2><ol><li>Step-by-step instructions...</li></ol><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td>{{Field Name}}</td><td>{{Clear description}}</td></tr></tbody></table><h2>{{Another Section}}</h2><ul><li>Option or feature point</li></ul><div class='tip'>💡 Use contextual callouts based on content relevance</div><img src='{{real_image_url}}' alt='{{descriptive_alt_text}}' style='max-width: 100%; height: auto;'><p><em>Figure description and relevance</em></p>",
+            "content": "<h1>🛠️ {{Topic Title}}</h1><p>Clear introduction...</p><h2>{{Major Section}}</h2><ol><li>Step-by-step instructions...</li></ol><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td>{{Field Name}}</td><td>{{Clear description}}</td></tr></tbody></table><h2>{{Another Section}}</h2><ul><li>Option or feature point</li></ul><div class='tip'>💡 Use contextual callouts based on content relevance</div>",
             "tags": ["{{topic-name}}", "{{feature-name}}", "{{category}}"],
             "takeaways": ["Specific actionable takeaway", "Key learning point", "Best practice"]
         }}
@@ -6879,7 +6827,7 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
     
     if ai_response:
         try:
-            print(f"✅ Documentation AI response received: {len(ai_response)} characters")
+            print(f"✅ Phase 1 AI response received: {len(ai_response)} characters")
             
             # Enhanced JSON sanitization for documentation responses
             def sanitize_json_response(json_text):
@@ -6902,6 +6850,11 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
             cleaned_response = sanitize_json_response(ai_response)
             articles_data = json.loads(cleaned_response)
             
+            # Phase 2: Apply semantic image placement
+            print(f"🎯 Phase 2: Applying semantic image placement")
+            if contextual_images and len(contextual_images) > 0:
+                articles_data = await apply_semantic_image_placement(articles_data, contextual_images)
+            
             # Create article records including overview
             articles = []
             
@@ -6921,7 +6874,8 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
                         **metadata,
                         "ai_processed": True,
                         "documentation_type": "overview",
-                        "processing_timestamp": datetime.utcnow().isoformat()
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "semantic_images_applied": len(contextual_images) if contextual_images else 0
                     },
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
@@ -6936,10 +6890,6 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
                 
                 cleaned_title = clean_article_title(raw_title)
                 cleaned_content = clean_article_content(raw_content)
-                
-                # Inject real images into content if available
-                if contextual_images:
-                    cleaned_content = insert_images_contextually(cleaned_content, contextual_images)
                 
                 article_record = {
                     "id": str(uuid.uuid4()),
@@ -6956,14 +6906,15 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
                         "documentation_type": "article",
                         "article_index": i + 1,
                         "total_articles": len(articles_data.get('articles', [])),
-                        "processing_timestamp": datetime.utcnow().isoformat()
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "assigned_images": len(article_info.get('assigned_images', [])) if contextual_images else 0
                     },
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 }
                 articles.append(article_record)
             
-            print(f"✅ Generated {len(articles)} documentation articles (including overview)")
+            print(f"✅ Generated {len(articles)} documentation articles with semantic image placement")
             return articles
             
         except json.JSONDecodeError as e:
@@ -6978,9 +6929,224 @@ RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
     else:
         print("❌ No AI response available for documentation processing")
     
-    # Fallback to single article creation
-    print("🔄 Falling back to single article creation...")
-    return [await create_single_article_from_content(content, metadata, contextual_images)]
+    # Final fallback - create basic article
+    return [await create_enhanced_fallback_article(content, metadata, "No AI response", contextual_images)]
+
+
+async def apply_semantic_image_placement(articles_data: dict, contextual_images: List[Dict]) -> dict:
+    """
+    CRITICAL: Apply semantic image placement algorithm to ensure each image appears in only one article
+    Uses TF-IDF and semantic similarity to match images to their most contextually relevant articles
+    """
+    print(f"🎯 Applying semantic image placement for {len(contextual_images)} images across {len(articles_data.get('articles', []))} articles")
+    
+    try:
+        # Phase 1: Calculate semantic similarity scores between each image and each article
+        image_article_scores = {}
+        
+        for image in contextual_images:
+            image_id = image.get('id', image.get('filename', 'unknown'))
+            image_context = image.get('semantic_context', image.get('context_text', ''))
+            image_alt = image.get('alt_text', '')
+            image_caption = image.get('caption', '')
+            
+            # Combine all image context for semantic matching
+            image_full_context = f"{image_context} {image_alt} {image_caption}".lower()
+            
+            image_article_scores[image_id] = {}
+            
+            # Score against each article
+            for i, article in enumerate(articles_data.get('articles', [])):
+                article_content = article.get('content', '')
+                article_title = article.get('title', '')
+                article_summary = article.get('summary', '')
+                
+                # Combine article text for semantic matching
+                article_full_text = f"{article_title} {article_summary} {article_content}".lower()
+                
+                # Calculate semantic similarity score using multiple methods
+                similarity_score = calculate_comprehensive_similarity(image_full_context, article_full_text)
+                
+                # Boost score if image has high confidence from original extraction
+                confidence_boost = image.get('confidence_score', 0.0) * 0.2
+                final_score = similarity_score + confidence_boost
+                
+                image_article_scores[image_id][i] = final_score
+                
+                print(f"📊 Image {image_id} vs Article {i} ('{article_title[:30]}...'): score={final_score:.3f}")
+        
+        # Phase 2: Assign each image to its highest-scoring article (greedy assignment)
+        image_assignments = {}
+        assigned_articles = set()
+        
+        # Sort images by their highest confidence scores to prioritize high-confidence matches
+        sorted_images = sorted(contextual_images, key=lambda x: x.get('confidence_score', 0.0), reverse=True)
+        
+        for image in sorted_images:
+            image_id = image.get('id', image.get('filename', 'unknown'))
+            
+            if image_id not in image_article_scores:
+                continue
+                
+            # Find the best article for this image
+            best_article_idx = -1
+            best_score = 0.0
+            
+            for article_idx, score in image_article_scores[image_id].items():
+                # Only consider articles that haven't reached their image limit (max 2-3 images per article)
+                article_image_count = len([img for img, assigned_idx in image_assignments.items() if assigned_idx == article_idx])
+                
+                if score > best_score and article_image_count < 3:  # Limit images per article
+                    best_score = score
+                    best_article_idx = article_idx
+            
+            # Assign image to best article if score meets threshold
+            if best_article_idx >= 0 and best_score > 0.1:  # Minimum relevance threshold
+                image_assignments[image_id] = best_article_idx
+                print(f"✅ Assigned image {image_id} to article {best_article_idx} (score: {best_score:.3f})")
+            else:
+                # Assign to overview if no good match found
+                image_assignments[image_id] = 'overview'
+                print(f"📋 Assigned image {image_id} to overview (low relevance scores)")
+        
+        # Phase 3: Insert images into their assigned articles
+        for image in contextual_images:
+            image_id = image.get('id', image.get('filename', 'unknown'))
+            assigned_article_idx = image_assignments.get(image_id)
+            
+            if assigned_article_idx == 'overview' and 'overview' in articles_data:
+                # Add to overview
+                img_html = create_semantic_image_html(image)
+                articles_data['overview']['content'] = insert_image_at_appropriate_position(
+                    articles_data['overview']['content'], img_html
+                )
+                
+                # Track assigned images
+                if 'assigned_images' not in articles_data['overview']:
+                    articles_data['overview']['assigned_images'] = []
+                articles_data['overview']['assigned_images'].append(image_id)
+                
+            elif isinstance(assigned_article_idx, int) and 0 <= assigned_article_idx < len(articles_data.get('articles', [])):
+                # Add to specific article
+                img_html = create_semantic_image_html(image)
+                articles_data['articles'][assigned_article_idx]['content'] = insert_image_at_appropriate_position(
+                    articles_data['articles'][assigned_article_idx]['content'], img_html
+                )
+                
+                # Track assigned images
+                if 'assigned_images' not in articles_data['articles'][assigned_article_idx]:
+                    articles_data['articles'][assigned_article_idx]['assigned_images'] = []
+                articles_data['articles'][assigned_article_idx]['assigned_images'].append(image_id)
+        
+        # Phase 4: Log final distribution for debugging
+        print(f"🎯 SEMANTIC IMAGE PLACEMENT COMPLETE:")
+        print(f"   - Overview images: {len(articles_data.get('overview', {}).get('assigned_images', []))}")
+        for i, article in enumerate(articles_data.get('articles', [])):
+            assigned_count = len(article.get('assigned_images', []))
+            print(f"   - Article {i+1} ('{article['title'][:30]}...'): {assigned_count} images")
+        
+        return articles_data
+    
+    except Exception as e:
+        print(f"❌ Error in semantic image placement: {e}")
+        import traceback
+        traceback.print_exc()
+        return articles_data
+
+
+def calculate_comprehensive_similarity(text1: str, text2: str) -> float:
+    """Enhanced semantic similarity calculation using multiple methods"""
+    if not text1 or not text2:
+        return 0.0
+    
+    # Method 1: Word overlap (Jaccard similarity)
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+    
+    # Remove common stop words
+    stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should'}
+    words1 = words1 - stop_words
+    words2 = words2 - stop_words
+    
+    if not words1 or not words2:
+        return 0.0
+    
+    # Calculate Jaccard similarity
+    intersection = words1.intersection(words2)
+    union = words1.union(words2)
+    jaccard_score = len(intersection) / len(union) if union else 0.0
+    
+    # Method 2: Common important terms (technical terms, proper nouns)
+    important_terms_score = 0.0
+    for word1 in words1:
+        if len(word1) > 4 and word1.isalpha():  # Focus on longer, meaningful words
+            for word2 in words2:
+                if word1.startswith(word2[:4]) or word2.startswith(word1[:4]):
+                    important_terms_score += 0.1
+    
+    important_terms_score = min(important_terms_score, 0.5)  # Cap at 0.5
+    
+    # Method 3: Contextual phrase matching
+    phrase_score = 0.0
+    text1_phrases = [' '.join(text1.split()[i:i+2]) for i in range(len(text1.split())-1)]
+    text2_phrases = [' '.join(text2.split()[i:i+2]) for i in range(len(text2.split())-1)]
+    
+    for phrase1 in text1_phrases:
+        if phrase1 in ' '.join(text2_phrases):
+            phrase_score += 0.05
+    
+    phrase_score = min(phrase_score, 0.3)  # Cap at 0.3
+    
+    # Combine scores with weights
+    final_score = (jaccard_score * 0.6) + (important_terms_score * 0.3) + (phrase_score * 0.1)
+    
+    return min(final_score, 1.0)
+
+
+def create_semantic_image_html(image: dict) -> str:
+    """Create properly formatted HTML for semantically placed images"""
+    img_url = image.get('url', image.get('data', ''))
+    alt_text = image.get('alt_text', 'Document image')
+    caption = image.get('caption', alt_text)
+    
+    return f"""<figure style="margin: 20px 0; text-align: center;">
+    <img src="{img_url}" 
+         alt="{alt_text}" 
+         style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+    <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic;">
+        {caption}
+    </figcaption>
+</figure>"""
+
+
+def insert_image_at_appropriate_position(content: str, img_html: str) -> str:
+    """Insert image at an appropriate position within the article content"""
+    # Strategy: Insert after the first major paragraph or heading, not at the very beginning or end
+    
+    # Look for a good insertion point (after a paragraph or before a subheading)
+    import re
+    
+    # Try to insert after first substantial paragraph
+    paragraphs = content.split('</p>')
+    if len(paragraphs) > 2:
+        # Insert after the second paragraph for better flow
+        insertion_point = '</p>'.join(paragraphs[:2]) + '</p>' + img_html + '</p>'.join(paragraphs[2:])
+        return insertion_point
+    
+    # Fallback: Insert after the first H2 heading if found
+    h2_match = re.search(r'(<h2[^>]*>.*?</h2>)', content)
+    if h2_match:
+        insertion_point = h2_match.end()
+        return content[:insertion_point] + img_html + content[insertion_point:]
+    
+    # Final fallback: Insert after the H1 heading
+    h1_match = re.search(r'(<h1[^>]*>.*?</h1>)', content)
+    if h1_match:
+        insertion_point = h1_match.end()
+        return content[:insertion_point] + img_html + content[insertion_point:]
+    
+    # Last resort: Insert at the beginning
+    return img_html + content
 
 
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:

@@ -848,12 +848,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
         />
       </div>
 
-      {/* Snagit-Style Tool */}
-      {renderSnagitTool()}
-
-      {/* Integrations */}
-      {renderIntegrations()}
-
       {/* Real-time Upload Progress */}
       {Object.keys(uploadProgress).length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">

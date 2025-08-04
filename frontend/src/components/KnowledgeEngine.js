@@ -1463,6 +1463,19 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
 
       {/* URL Modal */}
       {urlModal}
+
+      {/* New Upload Modal */}
+      <KnowledgeEngineUpload
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUploadComplete={(results) => {
+          console.log('Upload completed:', results);
+          // Refresh data
+          fetchDocuments();
+          fetchProcessingJobs();
+          fetchContentLibraryArticles();
+        }}
+      />
     </div>
   );
 };

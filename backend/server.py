@@ -6247,7 +6247,7 @@ async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> 
         raise
 
 async def create_content_library_article_from_chunks(chunks: List[DocumentChunk], metadata: Dict[str, Any]):
-    """Create structured articles in Content Library from processed chunks"""
+    """Create structured articles in Content Library from processed chunks using enhanced documentation processing"""
     if not chunks:
         return
     
@@ -6272,7 +6272,17 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     # Determine content splitting strategy with document isolation
     should_create_multiple = await should_split_into_multiple_articles(full_content, file_extension)
     
-    if should_create_multiple:
+    # ENHANCEMENT: Use documentation processing system for DOCX files and structured content
+    if file_extension in ['docx', 'doc'] or (should_create_multiple and any(keyword in title.lower() for keyword in ['configuration', 'management', 'guide', 'manual', 'documentation', 'handbook'])):
+        print(f"📖 Using enhanced documentation processing system for: {title}")
+        contextual_images = metadata.get('contextual_images', [])
+        articles = await create_documentation_articles_from_content(full_content, metadata, contextual_images)
+        for article in articles:
+            await db.content_library.insert_one(article)
+            print(f"✅ Created documentation article: '{article['title']}'")
+        return articles
+    
+    elif should_create_multiple:
         contextual_images = metadata.get('contextual_images', [])
         articles = await create_multiple_articles_from_content(full_content, metadata, contextual_images)
         for article in articles:

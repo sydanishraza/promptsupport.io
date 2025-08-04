@@ -8367,8 +8367,8 @@ File Information:
                     'structure': []  # Basic structure for the function
                 }
                 
-                # Extract contextual images using the semantic system
-                contextual_images = extract_contextual_images_from_docx(
+                # Extract contextual images using the semantic system (async call)
+                contextual_images = await extract_contextual_images_from_docx(
                     temp_file_path, doc, extracted_content_dict, training_session
                 )
                 

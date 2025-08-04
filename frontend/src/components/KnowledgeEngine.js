@@ -57,6 +57,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   const [urlInput, setUrlInput] = useState('');
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   
   // Enhanced upload states
   const [uploadProgress, setUploadProgress] = useState({});

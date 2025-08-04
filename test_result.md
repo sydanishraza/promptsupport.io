@@ -135,7 +135,7 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "Training Engine Critical Issues RESOLVED: Multi-article generation with comprehensive content coverage, contextual image embedding, and proper H1-based titles now fully operational"
+## user_problem_statement: "Knowledge Engine Frontend Revamp: Complete redesign of upload interface with Gen Z aesthetics, modern upload blocks, integration cards, and processing modal flow"
 
 ## backend:
   - task: "HTML Preprocessing Pipeline Implementation"

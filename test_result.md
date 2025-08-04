@@ -163,7 +163,7 @@
 
 # Testing Data - Knowledge Engine Phase 1 Refinement Testing
 
-## user_problem_statement: "DOCX Processing Pipeline - Complete End-to-End Frontend Testing: Test complete DOCX processing pipeline against all requirements including contextual image placement, intelligent chunking, section boundary tracking, image-to-text proximity preservation, captioning and alignment, Documentation Rewrite and Distribution LLM system, and quality matching reference standards"
+## user_problem_statement: "KNOWLEDGE ENGINE SIMPLIFICATION AND SMART CHUNKING: Implement revised simplified approach for DOCX processing. Remove automatic contextual image embedding and focus on: 1) Clean extraction → LLM enhancement → HTML output, 2) Smart chunking with 6,000-8,000 character limits and context-aware breaks, 3) Images extracted and saved to Asset Library only (no automatic embedding), 4) 100% editor-compatible HTML output"
 
 ## backend:
   - task: "HTML Preprocessing Pipeline Implementation"

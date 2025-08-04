@@ -428,13 +428,11 @@ class DocumentPreprocessor:
                 # ENHANCED: Insert pending assets into Asset Library database
                 if hasattr(self, 'pending_assets') and self.pending_assets:
                     try:
-                        # Get database connection from global scope
-                        from motor.motor_asyncio import AsyncIOMotorClient
-                        client = AsyncIOMotorClient(MONGO_URL)
-                        db = client[DATABASE_NAME]
+                        # Use global database connection instead of creating new one
+                        global db
                         
                         # Insert all pending assets
-                        if self.pending_assets:
+                        if self.pending_assets and db is not None:
                             await db.assets.insert_many(self.pending_assets)
                             print(f"📚 Successfully added {len(self.pending_assets)} assets to Asset Library")
                             

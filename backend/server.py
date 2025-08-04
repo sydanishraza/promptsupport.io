@@ -3701,6 +3701,186 @@ def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     return False
 
 
+def determine_semantic_block_type(paragraph):
+    """Determine the semantic block type based on paragraph style and content"""
+    try:
+        style_name = paragraph.style.name.lower() if paragraph.style else ""
+        text = paragraph.text.strip()
+        
+        # Heading detection
+        if any(heading in style_name for heading in ['heading', 'title']):
+            return "heading_block"
+        
+        # Step detection (numbered or bulleted)
+        if (text.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')) or 
+            text.startswith(('•', '-', '*')) or
+            'step' in text.lower()[:20]):
+            return "instruction_step"
+        
+        # Callout detection (based on style or content markers)
+        if (any(marker in style_name for marker in ['caption', 'note', 'callout', 'box']) or
+            any(marker in text.lower()[:50] for marker in ['note:', 'important:', 'warning:', 'tip:'])):
+            return "styled_callout"
+        
+        # List detection
+        if (text.startswith(('-', '•', '*')) or 
+            'list' in style_name):
+            return "list"
+            
+        # Default to paragraph
+        return "paragraph_block"
+        
+    except Exception as e:
+        print(f"⚠️ Error determining block type: {e}")
+        return "paragraph_block"
+
+
+def should_start_new_chunk(current_chunk, new_block_type, text):
+    """Determine if we should start a new semantic chunk"""
+    
+    # Always start new chunk for headings
+    if new_block_type == "heading_block":
+        return True
+    
+    # Start new chunk when block type changes
+    if current_chunk["type"] != new_block_type:
+        return True
+    
+    # Start new chunk if current chunk is getting too long (for better granularity)
+    if len(current_chunk["text"]) > 800:  # Characters limit for better image matching
+        return True
+    
+    return False
+
+
+def find_image_positions_in_docx(zip_ref, doc):
+    """Find image positions in DOCX document"""
+    try:
+        # Simple implementation - return empty dict for now
+        # In a full implementation, this would parse the document XML
+        # to find where images are positioned relative to text
+        return {}
+    except Exception as e:
+        print(f"⚠️ Error finding image positions: {e}")
+        return {}
+
+
+def find_best_semantic_chunk_match(filename, image_positions, semantic_chunks):
+    """Find the best matching semantic chunk for an image using multiple criteria"""
+    
+    best_match = None
+    highest_confidence = 0.0
+    
+    # Get image position information if available
+    image_info = image_positions.get(filename, {})
+    image_context = image_info.get('context', '')
+    
+    for chunk in semantic_chunks:
+        confidence_score = 0.0
+        
+        # Criterion 1: Semantic similarity based on text content
+        semantic_similarity = calculate_semantic_similarity(image_context, chunk["text"])
+        confidence_score += semantic_similarity * 0.4
+        
+        # Criterion 2: Caption proximity (if image has caption context)
+        if image_context and any(word in chunk["text"].lower() for word in image_context.lower().split()[:5]):
+            confidence_score += 0.3
+        
+        # Criterion 3: Inline reference detection
+        if (any(ref in chunk["text"].lower() for ref in ['figure', 'image', 'diagram', 'screenshot', 'see']) or
+            filename.replace('.png', '').replace('.jpg', '') in chunk["text"].lower()):
+            confidence_score += 0.2
+        
+        # Criterion 4: Style context matching (instruction steps get higher priority for process images)
+        if chunk["type"] == "instruction_step" and any(word in image_context.lower() for word in ['step', 'process', 'workflow']):
+            confidence_score += 0.1
+        
+        if confidence_score > highest_confidence:
+            highest_confidence = confidence_score
+            best_match = {
+                "chunk_id": chunk["chunk_id"],
+                "chunk_type": chunk["type"],
+                "confidence_score": confidence_score,
+                "placement": "after",  # Default placement
+                "alt_text": generate_alt_text_from_context(image_context, chunk["text"]),
+                "caption": f"Figure related to {chunk['chunk_id']}",
+                "context_text": chunk["text"][:200] + "..."
+            }
+    
+    return best_match
+
+
+def calculate_semantic_similarity(text1, text2):
+    """Simple semantic similarity calculation based on word overlap"""
+    if not text1 or not text2:
+        return 0.0
+    
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+    
+    # Remove common stop words
+    stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+    words1 = words1 - stop_words
+    words2 = words2 - stop_words
+    
+    if not words1 or not words2:
+        return 0.0
+    
+    # Calculate Jaccard similarity
+    intersection = words1.intersection(words2)
+    union = words1.union(words2)
+    
+    return len(intersection) / len(union) if union else 0.0
+
+
+def generate_alt_text_from_context(image_context, chunk_text):
+    """Generate meaningful alt text based on context"""
+    if image_context and len(image_context.strip()) > 10:
+        return image_context.strip()[:100]
+    
+    # Extract key terms from chunk text
+    chunk_words = chunk_text.lower().split()
+    key_terms = [word for word in chunk_words[:20] if len(word) > 4 and word.isalpha()]
+    
+    if key_terms:
+        return f"Figure showing {' '.join(key_terms[:3])}"
+    
+    return "Document image"
+
+
+def create_fallback_chunk_match(filename, semantic_chunks):
+    """Create a fallback match when confidence is too low"""
+    if not semantic_chunks:
+        return None
+    
+    # Use the first chunk as fallback
+    fallback_chunk = semantic_chunks[0]
+    
+    return {
+        "chunk_id": fallback_chunk["chunk_id"],
+        "chunk_type": fallback_chunk["type"],
+        "confidence_score": 0.3,  # Low confidence fallback
+        "placement": "after",
+        "alt_text": f"Supporting image for {fallback_chunk['chunk_id']}",
+        "caption": "Supporting image",
+        "context_text": fallback_chunk["text"][:100] + "..."
+    }
+
+
+def get_content_type_from_filename(filename):
+    """Get content type based on file extension"""
+    ext = filename.lower().split('.')[-1]
+    content_types = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg', 
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'svg': 'image/svg+xml',
+        'webp': 'image/webp'
+    }
+    return content_types.get(ext, 'image/png')
+
+
 
 
 

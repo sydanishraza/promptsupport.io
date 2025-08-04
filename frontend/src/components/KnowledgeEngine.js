@@ -78,19 +78,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
     fetchContentLibraryArticles();
   }, []);
 
-  // Recording timer
-  useEffect(() => {
-    if (isRecording) {
-      recordingInterval.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-    } else {
-      clearInterval(recordingInterval.current);
-      setRecordingDuration(0);
-    }
-    return () => clearInterval(recordingInterval.current);
-  }, [isRecording]);
-
   const fetchSystemStatus = async () => {
     try {
       const response = await fetch(`${backendUrl}/api/health`);

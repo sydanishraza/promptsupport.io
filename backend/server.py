@@ -6697,16 +6697,22 @@ async def create_documentation_articles_from_content(content: str, metadata: Dic
         if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
             image_references.append(f"Image {i}: {url}")
     
-    # CRITICAL: Add contextual images from DOCX extraction
+    # CRITICAL: Add contextual images from DOCX extraction with semantic tagging
     if contextual_images:
         for i, img_data in enumerate(contextual_images, len(image_references) + 1):
             img_url = img_data.get('url') or img_data.get('data', '')
             if img_url:
-                img_desc = img_data.get('title', img_data.get('alt_text', f'Extracted Image {i}'))
-                image_references.append(f"Image {i}: {img_url} (Description: {img_desc})")
-        print(f"🖼️ Added {len(contextual_images)} contextual images for documentation articles")
+                # Include semantic tagging information in image reference
+                chunk_id = img_data.get('associated_chunk', f'chunk_{i}')
+                placement = img_data.get('placement', 'after')
+                confidence = img_data.get('confidence_score', 0.0)
+                semantic_context = img_data.get('semantic_context', '')[:100]
+                
+                img_desc = img_data.get('alt_text', img_data.get('title', f'Figure {i}'))
+                image_references.append(f"Image {i}: {img_url} (Chunk: {chunk_id}, Placement: {placement}, Confidence: {confidence:.2f}, Context: {semantic_context})")
+        print(f"🖼️ Added {len(contextual_images)} semantically-tagged images for documentation articles")
     
-    print(f"🖼️ Total real images available: {len(image_references)}: {image_references}")
+    print(f"🖼️ Total semantically-tagged images available: {len(image_references)}")
     
     system_message = """You are an expert technical documentation writer specializing in creating comprehensive, user-ready articles from internal documentation. Your task is to analyze, split, rewrite, and format documentation using best technical writing practices inspired by leading documentation systems (Woolf, Eltropy, etc.).
 
@@ -6714,15 +6720,29 @@ CORE DIRECTIVE: Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use
 
 CRITICAL: Split, rewrite, and format internal documentation into clean, user-ready articles using technical writing standards.
 
+SEMANTIC IMAGE PLACEMENT: Images have been pre-tagged with semantic chunk information. Use this information to place images CONTEXTUALLY within the most relevant article sections, not in every article.
+
 Respond ONLY with valid JSON."""
     
     image_instruction = ""
     if image_references:
         image_instruction = f"""
-REAL IMAGES AVAILABLE:
+SEMANTICALLY-TAGGED IMAGES AVAILABLE:
 {chr(10).join(image_references)}
 
-CRITICAL: Use these real image URLs contextually throughout the articles. Include proper alt text and captions. Use ONLY these real URLs, do NOT create fake URLs."""
+CRITICAL CONTEXTUAL PLACEMENT RULES:
+1. Each image should appear in ONLY ONE article where it's most contextually relevant
+2. Use the Chunk ID and Context information to determine which article should contain each image
+3. Place images near the content they relate to, not at the beginning or end of articles
+4. Include proper alt text and captions based on semantic context
+5. Use ONLY these real URLs, do NOT create fake URLs
+6. If an image doesn't match any article content well, place it in the Overview article
+
+SEMANTIC MATCHING GUIDELINES:
+- Match images to articles based on chunk context and confidence scores
+- Higher confidence scores indicate stronger contextual relationships
+- Consider placement hints (before/after/inline) for positioning within the article
+- Ensure each image appears exactly once across all generated articles"""
     
     # Enhanced documentation processing prompt exactly as specified
     user_message = f"""prompt_type: "Documentation Rewrite and Distribution"

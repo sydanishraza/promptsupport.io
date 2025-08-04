@@ -86,10 +86,10 @@
 ##   run_ui: false
 ##
 ## test_plan:
-  current_focus: []
+  current_focus: ["DOCX Processing Pipeline End-to-End Frontend Testing", "Contextual Image Placement Verification", "Documentation Rewrite and Distribution System"]
   stuck_tasks: []
   test_all: false
-  test_priority: "high_first"
+  test_priority: "critical_first"
 
 ## agent_communication:
     -agent: "main"

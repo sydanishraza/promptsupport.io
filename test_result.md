@@ -1378,7 +1378,7 @@
     file: "frontend/src/components/ContentLibraryEnhanced.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "main"

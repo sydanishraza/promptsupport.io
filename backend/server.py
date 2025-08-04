@@ -8345,28 +8345,61 @@ File Information:
             "extraction_method": "automated"
         }
         
-        # CRITICAL FIX: Convert embedded_media to contextual_images format for semantic placement
+        # CRITICAL FIX: Use proper semantic extraction system for DOCX files
         if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
-            contextual_images = []
-            for i, media in enumerate(embedded_media):
-                # Convert embedded media to contextual image format
-                contextual_image = {
-                    'id': f"docx_img_{i+1}",
-                    'filename': f"image_{i+1}",
-                    'url': media.get('url', media.get('data', '')),
-                    'alt_text': f"Figure {i+1} from document",
-                    'caption': f"Image {i+1} extracted from {file.filename}",
-                    'semantic_context': f"Document image {i+1}",
-                    'confidence_score': 0.5,  # Medium confidence for direct extraction
-                    'associated_chunk': f'chunk_{i}',
-                    'placement': 'after',
-                    'content_type': media.get('content_type', 'image/png'),
-                    'size': media.get('size', 0)
+            # Use the enhanced semantic extraction system
+            try:
+                # Create a temporary file for processing
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_file:
+                    temp_file.write(file_content)
+                    temp_file_path = temp_file.name
+                
+                # Create training session metadata
+                training_session = {
+                    'session_id': str(uuid.uuid4()),
+                    'filename': file.filename
                 }
-                contextual_images.append(contextual_image)
-            
-            enhanced_metadata['contextual_images'] = contextual_images
-            print(f"🖼️ Converted {len(embedded_media)} embedded media to contextual images format for semantic placement")
+                
+                # Create extracted_content dict for the function
+                extracted_content_dict = {
+                    'text': extracted_content,
+                    'structure': []  # Basic structure for the function
+                }
+                
+                # Extract contextual images using the semantic system
+                contextual_images = extract_contextual_images_from_docx(
+                    temp_file_path, doc, extracted_content_dict, training_session
+                )
+                
+                # Clean up temp file
+                os.unlink(temp_file_path)
+                
+                enhanced_metadata['contextual_images'] = contextual_images
+                print(f"🎯 SEMANTIC EXTRACTION: Extracted {len(contextual_images)} images with semantic chunking and contextual tagging")
+                
+            except Exception as semantic_error:
+                print(f"⚠️ Semantic extraction failed, falling back to simple format conversion: {semantic_error}")
+                # Fallback to simple conversion
+                contextual_images = []
+                for i, media in enumerate(embedded_media):
+                    contextual_image = {
+                        'id': f"docx_img_{i+1}",
+                        'filename': f"image_{i+1}",
+                        'url': media.get('url', media.get('data', '')),
+                        'alt_text': f"Figure {i+1} from document",
+                        'caption': f"Image {i+1} extracted from {file.filename}",
+                        'semantic_context': f"Document image {i+1}",
+                        'confidence_score': 0.5,
+                        'associated_chunk': f'chunk_{i}',
+                        'placement': 'after',
+                        'content_type': media.get('content_type', 'image/png'),
+                        'size': media.get('size', 0)
+                    }
+                    contextual_images.append(contextual_image)
+                
+                enhanced_metadata['contextual_images'] = contextual_images
+                print(f"🔄 FALLBACK: Created {len(contextual_images)} simple contextual images")
         
         chunks = await process_text_content(enriched_content, enhanced_metadata)
         

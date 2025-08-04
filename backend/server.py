@@ -8153,7 +8153,7 @@ async def upload_file(
                     # DO NOT add images directly to content - let semantic placement handle them
                     print(f"🎯 SEMANTIC MODE: {len(embedded_media)} images will be placed contextually via semantic placement system")
                 
-                # Process document content cleanly WITHOUT image injection
+                # SIMPLIFIED: Process document content cleanly for clean HTML output
                 extracted_content = f"# {file.filename}\n\n"
                 
                 # Process document elements in order - simplified for cleaner content

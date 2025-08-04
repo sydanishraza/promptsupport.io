@@ -8220,10 +8220,8 @@ async def upload_file(
                         
                         extracted_content += "\n"
                         
-                # SEMANTIC PROCESSING: Let the semantic placement system handle image distribution
-                print(f"🎯 SEMANTIC PROCESSING: Skipping direct image injection, {len(embedded_media)} images will be handled by semantic placement system")
-                        
-                print(f"✅ Simplified extraction: {len(extracted_content)} characters from Word document, {len(embedded_media)} images provided for AI contextual positioning")
+                # SIMPLIFIED: Clean content extraction without complex processing        
+                print(f"✅ Simplified extraction: {len(extracted_content)} characters from Word document, {len(embedded_media)} images saved to Asset Library")
             except ImportError:
                 print("⚠️ python-docx not available, treating as binary file")
                 extracted_content = f"Word document: {file.filename} (content extraction requires python-docx)"

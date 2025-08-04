@@ -1482,6 +1482,12 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           fetchContentLibraryArticles();
         }}
       />
+
+      {/* Integrations Manager Modal */}
+      <IntegrationsManager
+        isOpen={showIntegrationsManager}
+        onClose={() => setShowIntegrationsManager(false)}
+      />
     </div>
   );
 };

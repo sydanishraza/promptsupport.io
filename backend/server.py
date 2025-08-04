@@ -3427,8 +3427,8 @@ def table_to_html(table_data: list) -> str:
 
 def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: dict, training_session: dict) -> list:
     """
-    Enhanced image extraction with contextual tagging according to specifications
-    Only extracts relevant images and tags them with proper context
+    ENHANCED: Extract images with semantic chunking and contextual tagging according to specifications
+    Implements proper image-to-chunk mapping with confidence scoring
     """
     contextual_images = []
     
@@ -3436,197 +3436,137 @@ def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: 
         import zipfile
         from lxml import etree
         
-        # Phase 1: Parse document structure to map images to context
-        paragraph_contexts = []
-        current_chapter = "Introduction"
+        # Phase 1: Parse document structure to create semantic chunks
+        semantic_chunks = []
+        current_chunk = {
+            "chunk_id": f"chunk_0", 
+            "type": "paragraph_block",
+            "text": "",
+            "elements": [],
+            "position": 0
+        }
+        chunk_counter = 0
         
         for i, paragraph in enumerate(doc.paragraphs):
             text = paragraph.text.strip()
             if not text:
                 continue
                 
-            # Update current chapter context with better heading detection
-            if is_heading(paragraph):
-                # CRITICAL FIX: Limit chapter names to reasonable length
-                chapter_text = text[:100] + "..." if len(text) > 100 else text
-                current_chapter = chapter_text
-                print(f"📖 DEBUG: New chapter detected: '{current_chapter}' (original length: {len(text)})")
-            else:
-                # CRITICAL FIX: Don't let long paragraphs become chapter names
-                if len(text) > 150:
-                    print(f"📄 DEBUG: Long paragraph ignored for chapter context: {len(text)} chars")
+            # Determine semantic block type based on content and style
+            block_type = determine_semantic_block_type(paragraph)
+            
+            # Check if we should start a new chunk based on semantic rules
+            if should_start_new_chunk(current_chunk, block_type, text):
+                if current_chunk["text"]:  # Save current chunk if it has content
+                    semantic_chunks.append(current_chunk)
                 
-            paragraph_contexts.append({
-                "index": i,
-                "text": text,
-                "chapter": current_chapter,
-                "is_heading": is_heading(paragraph),
-                "page_estimate": estimate_page_number(i, len(doc.paragraphs))
-            })
+                chunk_counter += 1
+                current_chunk = {
+                    "chunk_id": f"chunk_{chunk_counter}",
+                    "type": block_type,
+                    "text": text,
+                    "elements": [{"type": "paragraph", "text": text, "position": i}],
+                    "position": i
+                }
+            else:
+                # Add to current chunk
+                current_chunk["text"] += f"\n{text}"
+                current_chunk["elements"].append({"type": "paragraph", "text": text, "position": i})
         
-        # Phase 2: Extract images with contextual filtering and tagging
-        print(f"🖼️ Starting enhanced contextual image extraction from {file_path}")
+        # Don't forget the last chunk
+        if current_chunk["text"]:
+            semantic_chunks.append(current_chunk)
         
-        # Debug: Check if file exists and is accessible
+        print(f"📚 Created {len(semantic_chunks)} semantic chunks for contextual image mapping")
+        
+        # Phase 2: Extract images with contextual tagging
+        print(f"🖼️ Starting contextual image extraction with semantic chunking from {file_path}")
+        
+        # Check if file exists and is accessible
         if not os.path.exists(file_path):
             print(f"❌ File does not exist: {file_path}")
             return []
         
-        print(f"✅ File exists: {file_path}")
-        
-        # Debug: Try to open as ZIP file
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            print(f"✅ Successfully opened as ZIP file")
-            file_list = zip_ref.namelist()
-            print(f"📁 ZIP contains {len(file_list)} files")
+            # Find image-containing relationships
+            image_positions = find_image_positions_in_docx(zip_ref, doc)
             
-            # Debug: List all files in ZIP for debugging
-            print("📋 All files in DOCX ZIP:")
-            for file in file_list[:20]:  # Show first 20 files
-                print(f"  - {file}")
-            if len(file_list) > 20:
-                print(f"  ... and {len(file_list) - 20} more files")
-            
-            # Debug: Check for media files
-            media_files = [f for f in file_list if f.startswith('word/media/')]
-            print(f"🖼️ Found {len(media_files)} media files:")
-            for media_file in media_files:
-                print(f"  - {media_file}")
-                
-            if len(media_files) == 0:
-                print("❌ No media files found in DOCX - checking for embedded objects...")
-                # Check for embedded objects that might contain images
-                embedded_files = [f for f in file_list if 'embed' in f.lower() or 'object' in f.lower()]
-                print(f"📎 Found {len(embedded_files)} embedded object files:")
-                for embed_file in embedded_files:
-                    print(f"  - {embed_file}")
-                    
-                if len(embedded_files) == 0:
-                    print("❌ No embedded objects found either")
-                    # Check for any image-like files anywhere in the ZIP
-                    image_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.tiff']
-                    all_image_files = [f for f in file_list if any(f.lower().endswith(ext) for ext in image_extensions)]
-                    print(f"🔍 Searching for any image files in ZIP: {len(all_image_files)} found:")
-                    for img_file in all_image_files:
-                        print(f"  - {img_file}")
-                    
-                return []
-            # Get document relationships to map images to content
-            try:
-                rels_xml = zip_ref.read('word/_rels/document.xml.rels')
-                rels_tree = etree.fromstring(rels_xml)
-                image_relationships = {}
-                
-                for rel in rels_tree.findall('.//{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'):
-                    if 'image' in rel.get('Type', ''):
-                        image_relationships[rel.get('Id')] = rel.get('Target')
-                        
-            except Exception as rel_error:
-                print(f"⚠️ Could not parse image relationships: {rel_error}")
-                image_relationships = {}
-            
-            # Parse document XML to find image positions
-            try:
-                doc_xml = zip_ref.read('word/document.xml')
-                doc_tree = etree.fromstring(doc_xml)
-                image_positions = extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts)
-            except Exception as xml_error:
-                print(f"⚠️ Could not parse document XML for positions: {xml_error}")
-                image_positions = []
-            
-            # Extract actual image files with contextual filtering
+            # Extract actual image files with contextual tagging
             for file_info in zip_ref.filelist:
                 if not file_info.filename.startswith('word/media/'):
                     continue
                     
                 filename = file_info.filename.split('/')[-1].lower()
                 
-                # Find contextual placement for this image FIRST
-                image_context = find_enhanced_image_context(filename, image_positions, paragraph_contexts)
+                # Find the best matching semantic chunk for this image
+                best_match = find_best_semantic_chunk_match(filename, image_positions, semantic_chunks)
                 
-                # CRITICAL FIX: If enhanced context has insufficient text, use fallback context
-                if image_context and len(image_context.get('paragraph_text', '').strip()) < 20:
-                    print(f"⚠️ Enhanced context for {filename} has insufficient text ({len(image_context.get('paragraph_text', ''))} chars), creating fallback context")
-                    fallback_context = create_fallback_image_context(filename, len(contextual_images) + 1, paragraph_contexts)
-                    if fallback_context and len(fallback_context.get('paragraph_text', '').strip()) >= 20:
-                        print(f"✅ Using fallback context for {filename} with {len(fallback_context.get('paragraph_text', ''))} chars")
-                        image_context = fallback_context
-                    else:
-                        print(f"⚠️ Fallback context also has insufficient text for {filename}")
+                if not best_match or best_match['confidence_score'] < 0.3:
+                    print(f"⚠️ Low confidence match for {filename}, using fallback placement")
+                    best_match = create_fallback_chunk_match(filename, semantic_chunks)
                 
-                if not image_context:
-                    print(f"⚠️ No enhanced context found for {filename}, creating fallback context")
-                    print(f"🔍 DEBUG: Image positions available: {len(image_positions)}")
-                    print(f"🔍 DEBUG: Paragraph contexts available: {len(paragraph_contexts)}")
-                    # CRITICAL FIX: Create fallback context instead of skipping
-                    image_context = create_fallback_image_context(filename, len(contextual_images) + 1, paragraph_contexts)
-                    if image_context:
-                        print(f"✅ DEBUG: Successfully created fallback context for {filename}: {len(image_context.get('text', ''))} chars")
-                    else:
-                        print(f"❌ DEBUG: Failed to create fallback context for {filename}")
-                
-                if not image_context:
-                    print(f"🚫 Skipping image after context creation failed: {filename}")
+                if not best_match:
+                    print(f"🚫 Skipping image after semantic matching failed: {filename}")
                     continue
                     
-                print(f"🔍 DEBUG: Final image context for {filename}: chapter='{image_context.get('chapter', 'unknown')}', page={image_context.get('page', 0)}, text_length={len(image_context.get('paragraph_text', ''))}")
+                print(f"✅ Semantic match for {filename}: chunk_id={best_match['chunk_id']}, confidence={best_match['confidence_score']:.2f}")
                     
-                # CRITICAL FIX: Apply filtering rules AFTER context is created so filtering can use context
-                if should_skip_image(filename, file_info, image_context):
+                # Apply filtering rules after semantic matching
+                if should_skip_image(filename, file_info, best_match):
                     continue
                 
                 # Extract and save the image
                 image_data = zip_ref.read(file_info.filename)
                 
-                # Generate contextual filename
+                # Generate contextual filename with chunk information
                 safe_prefix = "".join(c for c in training_session.get('filename', 'doc') if c.isalnum())[:10]
-                context_key = "".join(c for c in image_context['chapter'][:15] if c.isalnum())
-                unique_filename = f"{safe_prefix}_{context_key}_{image_context['page']}_img{len(contextual_images)+1}_{str(uuid.uuid4())[:8]}.{filename.split('.')[-1]}"
+                chunk_key = best_match['chunk_id']
+                placement_key = best_match.get('placement', 'after')
+                unique_filename = f"{safe_prefix}_{chunk_key}_{placement_key}_img{len(contextual_images)+1}_{str(uuid.uuid4())[:8]}.{filename.split('.')[-1]}"
                 
                 file_path_static = f"static/uploads/{unique_filename}"
                 
                 # Ensure upload directory exists
                 os.makedirs("static/uploads", exist_ok=True)
                 
-                # Save image file
-                with open(file_path_static, "wb") as f:
-                    f.write(image_data)
+                # Save to static directory
+                with open(file_path_static, "wb") as buffer:
+                    buffer.write(image_data)
                 
-                # Generate URL
-                file_url = f"/api/static/uploads/{unique_filename}"
-                
-                # Create contextual image object according to specifications
+                # Create contextual image record with semantic tagging
                 contextual_image = {
-                    "image": file_url,
-                    "page": image_context['page'],
-                    "position": image_context['position'],
-                    "chapter": image_context['chapter'],
-                    "type": image_context['type'],
-                    "filename": unique_filename,
-                    "url": file_url,
-                    "size": len(image_data),
-                    "is_svg": filename.endswith('.svg'),
-                    "caption": generate_contextual_caption(image_context, paragraph_contexts),
-                    "alt_text": f"Figure {len(contextual_images) + 1}: {image_context['chapter']} illustration",
-                    "original_filename": filename,
-                    "context_paragraph": image_context.get('paragraph_text', ''),
-                    "placement_priority": calculate_placement_priority(image_context)
+                    'id': f"doc_{training_session.get('session_id', 'unknown')}_img_{len(contextual_images)+1}",
+                    'filename': unique_filename,
+                    'original_filename': filename,
+                    'url': f"/api/static/uploads/{unique_filename}",
+                    'file_path': file_path_static,
+                    'content_type': get_content_type_from_filename(filename),
+                    'size': len(image_data),
+                    'alt_text': best_match.get('alt_text', f"Figure {len(contextual_images)+1}"),
+                    'caption': best_match.get('caption', f"Image from {best_match['chunk_id']}"),
+                    
+                    # CRITICAL: Semantic tagging information
+                    'associated_chunk': best_match['chunk_id'],
+                    'placement': best_match.get('placement', 'after'),
+                    'confidence_score': best_match['confidence_score'],
+                    'chunk_type': best_match.get('chunk_type', 'paragraph_block'),
+                    'semantic_context': best_match.get('context_text', ''),
+                    
+                    # Metadata
+                    'extraction_method': 'semantic_chunking',
+                    'created_at': datetime.utcnow().isoformat()
                 }
                 
                 contextual_images.append(contextual_image)
-                print(f"✅ Extracted contextual image: {unique_filename} (Chapter: {image_context['chapter']}, Page: {image_context['page']})")
-        
-        # Sort images by their natural document flow order
-        contextual_images.sort(key=lambda x: (x['page'], x['placement_priority']))
-        
-        print(f"🎯 Enhanced image extraction complete: {len(contextual_images)} contextual images extracted")
-        return contextual_images
-        
+                print(f"✅ Tagged image {unique_filename} with chunk {best_match['chunk_id']}")
+    
     except Exception as e:
-        print(f"❌ Enhanced image extraction failed: {e}")
+        print(f"❌ Contextual image extraction error: {e}")
         import traceback
         traceback.print_exc()
-        return []
+    
+    print(f"🎯 SEMANTIC EXTRACTION COMPLETE: {len(contextual_images)} images with contextual tagging")
+    return contextual_images
 
 def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
     """

@@ -55,6 +55,7 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
   const [chatHistory, setChatHistory] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [systemStatus, setSystemStatus] = useState(null);
+  const [urlInput, setUrlInput] = useState('');
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showIntegrationsManager, setShowIntegrationsManager] = useState(false);

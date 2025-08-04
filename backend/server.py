@@ -7338,227 +7338,69 @@ def create_fallback_article_from_chunk(chunk: str, metadata: Dict[str, Any], chu
         "updated_at": datetime.utcnow()
     }
 
-async def create_single_article_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> Dict:
-    """Create a single comprehensive article from content using LLM with fallback"""
+async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
+    """Create a single comprehensive article from content using simplified LLM approach"""
     
-    # Extract real image URLs from content AND use provided contextual images
-    import re
-    image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
-    image_references = []
+    print(f"📝 SIMPLIFIED: Creating single article from {len(content)} characters (no automatic image embedding)")
     
-    # Add images found in content
-    for i, url in enumerate(image_urls, 1):
-        if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
-            image_references.append(f"Image {i}: {url}")
+    # Simplified system message focused on clean HTML output
+    system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG editor display.
+
+CRITICAL REQUIREMENTS:
+1. Use ONLY HTML tags: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+2. NEVER use Markdown syntax (no ##, **, [], (), ```, ---)
+3. Create proper heading hierarchy starting with <h1>
+4. Structure content professionally with clear sections
+5. NO IMAGES in content (images are managed separately in Asset Library)
+6. Generate clean, editor-compatible HTML that renders properly
+
+Respond with valid JSON containing title and HTML content."""
     
-    # CRITICAL FIX: Add contextual images from DOCX extraction
-    if contextual_images:
-        for i, img_data in enumerate(contextual_images, len(image_references) + 1):
-            img_url = img_data.get('url') or img_data.get('data', '')
-            if img_url:
-                img_desc = img_data.get('title', img_data.get('alt_text', f'Extracted Image {i}'))
-                image_references.append(f"Image {i}: {img_url} (Description: {img_desc})")
-        print(f"🖼️ Added {len(contextual_images)} contextual images from document extraction")
-    
-    print(f"🖼️ Total real images available: {len(image_references)}: {image_references}")
-    
-    system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax. NEVER include source metadata like filenames, dates, or file sizes. 
+    user_message = f"""Transform this complete document into a comprehensive, well-structured article with professional HTML formatting:
 
-CRITICAL: PRESERVE THE ORIGINAL DOCUMENT STRUCTURE AND TITLE. Do not create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Extract and use the EXACT title from the source content (typically the first H1 heading).
-
-Respond ONLY with valid JSON."""
-    
-    image_instruction = ""
-    if image_references:
-        image_instruction = f"""
-REAL IMAGES AVAILABLE:
-{chr(10).join(image_references)}
-
-CRITICAL: Use ONLY these real image URLs in the article. Do NOT create fake URLs."""
-    
-    user_message = f"""Transform this content into a comprehensive, production-ready knowledge base article with clean HTML formatting.
-
-{image_instruction}
-
-CRITICAL INSTRUCTIONS:
-1. PRESERVE THE ORIGINAL TITLE: Extract the exact title from the source content (usually the first H1 or main heading). DO NOT create generic titles like "Comprehensive Guide To..." or "Complete Guide To...". Use the actual document title.
-
-2. PRESERVE ALL ORIGINAL CONTENT: Do NOT summarize or condense the content. Maintain ALL details, steps, code examples, specific instructions, and technical specifications from the original document. This should be a comprehensive reproduction, not a summary.
-
-3. REAL IMAGES ONLY: {"Use ONLY the real image URLs provided above. Include them contextually in the article where they belong." if image_references else "Do NOT create fake image URLs or placeholder images. If no real images are provided above, do not include any image tags."}
-
-Original Content (Complete Document):
+CONTENT:
 {content}
 
-TRANSFORMATION REQUIREMENTS:
+REQUIREMENTS:
+1. Create a descriptive title based on the main topic/document title
+2. Structure content with proper HTML heading hierarchy (<h1>, <h2>, <h3>)
+3. Use appropriate HTML tags for formatting (paragraphs, lists, emphasis, tables)
+4. Ensure content is comprehensive and well-organized
+5. NO image tags - images are handled separately in Asset Library
+6. Generate clean HTML suitable for WYSIWYG editor
+7. Preserve all important information from the source content
 
-1. **Title Preservation**:
-   - Extract the EXACT title from the source content (typically the first heading)
-   - DO NOT use generic phrases like "Comprehensive Guide to", "Complete Guide to", "Understanding", etc.
-   - Use the actual document title as-is
-
-2. **Complete Content Preservation**:
-   - Include ALL original details, not a summary
-   - Preserve ALL code examples, steps, and technical specifications
-   - Maintain ALL specific values, coordinates, API keys references, etc.
-   - Keep ALL numbered steps and sub-steps
-   - Do NOT compress or condense any information
-
-3. **Real Images Integration**:
-   {"- Use the provided real image URLs exactly as given" if image_references else "- Do not include any images since none were provided"}
-   {"- Place images contextually where they belong in the content" if image_references else ""}
-   {"- Use proper img tags: <img src='EXACT_URL_FROM_ABOVE' alt='descriptive text' style='max-width: 100%; height: auto;'>" if image_references else ""}
-   {"- Add figure captions where appropriate" if image_references else ""}
-
-4. **HTML Content Formatting (NOT Markdown)**:
-   - Generate clean HTML suitable for WYSIWYG editor display
-   - Use proper HTML heading hierarchy: <h1>, <h2>, <h3>, <h4>
-   - Format lists as <ul> and <ol> with <li> elements
-   - Use <p> tags for paragraphs with proper spacing
-   - Create tables with <table>, <thead>, <tbody>, <tr>, <th>, <td>
-   - Use <blockquote> for callouts and important notes
-   - Add <strong> for emphasis, <em> for italics
-   - Use <code> for inline code, <pre><code> for code blocks
-   - NO MARKDOWN SYNTAX - Only clean HTML that renders properly
-
-CRITICAL OUTPUT RULES:
-- Generate ONLY HTML tags: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <img>, <blockquote>, <strong>, <em>
-- NEVER use Markdown: NO ##, **, [], (), ```, ---, or similar symbols
-- NEVER mention filenames, dates, byte counts, or metadata
-- Real images only: Use exact URLs provided above, never create fake placeholder URLs
-- Complete content: Include ALL original details, do not summarize
-
-RESPONSE FORMAT - Return valid JSON:
+RESPONSE FORMAT:
 {{
-    "title": "EXACT title from the original document (typically the first H1 heading) - NO generic phrases like 'Comprehensive Guide To...'",
-    "summary": "Detailed 3-4 sentence summary explaining what this article covers, why it's important, and what specific value it provides",
-    "content": "<h2>First Section From Original</h2><p>Complete original content with ALL details preserved...</p>{"<img src='REAL_URL' alt='description' style='max-width: 100%; height: auto;'>" if image_references else ""}<ol><li><strong>Step 1:</strong> Exact original step with all details</li><li><strong>Step 2:</strong> Complete original instructions</li></ol><pre><code>// Exact original code examples
-&lt;!DOCTYPE html&gt;
-&lt;html&gt;...&lt;/html&gt;</code></pre><p>All original technical details, coordinates, API references preserved exactly...</p><h2>Next Original Section</h2><p>All original content maintained...</p>",
-    "tags": ["primary-category", "technical-term-1", "technical-term-2", "process-name", "feature-name"],
-    "takeaways": ["Specific, actionable takeaway 1", "Practical insight 2", "Key concept 3", "Best practice 4"]
+    "title": "Descriptive title for the complete article",
+    "content": "<h1>Title</h1><p>Introduction paragraph...</p><h2>Section Header</h2><p>Content...</p>",
+    "summary": "Brief summary of what this article covers",
+    "tags": ["topic1", "topic2", "topic3"],
+    "takeaways": ["Key point 1", "Key point 2", "Key point 3"]
 }}"""
-
-    # Try to get AI response using fallback system
+    
+    # Get LLM response
     session_id = str(uuid.uuid4())
     ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
     
     if ai_response:
         try:
-            print(f"✅ AI response received: {len(ai_response)} characters")
-            
-            # Clean up AI response to extract JSON
+            # Parse JSON response
             import re
-            import json
-            
-            # Remove any markdown code blocks
             json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
             if json_match:
                 json_str = json_match.group(1)
             else:
                 json_str = ai_response
             
-            # CRITICAL FIX: Sanitize JSON string to handle control characters
-            def sanitize_json_content(json_text):
-                """Sanitize JSON content to handle control characters and escaping issues"""
-                try:
-                    # First, try to fix common JSON issues
-                    # Replace unescaped newlines in content fields
-                    json_text = re.sub(r'(?<!\\)\n', '\\n', json_text)
-                    json_text = re.sub(r'(?<!\\)\r', '\\r', json_text)
-                    json_text = re.sub(r'(?<!\\)\t', '\\t', json_text)
-                    
-                    # Fix any unescaped quotes in content
-                    # This is more complex, so we'll handle it after initial parsing attempt
-                    
-                    return json_text
-                except Exception as e:
-                    print(f"⚠️ JSON sanitization warning: {e}")
-                    return json_text
+            article_data = json.loads(json_str)
             
-            # Attempt to sanitize and parse JSON
-            try:
-                sanitized_json = sanitize_json_content(json_str)
-                article_data = json.loads(sanitized_json)
-                print(f"✅ JSON parsing successful after sanitization")
-                
-            except json.JSONDecodeError as initial_error:
-                print(f"⚠️ Initial JSON parsing failed: {initial_error}")
-                print(f"🔄 Attempting advanced JSON recovery...")
-                
-                # ADVANCED FIX: Try to extract content even from malformed JSON
-                try:
-                    # Extract title using regex if JSON parsing fails
-                    title_match = re.search(r'"title":\s*"([^"]*(?:\\.[^"]*)*)"', json_str)
-                    content_match = re.search(r'"content":\s*"(.*?)"(?:\s*,\s*"(?:summary|tags|takeaways)"|$)', json_str, re.DOTALL)
-                    summary_match = re.search(r'"summary":\s*"([^"]*(?:\\.[^"]*)*)"', json_str)
-                    tags_match = re.search(r'"tags":\s*\[(.*?)\]', json_str)
-                    takeaways_match = re.search(r'"takeaways":\s*\[(.*?)\]', json_str)
-                    
-                    # Build recovered article data
-                    article_data = {}
-                    
-                    if title_match:
-                        article_data["title"] = title_match.group(1).replace('\\"', '"')
-                        print(f"🔧 Recovered title: {article_data['title'][:50]}...")
-                    
-                    if content_match:
-                        recovered_content = content_match.group(1)
-                        # Un-escape the content
-                        recovered_content = recovered_content.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t').replace('\\"', '"')
-                        article_data["content"] = recovered_content
-                        print(f"🔧 Recovered content: {len(recovered_content)} characters")
-                    
-                    if summary_match:
-                        article_data["summary"] = summary_match.group(1).replace('\\"', '"')
-                    
-                    if tags_match:
-                        try:
-                            tags_str = '[' + tags_match.group(1) + ']'
-                            article_data["tags"] = json.loads(tags_str)
-                        except:
-                            article_data["tags"] = ["recovered-content"]
-                    
-                    if takeaways_match:
-                        try:
-                            takeaways_str = '[' + takeaways_match.group(1) + ']'
-                            article_data["takeaways"] = json.loads(takeaways_str)
-                        except:
-                            article_data["takeaways"] = []
-                    
-                    if article_data and "content" in article_data:
-                        print(f"✅ JSON recovery successful - recovered {len(article_data)} fields")
-                    else:
-                        raise Exception("Could not recover essential content from malformed JSON")
-                        
-                except Exception as recovery_error:
-                    print(f"❌ JSON recovery also failed: {recovery_error}")
-                    print(f"Raw AI response snippet: {ai_response[:1000]}...")
-                    raise initial_error  # Re-raise original error to trigger fallback
-            
-            # Parse JSON
-            # article_data = json.loads(json_str)  # REMOVED - already handled above
-            
-            print(f"✅ Parsed article data: title='{article_data.get('title', 'N/A')}', tags={article_data.get('tags', [])}")
-            print(f"🔍 DEBUG: Article data keys: {list(article_data.keys())}")
-            print(f"🔍 DEBUG: Content field present: {'content' in article_data}")
-            print(f"🔍 DEBUG: Content preview: {article_data.get('content', 'NO CONTENT')[:100]}...")
-            
-            # Create article record with cleaned content
-            raw_title = article_data.get("title", metadata.get('original_filename', 'Processed Content'))
-            raw_content = article_data.get("content", content)
-            
-            cleaned_title = clean_article_title(raw_title)
-            cleaned_content = clean_article_content(raw_content)
-            
-            # Determine which AI model was used based on session info
-            ai_model = "gpt-4o-mini (with claude + local llm fallback)" if OPENAI_API_KEY else "claude-3-5-sonnet (with local llm fallback)"
-            
+            # Create article record
             article_record = {
                 "id": str(uuid.uuid4()),
-                "title": cleaned_title,
-                "content": cleaned_content,
-                "summary": article_data.get("summary", "Content processed by Knowledge Engine"),
+                "title": clean_article_title(article_data.get("title", metadata.get('original_filename', 'Generated Article'))),
+                "content": clean_article_content(article_data.get("content", content)),
+                "summary": article_data.get("summary", "Generated from uploaded content"),
                 "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
                 "takeaways": article_data.get("takeaways", []),
                 "source_type": metadata.get('type', 'text_processing'),
@@ -7566,40 +7408,79 @@ RESPONSE FORMAT - Return valid JSON:
                 "metadata": {
                     **metadata,
                     "ai_processed": True,
-                    "ai_model": ai_model,
+                    "ai_model": "gpt-4o-mini (with fallback)",
+                    "content_chars": len(content),
+                    "processing_approach": "single_article_simplified",
                     "processing_timestamp": datetime.utcnow().isoformat()
                 },
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
             
-            print(f"🔍 DEBUG: Article record content field: {article_record.get('content', 'NO CONTENT')[:100]}...")
-            
+            print(f"✅ Created single article: '{article_record['title']}'")
             return article_record
             
         except json.JSONDecodeError as e:
             print(f"❌ JSON parsing error: {e}")
-            print(f"Raw AI response snippet: {ai_response[:500]}...")
-            
-            # ENHANCED FALLBACK: Try to preserve AI content even with JSON parsing failure
-            if ai_response and len(ai_response.strip()) > 50:
-                print(f"🔧 Attempting to create fallback article with AI content...")
-                contextual_images = metadata.get('contextual_images', [])
-                return await create_enhanced_fallback_article(content, metadata, ai_response, contextual_images)
-            else:
-                print(f"🔄 Using basic fallback due to insufficient AI response")
-                
         except Exception as e:
             print(f"❌ Error processing AI response: {e}")
-            if ai_response and len(ai_response.strip()) > 50:
-                contextual_images = metadata.get('contextual_images', [])
-                return await create_enhanced_fallback_article(content, metadata, ai_response, contextual_images)
-    else:
-        print("❌ No AI response available from either OpenAI or Claude")
     
-    # Fallback to basic article
-    print("🔄 Falling back to basic article creation...")
-    return await create_basic_fallback_article(content, metadata)
+    # Fallback: create basic article from content
+    print("🔄 Creating fallback single article...")
+    return create_fallback_single_article(content, metadata)
+
+def create_fallback_single_article(content: str, metadata: Dict[str, Any]) -> Dict:
+    """Create a basic single article when LLM processing fails"""
+    
+    # Extract a title from the first line or heading
+    lines = content.split('\n')
+    title = metadata.get('original_filename', 'Generated Article')
+    
+    # Try to find a better title from content
+    for line in lines:
+        line = line.strip()
+        if line:
+            # Check if it looks like a heading
+            if line.startswith('#'):
+                title = line.lstrip('#').strip()
+                break
+            elif len(line) < 100 and not line.endswith('.') and len(line) > 10:
+                title = line
+                break
+    
+    # Convert basic markdown to HTML
+    content_html = content
+    content_html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', content_html, flags=re.MULTILINE)  
+    content_html = re.sub(r'^\- (.+)$', r'<li>\1</li>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'\n\n', '</p><p>', content_html)
+    content_html = f'<p>{content_html}</p>'
+    
+    # Clean up
+    content_html = content_html.replace('<p><h', '<h').replace('</h1></p>', '</h1>')
+    content_html = content_html.replace('<p><h2>', '<h2>').replace('</h2></p>', '</h2>')
+    content_html = content_html.replace('<p><h3>', '<h3>').replace('</h3></p>', '</h3>')
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": clean_article_title(title),
+        "content": content_html,
+        "summary": f"Generated from uploaded document: {metadata.get('original_filename', 'Unknown')}",
+        "tags": [metadata.get('type', 'upload'), 'single-article'],
+        "takeaways": [],
+        "source_type": metadata.get('type', 'text_processing'),
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "ai_processed": False,
+            "content_chars": len(content),
+            "processing_approach": "fallback_single_article",
+            "processing_timestamp": datetime.utcnow().isoformat()
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
 
 async def create_enhanced_fallback_article(content: str, metadata: Dict[str, Any], ai_response: str, contextual_images: List[Dict] = None) -> Dict:
     """Create enhanced fallback article preserving AI content even with JSON parsing failure"""

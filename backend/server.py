@@ -8150,28 +8150,11 @@ async def upload_file(
                             image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
                             print(f"🔍 DEBUG: Added image {i} base64 HTML reference for AI positioning")
                     
-                    # Create semantic image distribution instructions for AI
-                    image_distribution_info = f"""
-SEMANTIC IMAGE PLACEMENT INSTRUCTIONS:
-- This document contains {len(embedded_media)} images with semantic chunk tagging
-- Each image is tagged with its most relevant content chunk and placement information
-- Place each image ONLY in the article section where it is contextually relevant
-- Do NOT duplicate images across multiple articles - each image should appear exactly ONCE
-- Use semantic chunk information to match images to their appropriate article sections
-- Images with low confidence scores may be omitted if they don't fit contextually
-
-SEMANTIC IMAGE TAGS AVAILABLE:
-{image_references}
-
-PLACEMENT RULES:
-- Only include images that are contextually relevant to each specific article
-- Position images near their related content, not at the beginning or end
-- Use the exact HTML format with proper alt text and captions
-- Respect the semantic chunk associations provided
-"""
+                    # DO NOT add images directly to content - let semantic placement handle them
+                    print(f"🎯 SEMANTIC MODE: {len(embedded_media)} images will be placed contextually via semantic placement system")
                 
-                # Process document content cleanly without metadata
-                extracted_content = f"# {file.filename}\n\n{image_distribution_info}\n\n{image_references}\n\n"
+                # Process document content cleanly WITHOUT image injection
+                extracted_content = f"# {file.filename}\n\n"
                 
                 # Process document elements in order - simplified for cleaner content
                 def iter_block_items(parent):

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import KnowledgeEngineUpload from './KnowledgeEngineUpload';
 import { 
   Upload, 
   Link, 

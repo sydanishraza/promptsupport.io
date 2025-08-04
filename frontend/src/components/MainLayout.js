@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Dashboard from './Dashboard';
 import KnowledgeEngine from './KnowledgeEngine';
-import LabInterface from './LabInterface';
 import ContentLibrary from './ContentLibrary';
 import SystemsModule from './SystemsModule';
 import AIAgents from './AIAgents';
@@ -44,8 +43,6 @@ const MainLayout = () => {
         return <Dashboard />;
       case 'knowledge-engine':
         return <KnowledgeEngine />;
-      case 'lab':
-        return <LabInterface />;
       case 'content-upload':
         return <KnowledgeEngine activeModule="upload" />;
       case 'uploaded-content':

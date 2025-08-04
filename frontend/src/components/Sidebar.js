@@ -20,8 +20,7 @@ import {
   Upload,
   MessageSquare,
   Clock,
-  Link,
-  FlaskConical
+  Link
 } from 'lucide-react';
 
 const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
@@ -93,12 +92,6 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       label: 'Admin Console',
       icon: Settings,
       description: 'Org settings, users, domains, API keys, integrations'
-    },
-    {
-      id: 'lab',
-      label: 'Lab',
-      icon: FlaskConical,
-      description: 'Internal tool for PromptSupport team to train and improve AI models'
     }
   ];
 

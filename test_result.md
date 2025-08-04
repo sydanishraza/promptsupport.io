@@ -92,7 +92,7 @@
 ##   run_ui: false
 ##
 ## test_plan:
-  current_focus: ["DOCX Processing Pipeline End-to-End Frontend Testing", "Contextual Image Placement Verification", "Documentation Rewrite and Distribution System"]
+  current_focus: ["DOCX Processing Simplification - Smart Chunking Backend Testing", "Simplified Image Handling Verification", "Clean HTML Output Quality Testing"]
   stuck_tasks: []
   test_all: false
   test_priority: "critical_first"

@@ -6430,33 +6430,23 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     # Determine content splitting strategy with document isolation
     should_create_multiple = await should_split_into_multiple_articles(full_content, file_extension)
     
-    # ENHANCEMENT: Use documentation processing system for DOCX files and structured content
-    if file_extension in ['docx', 'doc'] or (should_create_multiple and any(keyword in title.lower() for keyword in ['configuration', 'management', 'guide', 'manual', 'documentation', 'handbook'])):
-        print(f"📖 Using enhanced documentation processing system for: {title}")
-        contextual_images = metadata.get('contextual_images', [])
-        articles = await create_documentation_articles_from_content(full_content, metadata, contextual_images)
+    # SIMPLIFIED: Use smart chunking approach for all content types
+    if should_create_multiple:
+        print(f"📝 Using simplified smart chunking approach for: {title}")
+        articles = await create_multiple_articles_from_content(full_content, metadata)
         for article in articles:
             await db.content_library.insert_one(article)
-            print(f"✅ Created documentation article: '{article['title']}'")
-        return articles
-    
-    elif should_create_multiple:
-        contextual_images = metadata.get('contextual_images', [])
-        articles = await create_multiple_articles_from_content(full_content, metadata, contextual_images)
-        for article in articles:
-            await db.content_library.insert_one(article)
-            print(f"✅ Created AI-enhanced Content Library article: '{article['title']}'")
+            print(f"✅ Created article: '{article['title']}'")
         return articles
     else:
         # Create single comprehensive article
-        contextual_images = metadata.get('contextual_images', [])
-        article = await create_single_article_from_content(full_content, metadata, contextual_images)
+        article = await create_single_article_from_content(full_content, metadata)
         if article:
             print(f"🔍 DEBUG: Before DB insert - article keys: {list(article.keys())}")
             print(f"🔍 DEBUG: Before DB insert - has content: {'content' in article}")
             print(f"🔍 DEBUG: Before DB insert - content preview: {article.get('content', 'NO CONTENT')[:100]}...")
             await db.content_library.insert_one(article)
-            print(f"✅ Created AI-enhanced Content Library article: '{article['title']}'")
+            print(f"✅ Created article: '{article['title']}'")
             return [article]
         else:
             # Fallback: Create basic article without AI enhancement

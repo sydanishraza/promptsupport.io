@@ -6531,6 +6531,248 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
         (len(content) > 8000 and heading_count >= 4)  # Rich documents with multiple headings
     )
 
+async def create_documentation_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
+    """
+    Create multiple structured documentation articles using the enhanced documentation rewrite system
+    Based on the provided prompt specification for "Documentation Rewrite and Distribution"
+    """
+    
+    # Extract real image URLs from content AND use provided contextual images
+    import re
+    image_urls = re.findall(r'<img[^>]+src="([^"]+)"[^>]*>', content)
+    image_references = []
+    
+    # Add images found in content
+    for i, url in enumerate(image_urls, 1):
+        if url.startswith('/api/static/uploads/') or url.startswith('data:image/'):
+            image_references.append(f"Image {i}: {url}")
+    
+    # CRITICAL: Add contextual images from DOCX extraction
+    if contextual_images:
+        for i, img_data in enumerate(contextual_images, len(image_references) + 1):
+            img_url = img_data.get('url') or img_data.get('data', '')
+            if img_url:
+                img_desc = img_data.get('title', img_data.get('alt_text', f'Extracted Image {i}'))
+                image_references.append(f"Image {i}: {img_url} (Description: {img_desc})")
+        print(f"🖼️ Added {len(contextual_images)} contextual images for documentation articles")
+    
+    print(f"🖼️ Total real images available: {len(image_references)}: {image_references}")
+    
+    system_message = """You are an expert technical documentation writer specializing in creating comprehensive, user-ready articles from internal documentation. Your task is to analyze, split, rewrite, and format documentation using best technical writing practices inspired by leading documentation systems (Woolf, Eltropy, etc.).
+
+CORE DIRECTIVE: Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax.
+
+CRITICAL: Split, rewrite, and format internal documentation into clean, user-ready articles using technical writing standards.
+
+Respond ONLY with valid JSON."""
+    
+    image_instruction = ""
+    if image_references:
+        image_instruction = f"""
+REAL IMAGES AVAILABLE:
+{chr(10).join(image_references)}
+
+CRITICAL: Use these real image URLs contextually throughout the articles. Include proper alt text and captions. Use ONLY these real URLs, do NOT create fake URLs."""
+    
+    # Enhanced documentation processing prompt exactly as specified
+    user_message = f"""prompt_type: "Documentation Rewrite and Distribution"
+input_type: "Structured Guide (DOCX, HTML, Markdown, or Raw Export)"
+goal: "Split, rewrite, and format internal documentation into clean, user-ready articles using technical writing standards"
+
+{image_instruction}
+
+instructions:
+  - Analyze the input guide and automatically split it into logically separate articles (e.g., by features, modules, or topics).
+  - Rewrite each article using best technical writing practices inspired by leading documentation systems (Woolf, Eltropy, etc.).
+  - Use a clear heading hierarchy (H1, H2, H3), semantic anchors, and numbered procedures where applicable.
+  - Present fields, parameters, or configurations in tables.
+  - Use bullet points for options, lists, and branching logic.
+  - Insert contextual callouts like: 💡 Tip, 📝 Note, ⚠️ Caution — based on content relevance.
+  - Ensure UI references, action buttons, and object labels match enterprise UX language.
+  - Remove redundancy, fix grammar, clarify vague steps, and ensure accurate transitions.
+  - Format final output in clean, standalone HTML ready for publication or preview.
+  - Include a separate overview/introduction page linking all split articles.
+  - Maintain any existing instructional visuals as `<img>` placeholders with `alt` text referencing the figure.
+
+output_format: "Multiple HTML files (one per article) + TOC Overview Page"
+output_naming: 
+  - "Overview": "{{ModuleName}}_Overview.html"
+  - "Split Articles": "{{TopicName}}.html" or "{{Module}}_{{Feature}}.html"
+
+SOURCE DOCUMENT CONTENT:
+{content}
+
+CRITICAL REQUIREMENTS FOR PROCESSING:
+
+1. **Intelligent Content Analysis & Splitting**:
+   - Identify distinct modules, features, or logical topics based on original document structure
+   - Create focused articles that each cover ONE complete topic/module/feature
+   - Maintain logical flow and relationships between split articles
+   - Ensure comprehensive coverage with no content gaps
+
+2. **Professional Technical Writing Standards**:
+   - Clear heading hierarchy: <h1> for main title, <h2> for major sections, <h3> for subsections
+   - Numbered procedures for step-by-step instructions
+   - Tables for field/parameter descriptions, configurations, and structured data
+   - Bullet points for options, features, lists, and branching logic
+   - Contextual callouts: 💡 Tip, 📝 Note, ⚠️ Caution based on content relevance
+
+3. **Enterprise UX Language**:
+   - Use consistent, professional terminology
+   - Match UI references, button names, and interface elements exactly
+   - Clear, actionable language for instructions
+   - Remove ambiguity and clarify vague steps
+
+4. **HTML Structure Requirements**:
+   - Generate clean HTML suitable for WYSIWYG editor display
+   - Use semantic HTML elements properly
+   - Include proper table structure: <table>, <thead>, <tbody>, <tr>, <th>, <td>
+   - Use <blockquote> for callouts and important notes
+   - Apply consistent styling with inline styles where needed
+   - NO MARKDOWN - Only HTML tags
+
+5. **Visual Content Integration**:
+   - Include existing instructional visuals using provided real image URLs
+   - Add descriptive alt text for accessibility
+   - Include captions explaining image relevance
+   - Position images contextually within the content flow
+
+6. **Overview Page Creation**:
+   - Create a comprehensive overview/introduction page
+   - Include links to all split articles
+   - Provide clear navigation structure
+   - Explain the relationship between different articles
+
+RESPONSE FORMAT - Return valid JSON with both overview and individual articles:
+{{
+    "overview": {{
+        "title": "{{Module/System Name}} Overview",
+        "summary": "Comprehensive introduction to the module/system with navigation to detailed articles",
+        "content": "<h1>📘 {{Module Name}} Overview</h1><p>Introduction explaining the system/module...</p><h2>What You'll Find</h2><p>Description of available articles...</p><h2>Recommended Articles</h2><ul><li><a href='#'>{{Article Title 1}}</a></li><li><a href='#'>{{Article Title 2}}</a></li></ul><div class='note'>💡 <strong>Tip:</strong> Helpful guidance for users</div>",
+        "tags": ["overview", "navigation", "{{module-name}}"],
+        "takeaways": ["Key overview points", "Navigation guidance", "Getting started tips"]
+    }},
+    "articles": [
+        {{
+            "title": "{{Specific Topic/Feature Title}}",
+            "summary": "Detailed explanation of what this article covers and its importance",
+            "content": "<h1>🛠️ {{Topic Title}}</h1><p>Clear introduction...</p><h2>{{Major Section}}</h2><ol><li>Step-by-step instructions...</li></ol><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td>{{Field Name}}</td><td>{{Clear description}}</td></tr></tbody></table><h2>{{Another Section}}</h2><ul><li>Option or feature point</li></ul><div class='tip'>💡 Use contextual callouts based on content relevance</div><img src='{{real_image_url}}' alt='{{descriptive_alt_text}}' style='max-width: 100%; height: auto;'><p><em>Figure description and relevance</em></p>",
+            "tags": ["{{topic-name}}", "{{feature-name}}", "{{category}}"],
+            "takeaways": ["Specific actionable takeaway", "Key learning point", "Best practice"]
+        }}
+    ]
+}}"""
+
+    # Try to get AI response using fallback system
+    session_id = str(uuid.uuid4())
+    ai_response = await call_llm_with_fallback(system_message, user_message, session_id, max_tokens=4000)
+    
+    if ai_response:
+        try:
+            print(f"✅ Documentation AI response received: {len(ai_response)} characters")
+            
+            # Enhanced JSON sanitization for documentation responses
+            def sanitize_json_response(json_text):
+                """Sanitize JSON content to handle control characters and escaping issues"""
+                try:
+                    # First, try to fix common JSON issues
+                    # Replace unescaped newlines in content fields
+                    json_text = re.sub(r'(?<!\\)\n', '\\n', json_text)
+                    json_text = re.sub(r'(?<!\\)\r', '\\r', json_text)
+                    json_text = re.sub(r'(?<!\\)\t', '\\t', json_text)
+                    
+                    # Fix any unescaped quotes in content
+                    # This is more complex, so we'll handle it after initial parsing attempt
+                    
+                    return json_text
+                except Exception as e:
+                    print(f"⚠️ JSON sanitization warning: {e}")
+                    return json_text
+            
+            cleaned_response = sanitize_json_response(ai_response)
+            articles_data = json.loads(cleaned_response)
+            
+            # Create article records including overview
+            articles = []
+            
+            # Add overview article if present
+            if 'overview' in articles_data:
+                overview_info = articles_data['overview']
+                overview_record = {
+                    "id": str(uuid.uuid4()),
+                    "title": clean_article_title(overview_info.get("title", "System Overview")),
+                    "content": clean_article_content(overview_info.get("content", "")),
+                    "summary": overview_info.get("summary", "Overview of the system and available documentation"),
+                    "tags": overview_info.get("tags", ["overview", "navigation"]),
+                    "takeaways": overview_info.get("takeaways", []),
+                    "source_type": "documentation_overview",
+                    "status": "draft",
+                    "metadata": {
+                        **metadata,
+                        "ai_processed": True,
+                        "documentation_type": "overview",
+                        "processing_timestamp": datetime.utcnow().isoformat()
+                    },
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                articles.append(overview_record)
+            
+            # Add individual articles
+            for i, article_info in enumerate(articles_data.get('articles', [])):
+                # Clean and process article content
+                raw_title = article_info.get("title", f"Documentation Article {i+1}")
+                raw_content = article_info.get("content", "Content not available")
+                
+                cleaned_title = clean_article_title(raw_title)
+                cleaned_content = clean_article_content(raw_content)
+                
+                # Inject real images into content if available
+                if contextual_images:
+                    cleaned_content = insert_images_contextually(cleaned_content, contextual_images)
+                
+                article_record = {
+                    "id": str(uuid.uuid4()),
+                    "title": cleaned_title,
+                    "content": cleaned_content,
+                    "summary": article_info.get("summary", "Generated documentation article"),
+                    "tags": article_info.get("tags", [metadata.get('type', 'documentation')]),
+                    "takeaways": article_info.get("takeaways", []),
+                    "source_type": "documentation_article",
+                    "status": "draft",
+                    "metadata": {
+                        **metadata,
+                        "ai_processed": True,
+                        "documentation_type": "article",
+                        "article_index": i + 1,
+                        "total_articles": len(articles_data.get('articles', [])),
+                        "processing_timestamp": datetime.utcnow().isoformat()
+                    },
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                articles.append(article_record)
+            
+            print(f"✅ Generated {len(articles)} documentation articles (including overview)")
+            return articles
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ Documentation JSON parsing error: {e}")
+            print(f"Raw AI response: {ai_response[:500]}...")
+            # Fall back to enhanced fallback article
+            return [await create_enhanced_fallback_article(content, metadata, ai_response, contextual_images)]
+        except Exception as e:
+            print(f"❌ Error processing documentation AI response: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print("❌ No AI response available for documentation processing")
+    
+    # Fallback to single article creation
+    print("🔄 Falling back to single article creation...")
+    return [await create_single_article_from_content(content, metadata, contextual_images)]
+
+
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
     """Create multiple structured articles from content using LLM with fallback"""
     

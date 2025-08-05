@@ -92,8 +92,8 @@
 ##   run_ui: false
 ##
 ## test_plan:
-  current_focus: ["DocumentPreprocessor Method Error - CRITICAL BUG IDENTIFIED"]
-  stuck_tasks: ["DocumentPreprocessor Method Error - CRITICAL BUG IDENTIFIED"]
+  current_focus: []
+  stuck_tasks: []
   test_all: false
   test_priority: "critical_first"
 

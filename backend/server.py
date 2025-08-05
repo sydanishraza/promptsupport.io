@@ -6490,6 +6490,39 @@ Generate comprehensive section content with good detail, proper HTML structure, 
         print(f"❌ Segment generation error: {e}")
         return None
 
+def extract_h1_title_from_content(content: str) -> str:
+    """Extract the first H1 heading from HTML content as the title"""
+    import re
+    from bs4 import BeautifulSoup
+    
+    try:
+        # Try with regex first (faster)
+        h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', content, re.IGNORECASE | re.DOTALL)
+        if h1_match:
+            # Clean up the title text by removing any HTML tags
+            title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+            # Remove anchor links and IDs
+            title_text = re.sub(r'<a[^>]*>.*?</a>', '', title_text)
+            if 5 < len(title_text) < 100:
+                print(f"📋 Extracted H1 title: '{title_text}'")
+                return title_text
+        
+        # Fallback to BeautifulSoup for complex HTML
+        soup = BeautifulSoup(content, 'html.parser')
+        h1_tag = soup.find('h1')
+        if h1_tag:
+            title_text = h1_tag.get_text().strip()
+            if 5 < len(title_text) < 100:
+                print(f"📋 Extracted H1 title (BeautifulSoup): '{title_text}'")
+                return title_text
+        
+        print("⚠️ No valid H1 title found in content")
+        return ""
+        
+    except Exception as e:
+        print(f"❌ H1 title extraction failed: {e}")
+        return ""
+
 def generate_contextual_title(content: str, article_number: int, training_session: dict) -> str:
     """Generate intelligent title based on content analysis"""
     import re

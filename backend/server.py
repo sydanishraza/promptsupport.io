@@ -3753,7 +3753,7 @@ async def generate_comprehensive_docx_single_pass(content: str, images: list, te
 
 CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
 1. Generate comprehensive, detailed, and well-revised content that improves upon the original
-2. Write 800-1500 words for thorough coverage - COMPREHENSIVE ARTICLE LENGTH
+2. Write 1200-2000 words MINIMUM for thorough coverage - COMPREHENSIVE ARTICLE LENGTH MANDATORY
 3. Use professional technical documentation style with exceptional detail, clarity, and modern best practices
 4. Include detailed explanations, comprehensive procedures, and thorough information with improvements
 5. Use proper HTML structure: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
@@ -3762,16 +3762,20 @@ CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
 8. NO truncation or summarization - provide COMPLETE comprehensive detailed content
 9. Focus on creating well-revised, comprehensive content that enhances the original DOCX
 10. Improve grammar, clarity, flow, and structural organization
+11. EXPAND significantly on concepts with detailed explanations, examples, and comprehensive context
+12. Include extensive background information and comprehensive detailed procedures
 
-COMPREHENSIVE QUALITY STANDARDS:
-- Comprehensive, detailed explanations with exceptional depth, clarity, and improvements
-- Professional enterprise technical writing with thorough, well-revised coverage
-- Complete step-by-step procedures with detailed, clear, and improved instructions
-- Thorough coverage of all aspects with comprehensive, enhanced information
-- Modern technical writing standards with improved clarity, structure, and usability
-- Proper HTML semantic structure with rich, professional formatting
-- Target 800-1500 words - comprehensive, well-revised, and detailed article
-- Apply significant content improvements, grammar refinements, and structural enhancements"""
+MANDATORY COMPREHENSIVE QUALITY STANDARDS:
+- MINIMUM 1200-2000 words per article - THIS IS MANDATORY AND NON-NEGOTIABLE
+- Comprehensive, detailed explanations with exceptional depth, clarity, and thorough coverage
+- Professional enterprise technical writing with exhaustive, well-revised coverage
+- Complete step-by-step procedures with detailed, comprehensive, and improved instructions
+- Thorough coverage of ALL aspects with comprehensive, expanded information
+- Modern technical writing standards with improved clarity, structure, and comprehensive usability
+- Proper HTML semantic structure with rich, professional formatting and extensive content
+- Detailed examples, use cases, and comprehensive explanations for ALL concepts
+- Extensive background information, context, and comprehensive technical details
+- EXPAND significantly on source material with comprehensive additional content and explanations"""
 
         user_message = f"""Create a comprehensive, well-revised article from this DOCX content:
 

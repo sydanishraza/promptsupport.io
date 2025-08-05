@@ -3788,7 +3788,7 @@ AVAILABLE IMAGES: {len(images)}
 {format_available_images(images)}
 
 CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
-- Write 800-1500 words for comprehensive, well-revised coverage - COMPREHENSIVE ARTICLE LENGTH
+- Write 1200-2000 words MINIMUM for comprehensive, well-revised coverage - COMPREHENSIVE ARTICLE LENGTH MANDATORY
 - Include detailed explanations and complete comprehensive procedures with significant improvements
 - Use proper HTML structure with headings and rich, professional formatting
 - Embed images contextually with provided HTML code and descriptive, informative captions
@@ -3801,8 +3801,9 @@ CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
 - Include thorough background information, context, and comprehensive explanations
 - Apply substantial content revisions that significantly enhance understanding and usability
 - Create a well-structured article with clear sections, proper headings, and logical flow
+- EXPAND significantly on original content with additional context, examples, and detailed explanations
 
-Generate a comprehensive, well-revised article with exceptional detail, proper HTML structure, modern technical writing standards, significant content improvements, and target 800-1500 words."""
+Generate a comprehensive, well-revised article with exceptional detail, proper HTML structure, modern technical writing standards, significant content improvements, and MANDATORY MINIMUM 1200-2000 words."""
 
         response = await call_llm_with_fallback(system_message, user_message)
         

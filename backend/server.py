@@ -3683,27 +3683,31 @@ TARGET LENGTH: {section_data.get('estimated_words', 700)} words"""
 
 CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
 1. Generate detailed, comprehensive, and well-revised content for this section
-2. Write 500-900 words for thorough coverage - COMPREHENSIVE LENGTH
-3. Use professional technical documentation style with exceptional detail and clarity
-4. Include detailed explanations, comprehensive step-by-step procedures, and thorough information
+2. Write 800-1200 words MINIMUM for thorough coverage - COMPREHENSIVE LENGTH MANDATORY
+3. Use professional technical documentation style with exceptional detail, clarity, and modern best practices
+4. Include detailed explanations, comprehensive step-by-step procedures, and thorough information with improvements
 5. Use proper HTML structure: <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
-6. Embed provided images with proper figure elements and contextual captions
-7. NO meta-commentary - only detailed, well-revised article content
+6. Embed provided images with proper figure elements and contextual, descriptive captions
+7. Apply modern technical writing best practices to revise and improve content clarity and structure
 8. NO truncation or summarization - provide COMPLETE comprehensive detailed content
-9. Focus on creating well-revised, comprehensive content that improves upon the original
-10. Apply modern technical writing best practices and clarity improvements
+9. Focus on creating well-revised, comprehensive content that enhances the original DOCX
+10. Improve grammar, clarity, flow, and structural organization
+11. EXPAND on concepts with detailed explanations, examples, and context
+12. Include comprehensive background information and detailed procedures
 
 {section_info}
 
-COMPREHENSIVE QUALITY STANDARDS:
-- Comprehensive, detailed explanations with exceptional depth and clarity
-- Professional enterprise technical writing with thorough, well-revised coverage
-- Complete step-by-step procedures with detailed, clear instructions
-- Thorough coverage of all aspects with comprehensive information
-- Modern technical writing standards with improved clarity and structure
-- Proper HTML semantic structure with rich, professional formatting
-- Target 500-900 words - comprehensive, well-revised, and detailed content
-- Apply content improvements, grammar refinements, and structural enhancements"""
+MANDATORY COMPREHENSIVE QUALITY STANDARDS:
+- MINIMUM 800-1200 words per section - THIS IS MANDATORY AND NON-NEGOTIABLE
+- Comprehensive, detailed explanations with exceptional depth, clarity, and thorough coverage
+- Professional enterprise technical writing with exhaustive, well-revised coverage
+- Complete step-by-step procedures with detailed, comprehensive, and improved instructions
+- Thorough coverage of ALL aspects with comprehensive, expanded information
+- Modern technical writing standards with improved clarity, structure, and comprehensive usability
+- Proper HTML semantic structure with rich, professional formatting and extensive content
+- Detailed examples, use cases, and comprehensive explanations for ALL concepts
+- Extensive background information, context, and comprehensive technical details
+- EXPAND significantly on source material with comprehensive additional content"""
 
         user_message = f"""Create comprehensive, well-revised content for section {segment_num} of {total_segments} from this DOCX content:
 

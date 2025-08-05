@@ -199,6 +199,312 @@ Regular performance reviews and strategic adjustments ensure that product and as
             import traceback
             traceback.print_exc()
             return False
+    
+    def test_title_generation_investigation(self):
+        """
+        Investigate why titles are always starting with "Comprehensive Guide To"
+        """
+        print("\n" + "="*80)
+        print("🔍 TITLE GENERATION INVESTIGATION")
+        print("="*80)
+        print("OBJECTIVE: Find why titles start with 'Comprehensive Guide To'")
+        print("EXPECTED: Contextual titles based on actual content")
+        print("="*80)
+        
+        try:
+            # Create content with specific titles that should be preserved
+            test_content = """Marketing Strategy Implementation Guide
+
+# Customer Acquisition Strategies
+This section focuses on proven methods for acquiring new customers through digital marketing channels, traditional advertising, and referral programs.
+
+# Revenue Optimization Techniques  
+This section covers advanced techniques for maximizing revenue through pricing strategies, upselling, cross-selling, and customer lifetime value optimization.
+
+# Brand Development Framework
+This section outlines a comprehensive framework for building strong brand identity, brand positioning, and brand equity in competitive markets."""
+
+            file_data = io.BytesIO(test_content.encode('utf-8'))
+            
+            files = {
+                'file': ('title_generation_test.docx', file_data, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            }
+            
+            form_data = {
+                'template_id': 'comprehensive_processing',
+                'training_mode': 'true'
+            }
+            
+            print("📤 Testing title generation patterns...")
+            print("📚 Expected titles:")
+            print("  - Customer Acquisition Strategies")
+            print("  - Revenue Optimization Techniques")
+            print("  - Brand Development Framework")
+            print("❌ NOT expected: 'Comprehensive Guide To...'")
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=120
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                articles = data.get('articles', [])
+                
+                print(f"\n📊 TITLE GENERATION RESULTS:")
+                
+                generic_titles = 0
+                contextual_titles = 0
+                
+                for i, article in enumerate(articles):
+                    title = article.get('title', 'Untitled')
+                    print(f"  Article {i+1}: '{title}'")
+                    
+                    # Check for generic title patterns
+                    if title.startswith("Comprehensive Guide To"):
+                        print(f"    ❌ GENERIC TITLE DETECTED")
+                        generic_titles += 1
+                    elif any(keyword in title for keyword in ['Customer', 'Revenue', 'Brand', 'Marketing']):
+                        print(f"    ✅ CONTEXTUAL TITLE DETECTED")
+                        contextual_titles += 1
+                    else:
+                        print(f"    ⚠️ UNKNOWN TITLE PATTERN")
+                
+                print(f"\n📈 TITLE ANALYSIS:")
+                print(f"  Generic Titles: {generic_titles}")
+                print(f"  Contextual Titles: {contextual_titles}")
+                print(f"  Total Articles: {len(articles)}")
+                
+                if generic_titles > 0:
+                    print(f"\n❌ TITLE GENERATION ISSUE CONFIRMED:")
+                    print(f"  - {generic_titles} articles have generic 'Comprehensive Guide To' titles")
+                    print(f"  - System is not using contextual title generation")
+                    print(f"  - May be using template-based title generation")
+                    return False
+                elif contextual_titles > 0:
+                    print(f"\n✅ TITLE GENERATION WORKING:")
+                    print(f"  - {contextual_titles} articles have contextual titles")
+                    print(f"  - System is using content-based title generation")
+                    return True
+                else:
+                    print(f"\n⚠️ TITLE GENERATION INCONCLUSIVE:")
+                    print(f"  - No clear pattern detected")
+                    print(f"  - May need further investigation")
+                    return True
+            else:
+                print(f"❌ Title generation test failed - status code {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Title generation investigation failed - {str(e)}")
+            return False
+    
+    def test_content_splitting_analysis(self):
+        """
+        Test whether content is being split into multiple articles or processed as single article
+        """
+        print("\n" + "="*80)
+        print("🔍 CONTENT SPLITTING ANALYSIS")
+        print("="*80)
+        print("OBJECTIVE: Verify content is split into multiple articles, not single article")
+        print("="*80)
+        
+        try:
+            # Create content with clear section boundaries that should be split
+            test_content = """Content Splitting Test Document
+
+# Section 1: Introduction to Content Splitting
+This is the first section that should become its own comprehensive article. The content splitting system should recognize this as a distinct section based on the H1 heading and create a separate article with substantial content development.
+
+This section should be expanded with comprehensive explanations, examples, and detailed analysis to meet the word count requirements for comprehensive articles.
+
+# Section 2: Advanced Content Processing
+This is the second section that should become a separate comprehensive article. The system should recognize the H1 boundary and create a new article starting from this point.
+
+The content processing system should apply comprehensive enhancement to this section, expanding it with detailed explanations and professional formatting.
+
+# Section 3: Quality Assurance Methods
+This third section should also become its own comprehensive article. The splitting algorithm should maintain clear boundaries between sections while ensuring each article has substantial content.
+
+Quality assurance in content processing involves multiple validation steps and comprehensive review processes.
+
+# Section 4: Performance Optimization
+The fourth section should demonstrate that the system can handle multiple sections and create multiple comprehensive articles rather than combining everything into a single summarized article.
+
+Performance optimization requires careful analysis of processing workflows and systematic improvement approaches."""
+
+            file_data = io.BytesIO(test_content.encode('utf-8'))
+            
+            files = {
+                'file': ('content_splitting_test.docx', file_data, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            }
+            
+            form_data = {
+                'template_id': 'comprehensive_processing',
+                'training_mode': 'true'
+            }
+            
+            print("📤 Testing content splitting behavior...")
+            print("📊 Input: 4 distinct sections with H1 headings")
+            print("📚 Expected: 4 separate comprehensive articles")
+            
+            response = requests.post(
+                f"{self.base_url}/training/process",
+                files=files,
+                data=form_data,
+                timeout=120
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                articles = data.get('articles', [])
+                
+                print(f"\n📊 CONTENT SPLITTING RESULTS:")
+                print(f"  Input Sections: 4")
+                print(f"  Generated Articles: {len(articles)}")
+                
+                if len(articles) == 4:
+                    print(f"  ✅ PERFECT SPLITTING: Each section became an article")
+                elif len(articles) > 1:
+                    print(f"  ✅ GOOD SPLITTING: Multiple articles generated")
+                elif len(articles) == 1:
+                    print(f"  ❌ POOR SPLITTING: All content combined into single article")
+                    print(f"  ❌ This indicates the system is not splitting content properly")
+                    return False
+                
+                # Analyze article titles and content
+                for i, article in enumerate(articles):
+                    title = article.get('title', 'Untitled')
+                    content = article.get('content', '') or article.get('html', '')
+                    word_count = len(content.split()) if content else 0
+                    
+                    print(f"\n  Article {i+1}: '{title}'")
+                    print(f"    Word Count: {word_count}")
+                    
+                    # Check if title corresponds to expected sections
+                    expected_keywords = ['Introduction', 'Advanced', 'Quality', 'Performance']
+                    if any(keyword in title for keyword in expected_keywords):
+                        print(f"    ✅ Title matches expected section")
+                    else:
+                        print(f"    ⚠️ Title doesn't match expected section")
+                
+                # Overall assessment
+                if len(articles) >= 2:
+                    print(f"\n✅ CONTENT SPLITTING WORKING:")
+                    print(f"  - Multiple articles generated ({len(articles)})")
+                    print(f"  - Content is being split properly")
+                    return True
+                else:
+                    print(f"\n❌ CONTENT SPLITTING FAILED:")
+                    print(f"  - Only {len(articles)} article generated")
+                    print(f"  - Content not being split into multiple articles")
+                    return False
+            else:
+                print(f"❌ Content splitting test failed - status code {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Content splitting analysis failed - {str(e)}")
+            return False
+    
+    def run_comprehensive_debug_suite(self):
+        """
+        Run all debug tests to identify the root cause of DOCX processing issues
+        """
+        print("\n" + "="*100)
+        print("🚀 COMPREHENSIVE DOCX PROCESSING DEBUG SUITE")
+        print("="*100)
+        print("MISSION: Find why DOCX processing generates single summarized articles")
+        print("INSTEAD OF: Multiple comprehensive articles like PDF processing")
+        print("="*100)
+        
+        test_results = {}
+        
+        # Run all debug tests
+        tests = [
+            ("DOCX Processing Flow Debug", self.test_docx_processing_flow_debug),
+            ("Content Splitting Analysis", self.test_content_splitting_analysis),
+            ("Title Generation Investigation", self.test_title_generation_investigation)
+        ]
+        
+        for test_name, test_func in tests:
+            print(f"\n{'='*60}")
+            print(f"🧪 Running: {test_name}")
+            print(f"{'='*60}")
+            
+            try:
+                result = test_func()
+                test_results[test_name] = result
+                
+                if result:
+                    print(f"✅ {test_name}: PASSED")
+                else:
+                    print(f"❌ {test_name}: FAILED")
+                    
+            except Exception as e:
+                print(f"💥 {test_name}: ERROR - {str(e)}")
+                test_results[test_name] = False
+        
+        # Final analysis
+        print(f"\n" + "="*100)
+        print("📊 COMPREHENSIVE DEBUG RESULTS")
+        print("="*100)
+        
+        passed_tests = sum(1 for result in test_results.values() if result)
+        total_tests = len(test_results)
+        
+        print(f"Tests Passed: {passed_tests}/{total_tests}")
+        
+        for test_name, result in test_results.items():
+            status = "✅ PASSED" if result else "❌ FAILED"
+            print(f"  {status}: {test_name}")
+        
+        # Root cause analysis
+        print(f"\n🔍 ROOT CAUSE ANALYSIS:")
+        
+        if not test_results.get("DOCX Processing Flow Debug", True):
+            print("❌ CRITICAL: DOCX processing is generating single summarized articles")
+            print("   ROOT CAUSE: System is using simplified/fallback processing instead of comprehensive")
+            
+        if not test_results.get("Content Splitting Analysis", True):
+            print("❌ CRITICAL: Content not being split into multiple articles")
+            print("   ROOT CAUSE: Chunking/splitting logic not working for DOCX files")
+            
+        if not test_results.get("Title Generation Investigation", True):
+            print("❌ CRITICAL: Generic titles being generated instead of contextual ones")
+            print("   ROOT CAUSE: Template-based title generation instead of content-based")
+        
+        # Recommendations
+        print(f"\n💡 RECOMMENDATIONS:")
+        print("1. Check if DOCX files are triggering fallback to simplified processing")
+        print("2. Verify create_comprehensive_articles_from_docx_content() is being called")
+        print("3. Ensure content splitting logic works for DOCX format")
+        print("4. Fix title generation to use contextual content instead of templates")
+        print("5. Align DOCX processing path with PDF processing path")
+        
+        return passed_tests >= 2  # At least 2 out of 3 tests should pass
+
+def main():
+    """Run the comprehensive DOCX processing debug suite"""
+    tester = DOCXProcessingDebugTest()
+    
+    print("🎯 DOCX PROCESSING DEBUG TEST SUITE")
+    print("Investigating why DOCX processing generates single summarized articles")
+    print("instead of comprehensive ones like PDF processing")
+    
+    success = tester.run_comprehensive_debug_suite()
+    
+    if success:
+        print(f"\n✅ DEBUG SUITE COMPLETED - Issues identified and analyzed")
+    else:
+        print(f"\n❌ DEBUG SUITE COMPLETED - Critical issues found requiring fixes")
+    
+    return success
+
+if __name__ == "__main__":
+    main()
 
 def test_docx_html_pipeline():
     """Test with DOCX file to trigger HTML preprocessing pipeline"""

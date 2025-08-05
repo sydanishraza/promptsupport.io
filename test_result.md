@@ -92,8 +92,8 @@
 ##   run_ui: false
 ##
 ## test_plan:
-  current_focus: ["DOCX Processing Simplification - Smart Chunking Backend Testing", "Simplified Image Handling Verification", "Clean HTML Output Quality Testing"]
-  stuck_tasks: []
+  current_focus: ["DocumentPreprocessor Method Error - CRITICAL BUG IDENTIFIED"]
+  stuck_tasks: ["DocumentPreprocessor Method Error - CRITICAL BUG IDENTIFIED"]
   test_all: false
   test_priority: "critical_first"
 

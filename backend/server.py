@@ -6219,7 +6219,7 @@ async def create_single_article_with_template(content: str, images: list, templa
         print(f"🔍 Creating comprehensive article {article_number}/{total_articles} with {len(images)} images")
         
         # Generate intelligent title based on content, not filename
-        title = generate_contextual_title(content, article_number, training_session)
+        title = extract_h1_title_from_content(content) or generate_contextual_title(content, article_number, training_session)
         
         # CRITICAL FIX: Use segmented generation for comprehensive coverage - OPTIMIZED
         if len(content) > 5000:  # Increased threshold from 2000 to 5000 chars

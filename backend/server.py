@@ -3310,7 +3310,7 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
             
             # ENHANCED: Use comprehensive PDF-style article generation for DOCX files
             print(f"🎯 Using comprehensive PDF-style article generation for DOCX content")
-            articles = await process_docx_with_template(training_session.get('file_path', ''), template_data, training_session)
+            articles = await create_articles_with_template(enhanced_content, contextual_images, template_data, training_session)
             
             print(f"📊 Comprehensive processing result: {len(articles)} articles generated")
             

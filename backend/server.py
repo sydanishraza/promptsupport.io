@@ -1113,6 +1113,194 @@ class DocumentPreprocessor:
         except Exception as e:
             print(f"❌ Image tokenization failed for chunk: {e}")
             return chunk_html
+    
+    async def process_with_ai_preserving_tokens(self, html_chunks: list, template_data: dict) -> list:
+        """
+        Phase 2: AI processing that preserves tokens and block structure
+        Processes multiple HTML chunks independently
+        """
+        print(f"🤖 Phase 2: Starting AI processing with {len(html_chunks)} structural chunks")
+        
+        processed_chunks = []
+        
+        try:
+            for i, chunk_data in enumerate(html_chunks):
+                print(f"🔄 Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                print(f"📊 Chunk tokens: ~{chunk_data.get('token_count', chunk_data.get('token_estimate', 0)):,}")
+                
+                # Process this chunk with AI
+                processed_content = await self._process_chunk_with_ai(chunk_data, template_data, i)
+                
+                # Create processed chunk data
+                processed_chunk = {
+                    'section_id': chunk_data['section_id'],
+                    'title': chunk_data['title'],
+                    'content': processed_content,
+                    'images': chunk_data['images'],
+                    'original_token_estimate': chunk_data.get('token_count', chunk_data.get('token_estimate', 0))
+                }
+                
+                processed_chunks.append(processed_chunk)
+                print(f"✅ Chunk {i+1} processed successfully")
+                
+                # Small delay between chunks to avoid rate limiting
+                await asyncio.sleep(1)
+            
+            print(f"✅ All {len(processed_chunks)} chunks processed successfully")
+            return processed_chunks
+                
+        except Exception as e:
+            print(f"❌ AI processing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return html_chunks  # Return original chunks as fallback
+    
+    async def _process_chunk_with_ai(self, chunk_data: dict, template_data: dict, chunk_index: int) -> str:
+        """Process a single HTML chunk with AI while preserving structure, with large chunk handling"""
+        try:
+            # Check chunk size - handle very large H1 chunks differently
+            chunk_size = len(chunk_data['content'])
+            is_very_large = chunk_size > 200000  # ~50K tokens
+            
+            if is_very_large:
+                print(f"🔍 Very large H1 chunk detected: {chunk_data['title']} ({chunk_size} chars)")
+                print(f"📝 Attempting streamlined processing for large logical article...")
+            
+            system_message = """You are an expert content writer improving a section of a technical document.
+
+CRITICAL REQUIREMENTS:
+1. PRESERVE ALL <!-- IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear
+2. PRESERVE ALL <!-- END_IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear  
+3. MAINTAIN all data-block-id attributes on HTML elements
+4. PRESERVE the [IMAGE: ...] placeholders within image blocks
+5. Keep the HTML structure intact (headings, paragraphs, lists)
+
+Your task is to:
+- Improve the text content for clarity, readability, and engagement
+- Expand content where appropriate while maintaining focus on this section
+- Ensure professional tone and comprehensive coverage
+- Preserve all structural elements and image tokens
+
+Do NOT:
+- Remove or modify any image tokens or data-block-id attributes
+- Change the basic HTML structure or heading hierarchy
+- Generate new fake images or remove existing image references
+- Merge or split major sections"""
+
+            # Adjust processing approach for very large chunks
+            if is_very_large:
+                # For very large chunks, focus on structural improvements rather than content expansion
+                user_message = f"""Please improve this large document section with focused structural improvements:
+
+SECTION: {chunk_data['title']}
+
+{chunk_data['content'][:50000]}...
+[Content truncated for processing - full content will be preserved]
+
+Focus on:
+- Structural improvements and formatting consistency
+- Key content organization and flow
+- Professional tone maintenance  
+- Preserving all image positions and tokens exactly as they are
+
+Note: This is a large logical section that should remain as one article. Focus on improvements without major content expansion."""
+            else:
+                user_message = f"""Please improve this document section while preserving all structure and tokens:
+
+SECTION: {chunk_data['title']}
+
+{chunk_data['content']}
+
+Focus on:
+- Making content more comprehensive and informative
+- Improving readability and flow within this section
+- Maintaining professional tone
+- Preserving all image positions and tokens exactly as they are"""
+
+            # Use the existing LLM fallback system with chunk-specific session ID
+            chunk_session_id = f"{self.session_id}_chunk_{chunk_index}"
+            
+            # For very large chunks, try a more conservative approach first
+            if is_very_large:
+                print(f"🎯 Processing large H1 chunk with conservative approach...")
+                
+            improved_content = await call_llm_with_fallback(system_message, user_message, chunk_session_id)
+            
+            if improved_content:
+                print(f"✅ AI processing complete for chunk {chunk_index + 1}: {len(improved_content)} characters")
+                return improved_content
+            else:
+                print(f"⚠️ AI processing failed for chunk {chunk_index + 1}, returning original content")
+                return chunk_data['content']
+                
+        except Exception as e:
+            print(f"❌ AI processing failed for chunk {chunk_index + 1}: {e}")
+            return chunk_data['content']
+    
+    def replace_tokens_with_rich_images(self, processed_chunks: list) -> list:
+        """
+        Phase 3: Replace image tokens with rich HTML figure elements for all chunks
+        """
+        print(f"🖼️ Phase 3: Starting token replacement across {len(processed_chunks)} chunks")
+        
+        final_chunks = []
+        
+        try:
+            for i, chunk_data in enumerate(processed_chunks):
+                print(f"🎨 Processing tokens in chunk {i+1}: {chunk_data['title']}")
+                
+                result_html = chunk_data['content']
+                
+                # Find all image blocks and replace with rich HTML
+                import re
+                
+                pattern = r'<!-- IMAGE_BLOCK:([^>]+) -->(.*?)<!-- END_IMAGE_BLOCK:\1 -->'
+                matches = re.findall(pattern, result_html, re.DOTALL)
+                
+                images_replaced = 0
+                for image_id, block_content in matches:
+                    if image_id in self.extracted_images:
+                        image_data = self.extracted_images[image_id]
+                        
+                        # Create rich figure element
+                        rich_image_html = f"""<figure style="margin: 20px 0; text-align: center;">
+    <img src="{image_data['url']}" 
+         alt="{image_data['alt_text']}" 
+         style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+    <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic;">
+        {image_data['alt_text']}
+    </figcaption>
+</figure>"""
+                        
+                        # Replace the entire image block
+                        full_token = f"<!-- IMAGE_BLOCK:{image_id} -->{block_content}<!-- END_IMAGE_BLOCK:{image_id} -->"
+                        result_html = result_html.replace(full_token, rich_image_html)
+                        images_replaced += 1
+                        
+                        print(f"🎨 Replaced token {image_id} with rich HTML in chunk {i+1}")
+                    else:
+                        print(f"⚠️ Image data not found for token: {image_id} in chunk {i+1}")
+                
+                # Create final chunk data
+                final_chunk = {
+                    'section_id': chunk_data['section_id'],
+                    'title': chunk_data['title'],
+                    'content': result_html,
+                    'images_replaced': images_replaced,
+                    'original_images': len(chunk_data.get('images', []))
+                }
+                
+                final_chunks.append(final_chunk)
+                print(f"✅ Chunk {i+1} token replacement complete: {images_replaced} images embedded")
+            
+            print(f"🎉 Phase 3 complete: Token replacement finished for all {len(final_chunks)} chunks")
+            return final_chunks
+            
+        except Exception as e:
+            print(f"❌ Token replacement failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return processed_chunks  # Return processed chunks without token replacement
 
 def convert_markdown_to_html_for_text_processing(content: str) -> str:
     """

@@ -3718,7 +3718,7 @@ AVAILABLE IMAGES: {len(segment_images)}
 {format_available_images(segment_images)}
 
 CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
-- Write 500-900 words for comprehensive, well-revised coverage - COMPREHENSIVE LENGTH
+- Write 800-1200 words MINIMUM for comprehensive, well-revised coverage - COMPREHENSIVE LENGTH MANDATORY
 - Include detailed explanations and complete comprehensive procedures with improvements
 - Use proper HTML structure with headings and rich, professional formatting
 - Embed images contextually with provided HTML code and descriptive captions
@@ -3726,12 +3726,13 @@ CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
 - Apply modern technical writing best practices to revise and improve content
 - NO truncation or summarization - provide complete detailed comprehensive content
 - Improve clarity, grammar, structure, and flow from the original DOCX content
-- Balance depth with readability - comprehensive but clear and well-structured
-- Provide complete step-by-step instructions where applicable with clarity improvements
-- Include thorough background information, context, and explanations
+- Balance depth with efficiency - comprehensive but focused content
+- Provide complete step-by-step instructions where applicable
+- Include thorough background information and context
 - Apply content revisions that enhance understanding and usability
+- EXPAND significantly on original content with additional context, examples, and explanations
 
-Generate comprehensive, well-revised section content with exceptional detail, proper HTML structure, modern technical writing standards, and target 500-900 words."""
+Generate comprehensive section content with exceptional detail, proper HTML structure, modern technical writing standards, and MANDATORY MINIMUM 800-1200 words."""
 
         segment_response = await call_llm_with_fallback(system_message, user_message)
         

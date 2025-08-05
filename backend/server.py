@@ -3361,6 +3361,524 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
         traceback.print_exc()
         return []
 
+async def create_comprehensive_articles_from_docx_content(content: str, images: list, template_data: dict, training_session: dict) -> list:
+    """Create comprehensive articles using PDF-style segmented generation for DOCX content"""
+    try:
+        content_length = len(content)
+        image_count = len(images)
+        
+        print(f"📊 Starting comprehensive DOCX article generation: {content_length} chars, {image_count} images")
+        
+        # Check if content is empty
+        if not content or not content.strip():
+            print("❌ Content is empty or only whitespace")
+            return []
+            
+        articles = []
+        
+        # Analyze content for natural breaking points
+        natural_sections = []
+        
+        # Look for major headings and section breaks
+        if '<h1>' in content or '<h2>' in content or '\n\n' in content:
+            # Content has structure, split intelligently
+            
+            if '<h1>' in content:
+                h1_sections = content.split('<h1>')
+                print(f"🔍 Splitting content on H1 tags - found {len(h1_sections)} sections")
+                
+                for i, section in enumerate(h1_sections):
+                    if section.strip():
+                        if i == 0 and not section.startswith('<h1>'):
+                            # First section without H1 prefix - could be intro content
+                            if len(section.strip()) > 200:  # Only include substantial intro content
+                                natural_sections.append(section)
+                                print(f"✅ Added intro section: {len(section)} chars")
+                        else:
+                            # Restore H1 tag and treat as separate article
+                            if not section.startswith('<h1>'):
+                                section = '<h1>' + section
+                            natural_sections.append(section)
+                            print(f"✅ Added H1 section {i}: {len(section)} chars")
+            elif '<h2>' in content:
+                sections = content.split('<h2>')
+                for i, section in enumerate(sections):
+                    if section.strip():
+                        if i > 0:  # Add back the h2 tag
+                            section = '<h2>' + section
+                        natural_sections.append(section)
+            else:
+                # Split on double line breaks for paragraph-based content
+                sections = content.split('\n\n')
+                current_section = ""
+                
+                for section in sections:
+                    # Aim for sections of reasonable length (4000-8000 chars for comprehensive coverage)
+                    if len(current_section + section) > 8000 and current_section:
+                        natural_sections.append(current_section.strip())
+                        current_section = section
+                    else:
+                        current_section += "\n\n" + section if current_section else section
+                
+                if current_section.strip():
+                    natural_sections.append(current_section.strip())
+        else:
+            # No clear structure, treat as single section
+            natural_sections = [content]
+        
+        # Filter out very small sections and merge with adjacent ones
+        filtered_sections = []
+        for i, section in enumerate(natural_sections):
+            if len(section.strip()) < 1000 and i < len(natural_sections) - 1:
+                # Merge small section with next one
+                natural_sections[i + 1] = section + "\n\n" + natural_sections[i + 1]
+            elif len(section.strip()) >= 200:  # Only include sections with substantial content
+                filtered_sections.append(section)
+        
+        natural_sections = filtered_sections if filtered_sections else [content]
+        
+        print(f"📝 Identified {len(natural_sections)} natural content sections")
+        
+        # Distribute images across sections
+        section_images = distribute_images_contextually(natural_sections, images)
+        
+        # Create comprehensive articles from natural sections using PDF-style generation
+        for i, section in enumerate(natural_sections):
+            if section.strip():
+                assigned_images = section_images[i] if i < len(section_images) else []
+                
+                print(f"📄 Creating comprehensive article {i+1} with {len(assigned_images)} images using PDF-style generation")
+                
+                article = await create_comprehensive_single_docx_article(
+                    section, 
+                    assigned_images,
+                    template_data, 
+                    training_session,
+                    i + 1,
+                    len(natural_sections)
+                )
+                
+                if article:
+                    articles.append(article)
+        
+        print(f"✅ Created {len(articles)} comprehensive articles from DOCX content")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX article creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def create_comprehensive_single_docx_article(content: str, images: list, template_data: dict, training_session: dict, article_number: int, total_articles: int = 1) -> dict:
+    """Create a single comprehensive DOCX article using PDF-style segmented generation"""
+    try:
+        print(f"🔍 Creating comprehensive DOCX article {article_number}/{total_articles} with {len(images)} images")
+        
+        # Generate intelligent title based on content, not filename
+        title = generate_contextual_title(content, article_number, training_session)
+        
+        # Use comprehensive segmented generation for thorough coverage
+        if len(content) > 3000:  # Lower threshold than PDF since DOCX content is usually more structured
+            print("📝 Using comprehensive segmented generation for thorough DOCX coverage")
+            final_content = await generate_comprehensive_docx_article_segmented(content, images, template_data, title)
+        else:
+            print("📝 Using comprehensive single-pass generation for DOCX content")
+            final_content = await generate_comprehensive_docx_single_pass(content, images, template_data, title)
+        
+        if not final_content:
+            print("⚠️ No AI content generated, creating comprehensive fallback")
+            final_content = create_comprehensive_docx_fallback_content(content, images, title)
+        
+        # Post-process the AI content for quality assurance
+        final_content = enhance_content_quality(final_content, images)
+        
+        # Extract or generate final title from content
+        final_title = extract_content_title(final_content) or title
+        
+        # Create comprehensive article with enhanced metadata
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": final_title,
+            "content": final_content,
+            "word_count": len(final_content.split()),
+            "image_count": len(images),
+            "status": "training",
+            "template_id": template_data.get("template_id", "comprehensive_docx_processing"),
+            "session_id": training_session.get("session_id"),
+            "training_mode": True,
+            "ai_processed": True,
+            "ai_model": "comprehensive_knowledge_engine_docx",
+            "has_images": len(images) > 0,
+            "has_structure": check_content_structure(final_content),
+            "processing_metadata": {
+                "article_number": article_number,
+                "total_articles": total_articles,
+                "original_length": len(content),
+                "enhanced_length": len(final_content),
+                "images_embedded": count_embedded_images(final_content),
+                "generation_method": "comprehensive_segmented" if len(content) > 3000 else "comprehensive_single_pass",
+                "processing_type": "comprehensive_docx"
+            }
+        }
+        
+        print(f"✅ Comprehensive DOCX article created: '{final_title}' ({article['word_count']} words)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX article creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def generate_comprehensive_docx_article_segmented(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate comprehensive DOCX article using segmented approach for full coverage"""
+    try:
+        print("🔄 Starting comprehensive segmented generation for DOCX content")
+        
+        # Step 1: Generate article outline and structure
+        outline = await generate_comprehensive_docx_outline(content, title, template_data)
+        if not outline:
+            print("⚠️ Could not generate DOCX outline, falling back to single-pass")
+            return await generate_comprehensive_docx_single_pass(content, images, template_data, title)
+        
+        print(f"📋 Generated comprehensive DOCX outline with sections")
+        
+        # Step 2: Split content into logical segments based on outline
+        content_segments = split_docx_content_into_segments(content, outline)
+        print(f"📄 Split DOCX content into {len(content_segments)} segments")
+        
+        # Step 3: Distribute images across segments
+        segment_images = distribute_images_to_segments(images, content_segments)
+        
+        # Step 4: Generate each segment comprehensively
+        generated_sections = []
+        generated_sections.append(f"<h1>{title}</h1>\n")
+        
+        for i, (segment, segment_imgs) in enumerate(zip(content_segments, segment_images)):
+            print(f"🔄 Generating comprehensive DOCX section {i+1}/{len(content_segments)}")
+            
+            section_content = await generate_comprehensive_docx_segment(
+                segment, 
+                segment_imgs, 
+                template_data, 
+                i + 1, 
+                len(content_segments),
+                outline
+            )
+            
+            if section_content:
+                generated_sections.append(section_content)
+            else:
+                print(f"⚠️ Failed to generate DOCX section {i+1}, using fallback")
+                generated_sections.append(create_comprehensive_docx_fallback_segment(segment, segment_imgs))
+        
+        # Step 5: Combine all sections
+        final_content = "\n\n".join(generated_sections)
+        
+        print(f"✅ Comprehensive segmented DOCX generation completed: {len(final_content.split())} words")
+        return final_content
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX segmented generation error: {e}")
+        return await generate_comprehensive_docx_single_pass(content, images, template_data, title)
+
+async def generate_comprehensive_docx_outline(content: str, title: str, template_data: dict) -> dict:
+    """Generate a structured outline for comprehensive DOCX article"""
+    try:
+        system_message = """You are an expert technical documentation strategist creating comprehensive outlines for DOCX-based knowledge articles.
+
+Generate a detailed outline for a comprehensive technical documentation article based on DOCX content. Return ONLY a JSON structure with no additional text.
+
+Required JSON format:
+{
+    "title": "Article Title",
+    "sections": [
+        {
+            "heading": "Section Title",
+            "level": 2,
+            "key_points": ["detailed point 1", "detailed point 2", "detailed point 3"],
+            "estimated_words": 600
+        }
+    ],
+    "total_estimated_words": 2000
+}
+
+Create 2-4 major sections with comprehensive key points. Aim for thorough coverage with 1500-3000 total words for complete technical documentation."""
+
+        user_message = f"""Create a comprehensive technical documentation outline for this DOCX content:
+
+TITLE: {title}
+
+DOCX CONTENT TO OUTLINE:
+{content[:3000]}...
+
+Create a detailed outline with major sections, comprehensive key points, and estimated word counts for thorough technical documentation coverage. Focus on creating sections that will result in comprehensive, well-revised content suitable for technical documentation."""
+
+        outline_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if outline_response:
+            import json
+            try:
+                outline_data = json.loads(outline_response)
+                if "sections" in outline_data and len(outline_data["sections"]) > 0:
+                    return outline_data
+            except json.JSONDecodeError:
+                print("⚠️ Could not parse DOCX outline JSON")
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ DOCX outline generation error: {e}")
+        return None
+
+def split_docx_content_into_segments(content: str, outline: dict) -> list:
+    """Split DOCX content into segments based on outline structure"""
+    if not outline or "sections" not in outline:
+        # Fallback: split into 2-3 balanced segments for comprehensive processing
+        words = content.split()
+        segments_count = min(3, max(2, len(words) // 800))  # 2-3 segments, ~800 words each
+        segment_size = max(400, len(words) // segments_count)  # At least 400 words per segment
+        
+        segments = []
+        for i in range(0, len(words), segment_size):
+            segment_words = words[i:i + segment_size]
+            if segment_words:  # Only add non-empty segments
+                segments.append(" ".join(segment_words))
+        
+        return segments
+    
+    # Try to split based on outline sections
+    sections = outline["sections"]
+    # Limit to maximum 3 segments for comprehensive processing
+    target_segments = min(3, len(sections))
+    total_words = len(content.split())
+    words_per_section = total_words // target_segments
+    
+    segments = []
+    words = content.split()
+    
+    for i in range(target_segments):
+        start_idx = i * words_per_section
+        end_idx = min((i + 1) * words_per_section, len(words)) if i < target_segments - 1 else len(words)
+        
+        segment_words = words[start_idx:end_idx]
+        if segment_words:
+            segments.append(" ".join(segment_words))
+    
+    return segments
+
+async def generate_comprehensive_docx_segment(segment_content: str, segment_images: list, template_data: dict, segment_num: int, total_segments: int, outline: dict) -> str:
+    """Generate a comprehensive DOCX content segment with technical documentation quality"""
+    try:
+        section_info = ""
+        if outline and "sections" in outline and segment_num <= len(outline["sections"]):
+            section_data = outline["sections"][segment_num - 1]
+            section_info = f"""
+SECTION FOCUS: {section_data.get('heading', f'Section {segment_num}')}
+KEY POINTS TO COVER: {', '.join(section_data.get('key_points', []))}
+TARGET LENGTH: {section_data.get('estimated_words', 700)} words"""
+
+        system_message = f"""You are an expert technical documentation writer creating comprehensive, well-revised content from DOCX documents.
+
+CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
+1. Generate detailed, comprehensive, and well-revised content for this section
+2. Write 500-900 words for thorough coverage - COMPREHENSIVE LENGTH
+3. Use professional technical documentation style with exceptional detail and clarity
+4. Include detailed explanations, comprehensive step-by-step procedures, and thorough information
+5. Use proper HTML structure: <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
+6. Embed provided images with proper figure elements and contextual captions
+7. NO meta-commentary - only detailed, well-revised article content
+8. NO truncation or summarization - provide COMPLETE comprehensive detailed content
+9. Focus on creating well-revised, comprehensive content that improves upon the original
+10. Apply modern technical writing best practices and clarity improvements
+
+{section_info}
+
+COMPREHENSIVE QUALITY STANDARDS:
+- Comprehensive, detailed explanations with exceptional depth and clarity
+- Professional enterprise technical writing with thorough, well-revised coverage
+- Complete step-by-step procedures with detailed, clear instructions
+- Thorough coverage of all aspects with comprehensive information
+- Modern technical writing standards with improved clarity and structure
+- Proper HTML semantic structure with rich, professional formatting
+- Target 500-900 words - comprehensive, well-revised, and detailed content
+- Apply content improvements, grammar refinements, and structural enhancements"""
+
+        user_message = f"""Create comprehensive, well-revised content for section {segment_num} of {total_segments} from this DOCX content:
+
+DOCX CONTENT TO PROCESS AND IMPROVE:
+{segment_content}
+
+AVAILABLE IMAGES: {len(segment_images)}
+{format_available_images(segment_images)}
+
+CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
+- Write 500-900 words for comprehensive, well-revised coverage - COMPREHENSIVE LENGTH
+- Include detailed explanations and complete comprehensive procedures with improvements
+- Use proper HTML structure with headings and rich, professional formatting
+- Embed images contextually with provided HTML code and descriptive captions
+- Focus on thorough, professional technical documentation with exceptional detail
+- Apply modern technical writing best practices to revise and improve content
+- NO truncation or summarization - provide complete detailed comprehensive content
+- Improve clarity, grammar, structure, and flow from the original DOCX content
+- Balance depth with readability - comprehensive but clear and well-structured
+- Provide complete step-by-step instructions where applicable with clarity improvements
+- Include thorough background information, context, and explanations
+- Apply content revisions that enhance understanding and usability
+
+Generate comprehensive, well-revised section content with exceptional detail, proper HTML structure, modern technical writing standards, and target 500-900 words."""
+
+        segment_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if segment_response:
+            return segment_response.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX segment generation error: {e}")
+        return None
+
+async def generate_comprehensive_docx_single_pass(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate comprehensive DOCX article using single-pass approach"""
+    try:
+        print("📝 Using comprehensive single-pass generation for DOCX content")
+        
+        system_message = """You are an expert technical documentation writer creating comprehensive, well-revised articles from DOCX documents.
+
+CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
+1. Generate comprehensive, detailed, and well-revised content that improves upon the original
+2. Write 800-1500 words for thorough coverage - COMPREHENSIVE ARTICLE LENGTH
+3. Use professional technical documentation style with exceptional detail, clarity, and modern best practices
+4. Include detailed explanations, comprehensive procedures, and thorough information with improvements
+5. Use proper HTML structure: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
+6. Embed provided images with proper figure elements and contextual, descriptive captions
+7. Apply modern technical writing best practices to revise and improve content clarity and structure
+8. NO truncation or summarization - provide COMPLETE comprehensive detailed content
+9. Focus on creating well-revised, comprehensive content that enhances the original DOCX
+10. Improve grammar, clarity, flow, and structural organization
+
+COMPREHENSIVE QUALITY STANDARDS:
+- Comprehensive, detailed explanations with exceptional depth, clarity, and improvements
+- Professional enterprise technical writing with thorough, well-revised coverage
+- Complete step-by-step procedures with detailed, clear, and improved instructions
+- Thorough coverage of all aspects with comprehensive, enhanced information
+- Modern technical writing standards with improved clarity, structure, and usability
+- Proper HTML semantic structure with rich, professional formatting
+- Target 800-1500 words - comprehensive, well-revised, and detailed article
+- Apply significant content improvements, grammar refinements, and structural enhancements"""
+
+        user_message = f"""Create a comprehensive, well-revised article from this DOCX content:
+
+TITLE: {title}
+
+DOCX CONTENT TO PROCESS AND IMPROVE:
+{content}
+
+AVAILABLE IMAGES: {len(images)}
+{format_available_images(images)}
+
+CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
+- Write 800-1500 words for comprehensive, well-revised coverage - COMPREHENSIVE ARTICLE LENGTH
+- Include detailed explanations and complete comprehensive procedures with significant improvements
+- Use proper HTML structure with headings and rich, professional formatting
+- Embed images contextually with provided HTML code and descriptive, informative captions
+- Focus on thorough, professional technical documentation with exceptional detail and clarity
+- Apply modern technical writing best practices to significantly revise and improve content
+- NO truncation or summarization - provide complete detailed comprehensive content
+- Dramatically improve clarity, grammar, structure, flow, and usability from the original DOCX
+- Balance depth with readability - comprehensive but clear, well-structured, and user-friendly
+- Provide complete step-by-step instructions where applicable with clarity and usability improvements
+- Include thorough background information, context, and comprehensive explanations
+- Apply substantial content revisions that significantly enhance understanding and usability
+- Create a well-structured article with clear sections, proper headings, and logical flow
+
+Generate a comprehensive, well-revised article with exceptional detail, proper HTML structure, modern technical writing standards, significant content improvements, and target 800-1500 words."""
+
+        response = await call_llm_with_fallback(system_message, user_message)
+        
+        if response:
+            return response.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX single-pass generation error: {e}")
+        return None
+
+def create_comprehensive_docx_fallback_content(content: str, images: list, title: str) -> str:
+    """Create comprehensive fallback content when AI generation fails"""
+    fallback_html = f"<h1>{title}</h1>\n\n"
+    
+    # Add comprehensive introduction
+    fallback_html += "<p>This comprehensive technical documentation has been processed and enhanced from the original DOCX content to provide detailed, well-structured information.</p>\n\n"
+    
+    # Process content with improvements
+    if content:
+        # Split into paragraphs and improve formatting
+        paragraphs = content.split('\n\n')
+        for i, para in enumerate(paragraphs):
+            para = para.strip()
+            if para:
+                if para.startswith('<h') or para.startswith('#'):
+                    # It's already a heading
+                    fallback_html += f"{para}\n\n"
+                elif len(para) < 100 and i < 3:
+                    # Short paragraph near the beginning, might be a heading
+                    fallback_html += f"<h2>{para}</h2>\n\n"
+                else:
+                    # Regular paragraph
+                    fallback_html += f"<p>{para}</p>\n\n"
+    
+    # Add images if available
+    for i, image in enumerate(images):
+        image_url = image.get('url', '')
+        if image_url:
+            fallback_html += f"""
+<figure>
+    <img src="{image_url}" alt="Document Image {i+1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <figcaption>Figure {i+1}: Image from original document</figcaption>
+</figure>
+
+"""
+    
+    # Add comprehensive conclusion
+    fallback_html += "<h2>Summary</h2>\n"
+    fallback_html += "<p>This documentation provides comprehensive coverage of the topics outlined in the original DOCX document, enhanced for clarity and usability.</p>\n"
+    
+    return fallback_html
+
+def create_comprehensive_docx_fallback_segment(segment: str, images: list) -> str:
+    """Create comprehensive fallback segment when AI generation fails"""
+    segment_html = ""
+    
+    # Process segment content
+    if segment:
+        paragraphs = segment.split('\n\n')
+        for para in paragraphs:
+            para = para.strip()
+            if para:
+                if para.startswith('<h') or para.startswith('#'):
+                    segment_html += f"{para}\n\n"
+                else:
+                    segment_html += f"<p>{para}</p>\n\n"
+    
+    # Add images for this segment
+    for i, image in enumerate(images):
+        image_url = image.get('url', '')
+        if image_url:
+            segment_html += f"""
+<figure>
+    <img src="{image_url}" alt="Segment Image {i+1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <figcaption>Figure {i+1}: Supporting image for this section</figcaption>
+</figure>
+
+"""
+    
+    return segment_html
+
+
 def preserve_inline_formatting(paragraph) -> str:
     """Extract text with inline formatting preserved as HTML"""
     html_text = ""

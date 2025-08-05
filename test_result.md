@@ -174,6 +174,18 @@
 ## user_problem_statement: "KNOWLEDGE ENGINE SIMPLIFICATION AND SMART CHUNKING: Implement revised simplified approach for DOCX processing. Remove automatic contextual image embedding and focus on: 1) Clean extraction → LLM enhancement → HTML output, 2) Smart chunking with 6,000-8,000 character limits and context-aware breaks, 3) Images extracted and saved to Asset Library only (no automatic embedding), 4) 100% editor-compatible HTML output"
 
 ## backend:
+  - task: "DOCX Processing Title and Content Quality Issues - Google Maps Tutorial Testing"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "testing"
+        -comment: "❌ CRITICAL TITLE AND CONTENT QUALITY ISSUES IDENTIFIED: Conducted comprehensive testing of the Google Map JavaScript API Tutorial document as specifically requested in the review. RESULTS: ❌ MAJOR ISSUES CONFIRMED (2/3 critical problems identified). DETAILED FINDINGS: 1) ❌ TITLE GENERATION PROBLEM - System generates 'Comprehensive Guide To Using The Google Maps Javascript Api' instead of expected 'Using Google Map Javascript API' from source H1, ROOT CAUSE: LLM prompt in create_single_article_from_content() line 7894 is too vague: 'Create a descriptive title based on the main topic/document title', Direct LLM test confirms correct title when given explicit instructions, 2) ❌ CONTENT QUALITY ISSUE - Content appears to be processed correctly (2,471 characters) but original H1 heading is not preserved in final content, Source document has clear H1: 'Using Google Map Javascript API' but this is lost during processing, 3) ⚠️ PROCESSING APPROACH - Using 'single_article_simplified' approach which may contribute to quality issues, System processes 1.1MB DOCX file in 17.65 seconds creating 9 chunks but final article loses source structure. CRITICAL ROOT CAUSES: 1) LLM prompt encourages generic titles instead of preserving source H1 headings, 2) Content processing doesn't explicitly preserve original document structure and titles, 3) 'Simplified' processing approach may be degrading content quality. IMPACT: Users see generic 'Comprehensive Guide' titles instead of meaningful document titles, and original document structure is not preserved. URGENT FIXES NEEDED: 1) Modify LLM prompt to extract and preserve H1 titles from source content, 2) Add explicit instructions to maintain original document structure, 3) Consider using comprehensive processing instead of simplified approach."
+
   - task: "DOCX Processing Simplification - Smart Chunking Implementation"
     implemented: true
     working: true

@@ -3475,7 +3475,7 @@ async def create_comprehensive_single_docx_article(content: str, images: list, t
         print(f"🔍 Creating comprehensive DOCX article {article_number}/{total_articles} with {len(images)} images")
         
         # Generate intelligent title based on content, not filename
-        title = generate_contextual_title(content, article_number, training_session)
+        title = extract_h1_title_from_content(content) or generate_contextual_title(content, article_number, training_session)
         
         # Use comprehensive segmented generation for thorough coverage
         if len(content) > 3000:  # Lower threshold than PDF since DOCX content is usually more structured

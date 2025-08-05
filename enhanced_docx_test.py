@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Enhanced DOCX Processing Pipeline Testing
-Testing the enhanced DOCX processing with HTML preprocessing, structural chunking, and image processing
+Enhanced DOCX Processing Comprehensive Testing
+Testing the enhanced DOCX processing with comprehensive article generation as requested in review
 """
 
 import requests

@@ -7,7 +7,7 @@ import requests
 import json
 import uuid
 
-BACKEND_URL = "https://5c7c9f9c-32ea-49de-ad00-9f3af5a176b3.preview.emergentagent.com/api"
+BACKEND_URL = "https://30d65fc7-a543-4013-8fc4-cc8e1e404320.preview.emergentagent.com/api"
 
 def test_chat_search():
     """Test chat with different queries to see if search is working"""

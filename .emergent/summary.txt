@@ -1,80 +1,68 @@
 <analysis>
-The AI engineer's work centered on the PromptSupport application's Knowledge Engine. Initially, the focus was on resolving backend issues in AI-driven article generation (incomplete content, broken images, incorrect titles, JSON parsing), followed by a comprehensive frontend redesign of the Knowledge Engine Upload interface to a modern Gen Z aesthetic. This UI revamp was successfully implemented and tested. Subsequently, the engineer began systematic backend support for content types, starting with DOCX files, involving significant LLM prompt enhancements for structured HTML output and meticulous contextual image embedding. A critical bug related to articles/assets not appearing in the content library was diagnosed (database connection, LLM parameter error) and fixed. The most recent and challenging task involved a persistent bug where all images were distributed to every article instead of being contextually placed once. This was diagnosed as a flawed image injection logic in the DOCX processing pipeline, which bypassed the newly implemented semantic image placement system. The core fix involved removing this redundant image injection and properly integrating the semantic image placement functions. The system is now confirmed to correctly place images contextually and without duplication.
+The previous AI engineer focused on evolving the PromptSupport application's Knowledge Engine. Initially, significant work was done on DOCX processing, improving article generation fidelity and addressing contextual image placement issues. This included a major refactor of image handling to ensure proper semantic embedding. A comprehensive frontend redesign of the Knowledge Engine Upload interface was also completed, adopting a Gen Z aesthetic.
+
+Following these initial successes, the user provided a revised set of priorities, explicitly pausing automatic contextual image embedding and emphasizing smart chunking, clean HTML output, and editor compatibility for generated articles. The engineer then adapted the backend logic in  to implement these new chunking rules and simplified content generation flows, removing the previously complex image embedding logic.
+
+The most recent interactions revolved around a critical bug: despite cleanup commands, the content library continued to display old articles and assets. The engineer meticulously debugged this, discovering a database name mismatch during cleanup operations. The correct database () and collections (, ) were identified and successfully purged, bringing the system to a clean state. The final user request was to change the favicon.
 </analysis>
 
 <product_requirements>
-The PromptSupport application is an AI-native platform for support documentation, featuring a Knowledge Engine. This engine must ingest diverse content (DOCX, PDF, HTML, URLs, audio/video), then extract, analyze, organize, and regenerate improved, media-rich articles with high fidelity, technical accuracy, contextual image embedding, and balanced HTML/Markdown output. Initial efforts fixed backend issues in DOCX processing, ensuring complete content, accurate titles, and correct contextual image placement. This led to a major frontend overhaul of the Knowledge Engine's upload interface for a Gen Z aesthetic, including modular upload blocks, real-time processing feedback, and placeholder UI for integrations. The current focus is systematic backend implementation for all content formats, starting with DOCX, ensuring high-quality, structured, and media-rich article generation. Specifically for DOCX, images must be contextually placed (one image per relevant section, no duplication) using semantic chunking and tagging, meeting technical writing standards.
+The PromptSupport application aims to be an AI-native platform for support documentation, centered around its Knowledge Engine. This engine's primary goal is to ingest various content types (DOCX, PDF, HTML, URLs, audio/video), then extract, analyze, and regenerate them into improved, media-rich articles.
+The initial implementation focused on DOCX processing, aiming for complete content, accurate titles, and contextual image placement. The frontend's Knowledge Engine Upload interface was redesigned for a modern Gen Z aesthetic, featuring modular upload blocks and real-time feedback.
+
+**Revised Product Requirements (Mid-Trajectory Update):**
+1.  **Content Extraction:** Extract full text and save all images to the Asset Library. **Automatic image embedding in articles is paused.**
+2.  **Article Generation:** LLM to revise, improve clarity, enhance structure, and apply modern technical writing best practices. Articles must be 100% clean, complete, and HTML-formatted, compatible with the WYSIWYG editor.
+3.  **Smart Chunking:** Limit article length (6,000–8,000 characters). Splits must be context-aware (no mid-paragraph/step/list breaks), preferring section boundaries. Each chunk becomes a separate, appropriately titled article.
+4.  **Editor Compatibility:** Generated articles must use correct HTML tags and work seamlessly within the inbuilt editor.
+**Phased Implementation Plan:** DOCX, then PDF, PPT/PPTX, XLS/XLSX, CSV, XML, HTML, MD, TXT, Audio, Video, followed by URL uploads, text paste, and third-party integrations.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS, Framer Motion for UI/UX.
--   **Backend**: FastAPI for APIs, MongoDB for data storage, , ,  for document processing.
--   **LLM Integration**: OpenAI (GPT-4o/mini) for content generation and structured rewriting.
--   **Content Processing**: Intelligent chunking, contextual image embedding, JSON sanitization, semantic image assignment, and prompt engineering.
+-   **Frontend:** React.js, TailwindCSS, Framer Motion for UI.
+-   **Backend:** FastAPI for APIs, MongoDB for data storage,  for document processing.
+-   **LLM Integration:** OpenAI (GPT-4o/mini) for content generation, structured rewriting, and smart chunking.
+-   **Content Processing:** Intelligent chunking, JSON sanitization, and prompt engineering.
 </key_technical_concepts>
 
 <code_architecture>
-The application is divided into  (React) and  (FastAPI) services.
+The application uses a  (React) and  (FastAPI) architecture.
 
 
 
 -   ****:
-    *   **Importance**: Central API, document processing, and LLM integration.
-    *   **Changes**:
-        *   Enhanced DOCX processing for contextual image placement and real URLs.
-        *    and  now accept .
-        *   Removed content truncation and refined LLM prompts for titles.
-        *   Implemented robust JSON sanitization and fallback for AI responses.
-        *   Modified  to integrate Documentation Rewrite and Distribution LLM system for structured HTML output.
-        *   **Recent Fixes**: Corrected database connection in  (no longer creates its own DB connection, uses global ).
-        *   **Recent Fixes**: Eliminated  parameter error in LLM calls.
-        *   **Recent Fixes**: Crucially, removed a line () that was directly injecting all image references into , bypassing the semantic image placement system.
-        *   **New Functions**: Added , , , , , , , , , . Made  async.
+    -   **Importance**: Acts as the central API, handling document processing, LLM integration, and database interactions.
+    -   **Changes**:
+        -   **Initial Fixes**: Enhanced DOCX processing for contextual image placement and real URLs, removed content truncation, refined LLM prompts. Fixed database connection in  and  LLM parameter error. Crucially, removed line 8174 that injected all image references, bypassing semantic placement. Added functions like , , etc.
+        -   **Recent Changes (Post User Update)**:
+            -   Modified to implement smart chunking (6,000-8,000 character limit) with context-aware breaks for articles.
+            -   Simplified , , and  to align with the revised requirement of *not* embedding images contextually in articles, but only extracting and saving them to the Asset Library. This involved removing  parameters from several functions and simplifying the article generation flow.
+            -   **Bug Fix (Database Cleanup)**: Identified and corrected the database name used for cleanup, changing it from default to , enabling successful content and asset deletion from  and  collections.
 -   ****:
-    *   **Importance**: Defines overall layout and navigation routing.
-    *   **Changes**: Updated routing to remove deprecated Lab interface components.
+    -   **Importance**: Primary user interface for content upload.
+    -   **Changes**: Redesigned to a Gen Z aesthetic (3-block layout, modern UI, processing modal), fixed SVG parsing error.
 -   ****:
-    *   **Importance**: Provides main application navigation menu.
-    *   **Changes**: Modified navigation items to remove Lab related entries.
--   ****:
-    *   **Importance**: Primary user interface for content upload.
-    *   **Changes**: Complete redesign to Gen Z aesthetic (3-block layout, modern UI, processing modal), fixed SVG parsing error.
--   ****:
-    *   **Importance**: Newly introduced component to manage third-party content platforms.
-    *   **Changes**: New modal with placeholder UI for various integrations.
--   ****:
-    *   **Importance**: Orchestrates Knowledge Engine functionalities.
-    *   **Changes**: Removed legacy elements, incorporated Manage Integrations quick action, cleaned up unused state.
--   ****:
-    *   **Importance**: Records user problem statements, testing data, and previous agent communications, including backend and frontend testing results.
-    *   **Changes**: Continuously updated with test results, bug reports, and resolution statuses.
-
+    -   **Importance**: Records user problem statements, testing data, and communications.
+    -   **Changes**: Continuously updated to reflect the status of DOCX processing, backend test results, and bug resolutions, including the recent database cleanup.
 </code_architecture>
 
 <pending_tasks>
 -   Develop core AI features (Developer Docs System, AI Agent System, AI Chatbot, Unified Portal, Admin Console).
--   Enhance Knowledge Engine to integrate other content types (URLs, audio/video), improve content library, and add batch processing/template features.
--   Complete remaining New Training Engine modules (originally mentioned, but now deprecated).
+-   Enhance Knowledge Engine to integrate other content types (URLs, audio/video), improve content library, and add batch processing/template features, following the systematic plan (PDF, PPT, etc.).
 -   UI/UX refinements (Quick Setup Wizard, editor scrolling, training analytics).
--   Implement and refine  support for the Knowledge Engine, following the systematic plan.
+-   Frontend testing of the DOCX processing pipeline to verify end-to-end user experience after backend changes.
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer addressed a critical user-reported bug related to contextual image placement in DOCX-generated articles.
-The user observed that Every article generated by the system includes all images from the source document, but there is no contextual placement or distribution of those images across the appropriate sections of the articles.
-Previous work had established a semantic image placement infrastructure, but it was confirmed that this system was not effectively integrated into the production DOCX processing pipeline, leading to image duplication across all articles.
+Immediately prior to this summary, the AI engineer was focused on addressing a critical user-reported bug where the content library and asset library were not being correctly cleared. Despite prior cleanup attempts, the frontend UI and backend API calls ( and ) continued to show existing articles (298) and assets (209).
 
-The core of the issue was traced to , specifically at line 8174 where raw  were being directly injected into the . This bypassed the sophisticated semantic image placement algorithms designed to assign images contextually.
+The root cause was identified as a database connection issue during cleanup. The  in  did not specify a database name, leading cleanup scripts to connect to a default MongoDB database instead of the application's actual database. The backend's  was found to be explicitly using  for  and  collections.
 
-The engineer implemented the following fixes in :
-1.  **Removed direct image injection**: The line responsible for dumping all image references into the raw content (around line 8174) was removed.
-2.  **Ensured proper semantic extraction**: The  function, which performs intelligent chunking and image tagging, was correctly integrated into the DOCX processing flow.
-3.  **Refined image data handling**: Ensured the semantic placement system received images in the correct format.
-4.  **Function adjustments**: Made  async and ensured it was directly callable.
+The engineer rectified this by explicitly connecting to  for cleanup operations, which successfully purged all documents from , , , , and  collections. API verification confirmed that both content and asset libraries are now empty (0 articles, 0 assets).
 
-After these changes, comprehensive backend testing was performed, confirming that the semantic image placement system is now fully functional and correctly integrated. Images are now distributed based on semantic relevance, appearing exactly once in the most relevant articles without duplication. The system is considered Production Ready for DOCX processing with contextual images.
+The system is currently in a clean state, ready for fresh testing of the DOCX processing pipeline with the newly implemented smart chunking and simplified image handling (images saved separately, not embedded in articles). The last explicit request from the user was to change the favicon.
 </current_work>
 
 <optional_next_step>
-Proceed with frontend testing of the DOCX processing pipeline to verify the complete end-to-end user experience.
+Change the favicon to the provided URL.
 </optional_next_step>

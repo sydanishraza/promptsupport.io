@@ -196,42 +196,30 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 max-w-7xl w-full max-h-[95vh] overflow-hidden relative"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255,255,255,0.2)'
-        }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
       >
-        {/* Gradient Header with Glassmorphism */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white p-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/30 to-purple-400/30 backdrop-blur-sm"></div>
-          <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}></div>
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/30 shadow-lg">
-                <Brain className="w-8 h-8" />
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Brain className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-white">
-                  Content Upload Hub
-                </h2>
-                <p className="text-blue-100 mt-1 font-medium">
-                  Transform any content into intelligent knowledge base articles ✨
-                </p>
+                <h2 className="text-xl font-semibold text-gray-900">Content Upload</h2>
+                <p className="text-sm text-gray-600">Upload files, paste text, or enter URLs to create knowledge articles</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-3 hover:bg-white/10 rounded-2xl transition-all duration-300 backdrop-blur-sm border border-white/20 hover:scale-105"
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
         </div>

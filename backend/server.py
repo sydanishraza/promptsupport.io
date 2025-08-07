@@ -3678,35 +3678,41 @@ SECTION FOCUS: {section_data.get('heading', f'Section {segment_num}')}
 KEY POINTS TO COVER: {', '.join(section_data.get('key_points', []))}
 TARGET LENGTH: {section_data.get('estimated_words', 700)} words"""
 
-        system_message = f"""You are an expert technical documentation writer creating comprehensive, well-revised content from DOCX documents.
+        system_message = f"""You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
 
-CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
-1. Generate detailed, comprehensive, and well-revised content for this section
-2. Write 800-1200 words MINIMUM for thorough coverage - COMPREHENSIVE LENGTH MANDATORY
-3. Use professional technical documentation style with exceptional detail, clarity, and modern best practices
-4. Include detailed explanations, comprehensive step-by-step procedures, and thorough information with improvements
-5. Use proper HTML structure: <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
-6. Embed provided images with proper figure elements and contextual, descriptive captions
-7. Apply modern technical writing best practices to revise and improve content clarity and structure
-8. NO truncation or summarization - provide COMPLETE comprehensive detailed content
-9. Focus on creating well-revised, comprehensive content that enhances the original DOCX
-10. Improve grammar, clarity, flow, and structural organization
-11. EXPAND on concepts with detailed explanations, examples, and context
-12. Include comprehensive background information and detailed procedures
+Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
+
+Follow these core rules:
+
+1. 🔁 Never summarize — Always enhance, elaborate, and expand source information.
+2. 🧱 Decompose intelligently — Break content into logical, titled sections with clear headings and structure.
+3. 📚 Add depth — Insert background, steps, examples, and best practices where appropriate.
+4. 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order.
+5. 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy, and instructional formatting.
+6. 📄 Generate clean, editor-friendly HTML only — Use only the following tags:
+
+   <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+
+   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes.
+
+💡 Title Rule:
+- If source contains <h1>, extract and reuse that.
+- If not, generate a specific, topic-focused title — never use "Comprehensive Guide to..." or generic phrases.
 
 {section_info}
 
-MANDATORY COMPREHENSIVE QUALITY STANDARDS:
-- MINIMUM 800-1200 words per section - THIS IS MANDATORY AND NON-NEGOTIABLE
-- Comprehensive, detailed explanations with exceptional depth, clarity, and thorough coverage
-- Professional enterprise technical writing with exhaustive, well-revised coverage
-- Complete step-by-step procedures with detailed, comprehensive, and improved instructions
-- Thorough coverage of ALL aspects with comprehensive, expanded information
-- Modern technical writing standards with improved clarity, structure, and comprehensive usability
-- Proper HTML semantic structure with rich, professional formatting and extensive content
-- Detailed examples, use cases, and comprehensive explanations for ALL concepts
-- Extensive background information, context, and comprehensive technical details
-- EXPAND significantly on source material with comprehensive additional content"""
+SECTION REQUIREMENTS: Generate 800-1200 words minimum with logical flow: Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+
+EXPANSION MANDATE: You MUST significantly expand each section with:
+- Detailed explanations for every concept
+- Multiple practical examples 
+- Step-by-step breakdowns with context
+- Background information and rationale
+- Common pitfalls and troubleshooting
+- Best practices and recommendations
+- Real-world scenarios and use cases
+
+DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic."""
 
         user_message = f"""Create comprehensive, well-revised content for section {segment_num} of {total_segments} from this DOCX content:
 

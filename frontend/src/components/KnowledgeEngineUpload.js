@@ -47,12 +47,14 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
   const [processModal, setProcessModal] = useState({ open: false, step: 0, data: null });
   const fileInputRef = useRef();
 
-  // Expanded supported file formats with Gen Z styling
+  // Updated supported file formats with cleaner categorization
   const supportedFormats = {
     documents: {
       title: 'Documents',
       icon: FileText,
-      color: 'from-blue-500 to-cyan-500',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
       formats: [
         { ext: 'docx', label: 'Word', icon: FileText },
         { ext: 'pdf', label: 'PDF', icon: FileText },
@@ -67,21 +69,16 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
         { ext: 'txt', label: 'Text', icon: File }
       ]
     },
-    audio: {
-      title: 'Audio',
-      icon: Music,
-      color: 'from-pink-500 to-rose-500',
+    media: {
+      title: 'Audio & Video',
+      icon: Video,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200',
       formats: [
         { ext: 'mp3', label: 'MP3', icon: FileAudio },
         { ext: 'wav', label: 'WAV', icon: FileAudio },
-        { ext: 'm4a', label: 'M4A', icon: FileAudio }
-      ]
-    },
-    video: {
-      title: 'Video',
-      icon: Video,
-      color: 'from-purple-500 to-indigo-500',
-      formats: [
+        { ext: 'm4a', label: 'M4A', icon: FileAudio },
         { ext: 'mp4', label: 'MP4', icon: FileVideo },
         { ext: 'mov', label: 'MOV', icon: FileVideo },
         { ext: 'webm', label: 'WebM', icon: FileVideo }

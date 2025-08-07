@@ -3772,33 +3772,24 @@ Follow these core rules:
 
 SECTION REQUIREMENTS: Generate 1200-2000 words minimum with logical flow: Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion."""
 
-        user_message = f"""Create a comprehensive, well-revised article from this DOCX content:
+        user_message = f"""The following content was extracted from a DOCX file section and must be transformed into a professionally written, fully enhanced, comprehensive HTML section using modern technical writing standards.
 
-TITLE: {title}
+CRITICAL OUTPUT REQUIREMENTS:
+- DO NOT SUMMARIZE: Expand on ideas, add context, explanations, and technical steps.
+- RESTRUCTURE LOGICALLY: Break long text into clear, hierarchical sections with proper headings.
+- TARGET LENGTH: 1200-2000 words minimum for this section's complete coverage.
+- DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
+- LOGICAL FLOW: Structure as Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+- NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
+- ONLY USE CLEAN HTML TAGS listed in system prompt — no Markdown or styling.
 
-DOCX CONTENT TO PROCESS AND IMPROVE:
+CONTENT TO PROCESS AND ENHANCE:
 {content}
 
-AVAILABLE IMAGES: {len(images)}
+AVAILABLE IMAGES FOR REFERENCE: {len(images)}
 {format_available_images(images)}
 
-CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
-- Write 1200-2000 words MINIMUM for comprehensive, well-revised coverage - COMPREHENSIVE ARTICLE LENGTH MANDATORY
-- Include detailed explanations and complete comprehensive procedures with significant improvements
-- Use proper HTML structure with headings and rich, professional formatting
-- Embed images contextually with provided HTML code and descriptive, informative captions
-- Focus on thorough, professional technical documentation with exceptional detail and clarity
-- Apply modern technical writing best practices to significantly revise and improve content
-- NO truncation or summarization - provide complete detailed comprehensive content
-- Dramatically improve clarity, grammar, structure, flow, and usability from the original DOCX
-- Balance depth with readability - comprehensive but clear, well-structured, and user-friendly
-- Provide complete step-by-step instructions where applicable with clarity and usability improvements
-- Include thorough background information, context, and comprehensive explanations
-- Apply substantial content revisions that significantly enhance understanding and usability
-- Create a well-structured article with clear sections, proper headings, and logical flow
-- EXPAND significantly on original content with additional context, examples, and detailed explanations
-
-Generate a comprehensive, well-revised article with exceptional detail, proper HTML structure, modern technical writing standards, significant content improvements, and MANDATORY MINIMUM 1200-2000 words."""
+Generate comprehensive, enterprise-grade technical documentation content."""
 
         response = await call_llm_with_fallback(system_message, user_message)
         

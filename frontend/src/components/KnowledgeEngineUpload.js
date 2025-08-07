@@ -366,36 +366,33 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               )}
             </motion.div>
 
-            {/* Enter URL Block */}
+            {/* URL Input */}
             <motion.div
-              whileHover={{ scale: 1.02, y: -8 }}
-              whileTap={{ scale: 0.98 }}
-              className={`bg-gradient-to-br from-purple-50/80 to-violet-100/80 backdrop-blur-sm border-2 border-dashed border-purple-300/60 rounded-3xl p-8 transition-all duration-500 hover:shadow-2xl hover:border-purple-400/80 ${
-                activeBlock === 'url' ? 'ring-4 ring-purple-300/50 shadow-2xl border-purple-400' : ''
+              whileHover={{ y: -2 }}
+              className={`border-2 border-dashed rounded-lg p-6 transition-all duration-200 ${
+                activeBlock === 'url' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'
               }`}
               onClick={() => setActiveBlock('url')}
             >
-              <div className="text-center space-y-6">
-                <div className="p-6 bg-gradient-to-br from-purple-500 to-violet-500 rounded-2xl inline-block shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110">
-                  <Link2 className="w-8 h-8 text-white" />
+              <div className="text-center mb-4">
+                <div className="p-3 bg-purple-100 rounded-full inline-flex mb-4">
+                  <Link2 className="w-6 h-6 text-purple-600" />
                 </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">Enter URL</h3>
-                  <p className="text-gray-600 text-sm mb-6 font-medium">Crawl websites and extract content</p>
-                  
-                  <div className="grid grid-cols-2 gap-3 text-left">
-                    {urlTypes.map(type => (
-                      <div key={type.name} className="bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-purple-100/50 hover:bg-white/80 transition-all duration-200">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-lg">{type.icon}</span>
-                          <div>
-                            <div className="font-semibold text-xs text-gray-900">{type.name}</div>
-                            <div className="text-xs text-gray-600">{type.description}</div>
-                          </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Enter URL</h3>
+                <p className="text-sm text-gray-600 mb-4">Extract content from web pages</p>
+                
+                <div className="grid grid-cols-2 gap-2 text-left">
+                  {urlTypes.map(type => (
+                    <div key={type.name} className="p-2 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base">{type.icon}</span>
+                        <div>
+                          <div className="font-medium text-xs text-gray-900">{type.name}</div>
+                          <div className="text-xs text-gray-600">{type.description}</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               
@@ -403,16 +400,16 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://docs.example.com/guide"
-                className="w-full mt-6 p-6 bg-white/80 backdrop-blur-md border-2 border-purple-200/60 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-400/50 focus:border-purple-400 text-sm font-medium shadow-inner transition-all duration-300"
+                placeholder="https://docs.example.com"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
               
               {urlInput && (
-                <div className="mt-4 text-xs text-purple-700 bg-purple-50/80 backdrop-blur-sm rounded-xl p-3 border border-purple-200/50">
+                <div className="mt-3 text-xs text-purple-700 bg-purple-100 rounded-lg p-2">
                   <div className="flex items-center">
-                    <Globe className="w-4 h-4 mr-2" />
-                    <span className="font-medium">Ready to crawl: {new URL(urlInput).hostname}</span>
+                    <Globe className="w-3 h-3 mr-2" />
+                    <span>Ready to process: {new URL(urlInput).hostname}</span>
                   </div>
                 </div>
               )}

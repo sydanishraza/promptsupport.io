@@ -446,140 +446,91 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
         </div>
       </motion.div>
 
-      {/* Enhanced Processing Modal */}
+      {/* Processing Modal */}
       <AnimatePresence>
         {processModal.open && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-lg flex items-center justify-center z-70"
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-60"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 max-w-3xl w-full mx-4 overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%)',
-              }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4"
             >
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8">
-                <h3 className="text-3xl font-bold">Processing Your Content</h3>
-                <p className="text-blue-100 mt-2 font-medium">Transforming your content with AI magic ✨</p>
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 className="text-lg font-semibold text-gray-900">Processing Content</h3>
+                <p className="text-sm text-gray-600">Transforming your content into knowledge articles</p>
               </div>
 
-              <div className="p-10">
+              <div className="p-6">
                 {processModal.data ? (
-                  // Enhanced Results Summary
-                  <div className="space-y-8">
-                    <div className="text-center space-y-6">
-                      <motion.div 
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.2, type: "spring" }}
-                        className="p-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-3xl inline-block shadow-xl"
-                      >
-                        <CheckCircle2 className="w-16 h-16 text-white" />
-                      </motion.div>
-                      <h4 className="text-3xl font-bold text-gray-900">Processing Complete!</h4>
-                      <p className="text-gray-600 font-medium">Your content has been transformed into structured articles</p>
+                  // Results
+                  <div className="text-center space-y-6">
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="p-4 bg-green-100 rounded-full inline-flex"
+                    >
+                      <CheckCircle2 className="w-12 h-12 text-green-600" />
+                    </motion.div>
+                    <div>
+                      <h4 className="text-xl font-semibold text-gray-900 mb-2">Processing Complete!</h4>
+                      <p className="text-gray-600">Your content has been successfully processed</p>
                     </div>
 
-                    <div className="bg-gradient-to-br from-gray-50 to-blue-50/50 rounded-3xl p-8 space-y-6 border border-gray-100 shadow-inner">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-gray-700 flex items-center">
-                              <FileText className="w-5 h-5 mr-2 text-blue-600" />
-                              Resource processed
-                            </span>
-                            <div className="text-right">
-                              <div className="font-semibold text-gray-900">{processModal.data.resourceName}</div>
-                              {processModal.data.resourceSize && (
-                                <div className="text-sm text-gray-500">{processModal.data.resourceSize}</div>
-                              )}
-                            </div>
-                          </div>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">{processModal.data.articlesGenerated}</div>
+                          <div className="text-sm text-gray-600">Articles Generated</div>
                         </div>
-                        
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-gray-700 flex items-center">
-                              <Sparkles className="w-5 h-5 mr-2 text-purple-600" />
-                              Articles generated
-                            </span>
-                            <span className="font-bold text-2xl text-purple-600">{processModal.data.articlesGenerated}</span>
-                          </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-purple-600">{processModal.data.mediaProcessed}</div>
+                          <div className="text-sm text-gray-600">Media Processed</div>
                         </div>
-                        
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-gray-700 flex items-center">
-                              <ImageIcon className="w-5 h-5 mr-2 text-pink-600" />
-                              Media embedded
-                            </span>
-                            <span className="font-bold text-2xl text-pink-600">{processModal.data.mediaEmbedded}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-gray-700 flex items-center">
-                              <Zap className="w-5 h-5 mr-2 text-yellow-600" />
-                              Processing time
-                            </span>
-                            <span className="font-bold text-2xl text-yellow-600">{processModal.data.processingTime}s</span>
-                          </div>
-                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-gray-200">
+                        <div className="text-sm text-gray-600">Processing time: <span className="font-medium">{processModal.data.processingTime}s</span></div>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <h5 className="font-bold text-xl text-gray-900 flex items-center">
-                        <FileText className="w-6 h-6 mr-2 text-blue-600" />
-                        Generated Articles:
-                      </h5>
-                      <div className="space-y-3">
+                    <div className="text-left">
+                      <h5 className="font-medium text-gray-900 mb-3">Generated Articles:</h5>
+                      <div className="space-y-2">
                         {processModal.data.articleLinks.map((article, index) => (
-                          <motion.div 
-                            key={index}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 hover:shadow-md transition-all duration-200"
-                          >
-                            <div className="p-3 bg-blue-100 rounded-xl">
-                              <FileText className="w-5 h-5 text-blue-600" />
-                            </div>
+                          <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            <FileText className="w-4 h-4 text-blue-600" />
                             <div className="flex-1">
-                              <div className="font-semibold text-gray-900">{article.title}</div>
-                              <div className="text-sm text-gray-600">{article.wordCount} words</div>
+                              <div className="font-medium text-sm text-gray-900">{article.title}</div>
+                              <div className="text-xs text-gray-600">{article.wordCount} words</div>
                             </div>
-                            <LinkIcon className="w-5 h-5 text-gray-400" />
-                          </motion.div>
+                          </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="flex justify-center space-x-6 pt-6">
+                    <div className="flex justify-center space-x-4">
                       <button
                         onClick={closeModal}
-                        className="px-8 py-4 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-2xl font-semibold transition-colors shadow-lg"
+                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
                       >
                         Done
                       </button>
                       <button
-                        onClick={() => {/* Navigate to Content Library */}}
-                        className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-2xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
+                        onClick={() => {/* Navigate to library */}}
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                       >
                         View in Library
                       </button>
                     </div>
                   </div>
                 ) : (
-                  // Enhanced Processing Steps
-                  <div className="space-y-8">
+                  // Processing steps
+                  <div className="space-y-4">
                     {processSteps.map((step, index) => {
                       const Icon = step.icon;
                       const isActive = index === processModal.step - 1;
@@ -587,48 +538,40 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                       const isPending = index >= processModal.step;
 
                       return (
-                        <motion.div 
-                          key={step.id} 
-                          className="flex items-center space-x-6"
-                          initial={{ opacity: 0, x: -30 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                        >
-                          <div className={`p-4 rounded-2xl transition-all duration-500 border-2 ${
+                        <div key={step.id} className="flex items-center space-x-4">
+                          <div className={`p-3 rounded-full border-2 transition-all ${
                             isCompleted ? 'bg-green-100 border-green-300' : 
-                            isActive ? 'bg-blue-100 border-blue-300 shadow-lg' : 
+                            isActive ? 'bg-blue-100 border-blue-300' : 
                             'bg-gray-50 border-gray-200'
                           }`}>
-                            <Icon className={`w-8 h-8 transition-all duration-500 ${
+                            <Icon className={`w-6 h-6 transition-all ${
                               isCompleted ? 'text-green-600' : 
-                              isActive ? 'text-blue-600 animate-pulse' : 
+                              isActive ? 'text-blue-600' : 
                               'text-gray-400'
                             }`} />
                           </div>
                           <div className="flex-1">
-                            <div className={`font-bold text-lg transition-all duration-500 ${
+                            <div className={`font-medium transition-all ${
                               isCompleted ? 'text-green-900' : 
                               isActive ? 'text-blue-900' : 
-                              'text-gray-600'
+                              'text-gray-500'
                             }`}>
                               {step.label}
                             </div>
                             {isActive && (
-                              <div className="text-sm text-blue-600 mt-1 font-medium">
-                                Processing...
-                              </div>
+                              <div className="text-sm text-blue-600">In progress...</div>
                             )}
                           </div>
-                          <div className={`w-8 h-8 rounded-full transition-all duration-500 border-2 ${
-                            isCompleted ? 'bg-green-500 border-green-500' : 
-                            isActive ? 'bg-blue-500 border-blue-500 animate-ping' : 
-                            'bg-gray-200 border-gray-300'
+                          <div className={`w-6 h-6 rounded-full transition-all ${
+                            isCompleted ? 'bg-green-500' : 
+                            isActive ? 'bg-blue-500' : 
+                            'bg-gray-300'
                           }`}>
                             {isCompleted && (
                               <CheckCircle2 className="w-4 h-4 text-white m-1" />
                             )}
                           </div>
-                        </motion.div>
+                        </div>
                       );
                     })}
                   </div>

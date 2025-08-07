@@ -7935,41 +7935,20 @@ Follow these core rules:
   "takeaways": ["Key point 1", "Key point 2", "Key concept 3"]
 }"""
     
-    user_message = f"""Transform this complete document into a comprehensive, enhanced technical article with professional HTML formatting:
+    user_message = f"""The following content was extracted from a DOCX file uploaded by a user.
 
-CONTENT TO ENHANCE AND IMPROVE:
-{content}
+You must transform it into a professionally written, fully enhanced, comprehensive HTML article, using modern technical writing standards.
 
-CRITICAL REQUIREMENTS FOR TITLE GENERATION:
-1. EXTRACT the existing H1 heading from the source content and use it as the title
-2. If no H1 exists, create a specific title based on the main topic (NOT "Comprehensive Guide To...")
-3. The title should be the exact text from the first <h1> tag in the source content
+CRITICAL OUTPUT REQUIREMENTS:
+- DO NOT SUMMARIZE: Expand on ideas, add context, explanations, and technical steps.
+- RESTRUCTURE LOGICALLY: Break long text into clear, hierarchical sections with proper headings.
+- TARGET LENGTH: 1200–2000 words minimum for complete coverage.
+- DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
+- NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
+- ONLY USE CLEAN HTML TAGS listed in system prompt — no Markdown or styling.
 
-CRITICAL REQUIREMENTS FOR CONTENT ENHANCEMENT:
-1. ENHANCE and EXPAND the source content - do NOT summarize or reduce it
-2. Add detailed explanations, context, and technical depth where appropriate
-3. Improve clarity, structure, and readability while preserving all technical details
-4. Add comprehensive step-by-step details where applicable
-5. Include background information and best practices
-6. Apply modern technical writing standards to improve the content
-7. Target 800-1500 words for comprehensive coverage
-8. Preserve ALL original information while making it more comprehensive
-
-HTML STRUCTURE REQUIREMENTS:
-1. Use proper HTML heading hierarchy (<h1>, <h2>, <h3>)
-2. Use appropriate HTML tags for formatting (paragraphs, lists, emphasis, tables)
-3. NO image tags - images are handled separately in Asset Library
-4. Generate clean HTML suitable for WYSIWYG editor
-5. Ensure professional technical documentation structure
-
-RESPONSE FORMAT - Extract H1 as title and enhance content:
-{{
-    "title": "EXACT H1 heading from source content",
-    "content": "<h1>Enhanced title from source H1</h1><p>Enhanced introduction with more detail...</p><h2>Enhanced Section Header</h2><p>Expanded content with technical depth...</p>",
-    "summary": "Brief summary of the enhanced article coverage",
-    "tags": ["technical-topic1", "topic2", "topic3"],
-    "takeaways": ["Enhanced key point 1", "Enhanced key point 2", "Enhanced key point 3"]
-}}"""
+CONTENT TO PROCESS:  
+{content}"""
     
     # Get LLM response
     session_id = str(uuid.uuid4())

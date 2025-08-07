@@ -33,7 +33,8 @@ import {
   FileVideo,
   FileImage,
   Archive,
-  Code
+  Code,
+  Cloud
 } from 'lucide-react';
 
 const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {

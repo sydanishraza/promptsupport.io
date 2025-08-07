@@ -94,13 +94,11 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
     { id: 'finalize', label: 'Finalizing and saving content', icon: Cloud }
   ];
 
-  const websiteTypes = [
-    { name: 'Websites', icon: '🌐', description: 'Any public website' },
-    { name: 'Docs', icon: '📚', description: 'Documentation sites' },
-    { name: 'GitHub', icon: '🐙', description: 'Repositories & files' },
-    { name: 'Notion', icon: '📓', description: 'Public pages' },
-    { name: 'YouTube', icon: '📺', description: 'Video transcripts' },
-    { name: 'Loom', icon: '🎥', description: 'Video recordings' }
+  const urlTypes = [
+    { name: 'Documentation', icon: '📚', description: 'Docs, wikis, guides' },
+    { name: 'GitHub Repos', icon: '🐙', description: 'Code repositories' },
+    { name: 'Websites', icon: '🌐', description: 'Public web pages' },
+    { name: 'Videos', icon: '📺', description: 'YouTube, Loom' }
   ];
 
   const handleDragOver = useCallback((e) => {

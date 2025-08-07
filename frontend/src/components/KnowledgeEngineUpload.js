@@ -315,33 +315,30 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               />
             </motion.div>
 
-            {/* Paste Text Block */}
+            {/* Text Input */}
             <motion.div
-              whileHover={{ scale: 1.02, y: -8 }}
-              whileTap={{ scale: 0.98 }}
-              className={`bg-gradient-to-br from-green-50/80 to-emerald-100/80 backdrop-blur-sm border-2 border-dashed border-green-300/60 rounded-3xl p-8 transition-all duration-500 hover:shadow-2xl hover:border-green-400/80 ${
-                activeBlock === 'text' ? 'ring-4 ring-green-300/50 shadow-2xl border-green-400' : ''
+              whileHover={{ y: -2 }}
+              className={`border-2 border-dashed rounded-lg p-6 transition-all duration-200 ${
+                activeBlock === 'text' ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400'
               }`}
               onClick={() => setActiveBlock('text')}
             >
-              <div className="text-center space-y-6">
-                <div className="p-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl inline-block shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110">
-                  <Type className="w-8 h-8 text-white" />
+              <div className="text-center mb-4">
+                <div className="p-3 bg-green-100 rounded-full inline-flex mb-4">
+                  <Type className="w-6 h-6 text-green-600" />
                 </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">Paste Text</h3>
-                  <p className="text-gray-600 text-sm mb-6 font-medium">Direct text input for quick processing</p>
-                  
-                  <div className="text-left space-y-2">
-                    <div className="text-xs font-semibold text-green-700 mb-2">Perfect for:</div>
-                    <div className="space-y-1">
-                      {['Meeting notes', 'Documentation', 'Research content', 'Blog posts'].map(item => (
-                        <div key={item} className="flex items-center text-xs text-gray-600">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></div>
-                          {item}
-                        </div>
-                      ))}
-                    </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Paste Text</h3>
+                <p className="text-sm text-gray-600 mb-4">Directly paste content for processing</p>
+                
+                <div className="text-left">
+                  <div className="text-xs font-medium text-gray-700 mb-2">Ideal for:</div>
+                  <div className="space-y-1">
+                    {['Meeting notes', 'Documentation', 'Research content', 'Articles'].map(item => (
+                      <div key={item} className="flex items-center text-xs text-gray-600">
+                        <div className="w-1 h-1 bg-green-500 rounded-full mr-2"></div>
+                        {item}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -349,20 +346,21 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               <textarea
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
-                placeholder="Paste your content here... 
+                placeholder="Paste your content here...
 
-✨ Articles, notes, documentation
-📚 Research papers, blog posts  
-💡 Meeting notes, ideas"
-                className="w-full h-40 mt-6 p-6 bg-white/80 backdrop-blur-md border-2 border-green-200/60 rounded-2xl resize-none focus:outline-none focus:ring-4 focus:ring-green-400/50 focus:border-green-400 text-sm leading-relaxed shadow-inner transition-all duration-300"
+• Meeting notes and documentation
+• Research papers and articles  
+• Knowledge base content
+• Training materials"
+                className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
               
               {textContent && (
-                <div className="mt-4 text-xs text-green-700 bg-green-50/80 backdrop-blur-sm rounded-xl p-3 border border-green-200/50">
+                <div className="mt-3 text-xs text-green-700 bg-green-100 rounded-lg p-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">Content ready:</span>
-                    <span className="text-green-600">{textContent.split(' ').length} words</span>
+                    <span>Content ready for processing</span>
+                    <span className="font-medium">{textContent.split(' ').length} words</span>
                   </div>
                 </div>
               )}

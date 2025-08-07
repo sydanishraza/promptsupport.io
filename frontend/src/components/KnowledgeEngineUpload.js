@@ -224,81 +224,78 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
           </div>
         </div>
 
-        <div className="p-8 max-h-[calc(95vh-200px)] overflow-y-auto bg-gradient-to-br from-slate-50/50 to-blue-50/30">
-          {/* Upload Blocks Grid - Now only 3 blocks */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
+          {/* Upload Methods Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             
-            {/* Upload File Block */}
+            {/* File Upload */}
             <motion.div
-              whileHover={{ scale: 1.02, y: -8 }}
-              whileTap={{ scale: 0.98 }}
-              className={`relative bg-gradient-to-br from-blue-50/80 to-indigo-100/80 backdrop-blur-sm border-2 border-dashed border-blue-300/60 rounded-3xl p-8 cursor-pointer transition-all duration-500 hover:shadow-2xl hover:border-blue-400/80 ${
-                isDragOver ? 'border-blue-500 bg-blue-100/80 scale-105' : ''
-              } ${activeBlock === 'upload' ? 'ring-4 ring-blue-300/50 shadow-2xl border-blue-400' : ''}`}
+              whileHover={{ y: -2 }}
+              className={`relative border-2 border-dashed rounded-lg p-6 cursor-pointer transition-all duration-200 ${
+                isDragOver ? 'border-blue-500 bg-blue-50' : 
+                activeBlock === 'upload' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="text-center space-y-6">
-                <div className="p-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl inline-block shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110">
-                  <Upload className="w-8 h-8 text-white" />
+              <div className="text-center">
+                <div className="p-3 bg-blue-100 rounded-full inline-flex mb-4">
+                  <Upload className="w-6 h-6 text-blue-600" />
                 </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">Upload Files</h3>
-                  <p className="text-gray-600 text-sm mb-6 font-medium">Drag & drop or click to browse</p>
-                  
-                  {/* Enhanced Format Categories */}
-                  <div className="space-y-4">
-                    {Object.entries(supportedFormats).map(([category, data]) => (
-                      <div key={category} className="text-left">
-                        <div className={`flex items-center mb-2 text-sm font-semibold bg-gradient-to-r ${data.color} bg-clip-text text-transparent`}>
-                          <data.icon className="w-4 h-4 mr-2 text-gray-600" />
-                          {data.title}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {data.formats.slice(0, 4).map(format => (
-                            <span key={format.ext} className="px-3 py-1.5 bg-white/80 backdrop-blur-sm text-gray-800 rounded-xl text-xs font-bold border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-200">
-                              {format.ext.toUpperCase()}
-                            </span>
-                          ))}
-                          {data.formats.length > 4 && (
-                            <span className="px-3 py-1.5 bg-gray-100/80 text-gray-600 rounded-xl text-xs font-medium">
-                              +{data.formats.length - 4} more
-                            </span>
-                          )}
-                        </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Files</h3>
+                <p className="text-sm text-gray-600 mb-4">Drag & drop files or click to browse</p>
+                
+                {/* Supported formats */}
+                <div className="space-y-3">
+                  {Object.entries(supportedFormats).map(([category, data]) => (
+                    <div key={category} className="text-left">
+                      <div className={`flex items-center mb-2 text-sm font-medium ${data.color}`}>
+                        <data.icon className="w-4 h-4 mr-2" />
+                        {data.title}
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex flex-wrap gap-1">
+                        {data.formats.slice(0, 6).map(format => (
+                          <span key={format.ext} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                            .{format.ext}
+                          </span>
+                        ))}
+                        {data.formats.length > 6 && (
+                          <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">
+                            +{data.formats.length - 6} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               
+              {/* File list */}
               {files.length > 0 && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-white/50 shadow-lg"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-4 p-3 bg-gray-50 rounded-lg border"
                 >
-                  <div className="text-sm font-bold text-gray-900 mb-3 flex items-center">
+                  <div className="text-sm font-medium text-gray-900 mb-2 flex items-center">
                     <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
-                    {files.length} file{files.length > 1 ? 's' : ''} ready
+                    {files.length} file{files.length > 1 ? 's' : ''} selected
                   </div>
-                  <div className="space-y-3 max-h-40 overflow-y-auto">
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
                     {files.map(file => (
-                      <div key={file.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-blue-100 rounded-lg">
-                            <File className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm truncate max-w-[200px]">{file.name}</p>
+                      <div key={file.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <File className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm text-gray-900 truncate">{file.name}</p>
                             <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
                           </div>
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); removeFile(file.id); }}
-                          className="p-2 hover:bg-red-100 rounded-xl text-red-500 hover:text-red-700 transition-colors"
+                          className="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
                         >
                           <X className="w-4 h-4" />
                         </button>

@@ -151,26 +151,25 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
     setProcessing(true);
     setProcessModal({ open: true, step: 0, data: null });
 
-    // Enhanced processing simulation with realistic timing
+    // Processing simulation
     for (let i = 0; i < processSteps.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, i === 0 ? 500 : 1800));
+      await new Promise(resolve => setTimeout(resolve, i === 0 ? 500 : 2000));
       setProcessModal(prev => ({ ...prev, step: i + 1 }));
     }
 
-    // Enhanced mock results with more details
+    // Mock results
     const mockResults = {
-      resourceName: files.length > 0 ? files[0].name : (textContent ? 'Direct Text Input' : urlInput || 'Selected Resources'),
+      resourceName: files.length > 0 ? files[0].name : (textContent ? 'Text Content' : urlInput || 'URL Content'),
       resourceSize: files.length > 0 ? formatFileSize(files[0].size) : null,
       resourceType: files.length > 0 ? files[0].type : (textContent ? 'text/plain' : 'url'),
-      articlesGenerated: Math.floor(Math.random() * 4) + 2,
-      mediaEmbedded: Math.floor(Math.random() * 6) + 2,
-      processingTime: (Math.random() * 45 + 15).toFixed(1),
+      articlesGenerated: Math.floor(Math.random() * 3) + 2,
+      mediaProcessed: Math.floor(Math.random() * 5) + 1,
+      processingTime: (Math.random() * 30 + 10).toFixed(1),
       articleLinks: [
-        { title: 'Introduction and Overview', wordCount: Math.floor(Math.random() * 800) + 400 },
-        { title: 'Key Concepts and Methods', wordCount: Math.floor(Math.random() * 1200) + 600 },
-        { title: 'Implementation Guide', wordCount: Math.floor(Math.random() * 900) + 500 },
-        { title: 'Best Practices and Tips', wordCount: Math.floor(Math.random() * 700) + 300 }
-      ].slice(0, Math.floor(Math.random() * 3) + 2)
+        { title: 'Introduction and Overview', wordCount: Math.floor(Math.random() * 800) + 600 },
+        { title: 'Core Concepts and Implementation', wordCount: Math.floor(Math.random() * 1200) + 800 },
+        { title: 'Advanced Features and Best Practices', wordCount: Math.floor(Math.random() * 900) + 700 }
+      ].slice(0, Math.floor(Math.random() * 2) + 2)
     };
 
     setProcessModal(prev => ({ ...prev, data: mockResults }));

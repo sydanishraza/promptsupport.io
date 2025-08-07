@@ -87,11 +87,11 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
   };
 
   const processSteps = [
-    { id: 'upload', label: 'Upload completed', icon: CheckCircle2, color: 'text-emerald-600' },
-    { id: 'analyze', label: 'Resource is being analyzed', icon: Brain, color: 'text-blue-600' },
-    { id: 'extract', label: 'Content extracted and structured', icon: Zap, color: 'text-yellow-600' },
-    { id: 'generate', label: 'Articles generated', icon: Sparkles, color: 'text-purple-600' },
-    { id: 'media', label: 'Media processed', icon: ImageIcon, color: 'text-pink-600' }
+    { id: 'upload', label: 'File uploaded successfully', icon: CheckCircle2 },
+    { id: 'analyze', label: 'Analyzing content structure', icon: Brain },
+    { id: 'extract', label: 'Extracting and processing content', icon: Zap },
+    { id: 'generate', label: 'Generating enhanced articles', icon: Sparkles },
+    { id: 'finalize', label: 'Finalizing and saving content', icon: Cloud }
   ];
 
   const websiteTypes = [

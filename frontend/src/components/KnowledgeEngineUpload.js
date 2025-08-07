@@ -401,9 +401,8 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                   <h3 className="text-2xl font-bold text-gray-900 mb-3">Enter URL</h3>
                   <p className="text-gray-600 text-sm mb-6 font-medium">Crawl websites and extract content</p>
                   
-                  {/* Enhanced Website Types */}
                   <div className="grid grid-cols-2 gap-3 text-left">
-                    {websiteTypes.map(type => (
+                    {urlTypes.map(type => (
                       <div key={type.name} className="bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-purple-100/50 hover:bg-white/80 transition-all duration-200">
                         <div className="flex items-center space-x-2">
                           <span className="text-lg">{type.icon}</span>

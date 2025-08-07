@@ -3792,16 +3792,25 @@ EXPANSION MANDATE: You MUST significantly expand each section with:
 
 DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic."""
 
-        user_message = f"""The following content was extracted from a DOCX file section and must be transformed into a professionally written, fully enhanced, comprehensive HTML section using modern technical writing standards.
+        user_message = f"""The following content was extracted from a DOCX file and must be transformed into a professionally written, fully enhanced, comprehensive HTML article using modern technical writing standards.
 
 CRITICAL OUTPUT REQUIREMENTS:
 - DO NOT SUMMARIZE: Expand on ideas, add context, explanations, and technical steps.
 - RESTRUCTURE LOGICALLY: Break long text into clear, hierarchical sections with proper headings.
-- TARGET LENGTH: 1200-2000 words minimum for this section's complete coverage.
+- TARGET LENGTH: 1200-2000 words minimum for complete coverage - THIS IS MANDATORY.
+- EXPAND COMPREHENSIVELY: Add detailed explanations, multiple examples, background context, troubleshooting tips, and best practices for every concept.
 - DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
 - LOGICAL FLOW: Structure as Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
 - NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
 - ONLY USE CLEAN HTML TAGS listed in system prompt — no Markdown or styling.
+
+EXPANSION REQUIREMENTS: For each section, provide:
+1. Detailed background and context
+2. Step-by-step explanations with reasoning
+3. Multiple practical examples
+4. Common issues and solutions  
+5. Best practices and recommendations
+6. Real-world applications and scenarios
 
 CONTENT TO PROCESS AND ENHANCE:
 {content}

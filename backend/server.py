@@ -3770,7 +3770,18 @@ Follow these core rules:
 - If source contains <h1>, extract and reuse that.
 - If not, generate a specific, topic-focused title — never use "Comprehensive Guide to..." or generic phrases.
 
-SECTION REQUIREMENTS: Generate 1200-2000 words minimum with logical flow: Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion."""
+SECTION REQUIREMENTS: Generate 1200-2000 words minimum with logical flow: Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+
+EXPANSION MANDATE: You MUST significantly expand each section with:
+- Detailed explanations for every concept
+- Multiple practical examples 
+- Step-by-step breakdowns with context
+- Background information and rationale
+- Common pitfalls and troubleshooting
+- Best practices and recommendations
+- Real-world scenarios and use cases
+
+DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic."""
 
         user_message = f"""The following content was extracted from a DOCX file section and must be transformed into a professionally written, fully enhanced, comprehensive HTML section using modern technical writing standards.
 

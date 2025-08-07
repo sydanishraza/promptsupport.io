@@ -552,52 +552,52 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
           Upload and process content from multiple sources to build your knowledge base
         </p>
 
-        {/* New Upload Hub Button */}
+        {/* Content Upload Hub Button - Redesigned to match app theme */}
         <div className="text-center">
           <button
             onClick={() => setShowUploadModal(true)}
-            className="group relative inline-flex items-center justify-center px-8 py-6 text-lg font-semibold text-white transition-all duration-300 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-3xl hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-3xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <Brain className="w-8 h-8 mr-3 group-hover:scale-110 transition-transform duration-300" />
-            <span className="relative z-10">Open Content Upload Hub</span>
-            <div className="ml-3 p-2 bg-white/20 rounded-full group-hover:rotate-12 transition-transform duration-300">
-              <Plus className="w-5 h-5" />
-            </div>
+            <Brain className="w-6 h-6 mr-3" />
+            <span>Open Content Upload Hub</span>
+            <Plus className="w-5 h-5 ml-3" />
           </button>
           
           <p className="mt-4 text-sm text-gray-600">
-            ✨ New modern interface with file upload, text input, URLs, and integrations
+            Upload files, paste text, or enter URLs to create knowledge articles
           </p>
         </div>
 
-        {/* Enhanced Quick Access with Modern Styling */}
-        <div className="mt-8 p-6 bg-gradient-to-br from-gray-50/80 to-blue-50/60 backdrop-blur-sm rounded-3xl border border-gray-200/50 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+        {/* Quick Actions - Redesigned to match app theme */}
+        <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <Zap className="w-5 h-5 mr-2 text-blue-600" />
             Quick Actions
           </h3>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center px-6 py-3 text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-medium"
+              className="flex items-center px-4 py-2.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 hover:border-blue-300 transition-all duration-200"
             >
               <Upload className="w-4 h-4 mr-2" />
               Quick File Upload
             </button>
             <button
               onClick={() => setShowUrlModal(true)}
-              className="flex items-center px-6 py-3 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-medium"
+              className="flex items-center px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 hover:border-purple-300 transition-all duration-200"
             >
               <Globe className="w-4 h-4 mr-2" />
               Quick URL
             </button>
             <button
               onClick={() => setShowIntegrationsManager(true)}
-              className="flex items-center px-6 py-3 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-medium"
+              className="flex items-center px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 hover:border-green-300 transition-all duration-200"
             >
               <Settings className="w-4 h-4 mr-2" />
               Manage Integrations
+            </button>
+          </div>
+        </div>
             </button>
           </div>
         </div>

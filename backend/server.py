@@ -3714,30 +3714,33 @@ EXPANSION MANDATE: You MUST significantly expand each section with:
 
 DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic."""
 
-        user_message = f"""Create comprehensive, well-revised content for section {segment_num} of {total_segments} from this DOCX content:
+        user_message = f"""The following content was extracted from a DOCX file section and must be transformed into a professionally written, fully enhanced, comprehensive HTML section using modern technical writing standards.
 
-DOCX CONTENT TO PROCESS AND IMPROVE:
+CRITICAL OUTPUT REQUIREMENTS:
+- DO NOT SUMMARIZE: Expand on ideas, add context, explanations, and technical steps.
+- RESTRUCTURE LOGICALLY: Break long text into clear, hierarchical sections with proper headings.
+- TARGET LENGTH: 800-1200 words minimum for this section's complete coverage - THIS IS MANDATORY.
+- EXPAND COMPREHENSIVELY: Add detailed explanations, multiple examples, background context, troubleshooting tips, and best practices for every concept.
+- DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
+- LOGICAL FLOW: Structure as Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+- NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
+- ONLY USE CLEAN HTML TAGS listed in system prompt — no Markdown or styling.
+
+EXPANSION REQUIREMENTS: For each section, provide:
+1. Detailed background and context
+2. Step-by-step explanations with reasoning
+3. Multiple practical examples
+4. Common issues and solutions  
+5. Best practices and recommendations
+6. Real-world applications and scenarios
+
+CONTENT TO PROCESS AND ENHANCE:
 {segment_content}
 
-AVAILABLE IMAGES: {len(segment_images)}
+AVAILABLE IMAGES FOR REFERENCE: {len(segment_images)}
 {format_available_images(segment_images)}
 
-CRITICAL REQUIREMENTS FOR COMPREHENSIVE DOCX PROCESSING:
-- Write 800-1200 words MINIMUM for comprehensive, well-revised coverage - COMPREHENSIVE LENGTH MANDATORY
-- Include detailed explanations and complete comprehensive procedures with improvements
-- Use proper HTML structure with headings and rich, professional formatting
-- Embed images contextually with provided HTML code and descriptive captions
-- Focus on thorough, professional technical documentation with exceptional detail
-- Apply modern technical writing best practices to revise and improve content
-- NO truncation or summarization - provide complete detailed comprehensive content
-- Improve clarity, grammar, structure, and flow from the original DOCX content
-- Balance depth with efficiency - comprehensive but focused content
-- Provide complete step-by-step instructions where applicable
-- Include thorough background information and context
-- Apply content revisions that enhance understanding and usability
-- EXPAND significantly on original content with additional context, examples, and explanations
-
-Generate comprehensive section content with exceptional detail, proper HTML structure, modern technical writing standards, and MANDATORY MINIMUM 800-1200 words."""
+Generate comprehensive, enterprise-grade technical documentation content for section {segment_num} of {total_segments}."""
 
         segment_response = await call_llm_with_fallback(system_message, user_message)
         

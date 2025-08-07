@@ -7905,29 +7905,35 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
     print(f"📝 SIMPLIFIED: Creating single article from {len(content)} characters (no automatic image embedding)")
     
     # Simplified system message focused on clean HTML output
-    system_message = """You are a professional technical content writer specializing in enhancing and improving technical documentation. Generate ONLY clean HTML suitable for WYSIWYG editor display.
+    system_message = """You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
 
-CRITICAL CONTENT ENHANCEMENT REQUIREMENTS:
-1. ENHANCE and EXPAND source content - NEVER summarize or reduce it
-2. Add technical depth, detailed explanations, and comprehensive coverage
-3. Improve clarity, structure, and professional presentation while preserving all original details
-4. Apply modern technical writing best practices to elevate content quality
-5. Target 800-1500 words for comprehensive technical documentation
-6. Extract the exact H1 heading from source content as the article title
+Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
 
-HTML FORMATTING REQUIREMENTS:
-1. Use ONLY HTML tags: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
-2. NEVER use Markdown syntax (no ##, **, [], (), ```, ---)
-3. Create proper heading hierarchy starting with <h1>
-4. Structure content professionally with clear sections
-5. NO IMAGES in content (images are managed separately in Asset Library)
-6. Generate clean, editor-compatible HTML that renders properly
+Follow these core rules:
 
-TITLE EXTRACTION RULE:
-- ALWAYS extract the existing <h1> heading text from source content as the title
-- NEVER create generic titles like "Comprehensive Guide To..."
+1. 🔁 Never summarize — Always enhance, elaborate, and expand source information.
+2. 🧱 Decompose intelligently — Break content into logical, titled sections with clear headings and structure.
+3. 📚 Add depth — Insert background, steps, examples, and best practices where appropriate.
+4. 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order.
+5. 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy, and instructional formatting.
+6. 📄 Generate clean, editor-friendly HTML only — Use only the following tags:
 
-Respond with valid JSON containing the extracted title and enhanced HTML content."""
+   <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+
+   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes.
+
+💡 Title Rule:
+- If source contains <h1>, extract and reuse that.
+- If not, generate a specific, topic-focused title — never use "Comprehensive Guide to..." or generic phrases.
+
+📌 Response Format (JSON):
+{
+  "title": "Extracted or generated specific title",
+  "content": "<h1>Title</h1><h2>Introduction</h2><p>...</p> ...",
+  "summary": "Brief human-readable summary of article scope (2–3 sentences)",
+  "tags": ["topic1", "topic2", "tech-support"],
+  "takeaways": ["Key point 1", "Key point 2", "Key concept 3"]
+}"""
     
     user_message = f"""Transform this complete document into a comprehensive, enhanced technical article with professional HTML formatting:
 

@@ -201,13 +201,13 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-gray-200"
       >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        {/* Header - Matches app header style */}
+        <div className="px-6 py-5 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2 bg-blue-50 rounded-lg">
                 <Brain className="w-6 h-6 text-blue-600" />
               </div>
               <div>
@@ -217,23 +217,23 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
-          {/* Upload Methods Grid */}
+        <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto bg-gray-50">
+          {/* Upload Methods Grid - Matches app card styling */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             
-            {/* File Upload */}
+            {/* File Upload Card */}
             <motion.div
               whileHover={{ y: -2 }}
-              className={`relative border-2 border-dashed rounded-lg p-6 cursor-pointer transition-all duration-200 ${
-                isDragOver ? 'border-blue-500 bg-blue-50' : 
-                activeBlock === 'upload' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              className={`bg-white border border-gray-200 rounded-xl p-6 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                isDragOver ? 'border-blue-300 bg-blue-50' : 
+                activeBlock === 'upload' ? 'border-blue-300 bg-blue-50' : 'hover:border-gray-300'
               }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -241,29 +241,29 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               onClick={() => fileInputRef.current?.click()}
             >
               <div className="text-center">
-                <div className="p-3 bg-blue-100 rounded-full inline-flex mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl inline-flex items-center justify-center mb-4">
                   <Upload className="w-6 h-6 text-blue-600" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Files</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Files</h3>
                 <p className="text-sm text-gray-600 mb-4">Drag & drop files or click to browse</p>
                 
-                {/* Supported formats */}
-                <div className="space-y-3">
+                {/* Supported formats - Cleaner layout */}
+                <div className="space-y-4 text-left">
                   {Object.entries(supportedFormats).map(([category, data]) => (
-                    <div key={category} className="text-left">
+                    <div key={category}>
                       <div className={`flex items-center mb-2 text-sm font-medium ${data.color}`}>
                         <data.icon className="w-4 h-4 mr-2" />
                         {data.title}
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {data.formats.slice(0, 6).map(format => (
-                          <span key={format.ext} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                          <span key={format.ext} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-medium">
                             .{format.ext}
                           </span>
                         ))}
                         {data.formats.length > 6 && (
-                          <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">
-                            +{data.formats.length - 6} more
+                          <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-md text-xs">
+                            +{data.formats.length - 6}
                           </span>
                         )}
                       </div>
@@ -277,17 +277,19 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mt-4 p-3 bg-gray-50 rounded-lg border"
+                  className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
                 >
-                  <div className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+                  <div className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                     <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
                     {files.length} file{files.length > 1 ? 's' : ''} selected
                   </div>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {files.map(file => (
-                      <div key={file.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                        <div className="flex items-center space-x-2 min-w-0">
-                          <File className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <div key={file.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <div className="p-1.5 bg-gray-100 rounded">
+                            <File className="w-4 h-4 text-gray-600" />
+                          </div>
                           <div className="min-w-0">
                             <p className="font-medium text-sm text-gray-900 truncate">{file.name}</p>
                             <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
@@ -315,27 +317,27 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               />
             </motion.div>
 
-            {/* Text Input */}
+            {/* Text Input Card */}
             <motion.div
               whileHover={{ y: -2 }}
-              className={`border-2 border-dashed rounded-lg p-6 transition-all duration-200 ${
-                activeBlock === 'text' ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400'
+              className={`bg-white border border-gray-200 rounded-xl p-6 transition-all duration-200 shadow-sm hover:shadow-md ${
+                activeBlock === 'text' ? 'border-green-300 bg-green-50' : 'hover:border-gray-300'
               }`}
               onClick={() => setActiveBlock('text')}
             >
               <div className="text-center mb-4">
-                <div className="p-3 bg-green-100 rounded-full inline-flex mb-4">
+                <div className="w-12 h-12 bg-green-100 rounded-xl inline-flex items-center justify-center mb-4">
                   <Type className="w-6 h-6 text-green-600" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Paste Text</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Paste Text</h3>
                 <p className="text-sm text-gray-600 mb-4">Directly paste content for processing</p>
                 
                 <div className="text-left">
                   <div className="text-xs font-medium text-gray-700 mb-2">Ideal for:</div>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {['Meeting notes', 'Documentation', 'Research content', 'Articles'].map(item => (
                       <div key={item} className="flex items-center text-xs text-gray-600">
-                        <div className="w-1 h-1 bg-green-500 rounded-full mr-2"></div>
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2 flex-shrink-0"></div>
                         {item}
                       </div>
                     ))}
@@ -352,12 +354,12 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
 • Research papers and articles  
 • Knowledge base content
 • Training materials"
-                className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                className="w-full h-32 p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
                 onClick={(e) => e.stopPropagation()}
               />
               
               {textContent && (
-                <div className="mt-3 text-xs text-green-700 bg-green-100 rounded-lg p-2">
+                <div className="mt-3 text-xs text-green-700 bg-green-50 rounded-lg p-3 border border-green-200">
                   <div className="flex items-center justify-between">
                     <span>Content ready for processing</span>
                     <span className="font-medium">{textContent.split(' ').length} words</span>
@@ -366,24 +368,24 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               )}
             </motion.div>
 
-            {/* URL Input */}
+            {/* URL Input Card */}
             <motion.div
               whileHover={{ y: -2 }}
-              className={`border-2 border-dashed rounded-lg p-6 transition-all duration-200 ${
-                activeBlock === 'url' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'
+              className={`bg-white border border-gray-200 rounded-xl p-6 transition-all duration-200 shadow-sm hover:shadow-md ${
+                activeBlock === 'url' ? 'border-purple-300 bg-purple-50' : 'hover:border-gray-300'
               }`}
               onClick={() => setActiveBlock('url')}
             >
               <div className="text-center mb-4">
-                <div className="p-3 bg-purple-100 rounded-full inline-flex mb-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl inline-flex items-center justify-center mb-4">
                   <Link2 className="w-6 h-6 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Enter URL</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Enter URL</h3>
                 <p className="text-sm text-gray-600 mb-4">Extract content from web pages</p>
                 
                 <div className="grid grid-cols-2 gap-2 text-left">
                   {urlTypes.map(type => (
-                    <div key={type.name} className="p-2 bg-gray-50 rounded-lg">
+                    <div key={type.name} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-center space-x-2">
                         <span className="text-base">{type.icon}</span>
                         <div>
@@ -401,12 +403,12 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="https://docs.example.com"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm bg-white"
                 onClick={(e) => e.stopPropagation()}
               />
               
               {urlInput && (
-                <div className="mt-3 text-xs text-purple-700 bg-purple-100 rounded-lg p-2">
+                <div className="mt-3 text-xs text-purple-700 bg-purple-50 rounded-lg p-3 border border-purple-200">
                   <div className="flex items-center">
                     <Globe className="w-3 h-3 mr-2" />
                     <span>Ready to process: {new URL(urlInput).hostname}</span>
@@ -416,7 +418,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
             </motion.div>
           </div>
 
-          {/* Process Button */}
+          {/* Process Button - Matches app button styling */}
           {canProcess() && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -426,7 +428,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               <button
                 onClick={processContent}
                 disabled={processing}
-                className="flex items-center space-x-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-sm"
+                className="flex items-center space-x-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 {processing ? (
                   <>
@@ -446,7 +448,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
         </div>
       </motion.div>
 
-      {/* Processing Modal */}
+      {/* Processing Modal - Matches app modal styling */}
       <AnimatePresence>
         {processModal.open && (
           <motion.div
@@ -459,11 +461,11 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4"
+              className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 border border-gray-200"
             >
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h3 className="text-lg font-semibold text-gray-900">Processing Content</h3>
-                <p className="text-sm text-gray-600">Transforming your content into knowledge articles</p>
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-900">Processing Content</h3>
+                <p className="text-sm text-gray-600 mt-1">Transforming your content into knowledge articles</p>
               </div>
 
               <div className="p-6">
@@ -473,38 +475,40 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                     <motion.div 
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="p-4 bg-green-100 rounded-full inline-flex"
+                      className="w-16 h-16 bg-green-100 rounded-full inline-flex items-center justify-center"
                     >
-                      <CheckCircle2 className="w-12 h-12 text-green-600" />
+                      <CheckCircle2 className="w-8 h-8 text-green-600" />
                     </motion.div>
                     <div>
                       <h4 className="text-xl font-semibold text-gray-900 mb-2">Processing Complete!</h4>
                       <p className="text-gray-600">Your content has been successfully processed</p>
                     </div>
 
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                      <div className="grid grid-cols-2 gap-6">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-blue-600">{processModal.data.articlesGenerated}</div>
+                          <div className="text-3xl font-bold text-blue-600 mb-1">{processModal.data.articlesGenerated}</div>
                           <div className="text-sm text-gray-600">Articles Generated</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-purple-600">{processModal.data.mediaProcessed}</div>
+                          <div className="text-3xl font-bold text-purple-600 mb-1">{processModal.data.mediaProcessed}</div>
                           <div className="text-sm text-gray-600">Media Processed</div>
                         </div>
                       </div>
-                      <div className="pt-2 border-t border-gray-200">
+                      <div className="pt-4 mt-4 border-t border-gray-200">
                         <div className="text-sm text-gray-600">Processing time: <span className="font-medium">{processModal.data.processingTime}s</span></div>
                       </div>
                     </div>
 
                     <div className="text-left">
-                      <h5 className="font-medium text-gray-900 mb-3">Generated Articles:</h5>
-                      <div className="space-y-2">
+                      <h5 className="font-semibold text-gray-900 mb-4">Generated Articles:</h5>
+                      <div className="space-y-3">
                         {processModal.data.articleLinks.map((article, index) => (
-                          <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                            <FileText className="w-4 h-4 text-blue-600" />
-                            <div className="flex-1">
+                          <div key={index} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                              <FileText className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm text-gray-900">{article.title}</div>
                               <div className="text-xs text-gray-600">{article.wordCount} words</div>
                             </div>
@@ -516,13 +520,13 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                     <div className="flex justify-center space-x-4">
                       <button
                         onClick={closeModal}
-                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
+                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors font-medium"
                       >
                         Done
                       </button>
                       <button
                         onClick={() => {/* Navigate to library */}}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
                       >
                         View in Library
                       </button>
@@ -530,16 +534,15 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                   </div>
                 ) : (
                   // Processing steps
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {processSteps.map((step, index) => {
                       const Icon = step.icon;
                       const isActive = index === processModal.step - 1;
                       const isCompleted = index < processModal.step - 1;
-                      const isPending = index >= processModal.step;
 
                       return (
                         <div key={step.id} className="flex items-center space-x-4">
-                          <div className={`p-3 rounded-full border-2 transition-all ${
+                          <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center transition-all ${
                             isCompleted ? 'bg-green-100 border-green-300' : 
                             isActive ? 'bg-blue-100 border-blue-300' : 
                             'bg-gray-50 border-gray-200'
@@ -554,12 +557,12 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                             <div className={`font-medium transition-all ${
                               isCompleted ? 'text-green-900' : 
                               isActive ? 'text-blue-900' : 
-                              'text-gray-500'
+                              'text-gray-600'
                             }`}>
                               {step.label}
                             </div>
                             {isActive && (
-                              <div className="text-sm text-blue-600">In progress...</div>
+                              <div className="text-sm text-blue-600 mt-1">In progress...</div>
                             )}
                           </div>
                           <div className={`w-6 h-6 rounded-full transition-all ${

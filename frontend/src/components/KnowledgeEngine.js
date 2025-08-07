@@ -598,9 +598,6 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
             </button>
           </div>
         </div>
-            </button>
-          </div>
-        </div>
 
         <input
           ref={fileInputRef}

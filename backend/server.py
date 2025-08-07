@@ -3779,7 +3779,14 @@ Follow these core rules:
 - If source contains <h1>, extract and reuse that.
 - If not, generate a specific, topic-focused title — never use "Comprehensive Guide to..." or generic phrases.
 
-SECTION REQUIREMENTS: Generate 1200-2000 words minimum with logical flow: Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+📌 Response Format (JSON):
+{
+  "title": "Extracted or generated specific title",
+  "content": "<h1>Title</h1><h2>Introduction</h2><p>...</p> ...",
+  "summary": "Brief human-readable summary of article scope (2–3 sentences)",
+  "tags": ["topic1", "topic2", "tech-support"],
+  "takeaways": ["Key point 1", "Key point 2", "Key concept 3"]
+}
 
 EXPANSION MANDATE: You MUST significantly expand each section with:
 - Detailed explanations for every concept

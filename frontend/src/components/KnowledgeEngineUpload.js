@@ -416,38 +416,30 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
             </motion.div>
           </div>
 
-          {/* Enhanced Action Button */}
+          {/* Process Button */}
           {canProcess() && (
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex justify-center"
             >
               <button
                 onClick={processContent}
                 disabled={processing}
-                className="group relative flex items-center space-x-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-12 py-6 rounded-3xl font-bold text-xl transition-all duration-500 shadow-2xl hover:shadow-3xl disabled:opacity-50 border border-white/20 backdrop-blur-sm overflow-hidden"
-                style={{
-                  background: processing ? 'linear-gradient(45deg, #6b7280, #9ca3af)' : undefined
-                }}
+                className="flex items-center space-x-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-sm"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10 flex items-center space-x-4">
-                  {processing ? (
-                    <>
-                      <Loader2 className="w-7 h-7 animate-spin" />
-                      <span>Processing Magic...</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="p-2 bg-white/20 rounded-full group-hover:rotate-12 transition-transform duration-300">
-                        <Sparkles className="w-7 h-7" />
-                      </div>
-                      <span>Generate Articles</span>
-                      <ArrowRight className="w-7 h-7 group-hover:translate-x-2 transition-transform duration-300" />
-                    </>
-                  )}
-                </div>
+                {processing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    <span>Generate Articles</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </button>
             </motion.div>
           )}

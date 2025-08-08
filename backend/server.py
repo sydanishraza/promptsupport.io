@@ -2242,7 +2242,7 @@ async def process_with_html_preprocessing_pipeline(file_path: str, file_extensio
                 # FIXED: Process each chunk as separate article with proper title extraction
                 for chunk_info in polished_result['chunks']:
                     # Extract H1-based title from chunk content
-                    chunk_title = await extract_h1_title_from_content(chunk_info.get('content', ''))
+                    chunk_title = extract_h1_title_from_content(chunk_info.get('content', ''))
                     if not chunk_title:
                         chunk_title = chunk_info.get('title', article_title)
                     

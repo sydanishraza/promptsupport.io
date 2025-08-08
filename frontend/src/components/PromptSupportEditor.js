@@ -3787,7 +3787,13 @@ const PromptSupportEditor = ({
       {isEditing && editorMode === 'wysiwyg' && renderToolbar()}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" style={{
+        // ISSUE 5 FIX: Prevent overlapping divs in edit mode
+        position: 'relative',
+        zIndex: 1,
+        minHeight: isEditing ? '400px' : 'auto',
+        maxHeight: isEditing ? 'calc(100vh - 200px)' : 'auto'
+      }}>
         {/* Global styles for both edit and view modes */}
         <style jsx>{`
           .wysiwyg-content h1 { font-size: 2rem; font-weight: bold; margin: 1rem 0; line-height: 1.2; color: #1f2937; }

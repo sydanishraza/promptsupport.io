@@ -1912,8 +1912,8 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
                 'chunking_reason': 'optimized_8000_threshold'
             }
         
-        # For content under 3,000 chars, proceed with single article processing
-        print(f"📝 ISSUE 1 FIX: Content under threshold ({content_length} chars) - creating single article")
+        # For content under 8,000 chars, proceed with single article processing
+        print(f"📝 OPTIMIZED: Content under threshold ({content_length} chars) - fast single article processing")
         
         # Create comprehensive prompt for content polishing with proper HTML formatting
         system_message = """You are a professional technical writer and content editor specializing in creating high-quality documentation and educational content.

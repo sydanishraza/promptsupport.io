@@ -7684,8 +7684,20 @@ def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 60
     - Prefer breaking at section boundaries (H2s, logical groups)
     """
     
-    if len(content) <= max_chars:
+    # CHUNKING FIX: Force chunking for content over 1200 characters regardless of max_chars
+    FORCE_CHUNK_THRESHOLD = 1200
+    
+    # If content is small and under force threshold, return as single chunk
+    if len(content) <= FORCE_CHUNK_THRESHOLD:
+        print(f"📝 Content under {FORCE_CHUNK_THRESHOLD} chars - single chunk")
         return [content]
+    
+    # If content is over force threshold, FORCE chunking even if under max_chars
+    if len(content) > FORCE_CHUNK_THRESHOLD:
+        print(f"🔥 FORCE CHUNKING: Content ({len(content)} chars) exceeds {FORCE_CHUNK_THRESHOLD} threshold")
+        # Reduce max_chars for more aggressive chunking
+        max_chars = min(max_chars, 2000)  # Force smaller chunks for better organization
+        min_chars = min(min_chars, 800)   # Lower minimum for more chunks
     
     chunks = []
     current_chunk = ""

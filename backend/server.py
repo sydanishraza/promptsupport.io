@@ -7822,23 +7822,47 @@ def insert_image_at_appropriate_position(content: str, img_html: str) -> str:
 
 
 async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
-    """Create multiple structured articles from content using smart chunking and LLM enhancement"""
+    """ISSUE 4 FIX: Create multiple structured articles from content using smart chunking with related links"""
     
-    print(f"📝 SIMPLIFIED APPROACH: Creating articles with smart chunking (no automatic image embedding)")
+    print(f"📝 ISSUE 4 FIX: Creating articles with smart chunking and related links")
     
     # STEP 1: Smart chunking based on character limits (6,000-8,000 chars per chunk)
     content_chunks = smart_chunk_content(content, max_chars=8000, min_chars=6000)
     
-    print(f"📊 Smart chunking created {len(content_chunks)} chunks from {len(content)} characters")
+    print(f"📊 ISSUE 4: Smart chunking created {len(content_chunks)} chunks from {len(content)} characters")
     
     # STEP 2: Process each chunk with LLM for clean HTML output
     articles = []
+    original_filename = metadata.get('original_filename', 'Document')
+    document_batch_id = metadata.get('document_batch_id', str(uuid.uuid4()))
+    
+    # Pre-generate article titles and IDs for related links
+    article_info = []
+    for i, chunk in enumerate(content_chunks):
+        article_id = str(uuid.uuid4())
+        # Extract title from chunk content
+        chunk_title = f"{original_filename.rsplit('.', 1)[0]} - Part {i+1}"
+        lines = chunk.split('\n')[:5]  # Check first 5 lines for a title
+        for line in lines:
+            line = line.strip()
+            if line and len(line) < 100 and not line.endswith('.'):
+                if not line.lower().startswith(('document:', 'file:', '#')):
+                    chunk_title = f"{original_filename.rsplit('.', 1)[0]} - {line[:50]}"
+                    break
+        
+        article_info.append({
+            'id': article_id,
+            'title': chunk_title,
+            'chunk_index': i + 1
+        })
+    
+    print(f"📋 ISSUE 4: Pre-generated {len(article_info)} article titles for related links")
     
     for i, chunk in enumerate(content_chunks):
         print(f"🔄 Processing chunk {i+1}/{len(content_chunks)} ({len(chunk)} characters)")
         
-        # Simplified system message focused on clean HTML output
-        system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG editor display. 
+        # ISSUE 4 FIX: Enhanced system message to include related links structure
+        system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG editor display with related links support.
         
 CRITICAL REQUIREMENTS:
 1. Use ONLY HTML tags: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
@@ -7847,8 +7871,16 @@ CRITICAL REQUIREMENTS:
 4. Structure content professionally with clear sections
 5. NO IMAGES in content (images are managed separately in Asset Library)
 6. Generate clean, editor-compatible HTML that renders properly
+7. ALWAYS end content with a "Related Articles" section using HTML list format
 
 Respond with valid JSON containing title and HTML content."""
+        
+        # ISSUE 4 FIX: Create related links HTML for this article
+        related_links_html = '<h2>Related Articles</h2>\n<p>Other parts of this document:</p>\n<ul>\n'
+        for j, info in enumerate(article_info):
+            if j != i:  # Don't link to self
+                related_links_html += f'<li><a href="#article-{info["id"]}" data-article-id="{info["id"]}">{info["title"]}</a></li>\n'
+        related_links_html += '</ul>'
         
         user_message = f"""Transform this content chunk into a clean, well-structured article with professional HTML formatting:
 
@@ -7862,11 +7894,13 @@ REQUIREMENTS:
 4. Ensure content is comprehensive and well-organized
 5. NO image tags - images are handled separately in Asset Library
 6. Generate clean HTML suitable for WYSIWYG editor
+7. MANDATORY: End the content with this exact Related Articles section:
+{related_links_html}
 
 RESPONSE FORMAT:
 {{
     "title": "Descriptive title for this content section",
-    "content": "<h1>Title</h1><p>Introduction paragraph...</p><h2>Section Header</h2><p>Content...</p>",
+    "content": "<h1>Title</h1><p>Introduction paragraph...</p><h2>Section Header</h2><p>Content...</p>{related_links_html}",
     "summary": "Brief summary of what this article covers",
     "tags": ["topic1", "topic2", "topic3"],
     "takeaways": ["Key point 1", "Key point 2", "Key point 3"]
@@ -7888,11 +7922,16 @@ RESPONSE FORMAT:
                 
                 article_data = json.loads(json_str)
                 
-                # Create article record
+                # ISSUE 4 FIX: Ensure related links are included in content
+                content_html = article_data.get("content", chunk)
+                if related_links_html not in content_html:
+                    content_html += f'\n\n{related_links_html}'
+                
+                # Create article record with pre-generated ID
                 article_record = {
-                    "id": str(uuid.uuid4()),
-                    "title": clean_article_title(article_data.get("title", f"Article Part {i+1}")),
-                    "content": clean_article_content(article_data.get("content", chunk)),
+                    "id": article_info[i]['id'],
+                    "title": clean_article_title(article_data.get("title", article_info[i]['title'])),
+                    "content": clean_article_content(content_html),
                     "summary": article_data.get("summary", "Generated from uploaded content"),
                     "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
                     "takeaways": article_data.get("takeaways", []),
@@ -7905,33 +7944,35 @@ RESPONSE FORMAT:
                         "chunk_index": i + 1,
                         "total_chunks": len(content_chunks),
                         "chunk_chars": len(chunk),
-                        "processing_approach": "smart_chunking_simplified",
-                        "processing_timestamp": datetime.utcnow().isoformat()
+                        "processing_approach": "smart_chunking_with_related_links",
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "document_batch_id": document_batch_id,
+                        "has_related_links": True
                     },
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 }
                 
                 articles.append(article_record)
-                print(f"✅ Created article {i+1}: '{article_record['title']}'")
+                print(f"✅ ISSUE 4: Created article {i+1} with related links: '{article_record['title']}'")
                 
             except json.JSONDecodeError as e:
                 print(f"❌ JSON parsing error for chunk {i+1}: {e}")
-                # Fallback: create basic article
-                fallback_article = create_fallback_article_from_chunk(chunk, metadata, i+1, len(content_chunks))
+                # Fallback: create basic article with related links
+                fallback_article = create_fallback_article_from_chunk_with_links(chunk, metadata, i+1, len(content_chunks), article_info, i)
                 articles.append(fallback_article)
             except Exception as e:
                 print(f"❌ Error processing chunk {i+1}: {e}")
-                # Fallback: create basic article  
-                fallback_article = create_fallback_article_from_chunk(chunk, metadata, i+1, len(content_chunks))
+                # Fallback: create basic article with related links
+                fallback_article = create_fallback_article_from_chunk_with_links(chunk, metadata, i+1, len(content_chunks), article_info, i)
                 articles.append(fallback_article)
         else:
-            print(f"❌ No AI response for chunk {i+1}, creating fallback article")
-            # Fallback: create basic article
-            fallback_article = create_fallback_article_from_chunk(chunk, metadata, i+1, len(content_chunks))
+            print(f"❌ No AI response for chunk {i+1}, creating fallback article with related links")
+            # Fallback: create basic article with related links
+            fallback_article = create_fallback_article_from_chunk_with_links(chunk, metadata, i+1, len(content_chunks), article_info, i)
             articles.append(fallback_article)
     
-    print(f"✅ Successfully created {len(articles)} articles using smart chunking approach")
+    print(f"✅ ISSUE 4 FIX: Successfully created {len(articles)} articles with related links using smart chunking")
     return articles
 
 def create_fallback_article_from_chunk(chunk: str, metadata: Dict[str, Any], chunk_index: int, total_chunks: int) -> Dict:

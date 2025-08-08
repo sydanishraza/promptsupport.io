@@ -177,9 +177,9 @@
 # Testing Data - Clean slate for fresh development
 #====================================================================================================
 
-# Testing Data - Knowledge Engine Phase 1 Refinement Testing
+# Testing Data - DOCX Processing Refinement Testing
 
-## user_problem_statement: "KNOWLEDGE ENGINE SIMPLIFICATION AND SMART CHUNKING: Implement revised simplified approach for DOCX processing. Remove automatic contextual image embedding and focus on: 1) Clean extraction → LLM enhancement → HTML output, 2) Smart chunking with 6,000-8,000 character limits and context-aware breaks, 3) Images extracted and saved to Asset Library only (no automatic embedding), 4) 100% editor-compatible HTML output"
+## user_problem_statement: "DOCX PROCESSING REFINEMENT PLAN: Further refine DOCX processing before moving on to other formats and input types: 1) Redundant Title Handling - Set article title field = original filename & remove title heading from body, 2) Chunking Validation - Verify if chunking is currently active and working properly, 3) HTML Optimization for Editor Compatibility - Generate clean semantic HTML with callouts, tables, expand/collapse sections, 4) Editor Activation Issue Fix - Resolve bug where generated articles initially appear deactivated (editor loads in active state by default)"
 
 ## backend:
   - task: "DOCX Processing Title and Content Quality Issues - Google Maps Tutorial Testing"

@@ -7763,8 +7763,8 @@ def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 60
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
     """ISSUE 1 FIX: FORCE CHUNKING - Lower threshold to ensure content gets properly chunked"""
     
-    # LOWERED THRESHOLD: Force chunking for better content structure
-    MAX_SINGLE_ARTICLE_CHARS = 1500  # Lowered from 3000 to 1500 to force chunking on even smaller documents
+    # CHUNKING FIX: Aggressive threshold for forcing multiple articles
+    MAX_SINGLE_ARTICLE_CHARS = 1200  # ISSUE 1 FIX: Further lowered to 1200 to force chunking more aggressively
     
     print(f"🔍 ISSUE 1 FIX: Chunking validation for {file_extension} content:")
     print(f"   - Content length: {len(content)} characters")

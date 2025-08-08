@@ -120,20 +120,22 @@ ADDITIONAL CONTENT FOR CHUNKING:
             print(f"📋 Response Keys: {list(data.keys())}")
             
             # Check if chunking occurred
-            chunks_created = data.get('chunks_created', 0)
             articles_generated = data.get('articles_generated', 0)
+            articles = data.get('articles', [])
+            success = data.get('success', False)
             
-            print(f"📚 Chunks Created: {chunks_created}")
             print(f"📄 Articles Generated: {articles_generated}")
+            print(f"📚 Articles List Length: {len(articles)}")
+            print(f"✅ Success: {success}")
             
             # FORCE CHUNKING TEST: Content over 3,000 chars should create multiple articles
-            if chunks_created > 1 or articles_generated > 1:
+            if articles_generated > 1 or len(articles) > 1:
                 print("✅ FORCE CHUNKING FIX VERIFIED:")
-                print(f"  ✅ Content ({actual_length} chars) was split into {max(chunks_created, articles_generated)} parts")
+                print(f"  ✅ Content ({actual_length} chars) was split into {max(articles_generated, len(articles))} parts")
                 print("  ✅ Chunking threshold of 3,000 characters is working")
                 print("  ✅ Multiple articles created instead of single article")
                 return True
-            elif chunks_created == 1 or articles_generated == 1:
+            elif articles_generated == 1 or len(articles) == 1:
                 print("⚠️ FORCE CHUNKING FIX PARTIAL:")
                 print(f"  ⚠️ Content ({actual_length} chars) created only 1 article")
                 print("  ⚠️ May indicate chunking threshold is not lowered to 3,000")
@@ -141,7 +143,7 @@ ADDITIONAL CONTENT FOR CHUNKING:
                 return False
             else:
                 print("❌ FORCE CHUNKING FIX FAILED:")
-                print(f"  ❌ No chunks or articles created")
+                print(f"  ❌ No articles created")
                 print(f"  ❌ Processing may have failed")
                 return False
                 
@@ -177,17 +179,23 @@ The H1 heading "Original Document Title" should not be duplicated in the content
             }
             
             form_data = {
-                'metadata': json.dumps({
-                    "source": "title_test",
-                    "test_type": "title_handling_fix",
-                    "expected_title": "title_handling_test"
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps({
+                    "template_id": "phase1_document_processing",
+                    "processing_instructions": "Test title handling fix",
+                    "output_requirements": {
+                        "format": "html",
+                        "min_articles": 1,
+                        "max_articles": 3
+                    }
                 })
             }
             
-            print("📤 Uploading test DOCX to verify title handling...")
+            print("📤 Uploading test DOCX to training/process endpoint to verify title handling...")
             
             response = requests.post(
-                f"{self.base_url}/content/upload",
+                f"{self.base_url}/training/process",
                 files=files,
                 data=form_data,
                 timeout=60
@@ -200,68 +208,48 @@ The H1 heading "Original Document Title" should not be duplicated in the content
                 return False
             
             data = response.json()
+            articles = data.get('articles', [])
             
-            # Wait a moment for processing
-            time.sleep(3)
+            if not articles:
+                print("❌ No articles generated for title testing")
+                return False
             
-            # Check Content Library for the generated article
-            print("🔍 Checking Content Library for generated article...")
+            # Check the first article for title handling
+            test_article = articles[0]
+            article_title = test_article.get('title', '')
+            article_content = test_article.get('content', '')
             
-            library_response = requests.get(f"{self.base_url}/content-library", timeout=15)
+            print(f"📄 Generated article: '{article_title}'")
+            print(f"📝 Content length: {len(article_content)} characters")
             
-            if library_response.status_code == 200:
-                library_data = library_response.json()
-                articles = library_data.get('articles', [])
-                
-                # Look for our test article
-                test_article = None
-                for article in articles:
-                    title = article.get('title', '').lower()
-                    if 'title_handling_test' in title or 'title handling' in title:
-                        test_article = article
-                        break
-                
-                if test_article:
-                    article_title = test_article.get('title', '')
-                    article_content = test_article.get('content', '')
-                    
-                    print(f"📄 Found test article: '{article_title}'")
-                    print(f"📝 Content length: {len(article_content)} characters")
-                    
-                    # TITLE HANDLING TEST 1: Title should be based on filename
-                    filename_based = 'title_handling_test' in article_title.lower()
-                    
-                    # TITLE HANDLING TEST 2: No H1 duplication in content
-                    h1_count = article_content.count('<h1>')
-                    h1_duplication = h1_count > 1
-                    
-                    print(f"🏷️ Title Analysis:")
-                    print(f"  Article Title: '{article_title}'")
-                    print(f"  Filename-based: {filename_based}")
-                    print(f"  H1 count in content: {h1_count}")
-                    print(f"  H1 duplication: {h1_duplication}")
-                    
-                    if filename_based and not h1_duplication:
-                        print("✅ TITLE HANDLING FIX VERIFIED:")
-                        print("  ✅ Article title uses original filename")
-                        print("  ✅ No H1 duplication in content body")
-                        print("  ✅ Clean title extraction working")
-                        return True
-                    elif filename_based:
-                        print("⚠️ TITLE HANDLING FIX PARTIAL:")
-                        print("  ✅ Article title uses filename")
-                        print("  ⚠️ H1 duplication may still occur")
-                        return True
-                    else:
-                        print("❌ TITLE HANDLING FIX FAILED:")
-                        print("  ❌ Article title not based on filename")
-                        print(f"  ❌ Expected: 'title_handling_test', Got: '{article_title}'")
-                        return False
-                else:
-                    print("❌ Could not find test article in Content Library")
-                    return False
+            # TITLE HANDLING TEST 1: Title should be based on filename
+            filename_based = 'title_handling_test' in article_title.lower()
+            
+            # TITLE HANDLING TEST 2: No H1 duplication in content
+            h1_count = article_content.count('<h1>')
+            h1_duplication = h1_count > 1
+            
+            print(f"🏷️ Title Analysis:")
+            print(f"  Article Title: '{article_title}'")
+            print(f"  Filename-based: {filename_based}")
+            print(f"  H1 count in content: {h1_count}")
+            print(f"  H1 duplication: {h1_duplication}")
+            
+            if filename_based and not h1_duplication:
+                print("✅ TITLE HANDLING FIX VERIFIED:")
+                print("  ✅ Article title uses original filename")
+                print("  ✅ No H1 duplication in content body")
+                print("  ✅ Clean title extraction working")
+                return True
+            elif filename_based:
+                print("⚠️ TITLE HANDLING FIX PARTIAL:")
+                print("  ✅ Article title uses filename")
+                print("  ⚠️ H1 duplication may still occur")
+                return True
             else:
-                print(f"❌ Could not access Content Library - status code {library_response.status_code}")
+                print("❌ TITLE HANDLING FIX FAILED:")
+                print("  ❌ Article title not based on filename")
+                print(f"  ❌ Expected: 'title_handling_test', Got: '{article_title}'")
                 return False
                 
         except Exception as e:
@@ -285,17 +273,23 @@ The H1 heading "Original Document Title" should not be duplicated in the content
             }
             
             form_data = {
-                'metadata': json.dumps({
-                    "source": "related_links_test",
-                    "test_type": "related_links_functionality",
-                    "expected_behavior": "multiple_articles_with_related_links"
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps({
+                    "template_id": "phase1_document_processing",
+                    "processing_instructions": "Test related links functionality",
+                    "output_requirements": {
+                        "format": "html",
+                        "min_articles": 1,
+                        "max_articles": 10
+                    }
                 })
             }
             
-            print("📤 Uploading test DOCX to verify related links...")
+            print("📤 Uploading test DOCX to training/process endpoint to verify related links...")
             
             response = requests.post(
-                f"{self.base_url}/content/upload",
+                f"{self.base_url}/training/process",
                 files=files,
                 data=form_data,
                 timeout=120
@@ -306,72 +300,43 @@ The H1 heading "Original Document Title" should not be duplicated in the content
                 return False
             
             data = response.json()
-            chunks_created = data.get('chunks_created', 0)
+            articles = data.get('articles', [])
             
-            print(f"📚 Chunks Created: {chunks_created}")
+            print(f"📄 Articles Generated: {len(articles)}")
             
-            if chunks_created <= 1:
-                print("⚠️ Only 1 chunk created - related links test requires multiple articles")
+            if len(articles) <= 1:
+                print("⚠️ Only 1 article created - related links test requires multiple articles")
                 print("✅ Single article processing working, but related links not applicable")
                 return True
             
-            # Wait for processing
-            time.sleep(5)
+            # Check for related links sections in articles
+            articles_with_links = 0
             
-            # Check Content Library for related articles
-            library_response = requests.get(f"{self.base_url}/content-library", timeout=15)
-            
-            if library_response.status_code == 200:
-                library_data = library_response.json()
-                articles = library_data.get('articles', [])
+            for i, article in enumerate(articles):
+                content = article.get('content', '')
                 
-                # Look for articles from our test document
-                related_articles = []
-                for article in articles:
-                    title = article.get('title', '').lower()
-                    content = article.get('content', '').lower()
-                    if 'related_links_test' in title or 'chunking test' in content:
-                        related_articles.append(article)
+                # Look for related links indicators
+                has_related_section = any(indicator in content.lower() for indicator in [
+                    'related', 'see also', 'links', 'other articles', 'continue reading'
+                ])
                 
-                print(f"📄 Found {len(related_articles)} related articles")
-                
-                if len(related_articles) >= 2:
-                    # Check for related links sections in articles
-                    articles_with_links = 0
-                    
-                    for i, article in enumerate(related_articles):
-                        content = article.get('content', '')
-                        
-                        # Look for related links indicators
-                        has_related_section = any(indicator in content.lower() for indicator in [
-                            'related', 'see also', 'links', 'other articles', 'continue reading'
-                        ])
-                        
-                        if has_related_section:
-                            articles_with_links += 1
-                            print(f"✅ Article {i+1} has related links section")
-                        else:
-                            print(f"⚠️ Article {i+1} may not have related links section")
-                    
-                    if articles_with_links > 0:
-                        print("✅ RELATED LINKS FUNCTIONALITY VERIFIED:")
-                        print(f"  ✅ {len(related_articles)} articles generated from same document")
-                        print(f"  ✅ {articles_with_links} articles have related links sections")
-                        print("  ✅ Related links functionality is working")
-                        return True
-                    else:
-                        print("⚠️ RELATED LINKS FUNCTIONALITY PARTIAL:")
-                        print(f"  ✅ {len(related_articles)} articles generated")
-                        print("  ⚠️ Related links sections may not be implemented yet")
-                        return True
+                if has_related_section:
+                    articles_with_links += 1
+                    print(f"✅ Article {i+1} has related links section")
                 else:
-                    print("⚠️ RELATED LINKS TEST INCONCLUSIVE:")
-                    print(f"  ⚠️ Only {len(related_articles)} related articles found")
-                    print("  ⚠️ Need multiple articles to test related links")
-                    return True
+                    print(f"⚠️ Article {i+1} may not have related links section")
+            
+            if articles_with_links > 0:
+                print("✅ RELATED LINKS FUNCTIONALITY VERIFIED:")
+                print(f"  ✅ {len(articles)} articles generated from same document")
+                print(f"  ✅ {articles_with_links} articles have related links sections")
+                print("  ✅ Related links functionality is working")
+                return True
             else:
-                print(f"❌ Could not access Content Library - status code {library_response.status_code}")
-                return False
+                print("⚠️ RELATED LINKS FUNCTIONALITY PARTIAL:")
+                print(f"  ✅ {len(articles)} articles generated")
+                print("  ⚠️ Related links sections may not be implemented yet")
+                return True
                 
         except Exception as e:
             print(f"❌ Related links test failed - {str(e)}")
@@ -410,18 +375,24 @@ When multiple articles are generated from this document, they should have relate
             }
             
             form_data = {
-                'metadata': json.dumps({
-                    "source": "comprehensive_test",
-                    "test_type": "all_docx_fixes",
-                    "expected_behavior": "force_chunking_title_handling_related_links"
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps({
+                    "template_id": "phase1_document_processing",
+                    "processing_instructions": "Comprehensive test of all DOCX fixes",
+                    "output_requirements": {
+                        "format": "html",
+                        "min_articles": 1,
+                        "max_articles": 10
+                    }
                 })
             }
             
-            print("📤 Uploading comprehensive test DOCX...")
+            print("📤 Uploading comprehensive test DOCX to training/process endpoint...")
             
             start_time = time.time()
             response = requests.post(
-                f"{self.base_url}/content/upload",
+                f"{self.base_url}/training/process",
                 files=files,
                 data=form_data,
                 timeout=120
@@ -438,16 +409,16 @@ When multiple articles are generated from this document, they should have relate
             data = response.json()
             
             # Analyze results
-            chunks_created = data.get('chunks_created', 0)
+            articles = data.get('articles', [])
             success = data.get('success', False)
             
             print(f"📊 Comprehensive Test Results:")
             print(f"  Success: {success}")
-            print(f"  Chunks Created: {chunks_created}")
+            print(f"  Articles Generated: {len(articles)}")
             print(f"  Content Length: {actual_length} characters")
             
             # Comprehensive assessment
-            force_chunking_working = chunks_created > 1 if actual_length > 3000 else True
+            force_chunking_working = len(articles) > 1 if actual_length > 3000 else True
             processing_successful = success
             
             if force_chunking_working and processing_successful:

@@ -190,7 +190,7 @@
 ## user_problem_statement: "DOCX PROCESSING REFINEMENT PLAN: Further refine DOCX processing before moving on to other formats and input types: 1) Redundant Title Handling - Set article title field = original filename & remove title heading from body, 2) Chunking Validation - Verify if chunking is currently active and working properly, 3) HTML Optimization for Editor Compatibility - Generate clean semantic HTML with callouts, tables, expand/collapse sections, 4) Editor Activation Issue Fix - Resolve bug where generated articles initially appear deactivated (editor loads in active state by default)"
 
 ## backend:
-  - task: "DOCX Processing Critical Fixes Testing - Force Chunking and Filename Title Handling"
+  - task: "CLEAN CONTENT LIBRARY AND TEST WITH USER'S DOCX FILE - Comprehensive Testing"
     implemented: true
     working: true
     file: "backend/server.py"

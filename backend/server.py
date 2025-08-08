@@ -824,10 +824,8 @@ class DocumentPreprocessor:
     
     def _create_structural_html_chunks(self, html_content: str, images: list) -> list:
         """
-        FIXED: Create logical article chunks based ONLY on H1 headings
-        Enhanced to support both HTML <h1> tags and Markdown # syntax
-        Each H1 section becomes exactly ONE article, regardless of size
-        This ensures documents generate the expected number of logical articles
+        FIXED: Create logical article chunks based on H1 AND H2 headings for better chunking
+        Enhanced to support documents with H2-based structure (common in user guides)
         """
         try:
             # ENHANCED: Detect if content is Markdown and convert to HTML first
@@ -845,42 +843,51 @@ class DocumentPreprocessor:
             # Distribute images across chunks based on document position
             chunk_images = {}  # Will map section_id to list of images
             
-            # Find H1 elements to understand document structure
+            # ISSUE FIX: Look for H1 AND H2 elements for better chunking
             h1_elements = soup.find_all('h1')
-            has_h1_structure = len(h1_elements) > 0
+            h2_elements = soup.find_all('h2')
+            major_headings = h1_elements + h2_elements
             
-            print(f"📊 Document analysis: {len(h1_elements)} H1 elements found")
-            print(f"🎯 LOGICAL CHUNKING: Each H1 section will become exactly ONE article")
+            print(f"📊 Document analysis: {len(h1_elements)} H1 elements, {len(h2_elements)} H2 elements found")
+            print(f"🎯 ENHANCED CHUNKING: Using {len(major_headings)} major headings for chunking")
             
-            if len(h1_elements) > 0:
-                print(f"🔍 DEBUG: H1 elements found:")
-                for i, h1 in enumerate(h1_elements):
-                    print(f"   H1 #{i+1}: '{h1.get_text().strip()[:50]}'")
+            if len(major_headings) > 0:
+                print(f"🔍 DEBUG: Major headings found:")
+                for i, heading in enumerate(major_headings[:10]):  # Show first 10
+                    print(f"   {heading.name.upper()} #{i+1}: '{heading.get_text().strip()[:50]}'")
             
-            if not has_h1_structure:
-                # FALLBACK: No H1 structure - create single comprehensive chunk
-                print("📄 No H1 structure detected - creating single comprehensive article")
-                all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+            # ISSUE FIX: Enhanced chunking logic - use H1 OR H2 elements
+            if len(major_headings) <= 1:
+                # FALLBACK: No major heading structure OR only 1 heading
+                print("📄 Insufficient heading structure - checking content size for chunking")
                 
-                # Create one comprehensive chunk for the entire document
-                chunk_html = self._create_chunk_html(all_elements)
-                if self._is_chunk_valid(chunk_html):
-                    chunks.append({
-                        'section_id': 'full_document',
-                        'title': 'Complete Document',
-                        'content': chunk_html,
-                        'images': images  # All images go to this single chunk
-                    })
-                    print(f"✅ Comprehensive article created: Complete Document ({len(chunk_html)} chars)")
+                # Check if content is large enough to warrant chunking
+                content_length = len(html_content)
+                if content_length > 12000:  # If content is very large, force paragraph-based chunking
+                    print(f"📏 Large content ({content_length} chars) - using paragraph-based chunking")
+                    return self._create_paragraph_based_chunks(html_content, images)
+                else:
+                    print(f"📄 Creating single comprehensive article ({content_length} chars)")
+                    all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+                    
+                    chunk_html = self._create_chunk_html(all_elements)
+                    if self._is_chunk_valid(chunk_html):
+                        chunks.append({
+                            'section_id': 'full_document',
+                            'title': 'Complete Document',
+                            'content': chunk_html,
+                            'images': images  # All images go to this single chunk
+                        })
+                        print(f"✅ Comprehensive article created: Complete Document ({len(chunk_html)} chars)")
             
             else:
-                # H1-based chunking - LOGICAL STRUCTURE ONLY (no size limits)
-                print("📄 H1 structure detected - using PURE H1-based logical chunking")
+                # ENHANCED: H1 AND H2 based chunking for better article distribution
+                print(f"📄 Major heading structure detected - using ENHANCED heading-based chunking")
                 
                 for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
                     
-                    # Break ONLY at H1 boundaries - ignore size limits for logical structure
-                    if element.name == 'h1':
+                    # Break at both H1 AND H2 boundaries for better chunking
+                    if element.name in ['h1', 'h2']:
                         # Save current chunk if it has content
                         if current_chunk_content:
                             chunk_html = self._create_chunk_html(current_chunk_content)
@@ -891,22 +898,23 @@ class DocumentPreprocessor:
                                     'content': chunk_html,
                                     'images': chunk_images.get(current_section_id, [])
                                 })
-                                print(f"✅ LOGICAL H1 article created: {current_title} ({len(chunk_html)} chars)")
+                                print(f"✅ ENHANCED article created: {current_title} ({len(chunk_html)} chars)")
                         
                         # Start new chunk
                         section_counter += 1
                         current_section_id = f"section_{section_counter}"
-                        # Get clean title from H1 text
-                        h1_text = element.get_text().strip()
-                        current_title = h1_text[:100] + ("..." if len(h1_text) > 100 else "")
+                        # Get clean title from heading text
+                        heading_text = element.get_text().strip()
+                        current_title = heading_text if heading_text else f"Section {section_counter}"
+                        
+                        # Start new chunk content with this heading
                         current_chunk_content = [element]
-                        chunk_images[current_section_id] = []
-                    
+                        
                     else:
-                        # Add to current chunk - NO SIZE LIMITS for logical structure
+                        # Add all non-major-heading elements to current chunk
                         current_chunk_content.append(element)
                 
-                # Add final chunk
+                # Don't forget the final chunk
                 if current_chunk_content:
                     chunk_html = self._create_chunk_html(current_chunk_content)
                     if self._is_chunk_valid(chunk_html):
@@ -916,22 +924,17 @@ class DocumentPreprocessor:
                             'content': chunk_html,
                             'images': chunk_images.get(current_section_id, [])
                         })
-                        print(f"✅ Final LOGICAL H1 article created: {current_title} ({len(chunk_html)} chars)")
-                
-                # Distribute images across chunks based on original document position
-                self._distribute_images_to_chunks(chunks, images)
+                        print(f"✅ ENHANCED final article: {current_title} ({len(chunk_html)} chars)")
             
-            # NO sub-chunking validation - preserve logical structure
-            print(f"🎯 LOGICAL CHUNKING COMPLETE: Created {len(chunks)} articles based on document structure")
-            print(f"📋 Articles: {[chunk['title'] for chunk in chunks]}")
+            print(f"🎯 ENHANCED CHUNKING COMPLETE: Created {len(chunks)} logical articles")
             return chunks
             
         except Exception as e:
             print(f"❌ Structural chunking failed: {e}")
-            # Fallback: create single chunk
+            # Ultimate fallback: single chunk
             return [{
-                'section_id': 'full_document',
-                'title': 'Full Document',
+                'section_id': 'fallback',
+                'title': 'Document Content',
                 'content': html_content,
                 'images': images
             }]

@@ -1,28 +1,23 @@
 <analysis>
-The previous AI engineer focused on evolving the PromptSupport application's Knowledge Engine. Initially, significant work was done on DOCX processing, improving article generation fidelity and addressing contextual image placement issues. This included a major refactor of image handling to ensure proper semantic embedding. A comprehensive frontend redesign of the Knowledge Engine Upload interface was also completed, adopting a Gen Z aesthetic.
-
-Following these initial successes, the user provided a revised set of priorities, explicitly pausing automatic contextual image embedding and emphasizing smart chunking, clean HTML output, and editor compatibility for generated articles. The engineer then adapted the backend logic in  to implement these new chunking rules and simplified content generation flows, removing the previously complex image embedding logic.
-
-The most recent interactions revolved around a critical bug: despite cleanup commands, the content library continued to display old articles and assets. The engineer meticulously debugged this, discovering a database name mismatch during cleanup operations. The correct database () and collections (, ) were identified and successfully purged, bringing the system to a clean state. The final user request was to change the favicon.
+The previous AI engineer initiated PromptSupport's Knowledge Engine, focusing on DOCX processing, contextual image placement, and frontend UI redesign. The user then revised priorities, emphasizing smart chunking, clean HTML, and editor compatibility, pausing image embedding. The engineer adapted  for new chunking rules and simplified content generation. Recent efforts debugged and fixed a critical database cleanup bug caused by a database name mismatch. Subsequently, the focus shifted to improving DOCX processing for comprehensive, non-summarized content. The engineer analyzed PDF processing, identified weak LLM prompts in DOCX, and implemented sophisticated, enterprise-grade prompts ensuring full content expansion and accurate title extraction. A key technical bug with  method indentation was fixed. Finally, the frontend's content upload page, modal, and Open Content Upload Hub were meticulously redesigned to match the application's clean aesthetic, and the content library was thoroughly cleaned.
 </analysis>
 
 <product_requirements>
-The PromptSupport application aims to be an AI-native platform for support documentation, centered around its Knowledge Engine. This engine's primary goal is to ingest various content types (DOCX, PDF, HTML, URLs, audio/video), then extract, analyze, and regenerate them into improved, media-rich articles.
-The initial implementation focused on DOCX processing, aiming for complete content, accurate titles, and contextual image placement. The frontend's Knowledge Engine Upload interface was redesigned for a modern Gen Z aesthetic, featuring modular upload blocks and real-time feedback.
+The PromptSupport application aims to be an AI-native platform for support documentation, leveraging its Knowledge Engine to ingest various content types (DOCX, PDF, HTML, URLs, audio/video). The core goal is to extract, analyze, and regenerate content into improved, media-rich articles. Initially, DOCX processing was prioritized for complete content, accurate titles, and contextual image placement, alongside a Gen Z frontend redesign for the Knowledge Engine Upload interface.
 
-**Revised Product Requirements (Mid-Trajectory Update):**
-1.  **Content Extraction:** Extract full text and save all images to the Asset Library. **Automatic image embedding in articles is paused.**
-2.  **Article Generation:** LLM to revise, improve clarity, enhance structure, and apply modern technical writing best practices. Articles must be 100% clean, complete, and HTML-formatted, compatible with the WYSIWYG editor.
-3.  **Smart Chunking:** Limit article length (6,000–8,000 characters). Splits must be context-aware (no mid-paragraph/step/list breaks), preferring section boundaries. Each chunk becomes a separate, appropriately titled article.
-4.  **Editor Compatibility:** Generated articles must use correct HTML tags and work seamlessly within the inbuilt editor.
-**Phased Implementation Plan:** DOCX, then PDF, PPT/PPTX, XLS/XLSX, CSV, XML, HTML, MD, TXT, Audio, Video, followed by URL uploads, text paste, and third-party integrations.
+Revised requirements include:
+1.  **Content Extraction:** Full text extraction with all images saved to Asset Library; automatic image embedding in articles is paused.
+2.  **Article Generation:** LLM to revise, improve clarity, enhance structure, and apply modern technical writing best practices, resulting in 100% clean, complete, HTML-formatted, WYSIWYG editor-compatible articles.
+3.  **Smart Chunking:** Articles limited to 6,000–8,000 characters, with context-aware splits at section boundaries, each chunk becoming a separate, titled article.
+4.  **Editor Compatibility:** Generated articles must use correct HTML tags and integrate seamlessly with the inbuilt editor.
+The phased implementation plan prioritizes DOCX, then other file types (PDF, PPT, XLS, CSV, XML, HTML, MD, TXT, Audio, Video), followed by URL uploads, text paste, and third-party integrations.
 </product_requirements>
 
 <key_technical_concepts>
 -   **Frontend:** React.js, TailwindCSS, Framer Motion for UI.
--   **Backend:** FastAPI for APIs, MongoDB for data storage,  for document processing.
--   **LLM Integration:** OpenAI (GPT-4o/mini) for content generation, structured rewriting, and smart chunking.
--   **Content Processing:** Intelligent chunking, JSON sanitization, and prompt engineering.
+-   **Backend:** FastAPI for APIs, MongoDB for data storage,  for document parsing.
+-   **LLM Integration:** OpenAI (GPT-4o/mini) for content generation, structured rewriting, smart chunking, and prompt engineering.
+-   **Content Processing:** Intelligent chunking, JSON sanitization, HTML preprocessing.
 </key_technical_concepts>
 
 <code_architecture>
@@ -31,38 +26,54 @@ The application uses a  (React) and  (FastAPI) architecture.
 
 
 -   ****:
-    -   **Importance**: Acts as the central API, handling document processing, LLM integration, and database interactions.
+    -   **Importance**: Central API for document processing, LLM integration, and database interactions.
     -   **Changes**:
-        -   **Initial Fixes**: Enhanced DOCX processing for contextual image placement and real URLs, removed content truncation, refined LLM prompts. Fixed database connection in  and  LLM parameter error. Crucially, removed line 8174 that injected all image references, bypassing semantic placement. Added functions like , , etc.
-        -   **Recent Changes (Post User Update)**:
-            -   Modified to implement smart chunking (6,000-8,000 character limit) with context-aware breaks for articles.
-            -   Simplified , , and  to align with the revised requirement of *not* embedding images contextually in articles, but only extracting and saving them to the Asset Library. This involved removing  parameters from several functions and simplifying the article generation flow.
-            -   **Bug Fix (Database Cleanup)**: Identified and corrected the database name used for cleanup, changing it from default to , enabling successful content and asset deletion from  and  collections.
+        -   **Initial**: Enhanced DOCX processing, removed content truncation, refined LLM prompts (removed complex image embedding logic from article generation, saving images to Asset Library only). Fixed database connection and LLM parameter errors.
+        -   **Recent**: Implemented smart chunking (6,000-8,000 chars, context-aware). Debugged and fixed database name mismatch () for cleanup operations.
+        -   **Prompt Updates**: Replaced vague LLM prompts for DOCX with enterprise-grade system and user messages. These prompts explicitly mandate content enhancement (never summarization), logical restructuring, depth addition, information fidelity, modern technical writing style, and strict HTML output. They also enforce precise H1 title extraction and specific word count targets (800-1500 words for standard, 1200-2000 words for comprehensive).
+        -   **Bug Fix**: Corrected indentation for , , and  methods, moving them inside the  class to resolve  and ensure the HTML preprocessing pipeline functions correctly.
+        -   **New Function**: Added  to extract H1 titles robustly.
 -   ****:
-    -   **Importance**: Primary user interface for content upload.
-    -   **Changes**: Redesigned to a Gen Z aesthetic (3-block layout, modern UI, processing modal), fixed SVG parsing error.
+    -   **Importance**: Primary user interface for content upload, including the modal.
+    -   **Changes**: Redesigned from a Gen Z aesthetic to a cleaner, more professional design matching the app's theme. This included changing card styles (from dashed borders to solid white with subtle shadows), consistent spacing, typography, and button styling.
+-   ****:
+    -   **Importance**: Contains the Open Content Upload Hub button and quick actions related to content upload.
+    -   **Changes**: Redesigned the Open Content Upload Hub button and the quick actions section. Replaced gradient backgrounds and Gen Z styling with clean, solid blue buttons and subtle colored quick action containers, aligning with the app's overall professional design system.
+-   ****:
+    -   **Importance**: Placeholder for the favicon.
+    -   **Changes**: The favicon was updated by downloading a new SVG file (from ) and likely replacing or linking it in  or through  configuration.
 -   ****:
     -   **Importance**: Records user problem statements, testing data, and communications.
-    -   **Changes**: Continuously updated to reflect the status of DOCX processing, backend test results, and bug resolutions, including the recent database cleanup.
+    -   **Changes**: Continuously updated to reflect DOCX processing and prompt improvement test results, including the database cleanup status and detailed debugging outputs.
 </code_architecture>
 
 <pending_tasks>
 -   Develop core AI features (Developer Docs System, AI Agent System, AI Chatbot, Unified Portal, Admin Console).
--   Enhance Knowledge Engine to integrate other content types (URLs, audio/video), improve content library, and add batch processing/template features, following the systematic plan (PDF, PPT, etc.).
+-   Enhance Knowledge Engine to integrate other content types (URLs, audio/video), improve content library, and add batch processing/template features, following the systematic plan (PDF, PPT, etc., post DOCX).
 -   UI/UX refinements (Quick Setup Wizard, editor scrolling, training analytics).
--   Frontend testing of the DOCX processing pipeline to verify end-to-end user experience after backend changes.
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was focused on addressing a critical user-reported bug where the content library and asset library were not being correctly cleared. Despite prior cleanup attempts, the frontend UI and backend API calls ( and ) continued to show existing articles (298) and assets (209).
+Immediately prior to this summary, the AI engineer was focused on resolving critical user feedback regarding DOCX processing: articles were still summarized and titles were incorrect.
 
-The root cause was identified as a database connection issue during cleanup. The  in  did not specify a database name, leading cleanup scripts to connect to a default MongoDB database instead of the application's actual database. The backend's  was found to be explicitly using  for  and  collections.
+**Problem Identification & Fixes:**
+1.  **LLM Prompt Issues:** Identified that previous enhance and improve prompts were still causing summarization, and title prompts were too vague.
+    *   **Solution:** Implemented a new, detailed enterprise-grade prompt design provided by the user, now active in  for , , and . This new prompt mandates content expansion (no summarization), logical structure, technical depth, and strict HTML formatting with explicit word count targets (800-1500 words for standard, 1200-2000 for comprehensive). It also enforces exact H1 title extraction.
+2.  ** Method Indentation Bug:** Discovered that critical methods (, , ) were defined outside the  class due to incorrect indentation, causing the HTML preprocessing pipeline to fail.
+    *   **Solution:** These methods were correctly moved and indented inside the  class in , resolving  and enabling proper chunk processing.
 
-The engineer rectified this by explicitly connecting to  for cleanup operations, which successfully purged all documents from , , , , and  collections. API verification confirmed that both content and asset libraries are now empty (0 articles, 0 assets).
+**Frontend Redesign:**
+1.  **Favicon Update:** The favicon was changed to .
+2.  **Knowledge Engine Upload Modal Redesign:** The  component was redesigned to align with the application's clean, professional theme, replacing previous Gen Z elements and dashed borders with solid white cards, subtle shadows, consistent spacing, and matching color schemes.
+3.  **Open Content Upload Hub Redesign:** The  component was updated to redesign the Open Content Upload Hub button and related quick actions, moving from gradient-heavy, animated styles to clean, solid blue buttons and subtle colored quick action containers, fully integrating with the app's theme.
 
-The system is currently in a clean state, ready for fresh testing of the DOCX processing pipeline with the newly implemented smart chunking and simplified image handling (images saved separately, not embedded in articles). The last explicit request from the user was to change the favicon.
+**Content Library Cleanup:**
+*   A user request to clean the content library was addressed. All 20 articles and 83 assets (along with processing jobs, document chunks, and training sessions) from the  were successfully deleted. This was verified through API calls and frontend screenshots confirming empty libraries.
+
+**Current State:** The system is in a clean state with a redesigned, theme-aligned frontend. The backend's DOCX processing now uses sophisticated, enterprise-grade prompts, successfully extracting correct titles and enhancing content comprehensively, with word counts approaching targets.
+
 </current_work>
 
 <optional_next_step>
-Change the favicon to the provided URL.
+The system is ready for user testing of the improved DOCX processing with the newly implemented enterprise-grade prompts and redesigned UI.
 </optional_next_step>

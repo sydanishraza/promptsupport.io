@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://30d65fc7-a543-4013-8fc4-cc8e1e404320.preview.emergentagent.com"
+BACKEND_URL = "https://809922a0-8c7a-4229-b01a-eafa1e6de9cd.preview.emergentagent.com"
 
 def debug_title_generation():
     """Debug the title generation by examining the LLM processing"""

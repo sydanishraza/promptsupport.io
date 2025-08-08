@@ -7343,31 +7343,32 @@ def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 60
     return chunks
 
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
-    """FIX 2: CHUNKING VALIDATION - Determine if content should be split based on CHARACTER LIMITS and context-aware breaks"""
+    """ISSUE 1 FIX: FORCE CHUNKING - Lower threshold to ensure content gets properly chunked"""
     
-    # REVISED LOGIC: Focus on character count limits (6,000-8,000 chars per article)
-    MAX_SINGLE_ARTICLE_CHARS = 6000  # Maximum characters for a single article
+    # LOWERED THRESHOLD: Force chunking for better content structure
+    MAX_SINGLE_ARTICLE_CHARS = 3000  # Lowered from 6000 to force more chunking
     
-    print(f"🔍 FIX 2: Chunking validation for {file_extension} content:")
+    print(f"🔍 ISSUE 1 FIX: Chunking validation for {file_extension} content:")
     print(f"   - Content length: {len(content)} characters")
     print(f"   - Max single article: {MAX_SINGLE_ARTICLE_CHARS} characters")
-    print(f"   - Chunking active: {'YES' if len(content) > MAX_SINGLE_ARTICLE_CHARS else 'NO'}")
+    print(f"   - FORCE CHUNKING: {'YES' if len(content) > MAX_SINGLE_ARTICLE_CHARS else 'NO'}")
     
-    # If content is under 6,000 characters, keep as single article
+    # If content is under 3,000 characters, keep as single article
     if len(content) <= MAX_SINGLE_ARTICLE_CHARS:
-        print(f"✅ FIX 2: Content under limit - creating single article")
+        print(f"✅ ISSUE 1: Content under {MAX_SINGLE_ARTICLE_CHARS} limit - creating single article")
         return False
     
-    # If content is over 6,000 characters, we need to split
-    print(f"📏 FIX 2: Content length: {len(content)} characters - exceeds {MAX_SINGLE_ARTICLE_CHARS} limit, will split into multiple articles")
+    # If content is over 3,000 characters, FORCE split into multiple articles
+    print(f"📏 ISSUE 1: Content length: {len(content)} characters - EXCEEDS {MAX_SINGLE_ARTICLE_CHARS} limit")
+    print(f"🔥 FORCE CHUNKING: Content will be split into multiple articles")
     
-    # Additional validation for context-aware chunking
+    # Additional validation for better chunking
     has_headings = bool(re.search(r'(?:^|\n)#{1,6}\s+.+', content, re.MULTILINE))
     has_sections = bool(re.search(r'(?:^|\n)(?:\w+:|\d+\.)', content, re.MULTILINE))
     
     print(f"   - Has markdown headings: {has_headings}")  
     print(f"   - Has structured sections: {has_sections}")
-    print(f"✅ FIX 2: Smart chunking is ACTIVE and will split content contextually")
+    print(f"✅ ISSUE 1: CHUNKING IS FORCED ACTIVE - will create multiple articles")
     
     return True
 

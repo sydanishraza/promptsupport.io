@@ -1724,6 +1724,162 @@ async def chunk_large_document_for_polishing(content: str, title: str) -> list:
             'error_occurred': True
         }]
 
+async def optimized_chunk_large_document(content: str, title: str) -> list:
+    """
+    OPTIMIZED: Fast chunking for documents over 8,000 characters
+    Streamlined approach for better performance
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        content_length = len(content)
+        print(f"⚡ OPTIMIZED: Fast chunking document ({content_length} chars)")
+        
+        # Find H1 and H2 headings for chunk boundaries (streamlined approach)
+        major_headings = soup.find_all(['h1', 'h2'])
+        
+        print(f"📊 Document analysis: {len(major_headings)} major headings found (H1-H2)")
+        
+        # OPTIMIZATION: Use larger chunks for fewer LLM calls
+        if len(major_headings) < 2:
+            print(f"⚡ OPTIMIZED: Simple paragraph chunking for speed")
+            
+            # Split by paragraphs with larger chunk sizes
+            paragraphs = soup.find_all('p')
+            if len(paragraphs) >= 2:
+                chunks = []
+                current_chunk_paras = []
+                current_chunk_size = 0
+                chunk_counter = 0
+                
+                # OPTIMIZATION: Larger chunks (4000-6000 chars) for speed
+                for para in paragraphs:
+                    para_text = para.get_text().strip()
+                    para_size = len(para_text)
+                    
+                    if current_chunk_size + para_size > 6000 and current_chunk_paras:
+                        chunk_counter += 1
+                        chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                        
+                        chunks.append({
+                            'title': f"{title} - Part {chunk_counter}",
+                            'content': chunk_html,
+                            'chunk_type': 'optimized_paragraph',
+                            'text_length': current_chunk_size,
+                            'min_threshold_met': True
+                        })
+                        print(f"✅ OPTIMIZED: Fast chunk created: Part {chunk_counter} ({current_chunk_size} chars)")
+                        
+                        current_chunk_paras = [para]
+                        current_chunk_size = para_size
+                    else:
+                        current_chunk_paras.append(para)
+                        current_chunk_size += para_size
+                
+                # Add final chunk
+                if current_chunk_paras:
+                    chunk_counter += 1
+                    chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                    
+                    chunks.append({
+                        'title': f"{title} - Part {chunk_counter}",
+                        'content': chunk_html,
+                        'chunk_type': 'optimized_paragraph',
+                        'text_length': current_chunk_size,
+                        'min_threshold_met': True
+                    })
+                    print(f"✅ OPTIMIZED: Final fast chunk: Part {chunk_counter} ({current_chunk_size} chars)")
+                
+                if len(chunks) > 1:
+                    print(f"🚀 OPTIMIZED: Fast chunking successful - created {len(chunks)} chunks")
+                    return chunks
+            
+            # Fallback: Larger character-based chunks for speed
+            print(f"⚡ OPTIMIZED: Large character chunks for maximum speed")
+            chunk_size = 5000  # Larger chunks for speed
+            chunks = []
+            
+            for i in range(0, len(content), chunk_size):
+                chunk_content = content[i:i + chunk_size]
+                chunk_num = (i // chunk_size) + 1
+                
+                chunks.append({
+                    'title': f"{title} - Segment {chunk_num}",
+                    'content': f"<p>{chunk_content}</p>",
+                    'chunk_type': 'optimized_character',
+                    'text_length': len(chunk_content),
+                    'min_threshold_met': True
+                })
+                print(f"✅ OPTIMIZED: Fast segment created: Segment {chunk_num} ({len(chunk_content)} chars)")
+            
+            print(f"🚀 OPTIMIZED: Fast chunking completed - {len(chunks)} segments")
+            return chunks
+        
+        # Use streamlined heading-based chunking (H1-H2 only for speed)
+        chunks = []
+        current_chunk_elements = []
+        current_chunk_title = title
+        chunk_counter = 0
+        
+        all_elements = soup.find_all(['h1', 'h2', 'p', 'ul', 'ol', 'div', 'table'])
+        
+        for element in all_elements:
+            if element.name in ['h1', 'h2']:  # Only major headings for speed
+                if current_chunk_elements:
+                    chunk_html = ''.join(str(el) for el in current_chunk_elements)
+                    chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+                    
+                    # OPTIMIZATION: Lower threshold for faster processing
+                    if chunk_text_length > 800:
+                        chunks.append({
+                            'title': current_chunk_title,
+                            'content': chunk_html,
+                            'chunk_type': 'optimized_heading',
+                            'text_length': chunk_text_length,
+                            'min_threshold_met': True
+                        })
+                        print(f"✅ OPTIMIZED: Fast heading chunk: {current_chunk_title} ({chunk_text_length} chars)")
+                    else:
+                        if chunks:
+                            chunks[-1]['content'] += chunk_html
+                            chunks[-1]['text_length'] += chunk_text_length
+                
+                chunk_counter += 1
+                heading_text = element.get_text().strip()
+                current_chunk_title = heading_text if heading_text else f"{title} - Section {chunk_counter}"
+                current_chunk_elements = [element]
+            else:
+                current_chunk_elements.append(element)
+        
+        # Final chunk
+        if current_chunk_elements:
+            chunk_html = ''.join(str(el) for el in current_chunk_elements)
+            chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+            
+            if chunk_text_length > 800:
+                chunks.append({
+                    'title': current_chunk_title,
+                    'content': chunk_html,
+                    'chunk_type': 'optimized_final',
+                    'text_length': chunk_text_length,
+                    'min_threshold_met': True
+                })
+                print(f"✅ OPTIMIZED: Final fast chunk: {current_chunk_title} ({chunk_text_length} chars)")
+        
+        print(f"🚀 OPTIMIZED: Successfully created {len(chunks)} fast chunks")
+        return chunks
+        
+    except Exception as e:
+        print(f"❌ OPTIMIZED: Fast chunking failed: {e}")
+        return [{
+            'title': title,
+            'content': content,
+            'chunk_type': 'optimized_fallback',
+            'min_threshold_met': True,
+            'error_occurred': True
+        }]
+
 async def polish_article_content(content: str, title: str, template_data: dict) -> dict:
     """
     ISSUE 1 FIX: Final content polishing with FORCE CHUNKING - lowered threshold to 3,000 characters

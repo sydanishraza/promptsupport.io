@@ -8032,7 +8032,7 @@ def create_fallback_article_from_chunk(chunk: str, metadata: Dict[str, Any], chu
         "updated_at": datetime.utcnow()
     }
 def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str, Any], chunk_index: int, total_chunks: int, article_info: list, current_index: int) -> Dict:
-    """Create a basic fallback article with related links when LLM processing fails"""
+    """ISSUE 4 FIX: Create a basic fallback article with related links when LLM processing fails"""
     
     # Extract a title from the first line or heading
     lines = chunk.split('\n')
@@ -8066,14 +8066,13 @@ def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str
     content_html = content_html.replace('<p><h2>', '<h2>').replace('</h2></p>', '</h2>')
     content_html = content_html.replace('<p><h3>', '<h3>').replace('</h3></p>', '</h3>')
     
-    # Add related links HTML
+    # ISSUE 4 FIX: Add related links section
     related_links_html = '<h2>Related Articles</h2>\n<p>Other parts of this document:</p>\n<ul>\n'
     for j, info in enumerate(article_info):
         if j != current_index:  # Don't link to self
             related_links_html += f'<li><a href="#article-{info["id"]}" data-article-id="{info["id"]}">{info["title"]}</a></li>\n'
     related_links_html += '</ul>'
     
-    # Append related links to content
     content_html += f'\n\n{related_links_html}'
     
     return {
@@ -8093,7 +8092,6 @@ def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str
             "chunk_chars": len(chunk),
             "processing_approach": "fallback_chunking_with_related_links",
             "processing_timestamp": datetime.utcnow().isoformat(),
-            "document_batch_id": metadata.get('document_batch_id', str(uuid.uuid4())),
             "has_related_links": True
         },
         "created_at": datetime.utcnow(),

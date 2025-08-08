@@ -1666,23 +1666,26 @@ async def chunk_large_document_for_polishing(content: str, title: str) -> list:
 
 async def polish_article_content(content: str, title: str, template_data: dict) -> dict:
     """
-    Final content polishing pass using LLM for professional formatting and structure
+    ISSUE 1 FIX: Final content polishing with FORCE CHUNKING - lowered threshold to 3,000 characters
     For large documents, chunks them at heading levels and processes separately
     """
     try:
         print(f"✨ Starting final content polishing for: {title}")
         
-        # Check content size - implement optimized chunking for large content
+        # ISSUE 1 FIX: Check content size with LOWERED threshold for force chunking
         content_length = len(content)
-        max_single_polishing_size = 25000  # Reduced from 50K to 25K for faster processing
+        max_single_polishing_size = 3000  # LOWERED from 25,000 to 3,000 for FORCE CHUNKING
+        
+        print(f"🔍 ISSUE 1 FIX: Content length {content_length} chars vs threshold {max_single_polishing_size} chars")
         
         if content_length > max_single_polishing_size:
-            print(f"📊 Large document detected ({content_length} chars > {max_single_polishing_size}), implementing H1-based chunking")
+            print(f"📊 ISSUE 1 FIX: FORCE CHUNKING activated - content ({content_length} chars > {max_single_polishing_size})")
+            print(f"🔥 Content will be FORCED into multiple articles using H1-based chunking")
             
-            # For large documents, always use chunked processing regardless of H1 structure
+            # For content over 3,000 chars, FORCE chunked processing
             chunks = await chunk_large_document_for_polishing(content, title)
             
-            print(f"🔄 Large document will be processed as {len(chunks)} separate articles")
+            print(f"🔄 ISSUE 1 FIX: Document will be processed as {len(chunks)} separate articles")
             return {
                 'html': content,
                 'markdown': content,
@@ -1690,11 +1693,12 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
                 'polished': False,
                 'requires_chunked_processing': True,
                 'chunks': chunks,
-                'word_count': len(content.split())
+                'word_count': len(content.split()),
+                'chunking_reason': 'force_chunking_3000_threshold'
             }
         
-        # For manageable content, proceed with optimized LLM polishing
-        print(f"📝 Content suitable for direct LLM processing ({content_length} chars)")
+        # For content under 3,000 chars, proceed with single article processing
+        print(f"📝 ISSUE 1 FIX: Content under threshold ({content_length} chars) - creating single article")
         
         # Create comprehensive prompt for content polishing with proper HTML formatting
         system_message = """You are a professional technical writer and content editor specializing in creating high-quality documentation and educational content.

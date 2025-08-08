@@ -1553,63 +1553,133 @@ async def extract_h1_title_from_content(content: str) -> str:
 
 async def chunk_large_document_for_polishing(content: str, title: str) -> list:
     """
-    Chunk large documents ONLY at H1 boundaries for individual LLM processing
-    Maintains structural integrity and respects section boundaries
+    ISSUE 1 FIX: Aggressive chunking for documents over 3,000 characters
+    Does not require H1 structure - forces chunking for better processing
     """
     try:
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(content, 'html.parser')
         
-        # Find only H1 headings for major section breaks
-        h1_headings = soup.find_all('h1')
+        content_length = len(content)
+        print(f"🔥 ISSUE 1 FIX: Force chunking document ({content_length} chars)")
         
-        print(f"📊 Document analysis: {len(h1_headings)} H1 sections found")
+        # Find ALL headings (not just H1) for potential chunk boundaries
+        all_headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
         
-        if len(h1_headings) < 2:
-            # Not enough H1 structure for chunking, return as single chunk
-            print("📄 Insufficient H1 structure - processing as single section")
-            return [{
-                'title': title,
-                'content': content,
-                'chunk_type': 'single_section',
-                'min_threshold_met': len(content) > 1000  # Minimum content check
-            }]
+        print(f"📊 Document analysis: {len(all_headings)} headings found (H1-H6)")
         
+        # ISSUE 1 FIX: FORCE chunking even if no proper heading structure
+        if len(all_headings) < 2:
+            print(f"⚠️ ISSUE 1 FIX: Insufficient heading structure - FORCING paragraph-based chunking")
+            
+            # Split by paragraphs when no headings are available
+            paragraphs = soup.find_all('p')
+            if len(paragraphs) >= 3:  # Need at least 3 paragraphs to chunk
+                print(f"📄 ISSUE 1 FIX: Splitting by paragraphs ({len(paragraphs)} found)")
+                
+                # Group paragraphs into chunks of ~1,500-2,500 chars each
+                chunks = []
+                current_chunk_paras = []
+                current_chunk_size = 0
+                chunk_counter = 0
+                
+                for para in paragraphs:
+                    para_text = para.get_text().strip()
+                    para_size = len(para_text)
+                    
+                    # If adding this paragraph would exceed ~2,500 chars, finalize current chunk
+                    if current_chunk_size + para_size > 2500 and current_chunk_paras:
+                        chunk_counter += 1
+                        chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                        
+                        chunks.append({
+                            'title': f"{title} - Part {chunk_counter}",
+                            'content': chunk_html,
+                            'chunk_type': 'paragraph_based',
+                            'text_length': current_chunk_size,
+                            'min_threshold_met': True
+                        })
+                        print(f"✅ ISSUE 1 FIX: Paragraph chunk created: Part {chunk_counter} ({current_chunk_size} chars)")
+                        
+                        # Start new chunk
+                        current_chunk_paras = [para]
+                        current_chunk_size = para_size
+                    else:
+                        current_chunk_paras.append(para)
+                        current_chunk_size += para_size
+                
+                # Add final chunk if it has content
+                if current_chunk_paras:
+                    chunk_counter += 1
+                    chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                    
+                    chunks.append({
+                        'title': f"{title} - Part {chunk_counter}",
+                        'content': chunk_html,
+                        'chunk_type': 'paragraph_based',
+                        'text_length': current_chunk_size,
+                        'min_threshold_met': True
+                    })
+                    print(f"✅ ISSUE 1 FIX: Final paragraph chunk: Part {chunk_counter} ({current_chunk_size} chars)")
+                
+                if len(chunks) > 1:
+                    print(f"🎉 ISSUE 1 FIX: FORCE chunking successful - created {len(chunks)} paragraph-based chunks")
+                    return chunks
+            
+            # Ultimate fallback: Split content by character count (brutal but effective)
+            print(f"🔪 ISSUE 1 FIX: BRUTAL FORCE CHUNKING - splitting by character count")
+            chunk_size = 2000  # ~2000 chars per chunk
+            chunks = []
+            
+            for i in range(0, len(content), chunk_size):
+                chunk_content = content[i:i + chunk_size]
+                chunk_num = (i // chunk_size) + 1
+                
+                chunks.append({
+                    'title': f"{title} - Segment {chunk_num}",
+                    'content': f"<p>{chunk_content}</p>",
+                    'chunk_type': 'character_based',
+                    'text_length': len(chunk_content),
+                    'min_threshold_met': True
+                })
+                print(f"✅ ISSUE 1 FIX: Character chunk created: Segment {chunk_num} ({len(chunk_content)} chars)")
+            
+            print(f"💪 ISSUE 1 FIX: BRUTAL chunking completed - {len(chunks)} character-based chunks")
+            return chunks
+        
+        # Use heading-based chunking (H1-H6, not just H1)
         chunks = []
         current_chunk_elements = []
         current_chunk_title = title
         chunk_counter = 0
         
-        # Process all elements and group ONLY by H1 boundaries
+        # Process all elements and group by ANY heading boundary (H1-H6)
         all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table', 'blockquote', 'pre', 'code'])
         
         for element in all_elements:
-            # Check if this is a major section break (H1 ONLY)
-            if element.name == 'h1':
-                # Save current chunk if it has substantial content
+            # Check if this is ANY heading (not just H1)
+            if element.name in ['h1', 'h2', 'h3']:  # Use H1, H2, H3 as chunk boundaries
+                # Save current chunk if it has content
                 if current_chunk_elements:
                     chunk_html = ''.join(str(el) for el in current_chunk_elements)
                     chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
                     
-                    # Apply minimum content threshold (1000 characters)
-                    if chunk_text_length > 1000:
+                    # ISSUE 1 FIX: Lower threshold (500 chars vs 1000)
+                    if chunk_text_length > 500:
                         chunks.append({
                             'title': current_chunk_title,
                             'content': chunk_html,
-                            'chunk_type': 'h1_section',
+                            'chunk_type': 'heading_section',
                             'text_length': chunk_text_length,
                             'min_threshold_met': True
                         })
-                        print(f"✅ H1 chunk created: {current_chunk_title} ({chunk_text_length} chars)")
+                        print(f"✅ ISSUE 1 FIX: Heading chunk created: {current_chunk_title} ({chunk_text_length} chars)")
                     else:
-                        print(f"⚠️ H1 section too small, merging: {current_chunk_title} ({chunk_text_length} chars)")
-                        # Merge small sections with the next one rather than creating tiny chunks
+                        print(f"⚠️ Small section merged: {current_chunk_title} ({chunk_text_length} chars)")
                         if chunks:
-                            # Add to previous chunk if exists
                             chunks[-1]['content'] += chunk_html
                             chunks[-1]['title'] += f" + {current_chunk_title}"
                             chunks[-1]['text_length'] += chunk_text_length
-                        # Otherwise, continue building this section
                 
                 # Start new chunk
                 chunk_counter += 1
@@ -1617,72 +1687,41 @@ async def chunk_large_document_for_polishing(content: str, title: str) -> list:
                 current_chunk_title = heading_text if heading_text else f"{title} - Section {chunk_counter}"
                 current_chunk_elements = [element]
             else:
-                # Add all non-H1 elements to current chunk (maintaining section integrity)
+                # Add all non-heading elements to current chunk
                 current_chunk_elements.append(element)
-                
-                # SAFETY CHECK: If single H1 section becomes too large (>100K chars), split it
-                if len(current_chunk_elements) > 1:  # Don't split if we only have the H1 heading
-                    current_chunk_html = ''.join(str(el) for el in current_chunk_elements)
-                    if len(current_chunk_html) > 100000:  # 100K character limit per section
-                        print(f"⚠️ H1 section exceeding size limit, creating sub-chunk: {current_chunk_title}")
-                        
-                        # Save current chunk
-                        chunks.append({
-                            'title': current_chunk_title,
-                            'content': current_chunk_html,
-                            'chunk_type': 'h1_section_large',
-                            'text_length': len(BeautifulSoup(current_chunk_html, 'html.parser').get_text().strip()),
-                            'min_threshold_met': True
-                        })
-                        
-                        # Start new sub-chunk within same H1 section
-                        chunk_counter += 1
-                        current_chunk_title = f"{current_chunk_title} (Part {chunk_counter})"
-                        current_chunk_elements = []  # Reset but don't include H1 again
         
-        # Add final chunk if it has substantial content
+        # Don't forget the final chunk
         if current_chunk_elements:
             chunk_html = ''.join(str(el) for el in current_chunk_elements)
             chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
             
-            if chunk_text_length > 1000:
+            if chunk_text_length > 500:
                 chunks.append({
                     'title': current_chunk_title,
                     'content': chunk_html,
-                    'chunk_type': 'h1_final_section',
+                    'chunk_type': 'final_section',
                     'text_length': chunk_text_length,
                     'min_threshold_met': True
                 })
-                print(f"✅ Final H1 chunk created: {current_chunk_title} ({chunk_text_length} chars)")
-            elif chunks:
-                # Merge small final section with previous chunk
-                chunks[-1]['content'] += chunk_html
-                chunks[-1]['title'] += f" + {current_chunk_title}"
-                chunks[-1]['text_length'] += chunk_text_length
-                print(f"✅ Small final section merged with previous chunk ({chunk_text_length} chars)")
+                print(f"✅ ISSUE 1 FIX: Final chunk: {current_chunk_title} ({chunk_text_length} chars)")
         
-        # Filter out any chunks that don't meet minimum threshold
-        valid_chunks = [chunk for chunk in chunks if chunk.get('min_threshold_met', False)]
+        # If we still don't have enough chunks, this is our absolute fallback
+        if len(chunks) <= 1:
+            print(f"🆘 ISSUE 1 FIX: Still single chunk - applying EMERGENCY character splitting")
+            return await chunk_large_document_for_polishing(content, title)  # This will hit the character-based fallback above
         
-        print(f"📋 H1-based chunking complete: {len(valid_chunks)} substantial sections created")
-        for i, chunk in enumerate(valid_chunks):
-            print(f"   Section {i+1}: {chunk['title']} ({chunk['text_length']} chars)")
-        
-        return valid_chunks if valid_chunks else [{
-            'title': title,
-            'content': content,
-            'chunk_type': 'fallback_single',
-            'min_threshold_met': True
-        }]
+        print(f"🎯 ISSUE 1 FIX: Successfully created {len(chunks)} chunks using heading boundaries")
+        return chunks
         
     except Exception as e:
-        print(f"❌ H1-based chunking failed: {e}")
-        # Fallback to single chunk
+        print(f"❌ ISSUE 1 FIX: Chunking failed: {e}")
+        # Emergency fallback: return as single chunk but mark for special processing
         return [{
             'title': title,
             'content': content,
             'chunk_type': 'error_fallback',
-            'min_threshold_met': True
+            'min_threshold_met': True,
+            'error_occurred': True
         }]
 
 async def polish_article_content(content: str, title: str, template_data: dict) -> dict:

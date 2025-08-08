@@ -92,7 +92,7 @@
 ##   run_ui: false
 ##
 ## test_plan:
-  current_focus: []
+  current_focus: ["SYSTEMATIC PDF PIPELINE TESTING - Complete End-to-End Validation"]
   stuck_tasks: []
   test_all: false
   test_priority: "critical_first"

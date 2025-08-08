@@ -7973,7 +7973,7 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
     
     print(f"📝 SIMPLIFIED: Creating single article from {len(content)} characters (no automatic image embedding)")
     
-    # Simplified system message focused on clean HTML output
+    # FIX 3: HTML OPTIMIZATION FOR EDITOR COMPATIBILITY - Enhanced system message with callouts, tables, expand/collapse
     system_message = """You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
 
 Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
@@ -7985,11 +7985,32 @@ Follow these core rules:
 3. 📚 Add depth — Insert background, steps, examples, and best practices where appropriate.
 4. 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order.
 5. 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy, and instructional formatting.
-6. 📄 Generate clean, editor-friendly HTML only — Use only the following tags:
+6. 📄 FIX 3: Generate clean, EDITOR-COMPATIBLE HTML with enhanced features:
 
+   SEMANTIC HTML TAGS:
    <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
 
-   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes.
+   EDITOR CALLOUTS (use these for enhanced user experience):
+   <div class="callout-tip">💡 <strong>Tip:</strong> Insert helpful tips</div>
+   <div class="callout-note">📝 <strong>Note:</strong> Important information</div>  
+   <div class="callout-warning">⚠️ <strong>Caution:</strong> Warnings and alerts</div>
+   <div class="callout-success">✅ <strong>Success:</strong> Positive outcomes</div>
+
+   STRUCTURED TABLES (for parameters, configurations, etc.):
+   <table class="editor-table">
+     <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
+     <tbody><tr><td>...</td><td>...</td><td>...</td></tr></tbody>
+   </table>
+
+   EXPANDABLE SECTIONS (for detailed content):
+   <details class="expandable-section">
+     <summary><strong>Click to expand: Section Title</strong></summary>
+     <div class="expanded-content">
+       <p>Detailed content here...</p>
+     </div>
+   </details>
+
+   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes except those listed above.
 
 💡 Title Rule:
 - If source contains <h1>, extract and reuse that.

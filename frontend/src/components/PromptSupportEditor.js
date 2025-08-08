@@ -3588,6 +3588,11 @@ const PromptSupportEditor = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className={`h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}
+        style={{
+          // ISSUE 5 FIX: Ensure proper height and no overlapping elements in edit mode
+          minHeight: isEditing ? 'calc(100vh - 120px)' : 'auto',
+          zIndex: isEditing ? '10' : 'auto'
+        }}
       >
       
       {/* Styles for editor enhancements */}

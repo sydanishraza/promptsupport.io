@@ -84,18 +84,24 @@ ADDITIONAL CONTENT FOR CHUNKING:
             }
             
             form_data = {
-                'metadata': json.dumps({
-                    "source": "chunking_test",
-                    "test_type": "force_chunking_fix",
-                    "expected_behavior": "multiple_articles_from_single_document"
+                'template_id': 'phase1_document_processing',
+                'training_mode': 'true',
+                'template_instructions': json.dumps({
+                    "template_id": "phase1_document_processing",
+                    "processing_instructions": "Test force chunking with lowered threshold",
+                    "output_requirements": {
+                        "format": "html",
+                        "min_articles": 1,
+                        "max_articles": 10
+                    }
                 })
             }
             
-            print("📤 Uploading test DOCX to verify force chunking...")
+            print("📤 Uploading test DOCX to training/process endpoint to verify force chunking...")
             
             start_time = time.time()
             response = requests.post(
-                f"{self.base_url}/content/upload",
+                f"{self.base_url}/training/process",
                 files=files,
                 data=form_data,
                 timeout=120

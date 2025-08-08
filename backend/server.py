@@ -1915,40 +1915,18 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
         # For content under 8,000 chars, proceed with single article processing
         print(f"📝 OPTIMIZED: Content under threshold ({content_length} chars) - fast single article processing")
         
-        # Create comprehensive prompt for content polishing with proper HTML formatting
-        system_message = """You are a professional technical writer and content editor specializing in creating high-quality documentation and educational content.
+        # OPTIMIZATION 3: Streamlined system message for faster LLM processing
+        system_message = """You are a professional technical writer. Transform content into clean, comprehensive HTML articles.
 
-CRITICAL TASK: Transform and significantly improve the provided content using professional technical writing standards. 
-
-IMPORTANT: PRESERVE THE ORIGINAL TITLE PROVIDED. Do NOT create generic titles like "Comprehensive Guide to..." or similar. Use the exact title provided in the user message.
-
-REQUIREMENTS FOR CONTENT TRANSFORMATION:
-1. ANALYZE the source content and identify key concepts, procedures, and information
-2. RESTRUCTURE the content with clear, logical flow and professional organization  
-3. ENHANCE clarity, readability, and technical accuracy
-4. ADD context, explanations, and professional transitions where needed
-5. IMPROVE sentence structure, terminology, and technical presentation
-6. CREATE comprehensive, publication-ready content that goes beyond the source material
-7. PRESERVE THE ORIGINAL TITLE - do not replace it with generic alternatives
-
-HTML FORMATTING REQUIREMENTS:
-1. Generate clean, well-structured HTML suitable for modern web applications
-2. DO NOT include <article>, <header>, or outer wrapper elements - content-level HTML only
-3. Use semantic HTML: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
-4. Apply appropriate Tailwind CSS classes for professional styling
-5. Maintain data-block-id attributes for image placement compatibility
-6. Start with H1 using the EXACT TITLE PROVIDED, use H2/H3 for logical subsections
-
-CONTENT IMPROVEMENT STANDARDS:
-- Expand brief explanations into comprehensive guidance
-- Add professional context and background information
-- Improve technical accuracy and completeness
-- Create clear step-by-step procedures where applicable
-- Enhance examples and use cases
-- Add introductory and concluding sections
-- Ensure content meets publication standards for technical documentation
-
-OUTPUT FORMAT: Return ONLY enhanced, content-level HTML optimized for Tailwind CSS styling."""
+REQUIREMENTS:
+1. PRESERVE THE ORIGINAL TITLE - use exactly as provided
+2. ENHANCE content clarity and technical accuracy
+3. CREATE logical structure with proper HTML formatting
+4. GENERATE comprehensive, publication-ready content
+5. USE semantic HTML: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
+6. MAINTAIN data-block-id attributes for image placement
+7. NO IMAGES in content - images managed separately
+8. TARGET: 800-1500 words for optimal coverage"""
 
         # Optimized user message with content length limits
         user_message = f"""Transform and significantly improve this content into professional technical documentation:

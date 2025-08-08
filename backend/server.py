@@ -8103,7 +8103,7 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
     
     print(f"📝 SIMPLIFIED: Creating single article from {len(content)} characters (no automatic image embedding)")
     
-    # FIX 3: HTML OPTIMIZATION FOR EDITOR COMPATIBILITY - Enhanced system message with callouts, tables, expand/collapse
+    # FIX 3: HTML OPTIMIZATION FOR EDITOR COMPATIBILITY - Enhanced system message with native editor block formatting
     system_message = """You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
 
 Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
@@ -8115,32 +8115,60 @@ Follow these core rules:
 3. 📚 Add depth — Insert background, steps, examples, and best practices where appropriate.
 4. 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order.
 5. 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy, and instructional formatting.
-6. 📄 FIX 3: Generate clean, EDITOR-COMPATIBLE HTML with enhanced features:
+6. 📄 ISSUE 3 FIX: Generate HTML using EXACT EDITOR-COMPATIBLE structures:
 
    SEMANTIC HTML TAGS:
    <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
 
-   EDITOR CALLOUTS (use these for enhanced user experience):
-   <div class="callout-tip">💡 <strong>Tip:</strong> Insert helpful tips</div>
-   <div class="callout-note">📝 <strong>Note:</strong> Important information</div>  
-   <div class="callout-warning">⚠️ <strong>Caution:</strong> Warnings and alerts</div>
-   <div class="callout-success">✅ <strong>Success:</strong> Positive outcomes</div>
+   EDITOR CALLOUTS (use EXACT inline styling as expected by editor):
+   <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px;">
+     <div style="color: #3b82f6; font-size: 20px;">ℹ️</div>
+     <div style="flex: 1;">
+       <p style="margin: 0; color: #1e40af;"><strong>Info:</strong> Your helpful tip here</p>
+     </div>
+   </div>
 
-   STRUCTURED TABLES (for parameters, configurations, etc.):
-   <table class="editor-table">
-     <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
-     <tbody><tr><td>...</td><td>...</td><td>...</td></tr></tbody>
+   WARNING CALLOUT:
+   <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #fefce8; border-left: 4px solid #eab308; border-radius: 8px;">
+     <div style="color: #eab308; font-size: 20px;">⚠️</div>
+     <div style="flex: 1;">
+       <p style="margin: 0; color: #a16207;"><strong>Warning:</strong> Important caution here</p>
+     </div>
+   </div>
+
+   SUCCESS CALLOUT:
+   <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 8px;">
+     <div style="color: #22c55e; font-size: 20px;">✅</div>
+     <div style="flex: 1;">
+       <p style="margin: 0; color: #15803d;"><strong>Success:</strong> Positive outcome here</p>
+     </div>
+   </div>
+
+   STRUCTURED TABLES (with simple structure):
+   <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+     <thead>
+       <tr>
+         <th style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Header</th>
+         <th style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Description</th>
+       </tr>
+     </thead>
+     <tbody>
+       <tr>
+         <td style="border: 1px solid #e5e7eb; padding: 8px;">Content</td>
+         <td style="border: 1px solid #e5e7eb; padding: 8px;">Content</td>
+       </tr>
+     </tbody>
    </table>
 
-   EXPANDABLE SECTIONS (for detailed content):
-   <details class="expandable-section">
-     <summary><strong>Click to expand: Section Title</strong></summary>
-     <div class="expanded-content">
+   EXPANDABLE SECTIONS:
+   <details style="margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 8px;">
+     <summary style="padding: 12px 16px; background: #f9fafb; cursor: pointer; font-weight: 600;">Click to expand: Section Title</summary>
+     <div style="padding: 16px;">
        <p>Detailed content here...</p>
      </div>
    </details>
 
-   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes except those listed above.
+   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes except inline styles shown above.
 
 💡 Title Rule:
 - If source contains <h1>, extract and reuse that.

@@ -212,12 +212,23 @@ const PromptSupportEditor = ({
   const fileInputRef = useRef(null);
   const slashMenuRef = useRef(null);
   
-  // === CONTENT REF CALLBACK ===
+  // === CONTENT REF CALLBACK ===  
   const contentRef = (element) => {
     editorRef.current = element;
     if (element && isEditing && content && element.innerHTML !== content) {
       // Set content only when needed, avoiding cursor issues
       element.innerHTML = content;
+      
+      // FIX 4: Ensure editor is immediately ready for editing when content loads
+      if (isEditing) {
+        element.contentEditable = true;
+        setTimeout(() => {
+          if (element) {
+            element.focus();
+            console.log('✅ FIX 4: Editor content loaded and activated');
+          }
+        }, 10);
+      }
     }
   };
   

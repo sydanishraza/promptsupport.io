@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://809922a0-8c7a-4229-b01a-eafa1e6de9cd.preview.emergentagent.com"
+BACKEND_URL = "https://b9c68cf9-d5db-4176-932c-eadffd36ef4f.preview.emergentagent.com"
 
 def comprehensive_issue_analysis():
     """Comprehensive analysis of DOCX processing issues"""

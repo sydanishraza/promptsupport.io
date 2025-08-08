@@ -1030,6 +1030,75 @@ class DocumentPreprocessor:
         text_content = BeautifulSoup(chunk_html, 'html.parser').get_text().strip()
         return len(text_content) > 20  # Reduced from 100 to 20 characters for simple documents
     
+    def _create_paragraph_based_chunks(self, html_content: str, images: list) -> list:
+        """Create chunks based on paragraphs when no clear heading structure exists"""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            chunks = []
+            current_chunk_content = []
+            current_section_id = "section_1"
+            section_counter = 1
+            
+            # Get all content elements
+            all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+            
+            for element in all_elements:
+                current_chunk_content.append(element)
+                
+                # Check if current chunk is getting large (every 10 elements)
+                if len(current_chunk_content) % 10 == 0:
+                    current_html = self._create_chunk_html(current_chunk_content)
+                    if len(current_html) > 8000:  # ~2000 words
+                        # Save current chunk
+                        chunks.append({
+                            'section_id': current_section_id,
+                            'title': f'Section {section_counter}',
+                            'content': current_html,
+                            'images': []
+                        })
+                        print(f"✅ Paragraph-based chunk created: Section {section_counter} ({len(current_html)} chars)")
+                        
+                        # Start new chunk
+                        section_counter += 1
+                        current_section_id = f"section_{section_counter}"
+                        current_chunk_content = []
+            
+            # Add final chunk if it has content
+            if current_chunk_content:
+                chunk_html = self._create_chunk_html(current_chunk_content)
+                if self._is_chunk_valid(chunk_html):
+                    chunks.append({
+                        'section_id': current_section_id,
+                        'title': f'Section {section_counter}',
+                        'content': chunk_html,
+                        'images': []
+                    })
+                    print(f"✅ Final paragraph-based chunk: Section {section_counter} ({len(chunk_html)} chars)")
+            
+            # Distribute images across chunks
+            if chunks and images:
+                images_per_chunk = len(images) // len(chunks)
+                for i, chunk in enumerate(chunks):
+                    start_idx = i * images_per_chunk
+                    end_idx = start_idx + images_per_chunk if i < len(chunks) - 1 else len(images)
+                    chunk['images'] = images[start_idx:end_idx]
+            
+            return chunks if chunks else [{
+                'section_id': 'full_document',
+                'title': 'Complete Document',
+                'content': html_content,
+                'images': images
+            }]
+            
+        except Exception as e:
+            print(f"❌ Paragraph-based chunking failed: {e}")
+            return [{
+                'section_id': 'full_document',
+                'title': 'Complete Document',
+                'content': html_content,
+                'images': images
+            }]
+    
     def _distribute_images_to_chunks(self, chunks: list, images: list):
         """Distribute images to appropriate chunks based on content proximity"""
         try:

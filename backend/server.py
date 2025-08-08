@@ -1895,13 +1895,12 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
         print(f"🔍 OPTIMIZED: Content length {content_length} chars vs threshold {max_single_polishing_size} chars")
         
         if content_length > max_single_polishing_size:
-            print(f"📊 ISSUE 1 FIX: FORCE CHUNKING activated - content ({content_length} chars > {max_single_polishing_size})")
-            print(f"🔥 Content will be FORCED into multiple articles using H1-based chunking")
+            print(f"📊 OPTIMIZED: Large content ({content_length} chars > {max_single_polishing_size}) - using optimized chunking")
             
-            # For content over 3,000 chars, FORCE chunked processing
-            chunks = await chunk_large_document_for_polishing(content, title)
+            # OPTIMIZATION 2: Streamlined chunking for speed
+            chunks = await optimized_chunk_large_document(content, title)
             
-            print(f"🔄 ISSUE 1 FIX: Document will be processed as {len(chunks)} separate articles")
+            print(f"🔄 OPTIMIZED: Document chunked into {len(chunks)} articles for faster processing")
             return {
                 'html': content,
                 'markdown': content,
@@ -1910,7 +1909,7 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
                 'requires_chunked_processing': True,
                 'chunks': chunks,
                 'word_count': len(content.split()),
-                'chunking_reason': 'force_chunking_3000_threshold'
+                'chunking_reason': 'optimized_8000_threshold'
             }
         
         # For content under 3,000 chars, proceed with single article processing

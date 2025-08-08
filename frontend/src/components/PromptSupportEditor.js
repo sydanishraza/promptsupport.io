@@ -3841,7 +3841,12 @@ const PromptSupportEditor = ({
               />
             ) : (
               // Edit mode: Enhanced with drag & drop and slash commands
-              <div className="h-full relative">
+              <div className="h-full relative" style={{
+                // ISSUE 5 FIX: Ensure editor doesn't overlap with other elements
+                zIndex: 2,
+                position: 'relative',
+                backgroundColor: 'white'
+              }}>
                 <div
                   key={`editor-${isEditing}-${article?.id}`}
                   ref={contentRef}

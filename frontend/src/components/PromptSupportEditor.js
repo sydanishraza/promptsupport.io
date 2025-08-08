@@ -212,22 +212,31 @@ const PromptSupportEditor = ({
   const fileInputRef = useRef(null);
   const slashMenuRef = useRef(null);
   
-  // === CONTENT REF CALLBACK ===  
+  // === ISSUE 2 FIX: IMMEDIATE CONTENT REF CALLBACK ===  
   const contentRef = (element) => {
     editorRef.current = element;
     if (element && isEditing && content && element.innerHTML !== content) {
       // Set content only when needed, avoiding cursor issues
       element.innerHTML = content;
       
-      // FIX 4: Ensure editor is immediately ready for editing when content loads
+      // ISSUE 2 FIX: Force immediate editor activation when content loads
       if (isEditing) {
         element.contentEditable = true;
+        element.style.minHeight = '400px';
+        element.style.overflowY = 'auto';
+        
+        // Immediate focus and activation
         setTimeout(() => {
           if (element) {
             element.focus();
-            console.log('✅ FIX 4: Editor content loaded and activated');
+            // Add visual cue that editor is ready
+            element.style.backgroundColor = '#fafafa';
+            setTimeout(() => {
+              element.style.backgroundColor = '';
+            }, 800);
+            console.log('✅ ISSUE 2 FIX: Editor content loaded and IMMEDIATELY activated');
           }
-        }, 10);
+        }, 1);
       }
     }
   };

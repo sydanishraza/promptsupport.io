@@ -1888,11 +1888,11 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
     try:
         print(f"⚡ OPTIMIZED: Starting fast content polishing for: {title}")
         
-        # ISSUE 1 FIX: Check content size with LOWERED threshold for force chunking
+        # OPTIMIZATION 1: Increased threshold for faster processing (fewer chunks = faster)
         content_length = len(content)
-        max_single_polishing_size = 3000  # LOWERED from 25,000 to 3,000 for FORCE CHUNKING
+        max_single_polishing_size = 8000  # INCREASED from 3,000 to 8,000 for speed
         
-        print(f"🔍 ISSUE 1 FIX: Content length {content_length} chars vs threshold {max_single_polishing_size} chars")
+        print(f"🔍 OPTIMIZED: Content length {content_length} chars vs threshold {max_single_polishing_size} chars")
         
         if content_length > max_single_polishing_size:
             print(f"📊 ISSUE 1 FIX: FORCE CHUNKING activated - content ({content_length} chars > {max_single_polishing_size})")

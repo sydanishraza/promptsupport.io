@@ -7007,27 +7007,50 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     
     print(f"🎯 FIX 1: Using filename as article title: '{title}'")
     
-    # FIX 1: Remove redundant title heading from body content
+    # ISSUE 1 FIX: Enhanced H1 title removal to eliminate ALL duplicates
     import re
+    
+    # Create comprehensive title variations to catch all possible H1 duplicates
     title_variations = [
         title.lower(),
-        title.replace('_', ' ').lower(), 
+        title.replace('_', ' ').lower(),
         title.replace('-', ' ').lower(),
-        original_filename.lower()
+        title.replace('.', ' ').lower(),
+        original_filename.lower(),
+        original_filename.replace('_', ' ').lower(),
+        original_filename.replace('-', ' ').lower()
     ]
     
-    # Remove H1 headings that match filename variations
+    print(f"🎯 ISSUE 1 FIX: Removing H1 duplicates for title variations: {title_variations}")
+    
+    # Remove ALL forms of H1 headings (Markdown, HTML, and mixed)
     for title_var in title_variations:
-        # Remove markdown H1 that matches filename
+        # Remove Markdown H1 variations (single #)
         full_content = re.sub(r'^#\s+' + re.escape(title_var) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
         full_content = re.sub(r'^#\s+' + re.escape(title_var.title()) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'^#\s+' + re.escape(title_var.upper()) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        
+        # Remove HTML H1 variations  
+        full_content = re.sub(r'<h1[^>]*>\s*' + re.escape(title_var) + r'\s*</h1>', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'<h1[^>]*>\s*' + re.escape(title_var.title()) + r'\s*</h1>', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'<h1[^>]*>\s*' + re.escape(title_var.upper()) + r'\s*</h1>', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
     
-    # Also remove generic document titles
+    # Remove generic document title patterns
     full_content = re.sub(r'^#\s+Document:.*$', '', full_content, flags=re.MULTILINE)
-    full_content = re.sub(r'^#\s+File:.*$', '', full_content, flags=re.MULTILINE)
+    full_content = re.sub(r'^#\s+File:.*$', '', full_content, flags=re.MULTILINE) 
+    full_content = re.sub(r'<h1[^>]*>Document:.*?</h1>', '', full_content, flags=re.IGNORECASE)
+    full_content = re.sub(r'<h1[^>]*>File:.*?</h1>', '', full_content, flags=re.IGNORECASE)
     
-    # Clean up extra whitespace
-    full_content = re.sub(r'\n{3,}', '\n\n', full_content).strip()
+    # Remove any standalone H1 at the very beginning of content
+    full_content = re.sub(r'^\s*<h1[^>]*>.*?</h1>\s*', '', full_content, flags=re.IGNORECASE | re.DOTALL)
+    full_content = re.sub(r'^\s*#[^#\n].*?\n', '', full_content, flags=re.MULTILINE)
+    
+    # Clean up extra whitespace and empty paragraphs
+    full_content = re.sub(r'\n{3,}', '\n\n', full_content)
+    full_content = re.sub(r'<p>\s*</p>', '', full_content)
+    full_content = full_content.strip()
+    
+    print(f"✅ ISSUE 1 FIX: H1 duplicates removed, content length: {len(full_content)}")
     
     print(f"🎯 FIX 1: Removed redundant title headings from content")
     

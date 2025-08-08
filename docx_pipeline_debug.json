@@ -1,0 +1,27 @@
+{
+  "test_file": {
+    "path": "/app/Customer_Summary_Screen_User_Guide_1.3.docx",
+    "size_bytes": 4789101,
+    "size_mb": 4.6
+  },
+  "processing": {
+    "session_id": null,
+    "job_id": "1e6cd59b-77fb-441b-8b8f-fa4545e342be",
+    "articles_generated": 1,
+    "chunking_triggered": false
+  },
+  "content_analysis": {
+    "total_articles": 1,
+    "total_words": 714,
+    "total_characters": 6467,
+    "avg_words_per_article": 714.0,
+    "processing_approach": "simplified",
+    "chunking_decision": "should_chunk",
+    "chunking_result": "single_article"
+  },
+  "asset_analysis": {
+    "total_assets": 200,
+    "image_assets": 0,
+    "asset_extraction_working": false
+  }
+}

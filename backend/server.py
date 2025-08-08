@@ -3779,14 +3779,57 @@ async def create_comprehensive_articles_from_docx_content(content: str, images: 
             # No clear structure, treat as single section
             natural_sections = [content]
         
-        # Filter out very small sections and merge with adjacent ones
+        # CHUNKING FIX: Improved section filtering with aggressive splitting
         filtered_sections = []
         for i, section in enumerate(natural_sections):
-            if len(section.strip()) < 1000 and i < len(natural_sections) - 1:
-                # Merge small section with next one
-                natural_sections[i + 1] = section + "\n\n" + natural_sections[i + 1]
-            elif len(section.strip()) >= 200:  # Only include sections with substantial content
+            section_length = len(section.strip())
+            
+            # If section is too small, try to merge with next
+            if section_length < 800 and i < len(natural_sections) - 1:
+                # Only merge if next section is also small, otherwise keep separate
+                next_section_length = len(natural_sections[i + 1].strip())
+                if next_section_length < 2000:
+                    natural_sections[i + 1] = section + "\n\n" + natural_sections[i + 1]
+                    continue
+            
+            # Include all sections with meaningful content (lowered from 200 to 100)
+            if section_length >= 100:
                 filtered_sections.append(section)
+        
+        # CHUNKING FIX: Force multiple articles by aggressive splitting
+        if len(filtered_sections) <= 1 and content_length > 1500:
+            print(f"🔄 FORCE CHUNKING: Content too long ({content_length} chars) for single article")
+            # Split long single sections more aggressively
+            large_section = filtered_sections[0] if filtered_sections else content
+            
+            # Try H2-based splitting first
+            if '<h2>' in large_section:
+                h2_parts = large_section.split('<h2>')
+                filtered_sections = []
+                for j, part in enumerate(h2_parts):
+                    if part.strip():
+                        if j > 0:  # Add back h2 tag
+                            part = '<h2>' + part
+                        filtered_sections.append(part)
+                print(f"📚 H2 splitting created {len(filtered_sections)} sections")
+            
+            # If still single section, use paragraph-based chunking
+            if len(filtered_sections) <= 1:
+                paragraphs = large_section.split('\n\n')
+                filtered_sections = []
+                current_chunk = ""
+                
+                for paragraph in paragraphs:
+                    if len(current_chunk + paragraph) > 4000 and current_chunk:
+                        filtered_sections.append(current_chunk.strip())
+                        current_chunk = paragraph
+                    else:
+                        current_chunk += "\n\n" + paragraph if current_chunk else paragraph
+                
+                if current_chunk.strip():
+                    filtered_sections.append(current_chunk.strip())
+                    
+                print(f"📚 Paragraph chunking created {len(filtered_sections)} sections")
         
         natural_sections = filtered_sections if filtered_sections else [content]
         

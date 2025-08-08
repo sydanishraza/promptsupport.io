@@ -1882,8 +1882,8 @@ async def optimized_chunk_large_document(content: str, title: str) -> list:
 
 async def polish_article_content(content: str, title: str, template_data: dict) -> dict:
     """
-    ISSUE 1 FIX: Final content polishing with FORCE CHUNKING - lowered threshold to 3,000 characters
-    For large documents, chunks them at heading levels and processes separately
+    OPTIMIZED: Final content polishing with PERFORMANCE IMPROVEMENTS
+    Reduced processing time through optimized thresholds and streamlined logic
     """
     try:
         print(f"✨ Starting final content polishing for: {title}")

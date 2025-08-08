@@ -244,44 +244,58 @@ const PromptSupportEditor = ({
     }
   }, [article]);
 
-  // FIX 4: EDITOR ACTIVATION ISSUE - Handle entering edit mode with proper focus and activation
+  // ISSUE 2 FIX: IMMEDIATE EDITOR ACTIVATION - Enhanced activation with immediate focus
   useEffect(() => {
     if (isEditing && editorRef.current) {
-      // FIX 4: Ensure editor is immediately active and editable
-      setTimeout(() => {
+      // ISSUE 2 FIX: Make editor immediately active and editable
+      const activateEditor = () => {
         if (editorRef.current) {
-          // Set contentEditable explicitly and focus
+          // Force contentEditable and focus immediately
           editorRef.current.contentEditable = true;
           editorRef.current.focus();
           
-          // FIX 4: Place cursor at the end naturally for immediate editing
-          const range = document.createRange();
-          const selection = window.getSelection();
+          // ISSUE 2 FIX: Add visual indication that editor is active
+          editorRef.current.style.outline = '2px solid #3b82f6';
+          editorRef.current.style.outlineOffset = '-1px';
+          editorRef.current.style.backgroundColor = '#fefefe';
+          
+          // Place cursor at the end for immediate editing
           try {
+            const range = document.createRange();
+            const selection = window.getSelection();
             range.selectNodeContents(editorRef.current);
             range.collapse(false); // Collapse to end
             selection.removeAllRanges();
             selection.addRange(range);
             
-            console.log('✅ FIX 4: Editor activated with cursor positioned');
+            console.log('✅ ISSUE 2 FIX: Editor immediately activated with cursor positioned');
           } catch (e) {
-            // Fallback - just focus without cursor positioning
-            console.log('⚠️ FIX 4: Cursor positioning fallback, editor still focused');
+            console.log('⚠️ ISSUE 2 FIX: Cursor positioning fallback, editor still focused');
           }
           
-          // FIX 4: Ensure editor appears active with visual feedback
-          editorRef.current.style.outline = '2px solid #3b82f6';
-          editorRef.current.style.outlineOffset = '-2px';
-          
-          // Remove outline after brief period to show activation
+          // Remove outline after showing activation
           setTimeout(() => {
             if (editorRef.current) {
               editorRef.current.style.outline = '';
               editorRef.current.style.outlineOffset = '';
+              editorRef.current.style.backgroundColor = '';
             }
-          }, 1000);
+          }, 1500);
         }
-      }, 50); // Reduced timeout for faster activation
+      };
+
+      // ISSUE 2 FIX: Activate immediately, no delay
+      activateEditor();
+      
+      // Also trigger on any interaction to ensure activation
+      const handleClick = () => activateEditor();
+      editorRef.current.addEventListener('click', handleClick);
+      
+      return () => {
+        if (editorRef.current) {
+          editorRef.current.removeEventListener('click', handleClick);
+        }
+      };
     }
   }, [isEditing]);
 

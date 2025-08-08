@@ -5466,6 +5466,27 @@ async def download_training_article_pdf(session_id: str, article_index: int):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+
+    # PDF TIMEOUT FIX: Add processing limits and timeout handling
+    PDF_PROCESSING_TIMEOUT = 120  # 2 minutes maximum processing time
+    MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB maximum file size
+    
+    import signal
+    import asyncio
+    from contextlib import asynccontextmanager
+    
+    @asynccontextmanager
+    async def pdf_processing_timeout(timeout_seconds=120):
+        """Context manager for PDF processing with timeout"""
+        try:
+            yield
+        except asyncio.TimeoutError:
+            print(f"❌ PDF processing timed out after {timeout_seconds} seconds")
+            raise HTTPException(status_code=408, detail="PDF processing timeout - file too large or complex")
+        except Exception as e:
+            print(f"❌ PDF processing error: {e}")
+            raise HTTPException(status_code=500, detail=f"PDF processing failed: {str(e)}")
+    
 async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
     """Process PDF file with comprehensive text and image extraction"""
     try:

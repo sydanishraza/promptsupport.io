@@ -3903,6 +3903,48 @@ const PromptSupportEditor = ({
                 }}
                 suppressContentEditableWarning={true}
               />
+              
+              {/* ISSUE 3 FIX: Essential UI elements positioned outside main editor area */}
+              {renderSlashMenu()}
+              
+              {selectedText && isEditing && (
+                <div className="fixed bottom-4 right-4 z-50 bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="text-sm">Selected: "{selectedText.substring(0, 30)}..."</span>
+                    <button
+                      onClick={addComment}
+                      className="ml-2 bg-blue-700 hover:bg-blue-800 px-2 py-1 rounded text-xs"
+                    >
+                      Add Comment
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {draggedOver && (
+                <div className="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-90 pointer-events-none z-10">
+                  <div className="text-center">
+                    <Upload className="h-12 w-12 text-blue-500 mx-auto mb-2" />
+                    <p className="text-blue-700 font-medium">Drop images here to upload</p>
+                  </div>
+                </div>
+              )}
+              
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 border z-20">
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-sm text-gray-600">Uploading... {uploadProgress}%</span>
+                  </div>
+                  <div className="w-48 bg-gray-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all" 
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             )}
           </div>
         ) : editorMode === 'markdown' ? (

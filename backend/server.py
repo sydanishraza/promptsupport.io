@@ -1030,6 +1030,23 @@ class DocumentPreprocessor:
     
     def _is_chunk_valid(self, chunk_html: str) -> bool:
         """Check if chunk has substantial content - reduced threshold for simple documents"""
+        if not chunk_html or not chunk_html.strip():
+            return False
+        
+        # Remove HTML tags to get text content
+        soup = BeautifulSoup(chunk_html, 'html.parser')
+        text_content = soup.get_text().strip()
+        
+        # Check for minimum content length (reduced threshold)
+        if len(text_content) < 100:  # At least 100 characters
+            return False
+        
+        # Check for meaningful content (not just whitespace or minimal text)
+        words = text_content.split()
+        if len(words) < 10:  # At least 10 words
+            return False
+        
+        return True
     def _create_paragraph_based_chunks(self, html_content: str, images: list) -> list:
         """Create chunks based on paragraphs when no clear heading structure exists"""
         try:

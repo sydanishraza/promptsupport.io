@@ -1928,16 +1928,13 @@ REQUIREMENTS:
 7. NO IMAGES in content - images managed separately
 8. TARGET: 800-1500 words for optimal coverage"""
 
-        # Optimized user message with content length limits
-        user_message = f"""Transform and significantly improve this content into professional technical documentation:
+        # OPTIMIZATION 4: Streamlined user message for faster processing
+        user_message = f"""Transform this content into professional HTML documentation:
 
 TITLE: {title}
+CONTENT: {content[:12000]}{'...' if len(content) > 12000 else ''}
 
-SOURCE CONTENT: {content[:15000]}{'...' if len(content) > 15000 else ''}
-
-CONTEXT: {json.dumps(template_data, indent=2)[:1000]}{'...' if len(json.dumps(template_data, indent=2)) > 1000 else ''}
-
-TASK: Analyze, restructure, and enhance this content. Create comprehensive, publication-ready documentation that significantly improves upon the source material."""
+Create comprehensive, well-structured HTML with proper headings and formatting."""
 
         # Use the LLM fallback system for content polishing
         polished_content = await call_llm_with_fallback(system_message, user_message)

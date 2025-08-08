@@ -7990,6 +7990,74 @@ def create_fallback_article_from_chunk(chunk: str, metadata: Dict[str, Any], chu
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
     }
+def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str, Any], chunk_index: int, total_chunks: int, article_info: list, current_index: int) -> Dict:
+    """Create a basic fallback article with related links when LLM processing fails"""
+    
+    # Extract a title from the first line or heading
+    lines = chunk.split('\n')
+    title = None
+    
+    for line in lines:
+        line = line.strip()
+        if line:
+            # Check if it looks like a heading
+            if line.startswith('#'):
+                title = line.lstrip('#').strip()
+                break
+            elif len(line) < 100 and not line.endswith('.'):
+                title = line
+                break
+    
+    if not title:
+        title = f"Content Section {chunk_index}"
+    
+    # Convert basic markdown to HTML
+    content_html = chunk
+    content_html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^\- (.+)$', r'<li>\1</li>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'\n\n', '</p><p>', content_html)
+    content_html = f'<p>{content_html}</p>'
+    
+    # Clean up
+    content_html = content_html.replace('<p><h', '<h').replace('</h1></p>', '</h1>')
+    content_html = content_html.replace('<p><h2>', '<h2>').replace('</h2></p>', '</h2>')
+    content_html = content_html.replace('<p><h3>', '<h3>').replace('</h3></p>', '</h3>')
+    
+    # Add related links HTML
+    related_links_html = '<h2>Related Articles</h2>\n<p>Other parts of this document:</p>\n<ul>\n'
+    for j, info in enumerate(article_info):
+        if j != current_index:  # Don't link to self
+            related_links_html += f'<li><a href="#article-{info["id"]}" data-article-id="{info["id"]}">{info["title"]}</a></li>\n'
+    related_links_html += '</ul>'
+    
+    # Append related links to content
+    content_html += f'\n\n{related_links_html}'
+    
+    return {
+        "id": article_info[current_index]['id'],
+        "title": clean_article_title(title),
+        "content": content_html,
+        "summary": f"Content section {chunk_index} of {total_chunks} from uploaded document",
+        "tags": [metadata.get('type', 'upload'), 'content-chunk'],
+        "takeaways": [],
+        "source_type": metadata.get('type', 'text_processing'),
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "ai_processed": False,
+            "chunk_index": chunk_index,
+            "total_chunks": total_chunks,
+            "chunk_chars": len(chunk),
+            "processing_approach": "fallback_chunking_with_related_links",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "document_batch_id": metadata.get('document_batch_id', str(uuid.uuid4())),
+            "has_related_links": True
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
 
 async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
     """Create a single comprehensive article from content using simplified LLM approach"""

@@ -1429,67 +1429,84 @@ def convert_markdown_to_html_for_text_processing(content: str) -> str:
 
 async def extract_document_title(file_path: str, file_extension: str, html_content: str = None) -> str:
     """
-    Extract the document title from the first heading or title style
-    Priority: H1 > Title style > First paragraph > Filename
+    ISSUE 2 FIX: Extract document title prioritizing FILENAME over content extraction
+    Priority: Filename (without extension) > H1 > Title style > First paragraph
     """
     try:
-        if file_extension == 'docx':
-            # Try to extract from DOCX structure first
-            try:
-                from docx import Document
-                doc = Document(file_path)
-                
-                # Check for Title style first
-                for para in doc.paragraphs:
-                    if para.style.name == 'Title' and para.text.strip():
-                        title = para.text.strip()
-                        print(f"📋 Found Title style: {title}")
-                        return title
-                
-                # Check for Heading 1
-                for para in doc.paragraphs:
-                    if para.style.name == 'Heading 1' and para.text.strip():
-                        title = para.text.strip()
-                        print(f"📋 Found Heading 1: {title}")
-                        return title
-                
-                # Check for first non-empty paragraph as fallback
-                for para in doc.paragraphs:
-                    if para.text.strip() and len(para.text.strip()) < 100:  # Likely a title
-                        title = para.text.strip()
-                        print(f"📋 Found first paragraph title: {title}")
-                        return title
-                        
-            except Exception as docx_error:
-                print(f"⚠️ DOCX title extraction failed: {docx_error}")
+        # ISSUE 2 FIX: PRIORITIZE FILENAME for clean title handling
+        filename = os.path.basename(file_path)
+        if '.' in filename:
+            filename_title = filename.rsplit('.', 1)[0]
+        else:
+            filename_title = filename
         
-        # Fallback: Extract from HTML content if available
-        if html_content:
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html_content, 'html.parser')
-            
-            # Look for H1 elements
-            h1_elements = soup.find_all('h1')
-            if h1_elements and h1_elements[0].get_text().strip():
-                title = h1_elements[0].get_text().strip()
-                print(f"📋 Found H1 in HTML: {title}")
-                return title
-            
-            # Look for any heading elements
-            for heading in soup.find_all(['h1', 'h2', 'h3']):
-                if heading.get_text().strip():
-                    title = heading.get_text().strip()
-                    print(f"📋 Found heading in HTML: {title}")
-                    return title
-            
-            # Look for first paragraph that might be a title
-            paragraphs = soup.find_all('p')
-            if paragraphs:
-                first_text = paragraphs[0].get_text().strip()
-                if first_text and len(first_text) < 100:
-                    print(f"📋 Found paragraph title in HTML: {first_text}")
-                    return first_text
+        # Clean up the filename title
+        filename_title = filename_title.replace('_', ' ').replace('-', ' ').title()
+        filename_title = ' '.join(filename_title.split())  # Clean extra spaces
         
+        print(f"🎯 ISSUE 2 FIX: Using FILENAME as primary title: '{filename_title}'")
+        return filename_title
+        
+        # COMMENTED OUT: Content-based title extraction (causes duplicate H1 issues)
+        # if file_extension == 'docx':
+        #     # Try to extract from DOCX structure first
+        #     try:
+        #         from docx import Document
+        #         doc = Document(file_path)
+        #         
+        #         # Check for Title style first
+        #         for para in doc.paragraphs:
+        #             if para.style.name == 'Title' and para.text.strip():
+        #                 title = para.text.strip()
+        #                 print(f"📋 Found Title style: {title}")
+        #                 return title
+        #         
+        #         # Check for Heading 1
+        #         for para in doc.paragraphs:
+        #             if para.style.name == 'Heading 1' and para.text.strip():
+        #                 title = para.text.strip()
+        #                 print(f"📋 Found Heading 1: {title}")
+        #                 return title
+        #         
+        #         # Check for first non-empty paragraph as fallback
+        #         for para in doc.paragraphs:
+        #             if para.text.strip() and len(para.text.strip()) < 100:  # Likely a title
+        #                 title = para.text.strip()
+        #                 print(f"📋 Found first paragraph title: {title}")
+        #                 return title
+        #                 
+        #     except Exception as docx_error:
+        #         print(f"⚠️ DOCX title extraction failed: {docx_error}")
+        # 
+        # # Fallback: Extract from HTML content if available
+        # if html_content:
+        #     from bs4 import BeautifulSoup
+        #     soup = BeautifulSoup(html_content, 'html.parser')
+        #     
+        #     # Look for H1 elements
+        #     h1_elements = soup.find_all('h1')
+        #     if h1_elements and h1_elements[0].get_text().strip():
+        #         title = h1_elements[0].get_text().strip()
+        #         print(f"📋 Found H1 in HTML: {title}")
+        #         return title
+        #     
+        #     # Look for any heading elements
+        #     for heading in soup.find_all(['h1', 'h2', 'h3']):
+        #         if heading.get_text().strip():
+        #             title = heading.get_text().strip()
+        #             print(f"📋 Found heading in HTML: {title}")
+        #             return title
+        #     
+        #     # Look for first paragraph that might be a title
+        #     paragraphs = soup.find_all('p')
+        #     if paragraphs:
+        #         first_text = paragraphs[0].get_text().strip()
+        #         if first_text and len(first_text) < 100:
+        #             print(f"📋 Found paragraph title in HTML: {first_text}")
+        #             return first_text
+        
+    except Exception as e:
+        print(f"❌ ISSUE 2 FIX: Title extraction failed, using fallback: {e}")
         # Final fallback: use filename without extension
         filename = os.path.basename(file_path)
         if '.' in filename:
@@ -1498,6 +1515,10 @@ async def extract_document_title(file_path: str, file_extension: str, html_conte
             title = filename
         
         # Clean up the filename title
+        title = title.replace('_', ' ').replace('-', ' ').title()
+        title = ' '.join(title.split())  # Clean extra spaces
+        print(f"🔄 ISSUE 2 FIX: Fallback filename title: '{title}'")
+        return title
         title = title.replace('_', ' ').replace('-', ' ')
         title = ' '.join(word.capitalize() for word in title.split())
         

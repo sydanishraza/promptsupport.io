@@ -7827,8 +7827,8 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
     
     print(f"📝 ISSUE 4 FIX: Creating articles with smart chunking and related links")
     
-    # STEP 1: Smart chunking based on character limits (6,000-8,000 chars per chunk)
-    content_chunks = smart_chunk_content(content, max_chars=8000, min_chars=6000)
+    # ISSUE 1 FIX: Use smaller chunks for better content structure
+    content_chunks = smart_chunk_content(content, max_chars=4000, min_chars=2500)
     
     print(f"📊 ISSUE 4: Smart chunking created {len(content_chunks)} chunks from {len(content)} characters")
     

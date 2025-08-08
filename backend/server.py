@@ -8195,12 +8195,12 @@ CRITICAL OUTPUT REQUIREMENTS:
 - DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
 - NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
 
-FIX 3: ENHANCED EDITOR-COMPATIBLE HTML FEATURES:
-- Use CALLOUTS for important information: tip, note, warning, success callouts as specified
-- Create TABLES for any parameters, configurations, or structured data  
-- Add EXPANDABLE SECTIONS for detailed explanations that can be collapsed
+ISSUE 3 FIX: USE EXACT EDITOR-COMPATIBLE HTML STRUCTURES:
+- Use NATIVE EDITOR CALLOUTS with exact inline styling as specified in system prompt
+- Create STRUCTURED TABLES with proper inline styling for compatibility
+- Add EXPANDABLE SECTIONS using details/summary tags with proper styling
 - Use semantic HTML structure with proper heading hierarchy
-- ONLY USE the HTML tags and classes specified in system prompt
+- ONLY USE the HTML tags and inline styles specified in system prompt
 
 EXPANSION REQUIREMENTS: For each section, provide:
 1. Detailed background and context

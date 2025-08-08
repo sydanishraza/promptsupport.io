@@ -2209,7 +2209,7 @@ async def process_with_html_preprocessing_pipeline(file_path: str, file_extensio
                     article_title = document_title
                 else:
                     # Extract title from first H1 in content
-                    extracted_h1_title = await extract_h1_title_from_content(chunk_data['content'])
+                    extracted_h1_title = extract_h1_title_from_content(chunk_data['content'])
                     article_title = extracted_h1_title if extracted_h1_title else document_title
             else:
                 # Multiple articles - extract H1 title from each chunk for section-specific titles

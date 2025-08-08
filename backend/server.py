@@ -6995,10 +6995,41 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     # Combine chunk content
     full_content = "\n".join([chunk.content for chunk in chunks])
     
-    # Generate title from content or metadata
-    title = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
-    if title.startswith('Website:'):
-        title = title.replace('Website: ', '')
+    # FIX 1: REDUNDANT TITLE HANDLING - Use original filename as article title
+    original_filename = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
+    if original_filename.startswith('Website:'):
+        title = original_filename.replace('Website: ', '')
+    elif original_filename != 'Processed Content':
+        # Use filename without extension as clean title
+        title = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
+    else:
+        title = "Processed Content"
+    
+    print(f"🎯 FIX 1: Using filename as article title: '{title}'")
+    
+    # FIX 1: Remove redundant title heading from body content
+    import re
+    title_variations = [
+        title.lower(),
+        title.replace('_', ' ').lower(), 
+        title.replace('-', ' ').lower(),
+        original_filename.lower()
+    ]
+    
+    # Remove H1 headings that match filename variations
+    for title_var in title_variations:
+        # Remove markdown H1 that matches filename
+        full_content = re.sub(r'^#\s+' + re.escape(title_var) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'^#\s+' + re.escape(title_var.title()) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+    
+    # Also remove generic document titles
+    full_content = re.sub(r'^#\s+Document:.*$', '', full_content, flags=re.MULTILINE)
+    full_content = re.sub(r'^#\s+File:.*$', '', full_content, flags=re.MULTILINE)
+    
+    # Clean up extra whitespace
+    full_content = re.sub(r'\n{3,}', '\n\n', full_content).strip()
+    
+    print(f"🎯 FIX 1: Removed redundant title headings from content")
     
     source_type = metadata.get('type', 'text_processing')
     file_extension = metadata.get('file_extension', '')
@@ -7007,8 +7038,9 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     document_batch_id = str(uuid.uuid4())
     metadata['document_batch_id'] = document_batch_id
     metadata['processing_timestamp'] = datetime.utcnow().isoformat()
+    metadata['title_handling'] = 'filename_as_title'  # Mark this fix
     
-    print(f"🔍 DEBUG: Processing document batch {document_batch_id} for {metadata.get('original_filename', 'unknown')}")
+    print(f"🔍 DEBUG: Processing document batch {document_batch_id} for {title}")
     
     # Determine content splitting strategy with document isolation
     should_create_multiple = await should_split_into_multiple_articles(full_content, file_extension)

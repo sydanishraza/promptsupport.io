@@ -3948,7 +3948,6 @@ const PromptSupportEditor = ({
                 )}
               </>
             )}
-            )}
           </div>
         ) : editorMode === 'markdown' ? (
           <textarea

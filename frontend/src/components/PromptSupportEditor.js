@@ -3850,7 +3850,12 @@ const PromptSupportEditor = ({
         `}</style>
         
         {editorMode === 'wysiwyg' ? (
-          <div className="h-full relative">
+          <div className="h-full relative" style={{ 
+            // ISSUE 3 FIX: Simplified layout to prevent overlapping divs
+            minHeight: '400px',
+            maxHeight: 'calc(100vh - 200px)',
+            overflow: 'hidden'
+          }}>
             {!isEditing ? (
               // View mode: safely render HTML content with proper styling
               <div 
@@ -3863,110 +3868,41 @@ const PromptSupportEditor = ({
                 dangerouslySetInnerHTML={{ __html: content || '<p>No content available</p>' }} 
               />
             ) : (
-              // Edit mode: Enhanced with drag & drop and slash commands
-              <div className="h-full relative" style={{
-                // ISSUE 5 FIX: Ensure editor doesn't overlap with other elements
-                zIndex: 2,
-                position: 'relative',
-                backgroundColor: 'white'
-              }}>
-                <div
-                  key={`editor-${isEditing}-${article?.id}`}
-                  ref={contentRef}
-                  contentEditable={true}
-                  onInput={(e) => {
-                    setContent(e.target.innerHTML);
-                    setHasUnsavedChanges(true);
-                  }}
-                  onKeyDown={handleKeyDown}
-                  onPaste={handlePaste}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onMouseOver={handleLinkHover}
-                  onMouseOut={handleLinkMouseOut}
-                  onClick={handleLinkClick}
-                  className={`wysiwyg-content wysiwyg-editor p-6 focus:outline-none transition-colors ${
-                    draggedOver ? 'bg-blue-50 border-2 border-dashed border-blue-300' : ''
-                  }`}
-                  style={{
-                    minHeight: '400px',
-                    maxHeight: '500px',
-                    height: 'auto',
-                    lineHeight: '1.7',
-                    fontSize: '16px',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    color: '#1f2937',
-                    outline: 'none',
-                    overflowY: 'auto !important',
-                    overflowX: 'hidden !important',
-                    WebkitOverflowScrolling: 'touch'
-                  }}
-                  css={`
-                    h1 { font-size: 2rem; font-weight: bold; margin: 1rem 0; }
-                    h2 { font-size: 1.75rem; font-weight: bold; margin: 0.875rem 0; }
-                    h3 { font-size: 1.5rem; font-weight: bold; margin: 0.75rem 0; }
-                    h4 { font-size: 1.25rem; font-weight: bold; margin: 0.625rem 0; }
-                    p { margin: 0.5rem 0; }
-                    ul, ol { margin: 0.5rem 0; padding-left: 1.5rem; }
-                    li { margin: 0.25rem 0; }
-                    blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; color: #6b7280; }
-                    code { background-color: #f1f5f9; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-                    pre { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; margin: 16px 0; overflow-x: auto; }
-                    strong, b { font-weight: bold; }
-                    em, i { font-style: italic; }
-                    u { text-decoration: underline; }
-                    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
-                    td { border: 1px solid #e5e7eb; padding: 8px; }
-                  `}
-                  suppressContentEditableWarning={true}
-                />
-                
-                {/* Phase 3: Slash Command Menu */}
-                {renderSlashMenu()}
-                
-                {/* Phase 4: Text Selection Comment Tooltip */}
-                {selectedText && isEditing && (
-                  <div className="fixed bottom-4 right-4 z-50 bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      <span className="text-sm">Selected: "{selectedText.substring(0, 30)}..."</span>
-                      <button
-                        onClick={addComment}
-                        className="ml-2 bg-blue-700 hover:bg-blue-800 px-2 py-1 rounded text-xs"
-                      >
-                        Add Comment
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Phase 3: Drag & Drop Overlay */}
-                {draggedOver && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-90 pointer-events-none">
-                    <div className="text-center">
-                      <Upload className="h-12 w-12 text-blue-500 mx-auto mb-2" />
-                      <p className="text-blue-700 font-medium">Drop images here to upload</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Phase 3: Upload Progress Indicator */}
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 border">
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      <span className="text-sm text-gray-600">Uploading... {uploadProgress}%</span>
-                    </div>
-                    <div className="w-48 bg-gray-200 rounded-full h-2 mt-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all" 
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              // ISSUE 3 FIX: Simplified edit mode with clean layout
+              <div
+                key={`editor-${isEditing}-${article?.id}`}
+                ref={contentRef}
+                contentEditable={true}
+                onInput={(e) => {
+                  setContent(e.target.innerHTML);
+                  setHasUnsavedChanges(true);
+                }}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onMouseOver={handleLinkHover}
+                onMouseOut={handleLinkMouseOut}
+                onClick={handleLinkClick}
+                className="wysiwyg-content wysiwyg-editor h-full p-6 focus:outline-none"
+                style={{
+                  // ISSUE 3 FIX: Clean, full-space layout with proper scrolling
+                  minHeight: '400px',
+                  height: '100%',
+                  lineHeight: '1.7',
+                  fontSize: '16px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  color: '#1f2937',
+                  outline: 'none',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  WebkitOverflowScrolling: 'touch',
+                  border: 'none',
+                  backgroundColor: '#ffffff'
+                }}
+                suppressContentEditableWarning={true}
+              />
             )}
           </div>
         ) : editorMode === 'markdown' ? (

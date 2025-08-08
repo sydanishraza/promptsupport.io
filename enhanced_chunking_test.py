@@ -107,6 +107,27 @@ class EnhancedChunkingTest:
                 'file': ('Customer_Summary_Screen_User_Guide_1.3.docx', docx_content, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
             }
             
+            # Add required form data for training/process endpoint
+            form_data = {
+                'template_id': 'enhanced_chunking_test',
+                'training_mode': 'true',
+                'template_instructions': json.dumps({
+                    "template_id": "enhanced_chunking_test",
+                    "processing_instructions": "Test enhanced H1 AND H2 detection for chunking",
+                    "output_requirements": {
+                        "format": "html",
+                        "min_articles": 2,
+                        "max_articles": 10,
+                        "quality_benchmarks": ["content_completeness", "proper_chunking", "h2_detection"]
+                    },
+                    "media_handling": {
+                        "extract_images": True,
+                        "contextual_placement": True,
+                        "filter_decorative": True
+                    }
+                })
+            }
+            
             # Use training/process endpoint as specified in the review
             print("📤 Processing user's DOCX file with enhanced chunking...")
             
@@ -115,6 +136,7 @@ class EnhancedChunkingTest:
             response = requests.post(
                 f"{self.base_url}/training/process",
                 files=files,
+                data=form_data,
                 timeout=300  # 5 minutes for large file processing
             )
             

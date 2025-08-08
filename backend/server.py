@@ -1886,7 +1886,7 @@ async def polish_article_content(content: str, title: str, template_data: dict) 
     Reduced processing time through optimized thresholds and streamlined logic
     """
     try:
-        print(f"✨ Starting final content polishing for: {title}")
+        print(f"⚡ OPTIMIZED: Starting fast content polishing for: {title}")
         
         # ISSUE 1 FIX: Check content size with LOWERED threshold for force chunking
         content_length = len(content)

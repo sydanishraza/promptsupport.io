@@ -47,29 +47,23 @@ const Dashboard = () => {
         console.log('🔧 Dashboard: Starting data fetch...');
         
         // Fetch Content Library count (primary source of truth for documents)
+        console.log('🔧 Dashboard: Fetching content library...');
         const contentLibraryResponse = await fetch(`${backendUrl}/api/content-library`);
         let totalDocuments = 0;
         let contentLibraryCount = 0;
         if (contentLibraryResponse.ok && isActive) {
           const contentLibraryData = await contentLibraryResponse.json();
+          console.log('🔧 Dashboard: Content library raw data:', contentLibraryData);
           contentLibraryCount = contentLibraryData.total || contentLibraryData.articles?.length || 0;
           totalDocuments = contentLibraryCount; // Use content library as source of truth
           console.log('📊 Dashboard: Fetched', contentLibraryCount, 'documents from Content Library');
+          console.log('🔧 Dashboard: Setting totalDocuments to:', totalDocuments);
         } else if (!contentLibraryResponse.ok) {
           console.log('❌ Dashboard: Content Library fetch failed', contentLibraryResponse.status);
         }
 
-        // Fetch documents count as secondary verification
-        const documentsResponse = await fetch(`${backendUrl}/api/documents`);
-        if (documentsResponse.ok && isActive) {
-          const documentsData = await documentsResponse.json();
-          const documentsCount = documentsData.total || documentsData.documents?.length || 0;
-          console.log('📊 Dashboard: Found', documentsCount, 'in documents endpoint');
-          // Use the higher of the two counts to account for any data inconsistencies
-          totalDocuments = Math.max(totalDocuments, documentsCount);
-        } else if (!documentsResponse.ok) {
-          console.log('❌ Dashboard: Documents fetch failed', documentsResponse.status);
-        }
+        // Skip documents endpoint for now to isolate the issue
+        console.log('🔧 Dashboard: Skipping documents endpoint, using totalDocuments:', totalDocuments);
 
         if (!isActive) return; // Final check before state update
 

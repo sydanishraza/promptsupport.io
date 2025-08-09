@@ -3796,9 +3796,9 @@ async def create_comprehensive_articles_from_docx_content(content: str, images: 
             if section_length >= 100:
                 filtered_sections.append(section)
         
-        # CHUNKING FIX: Force multiple articles by aggressive splitting
-        if len(filtered_sections) <= 1 and content_length > 1500:
-            print(f"🔄 FORCE CHUNKING: Content too long ({content_length} chars) for single article")
+        # CHUNKING FIX: Force multiple articles by aggressive splitting - SYNCHRONIZED WITH STANDARD PATH
+        if len(filtered_sections) <= 1 and content_length > 1200:  # FIXED: Use same 1200 threshold as standard path
+            print(f"🔄 ENHANCED DOCX FORCE CHUNKING: Content too long ({content_length} chars) for single article - using 1200 threshold")
             # Split long single sections more aggressively
             large_section = filtered_sections[0] if filtered_sections else content
             

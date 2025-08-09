@@ -31,6 +31,9 @@ const Dashboard = () => {
 
   // Get backend URL from environment
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
+  
+  // Debug logging
+  console.log('🔧 Dashboard: Component mounted, backendUrl:', backendUrl);
 
   // Fetch real data from backend
   useEffect(() => {

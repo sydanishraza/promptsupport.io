@@ -92,7 +92,12 @@ const Dashboard = () => {
           return finalStats;
         });
         
-        console.log('✅ Dashboard: State update completed!');
+        console.log('✅ Dashboard: State update completed! Current platformStats should be:', totalDocuments);
+        
+        // Add a delayed check to verify state was actually updated
+        setTimeout(() => {
+          console.log('🔍 Dashboard: Delayed state check...');
+        }, 500);
 
       } catch (error) {
         if (isActive) {

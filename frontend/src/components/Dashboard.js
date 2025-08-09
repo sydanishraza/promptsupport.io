@@ -74,6 +74,8 @@ const Dashboard = () => {
           knowledgeBaseViews: Math.floor(totalDocuments * 8.2) // Estimated usage metric
         });
 
+        console.log('📊 Dashboard: Final stats updated - Total Documents:', totalDocuments);
+
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         // Keep loading false to show the interface even if data fetch fails

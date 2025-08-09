@@ -38,20 +38,25 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
-        // Fetch documents count
-        const documentsResponse = await fetch(`${backendUrl}/api/documents`);
-        let totalDocuments = 0;
-        if (documentsResponse.ok) {
-          const documentsData = await documentsResponse.json();
-          totalDocuments = documentsData.total || documentsData.documents?.length || 0;
-        }
-
-        // Fetch Content Library count  
+        // Fetch Content Library count (primary source of truth for documents)
         const contentLibraryResponse = await fetch(`${backendUrl}/api/content-library`);
+        let totalDocuments = 0;
         let contentLibraryCount = 0;
         if (contentLibraryResponse.ok) {
           const contentLibraryData = await contentLibraryResponse.json();
           contentLibraryCount = contentLibraryData.total || contentLibraryData.articles?.length || 0;
+          totalDocuments = contentLibraryCount; // Use content library as source of truth
+          console.log('📊 Dashboard: Fetched', contentLibraryCount, 'documents from Content Library');
+        }
+
+        // Fetch documents count as secondary verification
+        const documentsResponse = await fetch(`${backendUrl}/api/documents`);
+        if (documentsResponse.ok) {
+          const documentsData = await documentsResponse.json();
+          const documentsCount = documentsData.total || documentsData.documents?.length || 0;
+          console.log('📊 Dashboard: Found', documentsCount, 'in documents endpoint');
+          // Use the higher of the two counts to account for any data inconsistencies
+          totalDocuments = Math.max(totalDocuments, documentsCount);
         }
 
         // Fetch system status

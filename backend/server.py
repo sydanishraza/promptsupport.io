@@ -7314,10 +7314,10 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             if not section.strip():
                 continue
                 
-            # For large sections, create multiple overlapping chunks
+            # For large sections, create fewer, larger chunks for better comprehensive articles
             section_words = section.split()
-            if len(section_words) > 300:  # Large section - create overlapping chunks
-                chunk_size = 250  # words per chunk
+            if len(section_words) > 800:  # Large section - create larger chunks (increased from 300)
+                chunk_size = 600  # words per chunk (increased from 250 for more comprehensive content)
                 overlap = 50      # words overlap
                 
                 start_word = 0
@@ -7336,7 +7336,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                                 "section_number": i + 1,
                                 "chunk_number": chunk_num,
                                 "total_sections": len(sections),
-                                "chunk_type": "overlapping",
+                                "chunk_type": "comprehensive",  # Changed from "overlapping"
                                 "word_count": len(chunk_words)
                             }
                         )

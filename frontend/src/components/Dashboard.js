@@ -313,7 +313,10 @@ const Dashboard = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button className="p-4 text-left rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('openKnowledgeUpload'))}
+            className="p-4 text-left rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+          >
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
               🧠
             </div>

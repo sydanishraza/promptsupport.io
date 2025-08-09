@@ -78,6 +78,17 @@ const Dashboard = () => {
 
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+        console.log('Backend URL being used:', backendUrl);
+        console.log('Full URL tried for content-library:', `${backendUrl}/api/content-library`);
+        console.log('Full URL tried for documents:', `${backendUrl}/api/documents`);
+        
+        // Set fallback data to show the error in UI
+        setPlatformStats({
+          totalDocuments: 0,
+          activeChats: 0,
+          ticketsResolved: 0,
+          knowledgeBaseViews: 0
+        });
         // Keep loading false to show the interface even if data fetch fails
       } finally {
         setLoading(false);

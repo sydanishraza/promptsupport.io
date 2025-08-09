@@ -3815,12 +3815,35 @@ async def create_comprehensive_articles_from_docx_content(content: str, images: 
             
             # If still single section, use paragraph-based chunking
             if len(filtered_sections) <= 1:
+                print("🔧 ENHANCED DOCX: Trying paragraph-based chunking for single large section")
                 paragraphs = large_section.split('\n\n')
+                
+                # ENHANCED DOCX FIX: If no paragraph breaks, try other separators (same as standard path)
+                if len(paragraphs) <= 1:
+                    print("🔧 ENHANCED DOCX: No paragraph breaks found - trying alternative splitting")
+                    
+                    # Try splitting by single newlines
+                    paragraphs = large_section.split('\n')
+                    if len(paragraphs) <= 1:
+                        print("🔧 ENHANCED DOCX: No line breaks found - forcing character-based chunking")
+                        # Force character-based chunking for very long single paragraphs
+                        chunk_size = 1500  # More aggressive than 4000
+                        paragraphs = []
+                        for i in range(0, len(large_section), chunk_size):
+                            chunk = large_section[i:i+chunk_size]
+                            paragraphs.append(chunk)
+                            print(f"📝 ENHANCED DOCX Force chunk: {len(chunk)} chars")
+                    else:
+                        print(f"📝 ENHANCED DOCX: Using {len(paragraphs)} line-separated sections")
+                else:
+                    print(f"📝 ENHANCED DOCX: Using {len(paragraphs)} paragraph-separated sections")
+                
                 filtered_sections = []
                 current_chunk = ""
                 
                 for paragraph in paragraphs:
-                    if len(current_chunk + paragraph) > 4000 and current_chunk:
+                    # Reduced from 4000 to 1800 for more aggressive chunking
+                    if len(current_chunk + paragraph) > 1800 and current_chunk:
                         filtered_sections.append(current_chunk.strip())
                         current_chunk = paragraph
                     else:
@@ -3829,7 +3852,7 @@ async def create_comprehensive_articles_from_docx_content(content: str, images: 
                 if current_chunk.strip():
                     filtered_sections.append(current_chunk.strip())
                     
-                print(f"📚 Paragraph chunking created {len(filtered_sections)} sections")
+                print(f"📚 ENHANCED DOCX Paragraph chunking created {len(filtered_sections)} sections")
         
         natural_sections = filtered_sections if filtered_sections else [content]
         

@@ -67,19 +67,24 @@ const Dashboard = () => {
           console.log('❌ Dashboard: Documents fetch failed', documentsResponse.status);
         }
 
-        // Force update to test if state is working
         console.log('🔧 Dashboard: About to set state with totalDocuments =', totalDocuments);
         
-        // Update platform stats with real data
+        // Force a direct state update to bypass any async issues
         const finalStats = {
           totalDocuments: totalDocuments,
-          activeChats: contentLibraryCount, // Using Content Library count as a meaningful metric
-          ticketsResolved: Math.floor(totalDocuments * 0.6), // Estimated based on processing
-          knowledgeBaseViews: Math.floor(totalDocuments * 8.2) // Estimated usage metric
+          activeChats: contentLibraryCount,
+          ticketsResolved: Math.floor(totalDocuments * 0.6),
+          knowledgeBaseViews: Math.floor(totalDocuments * 8.2)
         };
 
-        console.log('📊 Dashboard: Setting final stats:', finalStats);
-        setPlatformStats(finalStats);
+        console.log('📊 Dashboard: Setting final stats:', JSON.stringify(finalStats));
+        
+        // Use functional setState to ensure we get the latest state
+        setPlatformStats(prevStats => {
+          console.log('📊 Dashboard: Previous stats:', JSON.stringify(prevStats));
+          console.log('📊 Dashboard: New stats:', JSON.stringify(finalStats));
+          return finalStats;
+        });
         
         // Add a timeout to check if state was updated
         setTimeout(() => {

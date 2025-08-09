@@ -7819,7 +7819,7 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
     """ISSUE 1 FIX: FORCE CHUNKING - Lower threshold to ensure content gets properly chunked"""
     
     # CHUNKING FIX: Aggressive threshold for forcing multiple articles
-    MAX_SINGLE_ARTICLE_CHARS = 1200  # ISSUE 1 FIX: Further lowered to 1200 to force chunking more aggressively
+    MAX_SINGLE_ARTICLE_CHARS = 8000  # CORRECTED: Increased to 8000 for proper chunking balance
     
     print(f"🔍 ISSUE 1 FIX: Chunking validation for {file_extension} content:")
     print(f"   - Content length: {len(content)} characters")

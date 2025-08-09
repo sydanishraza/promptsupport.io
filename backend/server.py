@@ -9724,15 +9724,54 @@ async def create_content_library_article(
                 ai_response = result["choices"][0]["message"]["content"]
                 
                 try:
-                    # Parse AI response as JSON
+                    # Parse AI response as JSON with robust error handling
                     import json
                     import re
+                    
+                    # Clean the response first - remove any control characters
+                    cleaned_response = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', ai_response)
+                    
                     # Extract JSON from response if it's wrapped in markdown
-                    json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL)
+                    json_match = re.search(r'```json\s*(.*?)\s*```', cleaned_response, re.DOTALL)
                     if json_match:
-                        article_data = json.loads(json_match.group(1))
+                        json_str = json_match.group(1).strip()
+                        print(f"📦 Extracted JSON from markdown wrapper: {len(json_str)} chars")
+                        article_data = json.loads(json_str)
                     else:
-                        article_data = json.loads(ai_response)
+                        print(f"📦 Parsing direct JSON response: {len(cleaned_response)} chars")
+                        article_data = json.loads(cleaned_response)
+                    
+                    print(f"✅ Successfully parsed JSON article data with {len(article_data.keys())} fields")
+                    
+                except json.JSONDecodeError as json_error:
+                    print(f"❌ JSON parsing error: {str(json_error)}")
+                    print(f"🔍 Raw AI response preview: {ai_response[:500]}...")
+                    
+                    # Fallback: create article with raw content
+                    article_data = {
+                        "title": title,
+                        "content": f"<p>{content[:2000]}...</p>",  # Truncate very long content
+                        "summary": "Content processing encountered JSON parsing issues",
+                        "tags": ["processing-error"],
+                        "takeaways": ["Content requires manual review"]
+                    }
+                    print("🔄 Using fallback article structure due to JSON parsing failure")
+                    
+                except Exception as parsing_error:
+                    print(f"❌ Unexpected parsing error: {str(parsing_error)}")
+                    print(f"🔍 AI response type: {type(ai_response)}")
+                    
+                    # Final fallback
+                    article_data = {
+                        "title": title,
+                        "content": f"<p>Content processing failed. Original content length: {len(content)} characters.</p>",
+                        "summary": "Content processing failed",
+                        "tags": ["processing-failed"],
+                        "takeaways": ["Content requires reprocessing"]
+                    }
+                    print("🔄 Using final fallback article structure")
+                
+                try:
                     
                     # Create article record for Content Library
                     article_record = {

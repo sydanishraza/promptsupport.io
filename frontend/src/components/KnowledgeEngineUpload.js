@@ -561,40 +561,73 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
 
               <div className="p-6">
                 {processModal.data ? (
-                  // Results
-                  <div className="text-center space-y-6">
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-16 h-16 bg-green-100 rounded-full inline-flex items-center justify-center"
-                    >
-                      <CheckCircle2 className="w-8 h-8 text-green-600" />
-                    </motion.div>
-                    <div>
-                      <h4 className="text-xl font-semibold text-gray-900 mb-2">Processing Complete!</h4>
-                      <p className="text-gray-600">Your content has been successfully processed</p>
+                  processModal.data.error ? (
+                    // Error State
+                    <div className="text-center space-y-6">
+                      <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="w-16 h-16 bg-red-100 rounded-full inline-flex items-center justify-center"
+                      >
+                        <AlertCircle className="w-8 h-8 text-red-600" />
+                      </motion.div>
+                      <div>
+                        <h4 className="text-xl font-semibold text-gray-900 mb-2">Processing Failed</h4>
+                        <p className="text-gray-600">{processModal.data.message}</p>
+                      </div>
+                      
+                      <button
+                        onClick={closeModal}
+                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                      >
+                        Try Again
+                      </button>
                     </div>
+                  ) : (
+                    // Success Results
+                    <div className="text-center space-y-6">
+                      <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="w-16 h-16 bg-green-100 rounded-full inline-flex items-center justify-center"
+                      >
+                        <CheckCircle2 className="w-8 h-8 text-green-600" />
+                      </motion.div>
+                      <div>
+                        <h4 className="text-xl font-semibold text-gray-900 mb-2">Processing Complete!</h4>
+                        <p className="text-gray-600">Your content has been successfully processed and {processModal.data.articlesGenerated} articles created</p>
+                      </div>
 
-                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-blue-600 mb-1">{processModal.data.articlesGenerated}</div>
-                          <div className="text-sm text-gray-600">Articles Generated</div>
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="text-center">
+                            <div className="text-3xl font-bold text-blue-600 mb-1">{processModal.data.articlesGenerated}</div>
+                            <div className="text-sm text-gray-600">Articles Generated</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-3xl font-bold text-purple-600 mb-1">{processModal.data.mediaProcessed || 0}</div>
+                            <div className="text-sm text-gray-600">Media Processed</div>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-purple-600 mb-1">{processModal.data.mediaProcessed}</div>
-                          <div className="text-sm text-gray-600">Media Processed</div>
+                        <div className="pt-4 mt-4 border-t border-gray-200 space-y-2">
+                          <div className="text-sm text-gray-600">Processing time: <span className="font-medium">{processModal.data.processingTime}s</span></div>
+                          {processModal.data.contentLength && (
+                            <div className="text-sm text-gray-600">Content extracted: <span className="font-medium">{processModal.data.contentLength} characters</span></div>
+                          )}
+                          <div className="text-sm text-gray-600">Status: <span className="font-medium text-green-600">{processModal.data.status || 'Completed'}</span></div>
                         </div>
                       </div>
-                      <div className="pt-4 mt-4 border-t border-gray-200">
-                        <div className="text-sm text-gray-600">Processing time: <span className="font-medium">{processModal.data.processingTime}s</span></div>
+
+                      <div className="text-center">
+                        <button
+                          onClick={closeModal}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                        >
+                          View Articles in Content Library
+                        </button>
                       </div>
                     </div>
-
-                    <div className="text-left">
-                      <h5 className="font-semibold text-gray-900 mb-4">Generated Articles:</h5>
-                      <div className="space-y-3">
-                        {processModal.data.articleLinks.map((article, index) => (
+                  )
                           <div key={index} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
                               <FileText className="w-4 h-4 text-blue-600" />

@@ -7705,6 +7705,26 @@ def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 60
     # Split by double newlines first (paragraph breaks)
     paragraphs = content.split('\n\n')
     
+    # CHUNKING FIX: If no paragraph breaks found, try other separators
+    if len(paragraphs) <= 1:
+        print("🔧 No paragraph breaks found - trying alternative splitting")
+        
+        # Try splitting by single newlines
+        paragraphs = content.split('\n')
+        if len(paragraphs) <= 1:
+            print("🔧 No line breaks found - forcing character-based chunking")
+            # Force character-based chunking for very long single paragraphs
+            chunk_size = max_chars
+            paragraphs = []
+            for i in range(0, len(content), chunk_size):
+                chunk = content[i:i+chunk_size]
+                paragraphs.append(chunk)
+                print(f"📝 Force chunk: {len(chunk)} chars")
+        else:
+            print(f"📝 Using {len(paragraphs)} line-separated sections")
+    else:
+        print(f"📝 Using {len(paragraphs)} paragraph-separated sections")
+    
     for paragraph in paragraphs:
         paragraph = paragraph.strip()
         if not paragraph:

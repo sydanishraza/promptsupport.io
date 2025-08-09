@@ -40,6 +40,7 @@ const Dashboard = () => {
     const fetchRealData = async () => {
       try {
         setLoading(true);
+        console.log('🔧 Dashboard: Starting data fetch...');
         
         // Fetch Content Library count (primary source of truth for documents)
         const contentLibraryResponse = await fetch(`${backendUrl}/api/content-library`);
@@ -50,6 +51,8 @@ const Dashboard = () => {
           contentLibraryCount = contentLibraryData.total || contentLibraryData.articles?.length || 0;
           totalDocuments = contentLibraryCount; // Use content library as source of truth
           console.log('📊 Dashboard: Fetched', contentLibraryCount, 'documents from Content Library');
+        } else {
+          console.log('❌ Dashboard: Content Library fetch failed', contentLibraryResponse.status);
         }
 
         // Fetch documents count as secondary verification
@@ -60,15 +63,13 @@ const Dashboard = () => {
           console.log('📊 Dashboard: Found', documentsCount, 'in documents endpoint');
           // Use the higher of the two counts to account for any data inconsistencies
           totalDocuments = Math.max(totalDocuments, documentsCount);
+        } else {
+          console.log('❌ Dashboard: Documents fetch failed', documentsResponse.status);
         }
 
-        // Fetch system status
-        const statusResponse = await fetch(`${backendUrl}/api/status`);
-        let statusData = {};
-        if (statusResponse.ok) {
-          statusData = await statusResponse.json();
-        }
-
+        // Force update to test if state is working
+        console.log('🔧 Dashboard: About to set state with totalDocuments =', totalDocuments);
+        
         // Update platform stats with real data
         const finalStats = {
           totalDocuments: totalDocuments,
@@ -79,11 +80,14 @@ const Dashboard = () => {
 
         console.log('📊 Dashboard: Setting final stats:', finalStats);
         setPlatformStats(finalStats);
-
-        console.log('📊 Dashboard: Final stats updated - Total Documents:', totalDocuments);
+        
+        // Add a timeout to check if state was updated
+        setTimeout(() => {
+          console.log('🔧 Dashboard: State should be updated now');
+        }, 100);
 
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
+        console.error('❌ Dashboard: Failed to fetch dashboard data:', error);
         console.log('Backend URL being used:', backendUrl);
         console.log('Full URL tried for content-library:', `${backendUrl}/api/content-library`);
         console.log('Full URL tried for documents:', `${backendUrl}/api/documents`);
@@ -95,17 +99,20 @@ const Dashboard = () => {
           ticketsResolved: 0,
           knowledgeBaseViews: 0
         });
-        // Keep loading false to show the interface even if data fetch fails
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRealData();
-    
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchRealData, 30000);
-    return () => clearInterval(interval);
+    if (backendUrl) {
+      fetchRealData();
+      
+      // Refresh data every 30 seconds
+      const interval = setInterval(fetchRealData, 30000);
+      return () => clearInterval(interval);
+    } else {
+      console.log('❌ Dashboard: No backend URL found!');
+    }
   }, [backendUrl]);
 
   const agents = [

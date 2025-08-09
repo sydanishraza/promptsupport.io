@@ -7298,7 +7298,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             current_section = ""
             
             for paragraph in paragraphs:
-                if len(current_section + paragraph) > 2000 and current_section:  # Larger chunks for better coverage
+                if len(current_section + paragraph) > 5000 and current_section:  # Much larger chunks for comprehensive coverage (increased from 2000)
                     sections.append(current_section.strip())
                     current_section = paragraph
                 else:

@@ -67,12 +67,15 @@ const Dashboard = () => {
         }
 
         // Update platform stats with real data
-        setPlatformStats({
+        const finalStats = {
           totalDocuments: totalDocuments,
           activeChats: contentLibraryCount, // Using Content Library count as a meaningful metric
           ticketsResolved: Math.floor(totalDocuments * 0.6), // Estimated based on processing
           knowledgeBaseViews: Math.floor(totalDocuments * 8.2) // Estimated usage metric
-        });
+        };
+
+        console.log('📊 Dashboard: Setting final stats:', finalStats);
+        setPlatformStats(finalStats);
 
         console.log('📊 Dashboard: Final stats updated - Total Documents:', totalDocuments);
 

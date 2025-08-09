@@ -37,7 +37,11 @@ const Dashboard = () => {
 
   // Fetch real data from backend
   useEffect(() => {
+    let isActive = true; // Cleanup flag to prevent state updates on unmounted components
+    
     const fetchRealData = async () => {
+      if (!isActive) return; // Exit early if component unmounted
+      
       try {
         setLoading(true);
         console.log('🔧 Dashboard: Starting data fetch...');
@@ -46,26 +50,28 @@ const Dashboard = () => {
         const contentLibraryResponse = await fetch(`${backendUrl}/api/content-library`);
         let totalDocuments = 0;
         let contentLibraryCount = 0;
-        if (contentLibraryResponse.ok) {
+        if (contentLibraryResponse.ok && isActive) {
           const contentLibraryData = await contentLibraryResponse.json();
           contentLibraryCount = contentLibraryData.total || contentLibraryData.articles?.length || 0;
           totalDocuments = contentLibraryCount; // Use content library as source of truth
           console.log('📊 Dashboard: Fetched', contentLibraryCount, 'documents from Content Library');
-        } else {
+        } else if (!contentLibraryResponse.ok) {
           console.log('❌ Dashboard: Content Library fetch failed', contentLibraryResponse.status);
         }
 
         // Fetch documents count as secondary verification
         const documentsResponse = await fetch(`${backendUrl}/api/documents`);
-        if (documentsResponse.ok) {
+        if (documentsResponse.ok && isActive) {
           const documentsData = await documentsResponse.json();
           const documentsCount = documentsData.total || documentsData.documents?.length || 0;
           console.log('📊 Dashboard: Found', documentsCount, 'in documents endpoint');
           // Use the higher of the two counts to account for any data inconsistencies
           totalDocuments = Math.max(totalDocuments, documentsCount);
-        } else {
+        } else if (!documentsResponse.ok) {
           console.log('❌ Dashboard: Documents fetch failed', documentsResponse.status);
         }
+
+        if (!isActive) return; // Final check before state update
 
         console.log('🔧 Dashboard: About to set state with totalDocuments =', totalDocuments);
         
@@ -86,26 +92,27 @@ const Dashboard = () => {
           return finalStats;
         });
         
-        // Add a timeout to check if state was updated
-        setTimeout(() => {
-          console.log('🔧 Dashboard: State should be updated now');
-        }, 100);
+        console.log('✅ Dashboard: State update completed!');
 
       } catch (error) {
-        console.error('❌ Dashboard: Failed to fetch dashboard data:', error);
-        console.log('Backend URL being used:', backendUrl);
-        console.log('Full URL tried for content-library:', `${backendUrl}/api/content-library`);
-        console.log('Full URL tried for documents:', `${backendUrl}/api/documents`);
-        
-        // Set fallback data to show the error in UI
-        setPlatformStats({
-          totalDocuments: 0,
-          activeChats: 0,
-          ticketsResolved: 0,
-          knowledgeBaseViews: 0
-        });
+        if (isActive) {
+          console.error('❌ Dashboard: Failed to fetch dashboard data:', error);
+          console.log('Backend URL being used:', backendUrl);
+          console.log('Full URL tried for content-library:', `${backendUrl}/api/content-library`);
+          console.log('Full URL tried for documents:', `${backendUrl}/api/documents`);
+          
+          // Set fallback data to show the error in UI
+          setPlatformStats({
+            totalDocuments: 0,
+            activeChats: 0,
+            ticketsResolved: 0,
+            knowledgeBaseViews: 0
+          });
+        }
       } finally {
-        setLoading(false);
+        if (isActive) {
+          setLoading(false);
+        }
       }
     };
 
@@ -113,8 +120,14 @@ const Dashboard = () => {
       fetchRealData();
       
       // Refresh data every 30 seconds
-      const interval = setInterval(fetchRealData, 30000);
-      return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        if (isActive) fetchRealData();
+      }, 30000);
+      
+      return () => {
+        isActive = false;
+        clearInterval(interval);
+      };
     } else {
       console.log('❌ Dashboard: No backend URL found!');
     }

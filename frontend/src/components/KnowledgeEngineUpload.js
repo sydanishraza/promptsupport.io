@@ -628,34 +628,6 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                       </div>
                     </div>
                   )
-                          <div key={index} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                              <FileText className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm text-gray-900">{article.title}</div>
-                              <div className="text-xs text-gray-600">{article.wordCount} words</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-center space-x-4">
-                      <button
-                        onClick={closeModal}
-                        className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors font-medium"
-                      >
-                        Done
-                      </button>
-                      <button
-                        onClick={() => {/* Navigate to library */}}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-                      >
-                        View in Library
-                      </button>
-                    </div>
-                  </div>
                 ) : (
                   // Processing steps
                   <div className="space-y-6">

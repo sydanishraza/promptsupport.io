@@ -10,7 +10,7 @@ import time
 from dotenv import load_dotenv
 
 load_dotenv('/app/frontend/.env')
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://b9c68cf9-d5db-4176-932c-eadffd36ef4f.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://14236aae-8093-4969-a2a2-e2c349953e54.preview.emergentagent.com') + '/api'
 
 def download_user_docx():
     """Download the user's DOCX file"""

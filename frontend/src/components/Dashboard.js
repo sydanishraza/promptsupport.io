@@ -238,7 +238,13 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Documents</p>
-              <p className="text-3xl font-bold text-gray-900">{platformStats.totalDocuments}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {(() => {
+                  console.log('🎯 RENDER: platformStats.totalDocuments =', platformStats.totalDocuments);
+                  console.log('🎯 RENDER: Full platformStats =', JSON.stringify(platformStats));
+                  return platformStats.totalDocuments;
+                })()}
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               📚

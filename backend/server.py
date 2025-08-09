@@ -9516,22 +9516,56 @@ File Information:
 - Upload date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
 - Source: Knowledge Engine File Upload"""
 
-        # Process the extracted content  
-        enhanced_metadata = {
-            **file_metadata,
-            "original_filename": file.filename,
-            "file_extension": file_extension,
-            "file_size": len(file_content),
-            "extraction_method": "automated"
-        }
-        
-        # SIMPLIFIED: Images are extracted and saved to Asset Library only (no automatic embedding)
-        if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
-            print(f"📁 SIMPLIFIED MODE: {len(embedded_media)} images extracted and saved to Asset Library")
-            print(f"🎯 Images are available for manual insertion via the article editor")
-            # No contextual_images metadata needed - images are just in Asset Library
-        
-        chunks = await process_text_content(enriched_content, enhanced_metadata)
+        # Process the extracted content with timeout protection
+        try:
+            print(f"🚀 Starting content processing with timeout protection...")
+            
+            # Add timeout protection for content processing
+            async def process_with_timeout():
+                enhanced_metadata = {
+                    **file_metadata,
+                    "original_filename": file.filename,
+                    "file_extension": file_extension,
+                    "file_size": len(file_content),
+                    "extraction_method": "automated"
+                }
+                
+                # SIMPLIFIED: Images are extracted and saved to Asset Library only (no automatic embedding)
+                if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
+                    print(f"📁 SIMPLIFIED MODE: {len(embedded_media)} images extracted and saved to Asset Library")
+                    print(f"🎯 Images are available for manual insertion via the article editor")
+                    # No contextual_images metadata needed - images are just in Asset Library
+                
+                return await process_text_content(enriched_content, enhanced_metadata)
+            
+            # Set a 10-minute timeout for processing
+            chunks = await asyncio.wait_for(process_with_timeout(), timeout=600)
+            print(f"✅ Content processing completed: {len(chunks)} chunks created")
+            
+        except asyncio.TimeoutError:
+            print("❌ Content processing timed out after 10 minutes")
+            # Create fallback response
+            chunks = [{
+                "id": str(uuid.uuid4()),
+                "title": f"Processing Timeout - {file.filename}",
+                "content": f"<p>Content processing timed out. File: {file.filename} ({len(enriched_content)} characters extracted).</p>",
+                "summary": "File was uploaded but processing timed out",
+                "tags": ["timeout", "requires-reprocessing"],
+                "source_job_id": job.job_id,
+                "created_at": datetime.utcnow().isoformat()
+            }]
+        except Exception as processing_error:
+            print(f"❌ Content processing failed: {str(processing_error)}")
+            # Create error response
+            chunks = [{
+                "id": str(uuid.uuid4()),  
+                "title": f"Processing Error - {file.filename}",
+                "content": f"<p>Content processing failed with error: {str(processing_error)}</p>",
+                "summary": "File upload succeeded but content processing failed",
+                "tags": ["processing-error", "requires-reprocessing"],
+                "source_job_id": job.job_id,
+                "created_at": datetime.utcnow().isoformat()
+            }]
         
         # Update job
         job.chunks = chunks

@@ -74,30 +74,36 @@ const Dashboard = () => {
         if (!isActive) return; // Final check before state update
 
         console.log('🔧 Dashboard: About to set state with totalDocuments =', totalDocuments);
+        console.log('🔧 Dashboard: About to set state with contentLibraryCount =', contentLibraryCount);
         
-        // Force a direct state update to bypass any async issues
-        const finalStats = {
-          totalDocuments: totalDocuments,
-          activeChats: contentLibraryCount,
-          ticketsResolved: Math.floor(totalDocuments * 0.6),
-          knowledgeBaseViews: Math.floor(totalDocuments * 8.2)
-        };
+        try {
+          // Force a direct state update to bypass any async issues
+          const finalStats = {
+            totalDocuments: totalDocuments,
+            activeChats: contentLibraryCount,
+            ticketsResolved: Math.floor(totalDocuments * 0.6),
+            knowledgeBaseViews: Math.floor(totalDocuments * 8.2)
+          };
 
-        console.log('📊 Dashboard: Setting final stats:', JSON.stringify(finalStats));
-        
-        // Use functional setState to ensure we get the latest state
-        setPlatformStats(prevStats => {
-          console.log('📊 Dashboard: Previous stats:', JSON.stringify(prevStats));
-          console.log('📊 Dashboard: New stats:', JSON.stringify(finalStats));
-          return finalStats;
-        });
-        
-        console.log('✅ Dashboard: State update completed! Current platformStats should be:', totalDocuments);
-        
-        // Add a delayed check to verify state was actually updated
-        setTimeout(() => {
-          console.log('🔍 Dashboard: Delayed state check...');
-        }, 500);
+          console.log('📊 Dashboard: Setting final stats:', JSON.stringify(finalStats));
+          
+          // Use functional setState to ensure we get the latest state
+          setPlatformStats(prevStats => {
+            console.log('📊 Dashboard: Previous stats:', JSON.stringify(prevStats));
+            console.log('📊 Dashboard: New stats:', JSON.stringify(finalStats));
+            return finalStats;
+          });
+          
+          console.log('✅ Dashboard: State update completed! Current platformStats should be:', totalDocuments);
+          
+          // Add a delayed check to verify state was actually updated
+          setTimeout(() => {
+            console.log('🔍 Dashboard: Delayed state check...');
+          }, 500);
+          
+        } catch (stateError) {
+          console.error('❌ Dashboard: Error during state update:', stateError);
+        }
 
       } catch (error) {
         if (isActive) {

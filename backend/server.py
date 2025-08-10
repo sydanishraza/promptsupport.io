@@ -7551,9 +7551,8 @@ async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> 
         
         # After processing chunks, create Content Library articles
         try:
-            articles_created = await create_content_library_article_from_chunks(chunks, metadata)
-            articles_count = len(articles_created) if articles_created else 0
-            print(f"✅ CHUNK CONVERSION: Created {articles_count} Content Library articles from {len(chunks)} chunks")
+            articles_created = await create_content_library_articles_from_chunks(chunks, metadata)
+            print(f"✅ CHUNK CONVERSION: Created {len(articles_created)} Content Library articles from {len(chunks)} chunks")
         except Exception as e:
             print(f"Warning: Could not create Content Library articles: {e}")
         

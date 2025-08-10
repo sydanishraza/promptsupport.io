@@ -7418,11 +7418,13 @@ async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> 
             chunks.append(chunk)
             await db.document_chunks.insert_one(chunk.dict())
         
-        # After processing chunks, create Content Library article
+        # After processing chunks, create Content Library articles
         try:
-            await create_content_library_article_from_chunks(chunks, metadata)
+            articles_created = await create_content_library_article_from_chunks(chunks, metadata)
+            articles_count = len(articles_created) if articles_created else 0
+            print(f"✅ CHUNK CONVERSION: Created {articles_count} Content Library articles from {len(chunks)} chunks")
         except Exception as e:
-            print(f"Warning: Could not create Content Library article: {e}")
+            print(f"Warning: Could not create Content Library articles: {e}")
         
         return chunks
         

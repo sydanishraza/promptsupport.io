@@ -7265,6 +7265,138 @@ async def process_content(request: ContentProcessRequest):
             )
         raise HTTPException(status_code=500, detail=str(e))
 
+async def create_content_library_articles_from_chunks(chunks: List[DocumentChunk], metadata: Dict[str, Any]) -> List[Dict]:
+    """Convert document chunks into individual Content Library articles"""
+    try:
+        created_articles = []
+        print(f"📚 CHUNK CONVERSION: Converting {len(chunks)} chunks to Content Library articles")
+        
+        for i, chunk in enumerate(chunks):
+            if not chunk.content.strip():
+                continue
+                
+            # Generate article title based on chunk content
+            title = f"Article {i+1}: {metadata.get('original_filename', 'Document')}"
+            if len(chunk.content) > 100:
+                # Try to extract a meaningful title from the first sentence or heading
+                first_line = chunk.content.split('\n')[0].strip()
+                if first_line and len(first_line) < 100:
+                    # Remove HTML tags for title
+                    import re
+                    clean_title = re.sub(r'<[^>]+>', '', first_line).strip()
+                    if clean_title:
+                        title = clean_title[:80] + ("..." if len(clean_title) > 80 else "")
+            
+            # Create comprehensive article using LLM enhancement
+            try:
+                system_message = """You are a technical writing expert. Transform the provided content into a well-structured, comprehensive article.
+
+Requirements:
+- Create a clear, descriptive title
+- Use proper HTML structure with H1, H2, H3 headings
+- Write comprehensive paragraphs with detailed explanations  
+- Ensure content is editor-compatible (no markdown)
+- Include proper HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>
+- Make the content informative and professional
+
+Respond with a JSON object:
+{
+    "title": "Clear, descriptive title",
+    "content": "Full HTML content with proper structure", 
+    "summary": "Brief summary of the article",
+    "tags": ["relevant", "tags"],
+    "takeaways": ["key point 1", "key point 2"]
+}"""
+                
+                user_message = f"""Transform this content into a comprehensive article:
+
+{chunk.content}
+
+Original context: {metadata.get('original_filename', 'Document content')}
+"""
+                
+                ai_response = await call_llm_with_fallback(system_message, user_message)
+                
+                if ai_response:
+                    try:
+                        # Clean and parse JSON response
+                        import json
+                        import re
+                        cleaned_response = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', ai_response)
+                        
+                        # Extract JSON from response if wrapped
+                        json_match = re.search(r'```json\s*(.*?)\s*```', cleaned_response, re.DOTALL)
+                        if json_match:
+                            json_str = json_match.group(1).strip()
+                            article_data = json.loads(json_str)
+                        else:
+                            article_data = json.loads(cleaned_response)
+                        
+                        # Create article record
+                        article_record = {
+                            "id": str(uuid.uuid4()),
+                            "title": article_data.get("title", title),
+                            "content": article_data.get("content", chunk.content),
+                            "summary": article_data.get("summary", ""),
+                            "tags": article_data.get("tags", ["knowledge-engine"]),
+                            "takeaways": article_data.get("takeaways", []),
+                            "source_job_id": metadata.get("source_job_id", ""),
+                            "source_document": metadata.get("original_filename", ""),
+                            "chunk_metadata": {
+                                "chunk_number": i + 1,
+                                "total_chunks": len(chunks),
+                                "chunk_type": chunk.metadata.get("chunk_type", "standard"),
+                                "word_count": len(chunk.content.split())
+                            },
+                            "processing_metadata": {
+                                "processing_approach": "enhanced_chunking",
+                                "ai_enhanced": True,
+                                "created_from": "document_chunk"
+                            },
+                            "status": "published",
+                            "created_at": datetime.utcnow(),
+                            "updated_at": datetime.utcnow()
+                        }
+                        
+                        # Save to Content Library
+                        await db.content_library.insert_one(article_record)
+                        created_articles.append(article_record)
+                        print(f"✅ Created article {i+1}/{len(chunks)}: {article_record['title'][:50]}...")
+                        
+                    except json.JSONDecodeError as e:
+                        print(f"⚠️ JSON parsing failed for chunk {i+1}, using fallback")
+                        # Fallback: create simple article
+                        fallback_article = {
+                            "id": str(uuid.uuid4()),
+                            "title": title,
+                            "content": f"<h1>{title}</h1>\n<p>{chunk.content}</p>",
+                            "summary": f"Content from {metadata.get('original_filename', 'document')}",
+                            "tags": ["knowledge-engine", "fallback"],
+                            "takeaways": [],
+                            "source_job_id": metadata.get("source_job_id", ""),
+                            "source_document": metadata.get("original_filename", ""),
+                            "processing_metadata": {"processing_approach": "fallback"},
+                            "status": "published",
+                            "created_at": datetime.utcnow(),
+                            "updated_at": datetime.utcnow()
+                        }
+                        await db.content_library.insert_one(fallback_article)
+                        created_articles.append(fallback_article)
+                        
+                else:
+                    print(f"⚠️ No AI response for chunk {i+1}, skipping")
+                    
+            except Exception as chunk_error:
+                print(f"❌ Error processing chunk {i+1}: {str(chunk_error)}")
+                continue
+        
+        print(f"🎉 CHUNK CONVERSION COMPLETE: Successfully created {len(created_articles)} articles from {len(chunks)} chunks")
+        return created_articles
+        
+    except Exception as e:
+        print(f"❌ Critical error in chunk conversion: {str(e)}")
+        return []
+
 async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
     """ENHANCED: Process text content into comprehensive chunks with better coverage"""
     try:

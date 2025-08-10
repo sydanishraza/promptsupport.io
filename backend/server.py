@@ -7367,11 +7367,13 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         
         print(f"✅ ENHANCED CHUNKING COMPLETE: Created {len(chunks)} comprehensive chunks with overlapping coverage")
         
-        # ENHANCEMENT 3: Create comprehensive Content Library article
+        # ENHANCEMENT 3: Create comprehensive Content Library articles from chunks
         try:
-            await create_content_library_article_from_chunks(chunks, metadata)
+            articles_created = await create_content_library_article_from_chunks(chunks, metadata)
+            articles_count = len(articles_created) if articles_created else 0
+            print(f"✅ CHUNK CONVERSION: Created {articles_count} Content Library articles from {len(chunks)} chunks")
         except Exception as e:
-            print(f"Warning: Could not create Content Library article: {e}")
+            print(f"Warning: Could not create Content Library articles: {e}")
         
         return chunks
         

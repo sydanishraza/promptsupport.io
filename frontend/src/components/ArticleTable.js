@@ -515,7 +515,11 @@ const ArticleTable = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               setOpenMenuId(null);
-                              onArticleSelect(article);
+                              if (onArticleEdit) {
+                                onArticleEdit(article);
+                              } else {
+                                onArticleSelect(article);
+                              }
                             }}
                             className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                           >

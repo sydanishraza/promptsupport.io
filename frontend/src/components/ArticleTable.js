@@ -32,7 +32,8 @@ import {
 
 const ArticleTable = ({ 
   articles, 
-  onArticleSelect, 
+  onArticleSelect,
+  onArticleEdit, 
   onDeleteArticle, 
   onDownloadPDF,
   selectionMode, 

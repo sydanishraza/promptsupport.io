@@ -2383,7 +2383,7 @@ const PromptSupportEditor = ({
           {/* Phase 2: Callouts Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <div 
-              className="relative group"
+              className="relative"
               onMouseEnter={() => handleMenuHover('callout', true)}
               onMouseLeave={() => handleMenuHover('callout', false)}
             >
@@ -2394,36 +2394,54 @@ const PromptSupportEditor = ({
                 <Info className="h-4 w-4" />
               </button>
               
-              <div className="absolute top-10 left-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
-                <button
-                  onClick={() => insertBlock('infoCallout')}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+              {showCalloutMenu && (
+                <div 
+                  className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max"
+                  onMouseEnter={() => handleMenuHover('callout', true)}
+                  onMouseLeave={() => handleMenuHover('callout', false)}
                 >
-                  <Info className="h-4 w-4 text-blue-600" />
-                  Info Callout
-                </button>
-                <button
-                  onClick={() => insertBlock('warningCallout')}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  Warning Callout
-                </button>
-                <button
-                  onClick={() => insertBlock('successCallout')}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  Success Callout
-                </button>
-                <button
-                  onClick={() => insertBlock('errorCallout')}
-                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  <XCircle className="h-4 w-4 text-red-600" />
-                  Error Callout
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      insertBlock('infoCallout');
+                      setShowCalloutMenu(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <Info className="h-4 w-4 text-blue-600" />
+                    Info Callout
+                  </button>
+                  <button
+                    onClick={() => {
+                      insertBlock('warningCallout');
+                      setShowCalloutMenu(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                    Warning Callout
+                  </button>
+                  <button
+                    onClick={() => {
+                      insertBlock('successCallout');
+                      setShowCalloutMenu(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    Success Callout
+                  </button>
+                  <button
+                    onClick={() => {
+                      insertBlock('errorCallout');
+                      setShowCalloutMenu(false);
+                    }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    Error Callout
+                  </button>
+                </div>
+              )}
             </div>
             
             <button

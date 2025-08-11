@@ -1,83 +1,92 @@
 <analysis>
-The previous AI engineer focused on making the PromptSupport application's Knowledge Engine robust, particularly for DOCX and PDF processing. The core challenge was consistent smart chunking and ensuring generated content was editor-compatible.
-
-Initially, issues included incorrect DOCX chunking (often yielding a single article), content library loading failures, and backend unresponsiveness. The engineer systematically debugged backend connectivity, revised chunking thresholds (from 3000 to 1500, then 1200 characters), and implemented fallback chunking strategies (paragraph, line, character-based splitting) in .
-
-A critical turning point was the discovery that DOCX files used a separate enhanced processing pathway that bypassed many fixes. Once this pathway was identified via the troubleshoot agent, its internal chunking thresholds and logic were synchronized with the general fixes, finally resolving the persistent single-article generation issue for DOCX. PDF processing timeouts were also resolved by implementing timeout configurations and robust error handling. The work concluded with a confirmed multi-article generation for complex DOCX files and stable PDF processing.
+The trajectory details the iterative development and bug-fixing of the PromptSupport application's Knowledge Engine. Initially, the AI engineer tackled critical issues like PDF upload failures, DOCX generating only single articles (often just headings), and frontend display discrepancies. Through systematic debugging, including identifying specific backend logic paths (e.g., DOCX's enhanced processing), chunking threshold adjustments (from 3000 down to 1200, then up to 8000), robust JSON parsing, and timeout implementations, these core processing issues were resolved. The frontend display bug was traced to React StrictMode and API call inconsistencies. Subsequently, the Knowledge Engine was enhanced to include URL processing capabilities. A significant regression occurred where DOCX processing reverted to generating 1 article despite creating many chunks; this was due to a critical  function being mistakenly removed, which was re-implemented. Finally, extensive UI/UX enhancements were applied to the Content Library, adding selection, bulk actions, renaming, publishing, and a merge feature, along with layout optimizations. The work concludes with the Content Library fully functional and aesthetically improved.
 </analysis>
 
 <product_requirements>
-The PromptSupport application aims to be an AI-native platform for support documentation, with a Knowledge Engine ingesting various content types (DOCX, PDF, HTML, URLs, audio/video) to extract, analyze, and regenerate media-rich articles. The initial focus was on DOCX processing.
+The PromptSupport application is an AI-native platform designed for support documentation. Its core Knowledge Engine is tasked with ingesting various content types (DOCX, PDF, HTML, URLs, audio/video), extracting comprehensive information (text, tables, media, metadata), and regenerating it into media-rich, editor-compatible HTML articles.
 
-Key requirements:
-1.  **Content Extraction:** Full text extraction from documents, with images saved to the Asset Library.
-2.  **Article Generation:** LLM-driven revision to produce clear, structured, modern HTML-formatted articles compatible with WYSIWYG editors.
-3.  **Smart Chunking:** Articles must be chunked context-awarely at section boundaries, forming separate, titled articles (initially 6,000–8,000 characters, later aggressively refined to 3,000, then 8,000 for single articles or 4,000-6,000 for chunks). Chunked content should include Related Links.
-4.  **Editor Compatibility:** Generated articles require correct HTML tags and must load actively, editable, with proper focus and scrolling in the in-built editor.
+Key objectives and features include:
+1.  **Content Extraction**: Full text and media extraction (images to Asset Library, preserving original location).
+2.  **Article Generation**: LLM-driven revision to produce clear, structured, modern HTML articles, compatible with WYSIWYG editors, ensuring proper focus and scrolling.
+3.  **Smart Chunking**: Content must be broken into logical, context-aware sections (originally 6,000–8,000 tokens, refined to 3,000, then 8,000 for single articles or 4,000-6,000 for chunks, then 600 words/5000 chars), with Related Links for multi-chunk articles.
+4.  **Editor Compatibility**: Generated HTML must be correctly tagged and load actively and editably in the in-app editor.
+5.  **Content Library Enhancements**: Add selection, deletion, renaming, publishing/draft management, and a merge feature for articles and assets, supporting bulk actions in both grid and table views, with UI/UX optimizations.
 
-The implemented solution specifically addressed persistent issues with DOCX and PDF processing, ensuring that documents are correctly chunked into multiple articles rather than a single large one, images are extracted, and the system remains stable during processing.
+The implemented solution has addressed critical issues with DOCX and PDF processing, ensuring correct multi-article chunking and extraction. URL processing has also been successfully integrated. The Content Library has received comprehensive feature and UI/UX enhancements to improve content management.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend:** React.js, TailwindCSS, Framer Motion for UI.
--   **Backend:** FastAPI for APIs, MongoDB for data storage,  for DOCX parsing.
--   **LLM Integration:** OpenAI (GPT-4o/mini) for content generation, rewriting, prompt engineering, and smart chunking.
--   **Content Processing:** Intelligent chunking (H1/H2-based, paragraph, line, and character-based fallback), JSON sanitization, HTML preprocessing.
+-   **Frontend**: React.js for UI, TailwindCSS for styling, Framer Motion for animations.
+-   **Backend**: FastAPI for RESTful APIs, MongoDB for data persistence,  for DOCX parsing,  for web scraping,  for PDF processing.
+-   **LLM Integration**: OpenAI (GPT-4o/mini) used for content generation, rewriting, and intelligent chunking.
+-   **Content Processing**: Multi-tiered chunking (paragraph, line, character, and word-based), JSON sanitization, HTML preprocessing, and asynchronous operations with timeouts.
 </key_technical_concepts>
 
 <code_architecture>
-The application follows a  (React) and  (FastAPI) architecture.
+The application has a  (React) and  (FastAPI) architecture.
 
 
 
 -   ****:
-    -   **Importance**: This file is the core backend API for all document processing, LLM interactions, and database operations. It orchestrates content ingestion, chunking, and article generation.
+    -   **Importance**: The central backend API for document processing, LLM interactions, and database operations.
     -   **Changes**:
-        -   Initially, fixes were applied to general  methods and  to resolve indentation errors, refine LLM prompts, and enhance HTML generation.
-        -    was lowered from 3000 to 1500, then to 1200, to force aggressive chunking.
-        -   The  function was significantly enhanced. It now implements a 3-tier fallback for splitting content: first by paragraph breaks (), then by line breaks (), and finally by character-based chunking if no natural breaks are found. This ensures content is always chunked, even if poorly structured.
-        -   Crucially, the dedicated DOCX processing pathway () was identified as a separate problematic flow. Its internal chunking threshold was synchronized to 1200 characters, and the aggressive 3-tier fallback chunking logic was also applied here, reducing its internal chunk size from 4000 to 1800 characters to yield more articles.
-        -   PDF processing timeouts were addressed by adding  (120 seconds) and  (10MB) configurations, along with implementing an async context manager for graceful timeout handling.
+        -    adjusted (from 1200 to 8000) to control chunking aggressiveness.
+        -    updated: changed chunk size from 250 words to 600 words and section size from 2000 to 5000 characters to generate larger, more comprehensive articles.
+        -   Added robust JSON parsing error handling (try-except blocks) around LLM responses.
+        -   Implemented  timeout protection (10 minutes) for main processing functions like file uploads and URL processing.
+        -   Re-implemented the  function to correctly convert each processed chunk into a separate article in the content library, as this function was previously missing/deleted causing 58 chunks to result in only 1 article.
+        -   The  and  endpoints were the primary points of modification for these processing enhancements.
 -   ****:
-    -   **Importance**: Manages the UI for document uploads and associated modals.
-    -   **Changes**: Received a cosmetic redesign for a cleaner, professional look.
+    -   **Importance**: Entry point for the React application.
+    -   **Changes**:  wrapper removed to resolve double-mounting and race condition issues affecting state updates.
 -   ****:
-    -   **Importance**: Contains quick actions and the button to open the upload hub.
-    -   **Changes**: Button and quick action sections were redesigned for a cleaner aesthetic.
+    -   **Importance**: Displays overall application statistics, including total documents.
+    -   **Changes**: Modified to fetch document count primarily from  and removed a secondary, problematic call to  that caused data display issues. Streamlined state update logic to ensure correct display of document counts.
 -   ****:
-    -   **Importance**: The in-built WYSIWYG content editor.
-    -   **Changes**: Modified to ensure the editor loads in an active, editable state with proper focus. Fixed JSX syntax errors and CSS for layout, enabling scrolling and preventing UI overlaps.
+    -   **Importance**: Manages the UI and logic for document and URL uploads.
+    -   **Changes**: Replaced mock  function with real API calls to  (for files) and  (for URLs). Enhanced success/results modal to handle errors and show meaningful information.
 -   ****:
-    -   **Importance**: Favicon for the application.
-    -   **Changes**: Replaced with a new SVG file.
+    -   **Importance**: The main component for displaying and managing articles and assets.
+    -   **Changes**: Integrated state and handlers for selection (individual, select all), bulk actions (delete, publish, draft), renaming, and article merging.
 -   ****:
-    -   **Importance**: A critical document used for logging problem statements, testing data, and communication. It serves as a continuous record of debugging and validation steps.
-    -   **Changes**: Continuously updated to reflect test results, bug findings, and confirmation of fixes for DOCX/PDF processing, content library loading, and database cleanup status.
-
+    -   **Importance**: Renders articles in a grid view within the Content Library.
+    -   **Changes**: Added checkboxes for selection directly on grid tiles and integrated with selection state.
+-   ****:
+    -   **Importance**: Renders articles in a table view within the Content Library.
+    -   **Changes**: Added a dedicated column for checkboxes on table rows for selection and integrated with selection state.
+-   ****:
+    -   **Importance**: A standalone script for clearing all articles, assets, chunks, and conversations from the database and uploaded files.
+    -   **Changes**: Used to perform full system cleanups as requested by the user.
+-   ****:
+    -   **Importance**: Critical for logging problem statements, test data, and communication.
+    -   **Changes**: Continuously updated to track debug findings, test results, and confirmation of fixes for DOCX/PDF/URL processing, content library loading, and cleanup status.
 </code_architecture>
 
 <pending_tasks>
 -   Develop core AI features: Developer Docs System, AI Agent System, AI Chatbot, Unified Portal, Admin Console.
--   Enhance Knowledge Engine to integrate other content types (URLs, audio/video), and improve content library features (batch processing, templates).
--   Implement UI/UX refinements: Quick Setup Wizard, training analytics.
+-   Enhance Knowledge Engine to integrate other content types (audio/video), and improve content library features (e.g., templates, as batch processing for some actions is now done).
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer successfully resolved the persistent issue of DOCX files generating only a single article, which was confirmed through extensive debugging and systematic fixes. The core problem was identified as the  function returning a single chunk for content under a high character threshold (7000), even when force chunking was intended. This was further complicated by DOCX files using a distinct enhanced processing pathway () that bypassed earlier applied fixes.
+Immediately prior to this summary, the AI engineer completed a comprehensive set of enhancements and bug fixes for the Content Library, delivering all requested UI/UX improvements.
 
-The engineer implemented a multi-tiered chunking strategy within  that attempts to split content by paragraph breaks, then line breaks, and finally resorts to character-based chunking, ensuring multi-article generation regardless of source document formatting. Crucially, the  threshold was aggressively lowered to 1200. The distinct DOCX processing pathway was then updated to mirror these aggressive chunking parameters, including a reduced chunk size of 1800 characters and the same 3-tier fallback.
+**Current State:**
+*   **Knowledge Engine Functionality**:
+    *   **DOCX Processing**: Robustly processes DOCX files, generating multiple (e.g., 34) comprehensive articles (averaging 500+ words) with proper HTML structure, meaningful titles, and full content coverage. The issue of only 1 article being generated from many chunks (e.g., 58 chunks) was resolved by re-implementing the  function.
+    *   **PDF Processing**: Successfully processes PDF files, extracting content and creating comprehensive articles without timeouts or failures.
+    *   **URL Processing**: Fully implemented with web scraping (BeautifulSoup), intelligent content extraction, metadata capture, and integration into the existing chunking/enhancement pipeline.
+*   **Frontend Dashboard**: Accurately displays document counts (e.g., 89 total documents) and other statistics, resolving the previous 0 documents display bug caused by React StrictMode and API call issues. The dashboard auto-refreshes.
+*   **Content Library**: Now features enterprise-level management capabilities:
+    *   **Selection & Deletion**: Users can select individual items or Select All in both grid and table views, and perform bulk deletions.
+    *   **Renaming**: Articles and assets can be renamed directly via inline editing.
+    *   **Publishing & Draft Management**: Articles can be published or moved to draft status, individually or in bulk, with visual indicators.
+    *   **Merge Articles**: A new feature allows merging two or more selected articles into a new combined article, preserving content, formatting, and HTML structure. Original articles remain unless manually deleted.
+    *   **UI/UX**: The layout is optimized for content visibility, with reduced padding/margins, consistent action menus across views, and professional aesthetics.
+*   **System Stability**: Backend processing is stable, with robust JSON parsing error handling for LLM responses and a 10-minute timeout protection to prevent hangs. The Content Library can be fully cleaned via a dedicated script.
 
-Additionally, critical timeout issues affecting PDF processing were addressed by implementing a 120-second processing limit and robust async error handling, preventing system unresponsiveness. The Content Library loading issues, which were primarily due to backend connectivity problems, were resolved by ensuring the backend service was responsive.
-
-The current state is robust:
-*   **DOCX Processing:** A 4.8MB DOCX file now successfully generates 58 well-structured articles, and 204 images are extracted.
-*   **PDF Processing:** Small PDFs process successfully without system hangs, demonstrating that timeout fixes are effective.
-*   **Content Library:** Loads properly and reflects accurate article counts (e.g., confirmed 4 articles after recent tests).
-*   **System Stability:** The backend remains responsive during and after processing.
-
-The system has been thoroughly cleaned, confirming 0 articles and assets in the content library, ensuring it's ready for new content uploads.
+The application is in a highly functional and polished state for content ingestion and management, ready for further expansion into other content types or core AI features.
 </current_work>
 
 <optional_next_step>
-The system is now stable and robust. The next step is to continue with the development of core AI features, specifically focusing on integrating other content types into the Knowledge Engine as per product requirements.
+Integrate audio and video content processing capabilities into the Knowledge Engine.
 </optional_next_step>

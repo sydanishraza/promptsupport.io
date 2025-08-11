@@ -486,7 +486,7 @@ const ArticleTable = ({
                 )}
               </td>
               
-              <td className="p-4">
+              <td className="p-3">
                 {!selectionMode && renamingItem !== article.id && (
                   <div className="flex items-center space-x-2">
                     <div className="relative">

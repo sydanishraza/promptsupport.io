@@ -371,39 +371,77 @@ const EnhancedAssetManager = ({
     setUploadProgress(0);
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      const uploadPromises = Array.from(files).map(async (file, index) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('name', file.name);
         formData.append('type', 'image');
 
-        const response = await fetch(`${backendUrl}/api/assets/upload`, {
-          method: 'POST',
-          body: formData
-        });
+        try {
+          const response = await fetch(`${backendUrl}/api/assets/upload`, {
+            method: 'POST',
+            body: formData
+          });
 
-        if (response.ok) {
-          setUploadProgress(((i + 1) / files.length) * 100);
-        } else {
-          console.error(`Failed to upload ${file.name}`);
+          if (response.ok) {
+            const result = await response.json();
+            setUploadProgress(((index + 1) / files.length) * 100);
+            return result;
+          } else {
+            console.error(`Failed to upload ${file.name}: ${response.status}`);
+            return null;
+          }
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const successfulUploads = results.filter(r => r !== null);
+
+      if (successfulUploads.length > 0) {
+        // Refresh assets by re-fetching
+        const fetchResponse = await fetch(`${backendUrl}/api/assets`);
+        if (fetchResponse.ok) {
+          const data = await fetchResponse.json();
+          
+          // Re-process and combine assets like in the main useEffect
+          const newBackendAssets = (data.assets || []).map(asset => ({
+            id: asset.id,
+            type: 'image',
+            format: asset.original_filename?.split('.').pop()?.toLowerCase() || 'unknown',
+            name: asset.name || asset.original_filename || 'Unnamed asset',
+            altText: asset.name || asset.original_filename || 'Image',
+            dataUrl: asset.url?.startsWith('/') ? `${backendUrl}${asset.url}` : asset.url || asset.data,
+            size: asset.size || 0,
+            articleId: null,
+            articleTitle: 'Asset Library',
+            dateAdded: asset.created_at,
+            lastUpdated: asset.updated_at,
+            source: 'asset_library',
+            processed: true,
+            isBackendAsset: true
+          }));
+
+          // Update assets and trigger parent count update
+          setAssets(prev => {
+            const extractedAssets = prev.filter(a => !a.isBackendAsset);
+            const combined = [...newBackendAssets, ...extractedAssets];
+            if (onAssetCountUpdate) {
+              onAssetCountUpdate(combined.length);
+            }
+            return combined;
+          });
         }
       }
 
-      // Refresh assets
-      const fetchResponse = await fetch(`${backendUrl}/api/assets`);
-      if (fetchResponse.ok) {
-        const data = await fetchResponse.json();
-        // Re-process assets (simplified for demo)
-        setAssets(prev => [...prev, ...data.assets.map(asset => ({
-          ...asset,
-          isBackendAsset: true,
-          source: 'asset_library'
-        }))]);
-      }
-
       setShowUploadModal(false);
-      console.log('Upload completed successfully');
+      console.log(`Upload completed: ${successfulUploads.length}/${files.length} files uploaded successfully`);
+      
+      if (successfulUploads.length < files.length) {
+        alert(`${successfulUploads.length} of ${files.length} files uploaded successfully. Some uploads failed.`);
+      }
     } catch (error) {
       console.error('Upload error:', error);
       alert('Error uploading files. Please try again.');

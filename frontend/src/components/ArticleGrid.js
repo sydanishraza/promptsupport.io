@@ -46,6 +46,9 @@ const ArticleGrid = ({
   bulkActionLoading
 }) => {
   
+  // State for action menu visibility
+  const [openMenuId, setOpenMenuId] = useState(null);
+  
   // Download PDF function
   const downloadArticlePDF = async (articleId, articleTitle) => {
     try {

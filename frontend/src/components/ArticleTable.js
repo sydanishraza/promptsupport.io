@@ -435,7 +435,7 @@ const ArticleTable = ({
                 </div>
               </td>
               
-              <td className="p-4">
+              <td className="p-3">
                 <div className="flex items-center space-x-2">
                   {getSourceTypeIcon(article.source_type)}
                   <span className="text-sm text-gray-900">{getSourceTypeLabel(article.source_type)}</span>

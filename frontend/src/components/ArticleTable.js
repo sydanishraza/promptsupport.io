@@ -456,7 +456,7 @@ const ArticleTable = ({
                 </div>
               </td>
               
-              <td className="p-4">
+              <td className="p-3">
                 <div className="text-sm text-gray-900">{formatDateWithTime(article.created_at)}</div>
                 <div className="text-xs text-gray-500">{formatRelativeTime(article.created_at)}</div>
               </td>

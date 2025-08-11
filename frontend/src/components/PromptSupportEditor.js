@@ -2323,7 +2323,7 @@ const PromptSupportEditor = ({
           {/* Phase 2: Advanced Blocks Group */}
           <div className="flex items-center mr-3 pr-3 border-r border-gray-300">
             <div 
-              className="relative group"
+              className="relative"
               onMouseEnter={() => handleMenuHover('table', true)}
               onMouseLeave={() => handleMenuHover('table', false)}
             >
@@ -2334,26 +2334,41 @@ const PromptSupportEditor = ({
                 <Table className="h-4 w-4" />
               </button>
               
-              <div className="absolute top-10 left-0 z-50 hidden group-hover:block bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max">
-                <button
-                  onClick={() => insertBlock('table2x2')}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+              {showTableMenu && (
+                <div 
+                  className="absolute top-10 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-max"
+                  onMouseEnter={() => handleMenuHover('table', true)}
+                  onMouseLeave={() => handleMenuHover('table', false)}
                 >
-                  2×2 Table
-                </button>
-                <button
-                  onClick={() => insertBlock('table3x3')}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  3×3 Table
-                </button>
-                <button
-                  onClick={() => setShowTableModal(true)}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
-                >
-                  Custom Size...
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      insertBlock('table2x2');
+                      setShowTableMenu(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    2×2 Table
+                  </button>
+                  <button
+                    onClick={() => {
+                      insertBlock('table3x3');
+                      setShowTableMenu(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    3×3 Table
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowTableModal(true);
+                      setShowTableMenu(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded"
+                  >
+                    Custom Size...
+                  </button>
+                </div>
+              )}
             </div>
             
             <button

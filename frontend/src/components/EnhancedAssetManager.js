@@ -71,6 +71,9 @@ const EnhancedAssetManager = ({
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
+  
+  // NEW: Deletion tracking for extracted assets
+  const [deletedAssetIds, setDeletedAssetIds] = useState(new Set());
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 

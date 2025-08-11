@@ -189,8 +189,8 @@ const PromptSupportEditor = ({
       switch(menuName) {
         case 'ai': setShowAiDropdown(true); break;
         case 'image': setShowImageDropdown(true); break;
-        case 'table': break; // Handle table menu if needed
-        case 'callout': break; // Handle callout menu if needed
+        case 'table': setShowTableMenu(true); break;
+        case 'callout': setShowCalloutMenu(true); break;
       }
     } else {
       // Hide with delay
@@ -198,8 +198,8 @@ const PromptSupportEditor = ({
         switch(menuName) {
           case 'ai': setShowAiDropdown(false); break;
           case 'image': setShowImageDropdown(false); break;
-          case 'table': break;
-          case 'callout': break;
+          case 'table': setShowTableMenu(false); break;
+          case 'callout': setShowCalloutMenu(false); break;
         }
       }, 300); // 300ms delay
 

@@ -266,8 +266,8 @@ const ArticleTable = ({
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-        <table className="w-full table-auto min-w-[1000px]">
-        <thead className="sticky top-0 z-10">
+        <table className="w-full min-w-[800px] table-auto">
+        <thead className="sticky top-0 z-10 bg-gray-50">
           <tr className="border-b border-gray-200 bg-gray-50">
             {/* Selection Column */}
             {selectionMode && (

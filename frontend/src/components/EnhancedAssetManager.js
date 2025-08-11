@@ -40,6 +40,7 @@ import {
 const EnhancedAssetManager = ({ 
   articles = [], 
   onArticleSelect, 
+  onAssetCountUpdate, // NEW: Callback to update parent with asset count
   searchQuery = '',
   filterType = 'all',
   sortBy = 'dateAdded',

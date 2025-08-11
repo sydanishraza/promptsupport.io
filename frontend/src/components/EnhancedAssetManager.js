@@ -281,8 +281,8 @@ const EnhancedAssetManager = ({
       const asset = assets.find(a => a.id === assetId);
       
       if (asset?.isBackendAsset) {
-        // Rename backend asset - Try different endpoint format
-        const response = await fetch(`${backendUrl}/api/assets/${assetId}/rename`, {
+        // Rename backend asset using correct endpoint
+        const response = await fetch(`${backendUrl}/api/assets/${assetId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -293,25 +293,16 @@ const EnhancedAssetManager = ({
         });
 
         if (!response.ok) {
-          // Try alternative endpoint format
-          const response2 = await fetch(`${backendUrl}/api/assets/rename`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              id: assetId,
-              name: renameTitle.trim()
-            })
-          });
-          
-          if (!response2.ok) {
-            throw new Error('Failed to rename asset - API endpoint not available');
-          }
+          const errorData = await response.text();
+          throw new Error(`Failed to rename asset: ${errorData}`);
         }
+        
+        console.log('Successfully renamed backend asset');
+      } else {
+        console.log('Renaming extracted asset locally');
       }
 
-      // Update local state regardless of backend call success for extracted assets
+      // Update local state for both backend and extracted assets
       setAssets(prev => prev.map(assetItem => 
         assetItem.id === assetId 
           ? { ...assetItem, name: renameTitle.trim() }
@@ -323,7 +314,8 @@ const EnhancedAssetManager = ({
       console.log('Successfully renamed asset');
     } catch (error) {
       console.error('Error renaming asset:', error);
-      // For extracted assets (non-backend), allow local rename even if API fails
+      
+      // For extracted assets, allow local rename even if API fails
       const asset = assets.find(a => a.id === assetId);
       if (!asset?.isBackendAsset) {
         setAssets(prev => prev.map(assetItem => 

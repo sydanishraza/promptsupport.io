@@ -220,16 +220,20 @@ const ContentLibrary = () => {
     try {
       const updatePromises = Array.from(selectedItems).map(id => {
         const article = articles.find(a => a.id === id);
-        const formData = new FormData();
-        formData.append('title', article.title);
-        formData.append('content', article.content);
-        formData.append('status', 'published');
-        formData.append('tags', JSON.stringify(article.tags || []));
-        formData.append('metadata', JSON.stringify(article.metadata || {}));
+        const requestData = {
+          title: article.title,
+          content: article.content,
+          status: 'published',
+          tags: article.tags || [],
+          metadata: article.metadata || {}
+        };
 
         return fetch(`${backendUrl}/api/content-library/${id}`, {
           method: 'PUT',
-          body: formData
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
         });
       });
       
@@ -250,16 +254,20 @@ const ContentLibrary = () => {
     try {
       const updatePromises = Array.from(selectedItems).map(id => {
         const article = articles.find(a => a.id === id);
-        const formData = new FormData();
-        formData.append('title', article.title);
-        formData.append('content', article.content);
-        formData.append('status', 'draft');
-        formData.append('tags', JSON.stringify(article.tags || []));
-        formData.append('metadata', JSON.stringify(article.metadata || {}));
+        const requestData = {
+          title: article.title,
+          content: article.content,
+          status: 'draft',
+          tags: article.tags || [],
+          metadata: article.metadata || {}
+        };
 
         return fetch(`${backendUrl}/api/content-library/${id}`, {
           method: 'PUT',
-          body: formData
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
         });
       });
       

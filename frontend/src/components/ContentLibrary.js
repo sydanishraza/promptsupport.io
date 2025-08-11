@@ -1059,6 +1059,7 @@ const ContentLibrary = () => {
             </>
           ) : (
             <AssetManager 
+              articles={articles}
               searchQuery={assetSearchQuery}
               filterType={assetFilterType}
               sortBy={assetSortBy}

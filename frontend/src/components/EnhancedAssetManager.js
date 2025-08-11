@@ -842,11 +842,13 @@ const EnhancedAssetManager = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        console.log(`Action menu clicked for asset ${asset.id}`);
+                        console.log(`Grid action menu clicked for asset ${asset.id}`);
+                        console.log('Current selectionMode:', selectionMode, 'renamingItem:', renamingItem);
                         setOpenMenuId(openMenuId === asset.id ? null : asset.id);
                       }}
-                      className="p-1 text-gray-400 hover:text-gray-600 bg-white rounded shadow"
-                      style={{ zIndex: 10 }}
+                      className="p-2 text-gray-600 hover:text-gray-800 bg-white rounded-full shadow-md border hover:shadow-lg"
+                      style={{ zIndex: 20 }}
+                      title="Asset Actions"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>

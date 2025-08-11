@@ -3948,6 +3948,19 @@ const PromptSupportEditor = ({
                   onMouseOver={handleLinkHover}
                   onMouseOut={handleLinkMouseOut}
                   onClick={handleLinkClick}
+                  onContextMenu={useCallback((e) => {
+                    // RIGHT-CLICK CONTEXT MENU FIX: Prevent default and show custom menu
+                    e.preventDefault();
+                    const selection = window.getSelection();
+                    if (selection && selection.toString().length > 0) {
+                      // Show context menu for selected text
+                      console.log('🖱️ Context menu for selected text:', selection.toString());
+                    } else {
+                      // Show context menu for cursor position
+                      console.log('🖱️ Context menu at cursor position');
+                    }
+                    // TODO: Implement custom context menu modal
+                  }, [])}
                   onFocus={useCallback((e) => {
                     // FOCUS FIX: Ensure proper focus without interfering with selection
                     console.log('📝 Editor focused');

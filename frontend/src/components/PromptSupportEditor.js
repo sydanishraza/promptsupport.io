@@ -264,26 +264,28 @@ const PromptSupportEditor = ({
     if (isEditing && editorRef.current) {
       // ISSUE 2 FIX: Make editor immediately active and editable
       const activateEditor = () => {
-        if (editorRef.current) {
-          // Force contentEditable and focus immediately
+        if (editorRef.current && !editorRef.current.contains(document.activeElement)) {
+          // MOUSE FIX: Only activate if editor is not already focused to prevent interference
           editorRef.current.contentEditable = true;
           editorRef.current.focus();
           
           // FIX: Remove blue border outline that causes conflicts
           editorRef.current.style.backgroundColor = '#fefefe';
           
-          // Place cursor at the end for immediate editing
+          // MOUSE FIX: Only set cursor position if there's no active selection
           try {
-            const range = document.createRange();
             const selection = window.getSelection();
-            range.selectNodeContents(editorRef.current);
-            range.collapse(false); // Collapse to end
-            selection.removeAllRanges();
-            selection.addRange(range);
+            if (!selection || selection.toString().length === 0) {
+              const range = document.createRange();
+              range.selectNodeContents(editorRef.current);
+              range.collapse(false); // Collapse to end
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
             
-            console.log('✅ ISSUE 2 FIX: Editor immediately activated with cursor positioned');
+            console.log('📝 Editor activated (optimized)');
           } catch (e) {
-            console.log('⚠️ ISSUE 2 FIX: Cursor positioning fallback, editor still focused');
+            console.log('📝 Editor focused (fallback)');
           }
           
           // Remove outline after showing activation

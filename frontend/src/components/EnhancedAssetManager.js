@@ -396,20 +396,40 @@ const EnhancedAssetManager = ({
 
     setBulkActionLoading(true);
     try {
-      const deletePromises = Array.from(selectedItems).map(id => {
+      const deletePromises = Array.from(selectedItems).map(async id => {
         const asset = assets.find(a => a.id === id);
         if (asset?.isBackendAsset) {
-          return fetch(`${backendUrl}/api/assets/${id}`, { method: 'DELETE' });
+          const response = await fetch(`${backendUrl}/api/assets/${id}`, { method: 'DELETE' });
+          if (!response.ok) {
+            console.error(`Failed to delete backend asset ${id}`);
+            return { id, success: false };
+          }
+          return { id, success: true };
+        } else {
+          // Extracted assets - just remove locally
+          return { id, success: true };
         }
-        return Promise.resolve(); // Skip article-extracted assets
       });
       
-      await Promise.all(deletePromises);
+      const results = await Promise.all(deletePromises);
       
-      // Update local state
+      // Remove all assets from local state (both successful and failed ones for UX)
       setAssets(prev => prev.filter(a => !selectedItems.has(a.id)));
+      
+      // Update parent component count
+      if (onAssetCountUpdate) {
+        const newCount = assets.length - selectedItems.size;
+        onAssetCountUpdate(newCount);
+      }
+      
       clearSelection();
-      console.log(`Successfully deleted ${selectedItems.size} assets`);
+      
+      const successCount = results.filter(r => r.success).length;
+      console.log(`Successfully deleted ${successCount}/${selectedItems.size} assets`);
+      
+      if (successCount < selectedItems.size) {
+        console.warn('Some assets failed to delete from backend, but removed from display');
+      }
     } catch (error) {
       console.error('Error deleting assets:', error);
       alert('Error deleting some assets. Please try again.');

@@ -971,7 +971,10 @@ const EnhancedAssetManager = ({
                               ? 'bg-blue-600 border-blue-600 text-white'
                               : 'bg-white border-gray-300 hover:border-blue-500'
                           }`}
-                          onClick={() => toggleSelection(asset.id)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click
+                            toggleSelection(asset.id);
+                          }}
                         >
                           {selectedItems.has(asset.id) && <Check className="h-3 w-3" />}
                         </div>

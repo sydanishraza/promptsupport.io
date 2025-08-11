@@ -42,6 +42,7 @@ import PromptSupportEditor from './PromptSupportEditor';
 import ArticleGrid from './ArticleGrid';
 import ArticleTable from './ArticleTable';
 import AssetManager from './AssetManager';
+import EnhancedAssetManager from './EnhancedAssetManager';
 import SnipAndRecord from './SnipAndRecord';
 import KnowledgeEngineUpload from './KnowledgeEngineUpload';
 

@@ -1083,8 +1083,9 @@ const ContentLibrary = () => {
               )}
             </>
           ) : (
-            <AssetManager 
+            <EnhancedAssetManager 
               articles={articles}
+              onArticleSelect={handleArticleSelect}
               searchQuery={assetSearchQuery}
               filterType={assetFilterType}
               sortBy={assetSortBy}

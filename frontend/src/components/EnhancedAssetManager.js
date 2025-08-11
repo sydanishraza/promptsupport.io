@@ -744,9 +744,11 @@ const EnhancedAssetManager = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        console.log(`Action menu clicked for asset ${asset.id}`);
                         setOpenMenuId(openMenuId === asset.id ? null : asset.id);
                       }}
                       className="p-1 text-gray-400 hover:text-gray-600 bg-white rounded shadow"
+                      style={{ zIndex: 10 }}
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>

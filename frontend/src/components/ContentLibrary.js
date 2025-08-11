@@ -540,16 +540,20 @@ const ContentLibrary = () => {
       
       const method = articleData.id ? 'PUT' : 'POST';
       
-      const formData = new FormData();
-      formData.append('title', articleData.title);
-      formData.append('content', articleData.content);
-      formData.append('status', articleData.status || 'draft');
-      formData.append('tags', JSON.stringify(articleData.tags || []));
-      formData.append('metadata', JSON.stringify(articleData.metadata || {}));
+      const requestData = {
+        title: articleData.title,
+        content: articleData.content,
+        status: articleData.status || 'draft',
+        tags: articleData.tags || [],
+        metadata: articleData.metadata || {}
+      };
 
       const response = await fetch(url, {
         method,
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {

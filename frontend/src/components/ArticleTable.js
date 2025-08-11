@@ -49,6 +49,19 @@ const ArticleTable = ({
 }) => {
   const [sortField, setSortField] = useState('updated_at');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [openMenuId, setOpenMenuId] = useState(null);
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId) {
+        setOpenMenuId(null);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openMenuId]);
 
   // Get source type icon
   const getSourceTypeIcon = (sourceType) => {

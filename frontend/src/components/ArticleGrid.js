@@ -302,9 +302,11 @@ const ArticleGrid = ({
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenMenuId(null);
-                            // Need to trigger edit mode, not just view
-                            onArticleSelect(article);
-                            // TODO: This should trigger edit mode directly
+                            if (onArticleEdit) {
+                              onArticleEdit(article);
+                            } else {
+                              onArticleSelect(article);
+                            }
                           }}
                           className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                         >

@@ -286,7 +286,8 @@ const ArticleGrid = ({
                       <MoreVertical className="h-4 w-4" />
                     </button>
                     {openMenuId === article.id && (
-                      <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20 min-w-40">
+                      <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50 min-w-40"
+                           style={{ zIndex: 9999 }}>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

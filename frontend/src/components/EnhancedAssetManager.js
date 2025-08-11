@@ -360,8 +360,9 @@ const EnhancedAssetManager = ({
         
         console.log('Successfully deleted backend asset');
       } else {
-        // For extracted assets, just remove locally (they're part of articles)
-        console.log('Removing extracted asset from local state');
+        // For extracted assets, add to deletion tracking
+        setDeletedAssetIds(prev => new Set([...prev, assetId]));
+        console.log('Marked extracted asset for local deletion');
       }
 
       // Remove from local state immediately

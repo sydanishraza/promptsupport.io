@@ -33,7 +33,8 @@ import {
   FileCheck,
   RotateCcw,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react';
 
 import TinyMCEEditor from './TinyMCEEditor';
@@ -155,6 +156,37 @@ const ContentLibrary = () => {
     setSelectedItems(new Set());
     setSelectAll(false);
     setSelectionMode(false);
+  };
+
+  // NEW: Individual status change functionality
+  const handleStatusChange = async (articleId, newStatus) => {
+    setBulkActionLoading(true);
+    try {
+      const article = articles.find(a => a.id === articleId);
+      const formData = new FormData();
+      formData.append('title', article.title);
+      formData.append('content', article.content);
+      formData.append('status', newStatus);
+      formData.append('tags', JSON.stringify(article.tags || []));
+      formData.append('metadata', JSON.stringify(article.metadata || {}));
+
+      const response = await fetch(`${backendUrl}/api/content-library/${articleId}`, {
+        method: 'PUT',
+        body: formData
+      });
+
+      if (response.ok) {
+        await fetchArticles();
+        console.log(`Successfully changed article status to ${newStatus}`);
+      } else {
+        throw new Error('Failed to change article status');
+      }
+    } catch (error) {
+      console.error('Error changing article status:', error);
+      alert('Error changing article status. Please try again.');
+    } finally {
+      setBulkActionLoading(false);
+    }
   };
 
   // NEW: Bulk actions
@@ -433,9 +465,7 @@ const ContentLibrary = () => {
 
   useEffect(() => {
     fetchArticles();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchArticles, 30000);
-    return () => clearInterval(interval);
+    // Remove auto-refresh to prevent unexpected reloads
   }, [backendUrl]);
 
   // Handle article selection
@@ -498,6 +528,8 @@ const ContentLibrary = () => {
       if (response.ok) {
         await fetchArticles();
         setIsEditing(false);
+        // Navigate back to Content Library after save
+        handleBackToLibrary();
         return true;
       } else {
         console.error('Failed to save article');
@@ -531,15 +563,18 @@ const ContentLibrary = () => {
     }
   };
 
-  // Filter and sort articles with pagination
+  // Enhanced filter and sort articles with improved search
   const filteredAndSortedArticles = useMemo(() => {
     let filtered = articles.filter(article => {
-      // Search filter
+      // Enhanced search filter with title prioritization
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
-        if (!article.title?.toLowerCase().includes(searchLower) &&
-            !article.content?.toLowerCase().includes(searchLower) &&
-            !article.tags?.some(tag => tag.toLowerCase().includes(searchLower))) {
+        const titleMatch = article.title?.toLowerCase().includes(searchLower);
+        const contentMatch = article.content?.toLowerCase().includes(searchLower);
+        const tagMatch = article.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+        
+        // Return true if any match is found
+        if (!titleMatch && !contentMatch && !tagMatch) {
           return false;
         }
       }
@@ -567,8 +602,19 @@ const ContentLibrary = () => {
       }
     });
 
-    // Sort articles
+    // Enhanced sort with title prioritization when searching
     filtered.sort((a, b) => {
+      // If searching, prioritize title matches
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        const aTitleMatch = a.title?.toLowerCase().includes(searchLower);
+        const bTitleMatch = b.title?.toLowerCase().includes(searchLower);
+        
+        if (aTitleMatch && !bTitleMatch) return -1;
+        if (!aTitleMatch && bTitleMatch) return 1;
+      }
+
+      // Apply regular sorting
       switch (selectedSort) {
         case 'title':
           return (a.title || '').localeCompare(b.title || '');
@@ -637,7 +683,7 @@ const ContentLibrary = () => {
           onSave={handleSaveArticle}
           onCancel={() => {
             setIsEditing(false);
-            setSelectedArticle(null);
+            handleBackToLibrary();
           }}
           onDelete={handleDeleteArticle}
           className="h-full"
@@ -737,7 +783,7 @@ const ContentLibrary = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search articles..."
+                  placeholder="Search articles by title, content, or tags..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm"
@@ -892,7 +938,7 @@ const ContentLibrary = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search assets..."
+                placeholder="Search assets by name, type, or source..."
                 value={assetSearchQuery}
                 onChange={(e) => setAssetSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm"
@@ -963,9 +1009,9 @@ const ContentLibrary = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : currentView === 'articles' ? (
-            <div className="overflow-x-auto">
+            <>
               {viewMode === 'grid' ? (
-                <ArticleGrid
+                <ArticleGrid 
                   articles={filteredAndSortedArticles}
                   onArticleSelect={handleArticleSelect}
                   onDeleteArticle={handleDeleteArticle}
@@ -979,12 +1025,15 @@ const ContentLibrary = () => {
                   setRenameTitle={setRenameTitle}
                   onExecuteRename={executeRename}
                   onCancelRename={cancelRename}
+                  onStatusChange={handleStatusChange}
+                  bulkActionLoading={bulkActionLoading}
                 />
               ) : (
-                <ArticleTable
+                <ArticleTable 
                   articles={filteredAndSortedArticles}
                   onArticleSelect={handleArticleSelect}
                   onDeleteArticle={handleDeleteArticle}
+                  onDownloadPDF={downloadArticlePDF}
                   selectionMode={selectionMode}
                   selectedItems={selectedItems}
                   onToggleSelection={toggleSelection}
@@ -994,83 +1043,74 @@ const ContentLibrary = () => {
                   setRenameTitle={setRenameTitle}
                   onExecuteRename={executeRename}
                   onCancelRename={cancelRename}
+                  onStatusChange={handleStatusChange}
+                  bulkActionLoading={bulkActionLoading}
                 />
               )}
-            </div>
+            </>
           ) : (
-            <AssetManager
-              articles={articles}
-              onArticleSelect={handleArticleSelect}
-              onPaginationChange={setAssetPagination}
+            <AssetManager 
               searchQuery={assetSearchQuery}
               filterType={assetFilterType}
               sortBy={assetSortBy}
               sortOrder={assetSortOrder}
               viewMode={assetViewMode}
+              pagination={assetPagination}
+              setPagination={setAssetPagination}
             />
           )}
         </div>
       </div>
 
-      {/* Compact Pagination */}
-      {currentView === 'articles' && articles.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-gray-500">
-              {startArticle}-{endArticle} of {totalArticles}
-              {totalPages > 1 && (
-                <span className="ml-1">({currentPage}/{totalPages})</span>
-              )}
-            </div>
-            {totalPages > 1 && (
-              <div className="flex items-center space-x-1">
+      {/* Pagination */}
+      {currentView === 'articles' && totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
+          <div className="text-sm text-gray-700">
+            Showing {startArticle} to {endArticle} of {totalArticles} articles
+          </div>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              return (
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`px-3 py-1 text-sm border rounded-md ${
+                    currentPage === pageNum
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
                 >
-                  Previous
+                  {pageNum}
                 </button>
-                
-                {/* Page numbers */}
-                <div className="flex items-center space-x-1">
-                  {[...Array(Math.min(5, totalPages))].map((_, index) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = index + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = index + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + index;
-                    } else {
-                      pageNum = currentPage - 2 + index;
-                    }
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-1 text-sm rounded transition-colors ${
-                          currentPage === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            )}
+              );
+            })}
+            
+            <button
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
@@ -1083,11 +1123,13 @@ const ContentLibrary = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowMergeModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-xl p-6 w-full max-w-md"
             >
               <div className="flex items-center justify-between mb-4">
@@ -1100,40 +1142,38 @@ const ContentLibrary = () => {
                 </button>
               </div>
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Article Title
-                  </label>
-                  <input
-                    type="text"
-                    value={mergeTitle}
-                    onChange={(e) => setMergeTitle(e.target.value)}
-                    placeholder="Enter title for merged article"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-3">
+                  You're merging {selectedItems.size} articles into a new combined article.
+                </p>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
-                  <select
-                    value={mergeStatus}
-                    onChange={(e) => setMergeStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="review">Under Review</option>
-                  </select>
-                </div>
-                
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-sm text-gray-600">
-                    <AlertTriangle className="h-4 w-4 inline mr-1 text-yellow-500" />
-                    Merging {selectedItems.size} articles. Original articles will remain in the library.
-                  </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Merged Article Title
+                    </label>
+                    <input
+                      type="text"
+                      value={mergeTitle}
+                      onChange={(e) => setMergeTitle(e.target.value)}
+                      placeholder="Enter title for merged article"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Status
+                    </label>
+                    <select
+                      value={mergeStatus}
+                      onChange={(e) => setMergeStatus(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="published">Published</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               
@@ -1158,27 +1198,20 @@ const ContentLibrary = () => {
         )}
       </AnimatePresence>
 
-      {/* Knowledge Engine Upload Modal */}
-      <KnowledgeEngineUpload
-        isOpen={showKnowledgeUpload}
-        onClose={() => setShowKnowledgeUpload(false)}
-        onUploadComplete={(results) => {
-          console.log('Upload results:', results);
-          setShowKnowledgeUpload(false);
-          fetchArticles(); // Refresh articles list
-        }}
-      />
+      {/* Modals */}
+      {showSnipAndRecord && (
+        <SnipAndRecord onClose={() => setShowSnipAndRecord(false)} />
+      )}
 
-      {/* Snip and Record Modal */}
-      <SnipAndRecord
-        isOpen={showSnipAndRecord}
-        onClose={() => setShowSnipAndRecord(false)}
-        onCapture={(formData) => {
-          // Handle captured media
-          setShowSnipAndRecord(false);
-          fetchArticles();
-        }}
-      />
+      {showKnowledgeUpload && (
+        <KnowledgeEngineUpload 
+          onClose={() => setShowKnowledgeUpload(false)} 
+          onSuccess={() => {
+            fetchArticles();
+            setShowKnowledgeUpload(false);
+          }}
+        />
+      )}
     </div>
   );
 };

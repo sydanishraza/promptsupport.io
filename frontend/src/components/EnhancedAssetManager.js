@@ -74,6 +74,9 @@ const EnhancedAssetManager = ({
   
   // NEW: Deletion tracking for extracted assets
   const [deletedAssetIds, setDeletedAssetIds] = useState(new Set());
+  
+  // NEW: Refresh counter to trigger re-fetch after uploads
+  const [refreshCounter, setRefreshCounter] = useState(0);
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 

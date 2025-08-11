@@ -278,9 +278,11 @@ const EnhancedAssetManager = ({
 
     setBulkActionLoading(true);
     try {
-      if (assets.find(a => a.id === assetId)?.isBackendAsset) {
-        // Rename backend asset
-        const response = await fetch(`${backendUrl}/api/assets/${assetId}`, {
+      const asset = assets.find(a => a.id === assetId);
+      
+      if (asset?.isBackendAsset) {
+        // Rename backend asset - Try different endpoint format
+        const response = await fetch(`${backendUrl}/api/assets/${assetId}/rename`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -291,15 +293,29 @@ const EnhancedAssetManager = ({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to rename asset');
+          // Try alternative endpoint format
+          const response2 = await fetch(`${backendUrl}/api/assets/rename`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              id: assetId,
+              name: renameTitle.trim()
+            })
+          });
+          
+          if (!response2.ok) {
+            throw new Error('Failed to rename asset - API endpoint not available');
+          }
         }
       }
 
-      // Update local state
-      setAssets(prev => prev.map(asset => 
-        asset.id === assetId 
-          ? { ...asset, name: renameTitle.trim() }
-          : asset
+      // Update local state regardless of backend call success for extracted assets
+      setAssets(prev => prev.map(assetItem => 
+        assetItem.id === assetId 
+          ? { ...assetItem, name: renameTitle.trim() }
+          : assetItem
       ));
       
       setRenamingItem(null);
@@ -307,7 +323,20 @@ const EnhancedAssetManager = ({
       console.log('Successfully renamed asset');
     } catch (error) {
       console.error('Error renaming asset:', error);
-      alert('Error renaming asset. Please try again.');
+      // For extracted assets (non-backend), allow local rename even if API fails
+      const asset = assets.find(a => a.id === assetId);
+      if (!asset?.isBackendAsset) {
+        setAssets(prev => prev.map(assetItem => 
+          assetItem.id === assetId 
+            ? { ...assetItem, name: renameTitle.trim() }
+            : assetItem
+        ));
+        setRenamingItem(null);
+        setRenameTitle('');
+        console.log('Renamed extracted asset locally');
+      } else {
+        alert('Error renaming asset. Please try again.');
+      }
     } finally {
       setBulkActionLoading(false);
     }

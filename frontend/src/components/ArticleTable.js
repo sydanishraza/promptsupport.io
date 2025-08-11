@@ -21,10 +21,28 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  MoreVertical
+  MoreVertical,
+  Check,
+  Square,
+  CheckSquare,
+  X,
+  Download
 } from 'lucide-react';
 
-const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
+const ArticleTable = ({ 
+  articles, 
+  onArticleSelect, 
+  onDeleteArticle, 
+  selectionMode, 
+  selectedItems, 
+  onToggleSelection,
+  onStartRename,
+  renamingItem,
+  renameTitle,
+  setRenameTitle,
+  onExecuteRename,
+  onCancelRename
+}) => {
   const [sortField, setSortField] = useState('updated_at');
   const [sortDirection, setSortDirection] = useState('desc');
 
@@ -219,6 +237,12 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
       <table className="w-full table-fixed">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
+            {/* Selection Column */}
+            {selectionMode && (
+              <th className="text-left p-4 font-medium text-gray-900 w-12">
+                <CheckSquare className="h-4 w-4 text-gray-400" />
+              </th>
+            )}
             <th className="text-left p-4 font-medium text-gray-900 w-64">
               <button
                 onClick={() => handleSort('title')}
@@ -301,59 +325,119 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.3 }}
-              className="border-b border-gray-100 hover:bg-gray-50"
+              className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                selectionMode && selectedItems.has(article.id) 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : ''
+              }`}
+              onClick={() => selectionMode ? onToggleSelection(article.id) : onArticleSelect(article)}
             >
+              {/* Selection Column */}
+              {selectionMode && (
+                <td className="p-4">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
+                    selectedItems.has(article.id)
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-white border-gray-300 hover:border-blue-500'
+                  }`}>
+                    {selectedItems.has(article.id) && <Check className="h-3 w-3" />}
+                  </div>
+                </td>
+              )}
+              
               <td className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
                     <FileText className="h-5 w-5 text-gray-400" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onArticleSelect(article);
-                      }}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block w-full text-left"
-                    >
-                      {article.title || 'Untitled'}
-                    </button>
-                    <div className="text-xs text-gray-500 truncate">
-                      {article.summary || 
-                       (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 60) + '...' : 'No content')}
-                    </div>
+                    {renamingItem === article.id ? (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={renameTitle}
+                          onChange={(e) => setRenameTitle(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex-1 px-2 py-1 text-sm font-medium border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onExecuteRename(article.id);
+                          }}
+                          className="p-1 text-green-600 hover:text-green-700 rounded"
+                          title="Save"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCancelRename();
+                          }}
+                          className="p-1 text-red-600 hover:text-red-700 rounded"
+                          title="Cancel"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!selectionMode) onArticleSelect(article);
+                          }}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block w-full text-left"
+                        >
+                          {article.title || 'Untitled'}
+                        </button>
+                        <div className="text-xs text-gray-500 truncate">
+                          {article.summary || 
+                           (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 60) + '...' : 'No content')}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </td>
+              
               <td className="p-4">
                 <div className="flex items-center space-x-2">
                   {getSourceTypeIcon(article.source_type)}
                   <span className="text-sm text-gray-900">{getSourceTypeLabel(article.source_type)}</span>
                 </div>
               </td>
+              
               <td className="p-4">
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
                   {getStatusIcon(article.status)}
                   <span className="ml-1">{article.status || 'draft'}</span>
                 </span>
               </td>
+              
               <td className="p-4">
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-900">{article.metadata?.created_by || 'System'}</span>
                 </div>
               </td>
+              
               <td className="p-4">
                 <div className="text-sm text-gray-900">{formatDateWithTime(article.created_at)}</div>
                 <div className="text-xs text-gray-500">{formatRelativeTime(article.created_at)}</div>
               </td>
+              
               <td className="p-4">
                 <div className="text-sm text-gray-900">{formatDate(article.updated_at)}</div>
                 <div className="text-xs text-gray-500">{formatRelativeTime(article.updated_at)}</div>
               </td>
+              
               <td className="p-4">
                 <span className="text-sm text-gray-900">{getWordCount(article.content).toLocaleString()}</span>
               </td>
+              
               <td className="p-4">
                 {hasMedia(article.content) ? (
                   <div className="flex items-center space-x-2">
@@ -369,29 +453,65 @@ const ArticleTable = ({ articles, onArticleSelect, onDeleteArticle }) => {
                   <span className="text-sm text-gray-400">None</span>
                 )}
               </td>
+              
               <td className="p-4">
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onArticleSelect(article);
-                    }}
-                    className="p-1 text-gray-400 hover:text-blue-600 rounded"
-                    title="View Article"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteArticle(article.id);
-                    }}
-                    className="p-1 text-gray-400 hover:text-red-600 rounded"
-                    title="Delete Article"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                {!selectionMode && renamingItem !== article.id && (
+                  <div className="flex items-center space-x-2">
+                    <div className="relative group">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-32 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onArticleSelect(article);
+                          }}
+                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        >
+                          <Eye className="h-3 w-3" />
+                          <span>View</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStartRename(article);
+                          }}
+                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        >
+                          <Edit className="h-3 w-3" />
+                          <span>Rename</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Download PDF logic here
+                          }}
+                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span>PDF</span>
+                        </button>
+                        <hr className="my-1" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteArticle(article.id);
+                          }}
+                          className="flex items-center space-x-2 px-3 py-1 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </td>
             </motion.tr>
           ))}

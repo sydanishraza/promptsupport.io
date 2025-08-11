@@ -74,6 +74,21 @@ const EnhancedAssetManager = ({
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
+  // Close menu when clicking outside (but not when clicking on modals)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Don't close if clicking on modal background or upload modal
+      if (showModal || showUploadModal) return;
+      
+      if (openMenuId) {
+        setOpenMenuId(null);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openMenuId, showModal, showUploadModal]);
+
   // Fetch and process assets
   useEffect(() => {
     const fetchAllAssets = async () => {

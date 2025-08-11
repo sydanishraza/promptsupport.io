@@ -30,7 +30,8 @@ import {
 
 const ArticleGrid = ({ 
   articles, 
-  onArticleSelect, 
+  onArticleSelect,
+  onArticleEdit, 
   onDeleteArticle, 
   onDownloadPDF, 
   selectionMode, 

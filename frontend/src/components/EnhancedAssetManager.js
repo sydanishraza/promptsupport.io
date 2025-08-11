@@ -1051,7 +1051,10 @@ const EnhancedAssetManager = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => !uploading && setShowUploadModal(false)}
+            onClick={() => {
+              console.log('Upload modal background clicked');
+              if (!uploading) setShowUploadModal(false);
+            }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -1064,7 +1067,10 @@ const EnhancedAssetManager = ({
                 <h3 className="text-lg font-semibold text-gray-900">Upload Assets</h3>
                 {!uploading && (
                   <button
-                    onClick={() => setShowUploadModal(false)}
+                    onClick={() => {
+                      console.log('Upload modal close button clicked');
+                      setShowUploadModal(false);
+                    }}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <X className="h-5 w-5" />

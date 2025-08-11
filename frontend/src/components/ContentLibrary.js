@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -23,7 +23,17 @@ import {
   Copy,
   MoreVertical,
   Settings,
-  RefreshCw
+  RefreshCw,
+  Check,
+  Square,
+  CheckSquare,
+  X,
+  Combine,
+  FileEdit,
+  FileCheck,
+  RotateCcw,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 
 import TinyMCEEditor from './TinyMCEEditor';
@@ -49,6 +59,24 @@ const ContentLibrary = () => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterState, setFilterState] = useState(null); // For context preservation
+  
+  // NEW: Selection and bulk actions state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  
+  // NEW: Bulk action states
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  
+  // NEW: Merge functionality state
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeTitle, setMergeTitle] = useState('');
+  const [mergeStatus, setMergeStatus] = useState('draft');
+  
+  // NEW: Rename functionality state
+  const [renamingItem, setRenamingItem] = useState(null);
+  const [renameTitle, setRenameTitle] = useState('');
   
   // State for actual asset count  
   const [actualAssetCount, setActualAssetCount] = useState(0);
@@ -99,6 +127,232 @@ const ContentLibrary = () => {
     
     setActualAssetCount(totalAssets);
   }, [articles]);
+
+  // NEW: Selection functionality
+  const toggleSelection = (itemId) => {
+    const newSelection = new Set(selectedItems);
+    if (newSelection.has(itemId)) {
+      newSelection.delete(itemId);
+    } else {
+      newSelection.add(itemId);
+    }
+    setSelectedItems(newSelection);
+    setSelectAll(newSelection.size === filteredAndSortedArticles.length);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedItems(new Set());
+      setSelectAll(false);
+    } else {
+      const allIds = new Set(filteredAndSortedArticles.map(article => article.id));
+      setSelectedItems(allIds);
+      setSelectAll(true);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedItems(new Set());
+    setSelectAll(false);
+    setSelectionMode(false);
+  };
+
+  // NEW: Bulk actions
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedItems.size} item(s)?`)) return;
+
+    setBulkActionLoading(true);
+    try {
+      const deletePromises = Array.from(selectedItems).map(id => 
+        fetch(`${backendUrl}/api/content-library/${id}`, { method: 'DELETE' })
+      );
+      
+      await Promise.all(deletePromises);
+      await fetchArticles();
+      clearSelection();
+      console.log(`Successfully deleted ${selectedItems.size} items`);
+    } catch (error) {
+      console.error('Error deleting items:', error);
+      alert('Error deleting some items. Please try again.');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkPublish = async () => {
+    setBulkActionLoading(true);
+    try {
+      const updatePromises = Array.from(selectedItems).map(id => {
+        const article = articles.find(a => a.id === id);
+        const formData = new FormData();
+        formData.append('title', article.title);
+        formData.append('content', article.content);
+        formData.append('status', 'published');
+        formData.append('tags', JSON.stringify(article.tags || []));
+        formData.append('metadata', JSON.stringify(article.metadata || {}));
+
+        return fetch(`${backendUrl}/api/content-library/${id}`, {
+          method: 'PUT',
+          body: formData
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      await fetchArticles();
+      clearSelection();
+      console.log(`Successfully published ${selectedItems.size} items`);
+    } catch (error) {
+      console.error('Error publishing items:', error);
+      alert('Error publishing some items. Please try again.');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkDraft = async () => {
+    setBulkActionLoading(true);
+    try {
+      const updatePromises = Array.from(selectedItems).map(id => {
+        const article = articles.find(a => a.id === id);
+        const formData = new FormData();
+        formData.append('title', article.title);
+        formData.append('content', article.content);
+        formData.append('status', 'draft');
+        formData.append('tags', JSON.stringify(article.tags || []));
+        formData.append('metadata', JSON.stringify(article.metadata || {}));
+
+        return fetch(`${backendUrl}/api/content-library/${id}`, {
+          method: 'PUT',
+          body: formData
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      await fetchArticles();
+      clearSelection();
+      console.log(`Successfully moved ${selectedItems.size} items to draft`);
+    } catch (error) {
+      console.error('Error moving items to draft:', error);
+      alert('Error updating some items. Please try again.');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  // NEW: Merge functionality
+  const handleMergeArticles = () => {
+    if (selectedItems.size < 2) {
+      alert('Please select at least 2 articles to merge');
+      return;
+    }
+    setShowMergeModal(true);
+  };
+
+  const executeMerge = async () => {
+    if (!mergeTitle.trim()) {
+      alert('Please enter a title for the merged article');
+      return;
+    }
+
+    setBulkActionLoading(true);
+    try {
+      const selectedArticles = articles.filter(a => selectedItems.has(a.id));
+      
+      // Create merged content
+      let mergedContent = `<h1>${mergeTitle}</h1>\n\n`;
+      let mergedTags = new Set();
+      
+      selectedArticles.forEach((article, index) => {
+        mergedContent += `<h2>Section ${index + 1}: ${article.title}</h2>\n`;
+        mergedContent += article.content.replace(/<h1[^>]*>.*?<\/h1>/gi, '') + '\n\n';
+        
+        if (article.tags) {
+          article.tags.forEach(tag => mergedTags.add(tag));
+        }
+      });
+
+      // Create new merged article
+      const formData = new FormData();
+      formData.append('title', mergeTitle);
+      formData.append('content', mergedContent);
+      formData.append('status', mergeStatus);
+      formData.append('tags', JSON.stringify([...mergedTags]));
+      formData.append('metadata', JSON.stringify({
+        created_by: 'User',
+        merge_source: Array.from(selectedItems),
+        merged_at: new Date().toISOString()
+      }));
+
+      const response = await fetch(`${backendUrl}/api/content-library`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        await fetchArticles();
+        clearSelection();
+        setShowMergeModal(false);
+        setMergeTitle('');
+        setMergeStatus('draft');
+        console.log(`Successfully merged ${selectedItems.size} articles`);
+      } else {
+        throw new Error('Failed to create merged article');
+      }
+    } catch (error) {
+      console.error('Error merging articles:', error);
+      alert('Error merging articles. Please try again.');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  // NEW: Rename functionality
+  const startRename = (article) => {
+    setRenamingItem(article.id);
+    setRenameTitle(article.title || '');
+  };
+
+  const executeRename = async (articleId) => {
+    if (!renameTitle.trim()) {
+      alert('Please enter a valid title');
+      return;
+    }
+
+    setBulkActionLoading(true);
+    try {
+      const article = articles.find(a => a.id === articleId);
+      const formData = new FormData();
+      formData.append('title', renameTitle.trim());
+      formData.append('content', article.content);
+      formData.append('status', article.status);
+      formData.append('tags', JSON.stringify(article.tags || []));
+      formData.append('metadata', JSON.stringify(article.metadata || {}));
+
+      const response = await fetch(`${backendUrl}/api/content-library/${articleId}`, {
+        method: 'PUT',
+        body: formData
+      });
+
+      if (response.ok) {
+        await fetchArticles();
+        setRenamingItem(null);
+        setRenameTitle('');
+        console.log('Successfully renamed article');
+      } else {
+        throw new Error('Failed to rename article');
+      }
+    } catch (error) {
+      console.error('Error renaming article:', error);
+      alert('Error renaming article. Please try again.');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const cancelRename = () => {
+    setRenamingItem(null);
+    setRenameTitle('');
+  };
 
   // Filter options
   const filterOptions = [
@@ -278,7 +532,7 @@ const ContentLibrary = () => {
   };
 
   // Filter and sort articles with pagination
-  const filteredAndSortedArticles = React.useMemo(() => {
+  const filteredAndSortedArticles = useMemo(() => {
     let filtered = articles.filter(article => {
       // Search filter
       if (searchQuery) {
@@ -393,119 +647,193 @@ const ContentLibrary = () => {
   }
 
   return (
-    <div className="h-full flex flex-col space-y-2 sm:space-y-4 max-w-full overflow-hidden p-2 sm:p-3 md:p-0">
-      {/* Enhanced Header - Mobile Compact */}
-      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-6 flex-shrink-0">
-        <div className="flex flex-col space-y-2 sm:space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-1 sm:mb-2">
-                <h1 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900">Content Library</h1>
-              </div>
-              <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-1 sm:mb-3 hidden sm:block">
-                Manage articles and assets.
-              </p>
-            </div>
-            
-            {/* Action Buttons - Mobile Compact */}
-            <div className="flex flex-row sm:flex-row gap-1.5 sm:gap-2 lg:gap-3 w-full sm:w-auto">
-              <button
-                onClick={() => fetchArticles()}
-                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Refresh</span>
-              </button>
-              <button
-                onClick={() => setShowKnowledgeUpload(true)}
-                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Upload</span>
-              </button>
-              <button
-                onClick={() => setShowSnipAndRecord(true)}
-                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-green-600 hover:bg-green-700 text-white rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <Camera className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Snip</span>
-              </button>
-              <button
-                onClick={handleCreateArticle}
-                className="flex items-center justify-center sm:justify-start px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md sm:rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Create</span>
-              </button>
+    <div className="h-full flex flex-col space-y-1 max-w-full overflow-hidden">
+      {/* Optimized Header - Compact */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-lg font-bold text-gray-900">Content Library</h1>
+            <div className="flex items-center space-x-3 text-xs text-gray-500">
+              <span>A: {articles.length}</span>
+              <span>M: {articles.filter(a => a.content?.includes('data:image')).length}</span>
+              <span>As: {actualAssetCount}</span>
+              <span>P: {articles.filter(a => a.status === 'published').length}</span>
             </div>
           </div>
           
-          {/* Stats - Mobile Compact */}
-          <div className="grid grid-cols-4 sm:flex sm:flex-wrap items-center gap-1 sm:gap-2 lg:gap-4 text-xs text-gray-500">
-            <span className="whitespace-nowrap text-center sm:text-left">A: {articles.length}</span>
-            <span className="whitespace-nowrap text-center sm:text-left">M: {articles.filter(a => a.content?.includes('data:image')).length}</span>
-            <span className="whitespace-nowrap text-center sm:text-left">As: {actualAssetCount}</span>
-            <span className="whitespace-nowrap text-center sm:text-left">P: {articles.filter(a => a.status === 'published').length}</span>
+          {/* Action Buttons - Compact */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => fetchArticles()}
+              className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
+            <button
+              onClick={() => setShowKnowledgeUpload(true)}
+              className="flex items-center px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Upload
+            </button>
+            <button
+              onClick={() => setShowSnipAndRecord(true)}
+              className="flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Snip
+            </button>
+            <button
+              onClick={handleCreateArticle}
+              className="flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation - Mobile Compact */}
-      <div className="flex space-x-2 sm:space-x-4 lg:space-x-6 border-b border-gray-200 overflow-x-auto flex-shrink-0 px-2 sm:px-3 md:px-0 -mx-2 sm:-mx-3 md:mx-0">
+      {/* Tab Navigation - Compact */}
+      <div className="flex space-x-6 border-b border-gray-200 flex-shrink-0 px-3">
         <button
           onClick={() => setCurrentView('articles')}
-          className={`flex items-center space-x-1 sm:space-x-2 pb-2 sm:pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-xs sm:text-sm md:text-base ${
+          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-sm ${
             currentView === 'articles'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+          <FileText className="h-4 w-4" />
           <span>Articles</span>
-          <span className="bg-gray-100 text-gray-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
+          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
             {articles.length}
           </span>
         </button>
         <button
           onClick={() => setCurrentView('assets')}
-          className={`flex items-center space-x-1 sm:space-x-2 pb-2 sm:pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-xs sm:text-sm md:text-base ${
+          className={`flex items-center space-x-2 pb-3 px-1 border-b-2 font-medium whitespace-nowrap text-sm ${
             currentView === 'assets'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4" />
+          <FolderOpen className="h-4 w-4" />
           <span>Assets</span>
-          <span className="bg-gray-100 text-gray-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
+          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
             {actualAssetCount}
           </span>
         </button>
       </div>
 
-      {/* Control Bar - Articles - Mobile Compact */}
+      {/* Enhanced Control Bar with Selection */}
       {currentView === 'articles' && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-2 sm:space-y-3">
-            {/* Search - Compact on Mobile */}
-            <div className="relative">
-              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search articles..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-7 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2.5 md:py-2 border border-gray-300 rounded-md sm:rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-xs sm:text-sm md:text-base"
-              />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex-shrink-0">
+          <div className="space-y-3">
+            {/* Search and Selection Toggle */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search articles..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm"
+                />
+              </div>
+              
+              <button
+                onClick={() => {
+                  setSelectionMode(!selectionMode);
+                  if (selectionMode) clearSelection();
+                }}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  selectionMode 
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {selectionMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                <span>{selectionMode ? 'Exit Select' : 'Select'}</span>
+              </button>
             </div>
 
-            {/* Filters and View - Mobile Compact */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-4">
-              <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 lg:gap-3">
+            {/* Selection and Bulk Actions Bar */}
+            {selectionMode && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="flex items-center space-x-2 text-sm font-medium text-blue-700"
+                    >
+                      {selectAll ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                      <span>{selectAll ? 'Deselect All' : 'Select All'}</span>
+                    </button>
+                    <span className="text-sm text-blue-600">
+                      {selectedItems.size} of {filteredAndSortedArticles.length} selected
+                    </span>
+                  </div>
+
+                  {selectedItems.size > 0 && (
+                    <div className="flex items-center space-x-2">
+                      {bulkActionLoading && (
+                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      )}
+                      
+                      <button
+                        onClick={handleBulkPublish}
+                        disabled={bulkActionLoading}
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
+                      >
+                        <FileCheck className="h-4 w-4" />
+                        <span>Publish</span>
+                      </button>
+                      
+                      <button
+                        onClick={handleBulkDraft}
+                        disabled={bulkActionLoading}
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 text-sm"
+                      >
+                        <FileEdit className="h-4 w-4" />
+                        <span>Draft</span>
+                      </button>
+                      
+                      {selectedItems.size >= 2 && (
+                        <button
+                          onClick={handleMergeArticles}
+                          disabled={bulkActionLoading}
+                          className="flex items-center space-x-1 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm"
+                        >
+                          <Combine className="h-4 w-4" />
+                          <span>Merge</span>
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={handleBulkDelete}
+                        disabled={bulkActionLoading}
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Filters and View */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
                 <div className="relative">
                   <select
                     value={selectedFilter}
                     onChange={(e) => setSelectedFilter(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     {filterOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -513,14 +841,14 @@ const ContentLibrary = () => {
                       </option>
                     ))}
                   </select>
-                  <Filter className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
+                  <Filter className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
 
                 <div className="relative">
                   <select
                     value={selectedSort}
                     onChange={(e) => setSelectedSort(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     {sortOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -528,18 +856,18 @@ const ContentLibrary = () => {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
               {/* View Mode Selector */}
-              <div className="flex items-center gap-1 sm:gap-2">
-                <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline">View:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">View:</span>
                 <div className="relative">
                   <select
                     value={viewMode}
                     onChange={(e) => setViewMode(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     {viewOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -547,7 +875,7 @@ const ContentLibrary = () => {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -555,30 +883,30 @@ const ContentLibrary = () => {
         </div>
       )}
 
-      {/* Control Bar - Assets - Mobile Compact */}
+      {/* Control Bar - Assets */}
       {currentView === 'assets' && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-2 sm:space-y-3">
-            {/* Search - Compact on Mobile */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex-shrink-0">
+          <div className="space-y-3">
+            {/* Search */}
             <div className="relative">
-              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search assets..."
                 value={assetSearchQuery}
                 onChange={(e) => setAssetSearchQuery(e.target.value)}
-                className="pl-7 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2.5 md:py-2 border border-gray-300 rounded-md sm:rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-xs sm:text-sm md:text-base"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full text-sm"
               />
             </div>
 
-            {/* Filters and View - Mobile Compact */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-4">
-              <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 lg:gap-3">
+            {/* Filters and View */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
                 <div className="relative">
                   <select
                     value={assetFilterType}
                     onChange={(e) => setAssetFilterType(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     <option value="all">All Assets</option>
                     <option value="image">Images</option>
@@ -588,14 +916,14 @@ const ContentLibrary = () => {
                     <option value="svg">SVG</option>
                     <option value="processed">AI Processed</option>
                   </select>
-                  <Filter className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
+                  <Filter className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
 
                 <div className="relative">
                   <select
                     value={assetSortBy}
                     onChange={(e) => setAssetSortBy(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     <option value="dateAdded">Sort: Date Added</option>
                     <option value="name">Sort: Name</option>
@@ -603,23 +931,23 @@ const ContentLibrary = () => {
                     <option value="format">Sort: Format</option>
                     <option value="articleTitle">Sort: Source Article</option>
                   </select>
-                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
               {/* View Mode Selector */}
-              <div className="flex items-center gap-1 sm:gap-2">
-                <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline">View:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">View:</span>
                 <div className="relative">
                   <select
                     value={assetViewMode}
                     onChange={(e) => setAssetViewMode(e.target.value)}
-                    className="appearance-none bg-white border border-gray-300 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2.5 md:py-2 pr-6 sm:pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto"
+                    className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     <option value="grid">Grid View</option>
                     <option value="list">List View</option>
                   </select>
-                  <ChevronDown className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -627,12 +955,12 @@ const ContentLibrary = () => {
         </div>
       )}
 
-      {/* Content Area - Mobile Optimized */}
-      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 flex-1 min-h-0 overflow-hidden">
+      {/* Maximized Content Area */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 min-h-0 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-24 sm:h-32 md:h-64">
-              <div className="animate-spin rounded-full h-4 w-4 sm:h-6 sm:w-6 md:h-8 md:w-8 border-b-2 border-blue-600"></div>
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : currentView === 'articles' ? (
             <div className="overflow-x-auto">
@@ -642,12 +970,30 @@ const ContentLibrary = () => {
                   onArticleSelect={handleArticleSelect}
                   onDeleteArticle={handleDeleteArticle}
                   onDownloadPDF={downloadArticlePDF}
+                  selectionMode={selectionMode}
+                  selectedItems={selectedItems}
+                  onToggleSelection={toggleSelection}
+                  onStartRename={startRename}
+                  renamingItem={renamingItem}
+                  renameTitle={renameTitle}
+                  setRenameTitle={setRenameTitle}
+                  onExecuteRename={executeRename}
+                  onCancelRename={cancelRename}
                 />
               ) : (
                 <ArticleTable
                   articles={filteredAndSortedArticles}
                   onArticleSelect={handleArticleSelect}
                   onDeleteArticle={handleDeleteArticle}
+                  selectionMode={selectionMode}
+                  selectedItems={selectedItems}
+                  onToggleSelection={toggleSelection}
+                  onStartRename={startRename}
+                  renamingItem={renamingItem}
+                  renameTitle={renameTitle}
+                  setRenameTitle={setRenameTitle}
+                  onExecuteRename={executeRename}
+                  onCancelRename={cancelRename}
                 />
               )}
             </div>
@@ -666,47 +1012,45 @@ const ContentLibrary = () => {
         </div>
       </div>
 
-      {/* Pagination - Articles - Mobile Compact */}
+      {/* Compact Pagination */}
       {currentView === 'articles' && articles.length > 0 && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs text-gray-500 text-center sm:text-left">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-gray-500">
               {startArticle}-{endArticle} of {totalArticles}
               {totalPages > 1 && (
-                <span className="block sm:inline sm:ml-1">({currentPage}/{totalPages})</span>
+                <span className="ml-1">({currentPage}/{totalPages})</span>
               )}
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center justify-center space-x-1">
+              <div className="flex items-center space-x-1">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="hidden sm:inline">Previous</span>
-                  <span className="sm:hidden">‹</span>
+                  Previous
                 </button>
                 
-                {/* Page numbers - Responsive */}
-                <div className="flex items-center space-x-0.5 sm:space-x-1">
-                  {[...Array(Math.min(window.innerWidth < 640 ? 3 : 5, totalPages))].map((_, index) => {
+                {/* Page numbers */}
+                <div className="flex items-center space-x-1">
+                  {[...Array(Math.min(5, totalPages))].map((_, index) => {
                     let pageNum;
-                    const maxPages = window.innerWidth < 640 ? 3 : 5;
-                    if (totalPages <= maxPages) {
+                    if (totalPages <= 5) {
                       pageNum = index + 1;
-                    } else if (currentPage <= Math.floor(maxPages/2) + 1) {
+                    } else if (currentPage <= 3) {
                       pageNum = index + 1;
-                    } else if (currentPage >= totalPages - Math.floor(maxPages/2)) {
-                      pageNum = totalPages - maxPages + 1 + index;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + index;
                     } else {
-                      pageNum = currentPage - Math.floor(maxPages/2) + index;
+                      pageNum = currentPage - 2 + index;
                     }
                     
                     return (
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm rounded transition-colors ${
+                        className={`px-3 py-1 text-sm rounded transition-colors ${
                           currentPage === pageNum
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-600 hover:bg-gray-100'
@@ -721,10 +1065,9 @@ const ContentLibrary = () => {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="hidden sm:inline">Next</span>
-                  <span className="sm:hidden">›</span>
+                  Next
                 </button>
               </div>
             )}
@@ -732,71 +1075,88 @@ const ContentLibrary = () => {
         </div>
       )}
 
-      {/* Pagination - Assets - Mobile Compact */}
-      {currentView === 'assets' && assetPagination && assetPagination.totalPages > 1 && (
-        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3 lg:p-4 flex-shrink-0">
-          <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs text-gray-500 text-center sm:text-left">
-              {assetPagination.startIndex}-{assetPagination.endIndex} of {assetPagination.totalItems}
-              {assetPagination.totalPages > 1 && (
-                <span className="block sm:inline sm:ml-1">({assetPagination.currentPage}/{assetPagination.totalPages})</span>
-              )}
-            </div>
-            {assetPagination.totalPages > 1 && (
-              <div className="flex items-center justify-center space-x-1">
+      {/* Merge Modal */}
+      <AnimatePresence>
+        {showMergeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white rounded-xl p-6 w-full max-w-md"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Merge Articles</h3>
                 <button
-                  onClick={() => assetPagination.onPageChange(assetPagination.currentPage - 1)}
-                  disabled={assetPagination.currentPage === 1}
-                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setShowMergeModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  <span className="hidden sm:inline">Previous</span>
-                  <span className="sm:hidden">‹</span>
-                </button>
-                
-                {/* Page numbers - Responsive */}
-                <div className="flex items-center space-x-0.5 sm:space-x-1">
-                  {[...Array(Math.min(window.innerWidth < 640 ? 3 : 5, assetPagination.totalPages))].map((_, index) => {
-                    let pageNum;
-                    const maxPages = window.innerWidth < 640 ? 3 : 5;
-                    if (assetPagination.totalPages <= maxPages) {
-                      pageNum = index + 1;
-                    } else if (assetPagination.currentPage <= Math.floor(maxPages/2) + 1) {
-                      pageNum = index + 1;
-                    } else if (assetPagination.currentPage >= assetPagination.totalPages - Math.floor(maxPages/2)) {
-                      pageNum = assetPagination.totalPages - maxPages + 1 + index;
-                    } else {
-                      pageNum = assetPagination.currentPage - Math.floor(maxPages/2) + index;
-                    }
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => assetPagination.onPageChange(pageNum)}
-                        className={`px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm rounded transition-colors ${
-                          assetPagination.currentPage === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                <button
-                  onClick={() => assetPagination.onPageChange(assetPagination.currentPage + 1)}
-                  disabled={assetPagination.currentPage === assetPagination.totalPages}
-                  className="px-1.5 sm:px-2 md:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <span className="sm:hidden">›</span>
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Article Title
+                  </label>
+                  <input
+                    type="text"
+                    value={mergeTitle}
+                    onChange={(e) => setMergeTitle(e.target.value)}
+                    placeholder="Enter title for merged article"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={mergeStatus}
+                    onChange={(e) => setMergeStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="review">Under Review</option>
+                  </select>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">
+                    <AlertTriangle className="h-4 w-4 inline mr-1 text-yellow-500" />
+                    Merging {selectedItems.size} articles. Original articles will remain in the library.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowMergeModal(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeMerge}
+                  disabled={bulkActionLoading || !mergeTitle.trim()}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {bulkActionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  <span>Merge Articles</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Knowledge Engine Upload Modal */}
       <KnowledgeEngineUpload

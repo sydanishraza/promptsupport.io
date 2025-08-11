@@ -338,7 +338,7 @@ const ArticleTable = ({
                 {renderSortIcon('word_count')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900 w-20">
+            <th className="text-left p-3 font-medium text-gray-900 w-16 min-w-12">
               <button
                 onClick={() => handleSort('media_count')}
                 className="flex items-center space-x-2 hover:text-blue-600"
@@ -347,7 +347,7 @@ const ArticleTable = ({
                 {renderSortIcon('media_count')}
               </button>
             </th>
-            <th className="text-left p-4 font-medium text-gray-900 w-24">Actions</th>
+            <th className="text-left p-3 font-medium text-gray-900 w-16 min-w-14">Actions</th>
           </tr>
         </thead>
         <tbody>

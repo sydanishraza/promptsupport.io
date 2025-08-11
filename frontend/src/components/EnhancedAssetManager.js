@@ -404,7 +404,8 @@ const EnhancedAssetManager = ({
           }
           return { id, success: true };
         } else {
-          // Extracted assets - just remove locally
+          // For extracted assets, add to deletion tracking
+          setDeletedAssetIds(prev => new Set([...prev, id]));
           return { id, success: true };
         }
       });

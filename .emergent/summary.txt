@@ -1,64 +1,43 @@
 <analysis>
-The AI engineer's trajectory involved a comprehensive effort to stabilize and enhance the PromptSupport application. Initially, the focus was on critical Knowledge Engine functionalities, including resolving PDF/DOCX upload failures, single-article generation issues, and integrating URL processing. This involved backend logic adjustments, chunking threshold tuning, robust JSON parsing, and timeout implementations. A significant bug where DOCX processing yielded only one article despite many chunks was fixed by re-implementing . Subsequent work concentrated on extensive UI/UX improvements for the Content Library, adding selection, bulk actions, renaming, publishing, and a merge feature.
-
-The recent phase of work was primarily a bug-fixing sprint, addressing numerous issues reported by the user across the Content Library and WYSIWYG Editor. Key problems included non-functional merge, status changes, inconsistent sorting/search, and editor instability (cursor jumps, toolbar disappearance, content analysis pop-ups). The AI engineer systematically debugged these, discovering issues like  being sent to JSON-expecting endpoints and React rendering conflicts (e.g.,  causing double-mounting). Significant progress was made, with most Content Library features (merge, status, search, bulk actions, pagination, renaming) confirmed working after converting API requests to JSON and fixing action menu logic. However, the asset management features in the  are still problematic, with the old  UI persisting despite the new component being loaded and its state updates for asset count being correctly passed to the parent. The root cause appears to be a component rendering conflict or caching issue.
+The AI engineer's trajectory chronicles an intensive bug-fixing and enhancement phase for the PromptSupport application, primarily focusing on the Content Library and WYSIWYG Editor. Initially, the core issue was the 's UI not rendering, which was ultimately found to be working correctly after an initial visual check. However, a series of functional bugs were reported, necessitating a deep dive into backend API discrepancies (missing PUT/DELETE endpoints for assets) and complex frontend state management issues. The engineer systematically addressed asset renaming, downloading, deletion (single and bulk, including persistence after refresh), upload display, and visibility of action menus. Concurrently, significant effort was dedicated to improving the Article Table's responsiveness and layout. The final major challenge involved the WYSIWYG Editor, where mouse interaction performance was poor, leading to the diagnosis and resolution of excessive content analysis calls (debouncing), optimization of event handlers, and adding a right-click context menu. A critical React hooks runtime error, caused by  being placed inside JSX, was then swiftly identified and resolved by correctly positioning hooks at the top level of the component. The overall outcome is a more stable, functional, and user-friendly application across critical modules.
 </analysis>
 
 <product_requirements>
-The PromptSupport application serves as an AI-native platform for support documentation, leveraging a Knowledge Engine to ingest and transform various content types (DOCX, PDF, HTML, URLs, audio/video) into media-rich, editor-compatible HTML articles. The primary goal is to extract comprehensive information, intelligently chunk content into context-aware sections (initially 6,000–8,000 tokens, refined to 600 words/5000 chars), and use LLMs for revision and article generation, ensuring compatibility with WYSIWYG editors.
-
-Key functional requirements include:
-1.  **Content Extraction**: Robust extraction of text, tables, and media from diverse sources, saving images to an Asset Library.
-2.  **Article Generation**: LLM-driven creation of structured, modern HTML articles suitable for in-app editing, with features like Related Links for multi-chunk articles.
-3.  **Content Library**: Advanced content management capabilities, including selection, bulk deletion, renaming, publishing/draft management, and an article merge feature across grid and table views, with enhanced UI/UX.
-
-So far, the application has established a functional Knowledge Engine, successfully processing DOCX, PDF, and URLs with correct multi-article chunking and extraction. The Content Library has been significantly enhanced to include most management features and UI/UX improvements, with backend API stability (JSON parsing, timeouts) also addressed.
+The PromptSupport application is designed as an AI-native platform for support documentation. It utilizes a Knowledge Engine to ingest and transform various content types (DOCX, PDF, HTML, URLs) into rich, editable HTML articles. The system aims to extract comprehensive information, intelligently chunk content into context-aware sections (initially 6,000–8,000 tokens, refined to 600 words/5000 chars), and employ LLMs for content revision and article generation, ensuring compatibility with WYSIWYG editors. Key requirements include robust content extraction, LLM-driven structured article generation with features like Related Links, and an advanced Content Library for managing articles and assets (selection, bulk deletion, renaming, publishing/draft, merge, enhanced UI/UX). So far, the Knowledge Engine processes diverse content with multi-article chunking. The Content Library has been significantly enhanced with management features, UI/UX improvements, and stable backend APIs, including comprehensive asset management.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS for styling, Framer Motion for animations.
--   **Backend**: FastAPI for RESTful APIs, MongoDB for data persistence.
--   **Content Parsing**:  for DOCX,  for web scraping,  for PDF.
--   **LLM Integration**: OpenAI (GPT-4o/mini) for content generation and chunking.
--   **Processing**: Multi-tiered chunking, JSON sanitization, HTML preprocessing, asynchronous operations.
--   **UI Patterns**: Click-based dropdown menus, state management for modals/selections, dynamic content rendering.
+- **Frontend**: React.js, TailwindCSS for styling, Framer Motion for animations.
+- **Backend**: FastAPI for RESTful APIs, MongoDB for data persistence.
+- **Content Parsing**: , , .
+- **LLM Integration**: OpenAI (GPT-4o/mini) for content generation and chunking.
+- **Processing**: Multi-tiered chunking, JSON sanitization, HTML preprocessing, asynchronous operations, debouncing.
+- **UI Patterns**: Click-based dropdowns, state management for modals/selections, dynamic content rendering, React Hooks.
 </key_technical_concepts>
 
 <code_architecture>
-The application employs a  (React) and  (FastAPI) architecture.
+The application uses a  (React) and  (FastAPI) architecture.
 
 
 
 -   ****:
-    -   **Importance**: Handles all backend logic including document processing, LLM interactions, and database operations.
-    -   **Changes**:  (1200 to 8000),  (chunk size from 250 to 600 words, section size 2000 to 5000 characters). Added robust JSON parsing error handling and  timeouts (10 min). Re-implemented  to ensure multi-article generation from chunks.
+    -   **Importance**: Handles all backend logic, LLM interactions, and database operations.
+    -   **Changes**:  (1200 to 8000), chunk sizes adjusted. Added JSON parsing error handling,  timeouts (10 min). Re-implemented  for multi-article generation. **Crucially, added  and  (for rename) endpoints. Removed asset count limit from  endpoint (changed  to ).**
 -   ****:
     -   **Importance**: React application entry point.
     -   **Changes**:  removed to prevent double-mounting issues.
 -   ****:
-    -   **Importance**: Displays application statistics like document count.
-    -   **Changes**: Fetches document count from , removed problematic  call.
--   ****:
-    -   **Importance**: Manages document and URL upload UI/logic.
-    -   **Changes**: Replaced mock  with real API calls to  and .
--   ****:
     -   **Importance**: Main component for article/asset management.
-    -   **Changes**: Integrated state for selection, bulk actions, renaming, publishing, merging. Adjusted  to 10 for pagination visibility. Updated API calls to send JSON instead of FormData for , , , . Added  prop to ArticleGrid/Table. Updated  to use  for redirect. Integrated  and passed  callback. Removed  import.
--   ****:
-    -   **Importance**: Renders articles in a grid view.
-    -   **Changes**: Added checkboxes, selection state integration, and  handler. Action menu changed from CSS hover to click-based state management (useState for ). Edit button on grid tile now uses .
+    -   **Changes**: Integrated state for selection, bulk actions, renaming, publishing, merging. Adjusted  to 10. API calls send JSON.  prop added. Integrated  and passed ,  callback.
 -   ****:
     -   **Importance**: Renders articles in a table view.
-    -   **Changes**: Added selection checkboxes column, integrated with selection state. Action menu changed to click-based state management. Added  handler. Modified table container to better handle .
+    -   **Changes**: Added selection checkboxes, integrated with selection state. Action menu to click-based.  handler. **Fixed table overflow, made it compact and responsive by adjusting column widths (e.g.,  for title to more compact,  for selection,  for type,  for size/source/date/actions) and updating table/cell paddings (from  to ). The table now uses  and  within a contained div, not page-level.**
 -   ****:
     -   **Importance**: The WYSIWYG editor for creating/editing articles.
-    -   **Changes**: Fixed toolbar menu persistence for Callout and Table (using state management instead of CSS hover). Replaced Clear Formatting icon. Removed conflicting blue outline. Modified  to call  for post-save redirect to Content Library. Disabled automatic content analysis.
+    -   **Changes**: Fixed toolbar menu persistence, replaced clear formatting icon, removed blue outline,  uses . Disabled automatic content analysis. **New: Debounced  (to prevent excessive calls), optimized  handler for performance and mouse selection, optimized  to prevent interference, added  for right-click support. Fixed critical Rendered more hooks runtime error by moving  hook definitions to the top-level of the component.**
 -   ****:
-    -   **Importance**: Original asset management component.
-    -   **Changes**: No recent direct changes, but its usage was intended to be replaced by .
--   ** (NEW)**:
     -   **Importance**: New component created to manage assets with advanced features.
-    -   **Changes**: Added state for upload modal, selected asset modal, selection mode, renaming, etc. Implemented rendering for asset grid, pagination, upload button, action menus (view, rename, download, delete). Added  callback to inform parent. Contains logic for , , , .
+    -   **Changes**: Added state for upload modal, selected asset modal, selection mode, renaming, , . Implemented rendering for asset grid, pagination, upload button, action menus.  callback. **Extensive bug fixes for: Renaming (using new backend PUT), downloading (proper blob handling for file attachments), single and bulk deletion (using new backend DELETE, filtering , refreshing asset list), upload (now triggers re-fetch of assets), action menu visibility (conditional rendering bugs fixed, better styling), list view table row clicks to open modal, preventing event bubbling on action buttons.**
 -   ****:
     -   **Importance**: Script for full system cleanup.
     -   **Changes**: Used for database and file cleanups.
@@ -68,37 +47,28 @@ The application employs a  (React) and  (FastAPI) architecture.
 </code_architecture>
 
 <pending_tasks>
--   Develop core AI features: Developer Docs System, AI Agent System, AI Chatbot, Unified Portal, Admin Console.
--   Enhance Knowledge Engine to integrate other content types (audio/video), and improve content library features (e.g., templates, batch processing for some actions).
+- Develop core AI features: Developer Docs System, AI Agent System, AI Chatbot, Unified Portal, Admin Console.
+- Enhance Knowledge Engine to integrate other content types (audio/video), and improve content library features (e.g., templates, batch processing for some actions).
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was deep into fixing critical bugs reported by the user, specifically related to the Content Library and the WYSIWYG Editor.
+Immediately prior to this summary, the AI engineer was focused on resolving two critical bug categories in the PromptSupport application: issues with the WYSIWYG Editor's mouse actions and a subsequent React runtime error.
 
 **Current State & Nuances:**
-*   **Content Library**:
-    *   Most functionalities like article merging, status changes (Draft/Publish), sorting (both grid and table view column headers), search with title prioritization, and grid view tile size optimization are **working**.
-    *   Selection and bulk actions (Publish, Draft, Merge, Delete) are **functional**.
-    *   The Edit option in the article action menu correctly takes the user to edit mode.
-    *   Post-action redirects (Save as Draft/Publish) to the Content Library are **working**.
-    *   Renaming articles via the action menu is also **functional**.
-    *   The table view overflow issue has been addressed with proper container scoping.
-*   **WYSIWYG Editor**:
-    *   Toolbar menus (Callout, Table) are now **persistent**.
-    *   The Clear Formatting icon has been replaced with a standard one.
-    *   The blue border issue around the editor has been **resolved**.
-    *   Post-save redirects work as intended.
-    *   Automatic content analysis has been **disabled** (though cursor behavior, placeholder, and H1 title field issues are still present in the user's latest feedback on editor).
-*   **Assets Tab (Critical Issue)**:
-    *   This is the primary area of ongoing concern. An  component was created to overhaul asset management with new UI, features like upload, selection, rename, and bulk delete.
-    *   The  **is loading** and correctly reports the actual asset count (e.g., Assets 200) to the parent .
-    *   However, the **visuals of the *old* AssetManager are still being displayed**, not the new 's UI. This means features like asset upload, action menus (three-dot button for rename, delete, etc.), and selection checkboxes in the assets tab are **not visible or functional** despite being coded in .
-    *   Clicking on an asset does open a modal to view the asset, which is a recent success for the new component.
-    *   The root cause is suspected to be a component rendering conflict, caching issue, or an incorrect reference preventing 's full UI from being rendered, even though its logic for counting assets and the asset view modal is active.
 
-The AI engineer's last action was attempting to debug why the 's UI was not rendering correctly and why the old 's interface was still being shown, by checking imports and adding debug logs.
+*   **WYSIWYG Editor Mouse Actions**:
+    *   **Problem**: Users reported poor performance with mouse actions (e.g., text selection, toolbar button interaction), while keyboard input worked fine. Initial testing revealed mouse drag selection returning zero characters, toolbar buttons not being detected, excessive content analysis calls (32+ per session), and cursor positioning interference.
+    *   **Diagnosis & Fixes**: The engineer identified that the  function was being called excessively on every content change; this was resolved by implementing debouncing. The  handler was optimized for better mouse selection, and the  function was refined to prevent unnecessary messages and selection interference. A right-click context menu was also implemented to enhance mouse-based editing.
+    *   **Status**: All mouse-related issues, including text selection, toolbar responsiveness, performance, and cursor positioning, were successfully resolved.
+
+*   **WYSIWYG Editor React Hooks Runtime Error**:
+    *   **Problem**: After the mouse action fixes, a critical Rendered more hooks than during the previous render runtime error appeared when editing existing articles.
+    *   **Diagnosis & Fixes**: The root cause was identified as  hooks being incorrectly placed directly inside JSX attributes, violating React's Rules of Hooks. The engineer promptly moved all  hook definitions to the top-level of the  component and referenced them correctly in the JSX.
+    *   **Status**: This critical React error was completely resolved, and the editor now loads and functions perfectly without crashes, while maintaining all the previously implemented mouse performance improvements.
+
+*   **Overall Context**: Prior to these editor fixes, the  and  components had undergone extensive bug fixing, addressing issues such as asset renaming, downloading, deletion (persistence and display), uploading, action menu visibility, and table responsiveness. The asset limit has also been completely removed from the backend, allowing for unlimited assets.
 </current_work>
 
 <optional_next_step>
-Investigate and resolve the component rendering conflict preventing 's UI (upload, action menus) from displaying, ensuring the old  interface is no longer visible.
+The next step is to ask the user which core AI feature (Developer Docs, AI Agent, AI Chatbot, Unified Portal, Admin Console) they would like to prioritize for development.
 </optional_next_step>

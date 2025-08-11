@@ -583,8 +583,9 @@ const EnhancedAssetManager = ({
           <h2 className="text-lg font-semibold">Assets ({filteredAssets.length})</h2>
           <button
             onClick={() => {
-              console.log('Upload button clicked');
+              console.log('Upload button clicked, current showUploadModal:', showUploadModal);
               setShowUploadModal(true);
+              console.log('After setState, showUploadModal should be true');
             }}
             className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
           >

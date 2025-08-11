@@ -82,6 +82,24 @@ const ContentLibrary = () => {
   
   // State for actual asset count from EnhancedAssetManager 
   const [actualAssetCount, setActualAssetCount] = useState(0);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [articlesPerPage] = useState(10); // Reduced from 20 to 10 to show pagination
+  const [totalArticles, setTotalArticles] = useState(0);
+  
+  // State for asset pagination
+  const [assetPagination, setAssetPagination] = useState(null);
+  
+  // State for asset filters
+  const [assetSearchQuery, setAssetSearchQuery] = useState('');
+  const [assetFilterType, setAssetFilterType] = useState('all');
+  const [assetSortBy, setAssetSortBy] = useState('dateAdded');
+  const [assetSortOrder, setAssetSortOrder] = useState('desc');
+  const [assetViewMode, setAssetViewMode] = useState('grid');
+
+  // Get backend URL
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   // Callback to receive asset count from EnhancedAssetManager
   const handleAssetCountUpdate = (count) => {

@@ -407,43 +407,62 @@ const EnhancedAssetManager = ({
 
     setBulkActionLoading(true);
     try {
+      console.log(`🗑️ Starting bulk delete of ${selectedItems.size} assets`);
+      
       const deletePromises = Array.from(selectedItems).map(async id => {
         const asset = assets.find(a => a.id === id);
         if (asset?.isBackendAsset) {
+          console.log(`🗑️ Deleting backend asset: ${asset.name}`);
           const response = await fetch(`${backendUrl}/api/assets/${id}`, { method: 'DELETE' });
           if (!response.ok) {
-            console.error(`Failed to delete backend asset ${id}`);
+            console.error(`❌ Failed to delete backend asset ${id}`);
             return { id, success: false };
           }
+          console.log(`✅ Backend asset ${id} deleted successfully`);
           return { id, success: true };
         } else {
-          // For extracted assets, add to deletion tracking
-          setDeletedAssetIds(prev => new Set([...prev, id]));
+          console.log(`📝 Marking extracted asset ${id} for deletion`);
           return { id, success: true };
         }
       });
       
       const results = await Promise.all(deletePromises);
       
-      // Remove all assets from local state (both successful and failed ones for UX)
-      setAssets(prev => prev.filter(a => !selectedItems.has(a.id)));
+      // Update deletion tracking for extracted assets
+      const extractedAssetIds = Array.from(selectedItems).filter(id => {
+        const asset = assets.find(a => a.id === id);
+        return !asset?.isBackendAsset;
+      });
+      
+      if (extractedAssetIds.length > 0) {
+        setDeletedAssetIds(prev => new Set([...prev, ...extractedAssetIds]));
+        console.log(`📝 Added ${extractedAssetIds.length} extracted assets to deletion tracking`);
+      }
+      
+      // Remove all selected assets from local state
+      setAssets(prev => {
+        const filtered = prev.filter(a => !selectedItems.has(a.id));
+        console.log(`🔄 Bulk delete state updated: ${prev.length} -> ${filtered.length} assets`);
+        return filtered;
+      });
       
       // Update parent component count
       if (onAssetCountUpdate) {
         const newCount = assets.length - selectedItems.size;
         onAssetCountUpdate(newCount);
+        console.log(`📊 Parent count updated to: ${newCount}`);
       }
       
       clearSelection();
       
       const successCount = results.filter(r => r.success).length;
-      console.log(`Successfully deleted ${successCount}/${selectedItems.size} assets`);
+      console.log(`✅ Bulk delete completed: ${successCount}/${selectedItems.size} assets deleted successfully`);
       
       if (successCount < selectedItems.size) {
-        console.warn('Some assets failed to delete from backend, but removed from display');
+        console.warn('⚠️ Some assets failed to delete from backend, but removed from display');
       }
     } catch (error) {
-      console.error('Error deleting assets:', error);
+      console.error('❌ Error during bulk delete:', error);
       alert('Error deleting some assets. Please try again.');
     } finally {
       setBulkActionLoading(false);

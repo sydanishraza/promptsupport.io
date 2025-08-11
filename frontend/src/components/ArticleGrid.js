@@ -49,6 +49,18 @@ const ArticleGrid = ({
   // State for action menu visibility
   const [openMenuId, setOpenMenuId] = useState(null);
   
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId) {
+        setOpenMenuId(null);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openMenuId]);
+  
   // Download PDF function
   const downloadArticlePDF = async (articleId, articleTitle) => {
     try {

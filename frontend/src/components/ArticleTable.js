@@ -265,29 +265,29 @@ const ArticleTable = ({
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-        <table className="w-full min-w-[800px] table-auto">
+      <div className="flex-1 overflow-auto min-h-0">
+        <table className="w-full min-w-[700px] table-auto">
         <thead className="sticky top-0 z-10 bg-gray-50">
           <tr className="border-b border-gray-200 bg-gray-50">
             {/* Selection Column */}
             {selectionMode && (
-              <th className="text-left p-4 font-medium text-gray-900 w-12">
+              <th className="text-left p-3 font-medium text-gray-900 w-10">
                 <CheckSquare className="h-4 w-4 text-gray-400" />
               </th>
             )}
-            <th className="text-left p-3 font-medium text-gray-900 w-40 min-w-32">
+            <th className="text-left p-3 font-medium text-gray-900 w-32 min-w-28">
               <button
                 onClick={() => handleSort('title')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600 truncate"
               >
-                <span>Title</span>
+                <span className="truncate">Title</span>
                 {renderSortIcon('title')}
               </button>
             </th>
-            <th className="text-left p-3 font-medium text-gray-900 w-20 min-w-16">
+            <th className="text-left p-3 font-medium text-gray-900 w-16 min-w-14">
               <button
                 onClick={() => handleSort('source_type')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600"
               >
                 <span>Source</span>
                 {renderSortIcon('source_type')}
@@ -296,7 +296,7 @@ const ArticleTable = ({
             <th className="text-left p-3 font-medium text-gray-900 w-16 min-w-14">
               <button
                 onClick={() => handleSort('status')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600"
               >
                 <span>Status</span>
                 {renderSortIcon('status')}
@@ -305,49 +305,49 @@ const ArticleTable = ({
             <th className="text-left p-3 font-medium text-gray-900 w-20 min-w-16">
               <button
                 onClick={() => handleSort('created_by')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600"
               >
                 <span>Author</span>
                 {renderSortIcon('created_by')}
               </button>
             </th>
-            <th className="text-left p-3 font-medium text-gray-900 w-24 min-w-20">
+            <th className="text-left p-3 font-medium text-gray-900 w-20 min-w-18">
               <button
                 onClick={() => handleSort('created_at')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600"
               >
                 <span>Created</span>
                 {renderSortIcon('created_at')}
               </button>
             </th>
-            <th className="text-left p-3 font-medium text-gray-900 w-24 min-w-20">
+            <th className="text-left p-3 font-medium text-gray-900 w-20 min-w-18">
               <button
                 onClick={() => handleSort('updated_at')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600"
               >
                 <span>Updated</span>
                 {renderSortIcon('updated_at')}
               </button>
             </th>
-            <th className="text-left p-3 font-medium text-gray-900 w-16 min-w-12">
+            <th className="text-left p-3 font-medium text-gray-900 w-14 min-w-12">
               <button
                 onClick={() => handleSort('word_count')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600"
               >
                 <span>Words</span>
                 {renderSortIcon('word_count')}
               </button>
             </th>
-            <th className="text-left p-3 font-medium text-gray-900 w-16 min-w-12">
+            <th className="text-left p-3 font-medium text-gray-900 w-14 min-w-12">
               <button
                 onClick={() => handleSort('media_count')}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-1 hover:text-blue-600"
               >
                 <span>Media</span>
                 {renderSortIcon('media_count')}
               </button>
             </th>
-            <th className="text-left p-3 font-medium text-gray-900 w-16 min-w-14">Actions</th>
+            <th className="text-left p-3 font-medium text-gray-900 w-14 min-w-12">Actions</th>
           </tr>
         </thead>
         <tbody>

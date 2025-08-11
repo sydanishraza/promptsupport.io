@@ -1031,7 +1031,10 @@ const EnhancedAssetManager = ({
                       {!selectionMode && renamingItem !== asset.id && (
                         <div className="relative">
                           <button
-                            onClick={() => setOpenMenuId(openMenuId === asset.id ? null : asset.id)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click
+                              setOpenMenuId(openMenuId === asset.id ? null : asset.id);
+                            }}
                             className="p-1 text-gray-400 hover:text-gray-600 rounded"
                           >
                             <MoreVertical className="h-4 w-4" />
@@ -1039,7 +1042,8 @@ const EnhancedAssetManager = ({
                           {openMenuId === asset.id && (
                             <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50 min-w-40">
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click
                                   setOpenMenuId(null);
                                   handleAssetClick(asset);
                                 }}
@@ -1049,7 +1053,8 @@ const EnhancedAssetManager = ({
                                 <span>View</span>
                               </button>
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click
                                   setOpenMenuId(null);
                                   startRename(asset);
                                 }}
@@ -1060,7 +1065,8 @@ const EnhancedAssetManager = ({
                               </button>
                               {asset.articleId && (
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent row click
                                     setOpenMenuId(null);
                                     handleViewInArticle(asset);
                                   }}
@@ -1071,7 +1077,8 @@ const EnhancedAssetManager = ({
                                 </button>
                               )}
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click
                                   setOpenMenuId(null);
                                   handleDownload(asset);
                                 }}
@@ -1082,7 +1089,8 @@ const EnhancedAssetManager = ({
                               </button>
                               <hr className="my-1" />
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click
                                   setOpenMenuId(null);
                                   handleDeleteAsset(asset.id);
                                 }}

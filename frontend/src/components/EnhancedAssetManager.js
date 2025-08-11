@@ -566,65 +566,55 @@ const EnhancedAssetManager = ({
     setShowModal(true);
   };
 
-  const handleDownload = (asset) => {
+  const handleDownload = async (asset) => {
     try {
-      // For base64 data URLs, we need to convert them to blob for proper download
+      console.log('Downloading asset:', asset.name, 'dataUrl type:', typeof asset.dataUrl);
+      
       if (asset.dataUrl.startsWith('data:')) {
-        // Convert base64 to blob
-        const [header, base64Data] = asset.dataUrl.split(',');
-        const mimeMatch = header.match(/data:([^;]+)/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-        
-        // Convert base64 to binary
-        const binary = atob(base64Data);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        
-        // Create blob and download
-        const blob = new Blob([bytes], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        
+        // Handle base64 data URLs
         const link = document.createElement('a');
-        link.href = url;
-        link.download = `${asset.name.replace(/[^a-zA-Z0-9]/g, '_')}.${asset.format}`;
+        link.href = asset.dataUrl;
+        link.download = `${asset.name.replace(/[^a-zA-Z0-9\.-]/g, '_')}.${asset.format}`;
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        // Clean up the URL object
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-        
-        console.log(`Downloaded asset: ${asset.name}`);
+        console.log('Downloaded base64 asset:', asset.name);
+      } else if (asset.dataUrl.startsWith('/api/') || asset.dataUrl.startsWith('http')) {
+        // Handle file URLs - fetch and download as blob
+        try {
+          const response = await fetch(asset.dataUrl);
+          if (!response.ok) throw new Error('Download failed');
+          
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${asset.name.replace(/[^a-zA-Z0-9\.-]/g, '_')}.${asset.format}`;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Clean up
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+          console.log('Downloaded file asset:', asset.name);
+        } catch (fetchError) {
+          console.error('Fetch download failed, trying direct link:', fetchError);
+          // Fallback - force download attribute on direct link
+          window.open(asset.dataUrl, '_blank');
+        }
       } else {
-        // For regular URLs, use fetch to download
-        fetch(asset.dataUrl)
-          .then(response => response.blob())
-          .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${asset.name.replace(/[^a-zA-Z0-9]/g, '_')}.${asset.format}`;
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(url), 100);
-            console.log(`Downloaded asset: ${asset.name}`);
-          })
-          .catch(error => {
-            console.error('Download failed, falling back to simple method:', error);
-            // Fallback to simple download
-            const link = document.createElement('a');
-            link.href = asset.dataUrl;
-            link.download = `${asset.name.replace(/[^a-zA-Z0-9]/g, '_')}.${asset.format}`;
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          });
+        // Fallback for any other URL type
+        const link = document.createElement('a');
+        link.href = asset.dataUrl;
+        link.download = `${asset.name.replace(/[^a-zA-Z0-9\.-]/g, '_')}.${asset.format}`;
+        link.target = '_blank';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (error) {
       console.error('Error downloading asset:', error);

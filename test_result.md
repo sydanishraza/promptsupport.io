@@ -279,16 +279,24 @@ backend:
   test_priority: "critical_first"
   
 ## current_issue_analysis:
-  user_problem_statement: "PDF upload fails with 'cannot fetch the file' error, DOCX processing generates only single articles with just section headings and no actual content, need fresh implementation plan"
-  backend_status: "WORKING - Successfully processing both DOCX and PDF files"
-  docx_processing: "FUNCTIONAL - Recent test shows 58 chunks generated from 4.8MB file, comprehensive articles with full content"
-  pdf_processing: "FUNCTIONAL - Successfully creating articles with proper content structure"  
-  frontend_display: "ISSUE IDENTIFIED - Dashboard shows 0 documents but backend has 31 articles"
-  specific_issues:
-    - "One problematic article (ID: fad02cd0) shows only headings due to fallback_single_article processing"
-    - "Frontend dashboard stats not updating correctly" 
-    - "Upload interface may have connectivity issues"
-  recommendation: "Address specific frontend display and edge case processing issues rather than complete rebuild"
+  user_problem_statement: "Multiple critical bugs in Content Library and WYSIWYG Editor: merge feature not working, status changes failing, sorting inconsistencies, search problems, editor instability, cursor jumping, toolbar menu issues"
+  backend_status: "WORKING - All APIs functional based on previous testing"
+  content_library_issues:
+    - "Merge feature completely non-functional"
+    - "Draft/Publish status changes not working in grid/table views"
+    - "Sorting only works in grid view, not table view"
+    - "Search functionality inconsistent - needs title prioritization"
+    - "Renaming feature non-functional"
+    - "Assets tab lacks Articles tab functionality"
+    - "Content Library keeps reloading unexpectedly"
+  editor_issues:
+    - "WYSIWYG editor instability with erratic behavior"
+    - "Cursor jumping during editing - moves to start/end unexpectedly"
+    - "Toolbar menus (Callout, Table) disappear when moving mouse"
+    - "Content analysis running unnecessarily with unwanted pop-ups"
+    - "Placeholder text doesn't disappear when typing"
+    - "Article title should act as H1 heading in view mode"
+  recommendation: "Systematic bug fixing approach - address Content Library issues first, then editor stability"
 
 ## agent_communication:
     -agent: "testing"

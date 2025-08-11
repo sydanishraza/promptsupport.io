@@ -487,95 +487,105 @@ const ArticleTable = ({
               <td className="p-4">
                 {!selectionMode && renamingItem !== article.id && (
                   <div className="flex items-center space-x-2">
-                    <div className="relative group">
+                    <div className="relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          setOpenMenuId(openMenuId === article.id ? null : article.id);
                         }}
                         className="p-1 text-gray-400 hover:text-gray-600 rounded"
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>
-                      <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-40 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onArticleSelect(article);
-                          }}
-                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>View</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onArticleSelect(article);
-                          }}
-                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        >
-                          <Edit className="h-3 w-3" />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onStartRename(article);
-                          }}
-                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        >
-                          <FileEdit className="h-3 w-3" />
-                          <span>Rename</span>
-                        </button>
-                        <hr className="my-1" />
-                        {article.status !== 'published' && (
+                      {openMenuId === article.id && (
+                        <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-20 min-w-40">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onStatusChange(article.id, 'published');
+                              setOpenMenuId(null);
+                              onArticleSelect(article);
                             }}
-                            className="flex items-center space-x-2 px-3 py-1 text-sm text-green-700 hover:bg-green-50 w-full text-left"
-                            disabled={bulkActionLoading}
+                            className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                           >
-                            <FileCheck className="h-3 w-3" />
-                            <span>Publish</span>
+                            <Eye className="h-3 w-3" />
+                            <span>View</span>
                           </button>
-                        )}
-                        {article.status !== 'draft' && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onStatusChange(article.id, 'draft');
+                              setOpenMenuId(null);
+                              onArticleSelect(article);
                             }}
-                            className="flex items-center space-x-2 px-3 py-1 text-sm text-yellow-700 hover:bg-yellow-50 w-full text-left"
-                            disabled={bulkActionLoading}
+                            className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          >
+                            <Edit className="h-3 w-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              onStartRename(article);
+                            }}
+                            className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                           >
                             <FileEdit className="h-3 w-3" />
-                            <span>Move to Draft</span>
+                            <span>Rename</span>
                           </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadArticlePDF(article.id, article.title);
-                          }}
-                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        >
-                          <Download className="h-3 w-3" />
-                          <span>Download PDF</span>
-                        </button>
-                        <hr className="my-1" />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteArticle(article.id);
-                          }}
-                          className="flex items-center space-x-2 px-3 py-1 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
+                          <hr className="my-1" />
+                          {article.status !== 'published' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                onStatusChange(article.id, 'published');
+                              }}
+                              className="flex items-center space-x-2 px-3 py-1 text-sm text-green-700 hover:bg-green-50 w-full text-left"
+                              disabled={bulkActionLoading}
+                            >
+                              <FileCheck className="h-3 w-3" />
+                              <span>Publish</span>
+                            </button>
+                          )}
+                          {article.status !== 'draft' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                onStatusChange(article.id, 'draft');
+                              }}
+                              className="flex items-center space-x-2 px-3 py-1 text-sm text-yellow-700 hover:bg-yellow-50 w-full text-left"
+                              disabled={bulkActionLoading}
+                            >
+                              <FileEdit className="h-3 w-3" />
+                              <span>Move to Draft</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              downloadArticlePDF(article.id, article.title);
+                            }}
+                            className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>Download PDF</span>
+                          </button>
+                          <hr className="my-1" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              onDeleteArticle(article.id);
+                            }}
+                            className="flex items-center space-x-2 px-3 py-1 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

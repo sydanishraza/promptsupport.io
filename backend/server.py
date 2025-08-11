@@ -775,18 +775,63 @@ class DocumentPreprocessor:
             return f"<p>{text_content}</p>"
     
     async def _convert_pdf_to_html(self, file_path: str) -> tuple[str, list]:
-        """Convert PDF to HTML using basic text extraction"""
+        """Convert PDF to HTML using enhanced multi-library approach"""
         try:
-            # For now, use a simple fallback approach
-            # TODO: Implement proper PDF processing when pdfminer.six is available
-            html_content = "<p>PDF processing temporarily unavailable - HTML preprocessing pipeline active</p>"
+            print(f"🔍 Converting PDF file: {file_path}")
+            
+            # ENHANCED: Add file validation before processing
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"PDF file not found: {file_path}")
+            
+            file_size = os.path.getsize(file_path)
+            print(f"📊 PDF file size: {file_size} bytes")
+            
+            # Try multiple PDF processing approaches in order of preference
+            html_content = None
             images = []
             
+            # Method 1: Try PyMuPDF (fitz) - best for text and image extraction
+            try:
+                html_content, images = await self._convert_pdf_with_pymupdf(file_path)
+                print("✅ PDF processed successfully with PyMuPDF")
+            except Exception as pymupdf_error:
+                print(f"⚠️ PyMuPDF failed: {pymupdf_error}")
+                
+                # Method 2: Try pdfplumber - good for structured content and tables
+                try:
+                    html_content, images = await self._convert_pdf_with_pdfplumber(file_path)
+                    print("✅ PDF processed successfully with pdfplumber")
+                except Exception as pdfplumber_error:
+                    print(f"⚠️ pdfplumber failed: {pdfplumber_error}")
+                    
+                    # Method 3: Try pdfminer.six - robust text extraction
+                    try:
+                        html_content, images = await self._convert_pdf_with_pdfminer(file_path)
+                        print("✅ PDF processed successfully with pdfminer.six")
+                    except Exception as pdfminer_error:
+                        print(f"⚠️ pdfminer.six failed: {pdfminer_error}")
+                        
+                        # Method 4: Final fallback - PyPDF2
+                        try:
+                            html_content, images = await self._convert_pdf_with_pypdf2(file_path)
+                            print("✅ PDF processed successfully with PyPDF2 (fallback)")
+                        except Exception as pypdf2_error:
+                            print(f"❌ All PDF processing methods failed. PyPDF2 error: {pypdf2_error}")
+                            raise Exception("All PDF processing methods failed")
+            
+            if not html_content:
+                raise Exception("No content extracted from PDF")
+                
+            print(f"📝 PDF converted to HTML: {len(html_content)} characters, {len(images)} images extracted")
             return html_content, images
             
         except Exception as e:
             print(f"❌ PDF conversion failed: {e}")
-            return f"<p>Failed to convert PDF: {str(e)}</p>", []
+            import traceback
+            traceback.print_exc()
+            
+            # ENHANCED: Provide more informative error message
+            return f"<p>Failed to convert PDF '{os.path.basename(file_path)}': {str(e)}</p>", []
     
     async def _convert_ppt_to_html(self, file_path: str) -> tuple[str, list]:
         """Convert PowerPoint to HTML with slide structure"""

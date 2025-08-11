@@ -24,7 +24,8 @@ import {
   Square,
   CheckSquare,
   X,
-  RotateCcw
+  RotateCcw,
+  FileCheck
 } from 'lucide-react';
 
 const ArticleGrid = ({ 
@@ -40,7 +41,9 @@ const ArticleGrid = ({
   renameTitle,
   setRenameTitle,
   onExecuteRename,
-  onCancelRename
+  onCancelRename,
+  onStatusChange,
+  bulkActionLoading
 }) => {
   
   // Download PDF function
@@ -175,15 +178,15 @@ const ArticleGrid = ({
   }
 
   return (
-    <div className="p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {articles.map((article, index) => (
           <motion.div
             key={article.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1, duration: 0.3 }}
-            className={`bg-white border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer relative ${
+            className={`bg-white border rounded-lg p-3 hover:shadow-md transition-all cursor-pointer relative ${
               selectionMode && selectedItems.has(article.id) 
                 ? 'border-blue-500 bg-blue-50 shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
@@ -193,18 +196,18 @@ const ArticleGrid = ({
             {/* Selection Checkbox - Top Left */}
             {selectionMode && (
               <div className="absolute top-2 left-2 z-10">
-                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center cursor-pointer transition-colors ${
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-colors ${
                   selectedItems.has(article.id)
                     ? 'bg-blue-600 border-blue-600 text-white'
                     : 'bg-white border-gray-300 hover:border-blue-500'
                 }`}>
-                  {selectedItems.has(article.id) && <Check className="h-4 w-4" />}
+                  {selectedItems.has(article.id) && <Check className="h-3 w-3" />}
                 </div>
               </div>
             )}
 
             {/* Header */}
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-2">
               <div className="flex-1 min-w-0">
                 {renamingItem === article.id ? (
                   <div className="space-y-2">
@@ -241,15 +244,14 @@ const ArticleGrid = ({
                   </div>
                 ) : (
                   <>
-                    <h3 className={`text-sm font-semibold text-gray-900 truncate ${selectionMode ? 'pl-8' : ''}`}>
+                    <h3 className={`text-sm font-semibold text-gray-900 truncate ${selectionMode ? 'pl-6' : ''}`}>
                       {article.title || 'Untitled'}
                     </h3>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
                         {getStatusIcon(article.status)}
                         <span className="ml-1">{article.status || 'draft'}</span>
                       </span>
-                      <span className="text-xs text-gray-500">v{article.version || 1}</span>
                     </div>
                   </>
                 )}
@@ -266,7 +268,7 @@ const ArticleGrid = ({
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
-                    <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-32 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-40 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -280,13 +282,50 @@ const ArticleGrid = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onStartRename(article);
+                          onArticleSelect(article);
                         }}
                         className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                       >
                         <Edit className="h-3 w-3" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStartRename(article);
+                        }}
+                        className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                      >
+                        <FileEdit className="h-3 w-3" />
                         <span>Rename</span>
                       </button>
+                      <hr className="my-1" />
+                      {article.status !== 'published' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(article.id, 'published');
+                          }}
+                          className="flex items-center space-x-2 px-3 py-1 text-sm text-green-700 hover:bg-green-50 w-full text-left"
+                          disabled={bulkActionLoading}
+                        >
+                          <FileCheck className="h-3 w-3" />
+                          <span>Publish</span>
+                        </button>
+                      )}
+                      {article.status !== 'draft' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(article.id, 'draft');
+                          }}
+                          className="flex items-center space-x-2 px-3 py-1 text-sm text-yellow-700 hover:bg-yellow-50 w-full text-left"
+                          disabled={bulkActionLoading}
+                        >
+                          <FileEdit className="h-3 w-3" />
+                          <span>Move to Draft</span>
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -295,7 +334,7 @@ const ArticleGrid = ({
                         className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                       >
                         <Download className="h-3 w-3" />
-                        <span>PDF</span>
+                        <span>Download PDF</span>
                       </button>
                       <hr className="my-1" />
                       <button
@@ -314,35 +353,18 @@ const ArticleGrid = ({
               )}
             </div>
 
-            {/* Metadata */}
-            <div className="space-y-2 mb-3">
+            {/* Metadata - Compact */}
+            <div className="space-y-1 mb-2">
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>Source</span>
                 <div className="flex items-center space-x-1">
                   {getSourceTypeIcon(article.source_type)}
-                  <span>{getSourceTypeLabel(article.source_type)}</span>
+                  <span className="truncate">{getSourceTypeLabel(article.source_type)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Created by</span>
-                <div className="flex items-center space-x-1">
-                  <User className="h-3 w-3" />
-                  <span>{article.metadata?.created_by || 'System'}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Date added</span>
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-3 w-3" />
-                  <span>{formatDateWithTime(article.created_at)}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Last updated</span>
-                <div className="flex items-center space-x-1">
-                  <Clock className="h-3 w-3" />
-                  <span>{formatDate(article.updated_at)}</span>
-                </div>
+                <span>Date</span>
+                <span className="truncate">{formatDate(article.created_at)}</span>
               </div>
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>Words</span>
@@ -354,37 +376,34 @@ const ArticleGrid = ({
                   <div className="flex items-center space-x-1">
                     <Image className="h-3 w-3" />
                     <span>{getMediaCount(article.content)}</span>
-                    {article.media_processed && (
-                      <Brain className="h-3 w-3 text-purple-600" title="AI Enhanced" />
-                    )}
                   </div>
                 </div>
               )}
             </div>
 
             {/* Content Preview */}
-            <div className="mb-3">
-              <p className="text-xs text-gray-600 line-clamp-3">
+            <div className="mb-2">
+              <p className="text-xs text-gray-600 line-clamp-2">
                 {article.summary || 
-                 (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 120) + '...' : 'No content available')}
+                 (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 80) + '...' : 'No content available')}
               </p>
             </div>
 
             {/* Tags */}
             {article.tags && article.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
-                {article.tags.slice(0, 3).map((tag, tagIndex) => (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {article.tags.slice(0, 2).map((tag, tagIndex) => (
                   <span
                     key={tagIndex}
-                    className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                    className="inline-flex items-center px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full"
                   >
                     <Tag className="h-2 w-2 mr-1" />
-                    {tag}
+                    {tag.length > 8 ? tag.substring(0, 8) + '...' : tag}
                   </span>
                 ))}
-                {article.tags.length > 3 && (
-                  <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                    +{article.tags.length - 3} more
+                {article.tags.length > 2 && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                    +{article.tags.length - 2}
                   </span>
                 )}
               </div>
@@ -392,14 +411,14 @@ const ArticleGrid = ({
 
             {/* Actions - Only show if not in selection mode */}
             {!selectionMode && renamingItem !== article.id && (
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <div className="flex items-center space-x-1">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onArticleSelect(article);
                     }}
-                    className="flex items-center space-x-1 px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs font-medium transition-colors"
+                    className="flex items-center space-x-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs font-medium transition-colors"
                   >
                     <Eye className="h-3 w-3" />
                     <span>View</span>
@@ -409,7 +428,7 @@ const ArticleGrid = ({
                       e.stopPropagation();
                       downloadArticlePDF(article.id, article.title);
                     }}
-                    className="flex items-center space-x-1 px-3 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 text-xs font-medium transition-colors"
+                    className="flex items-center space-x-1 px-2 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 text-xs font-medium transition-colors"
                   >
                     <Download className="h-3 w-3" />
                     <span>PDF</span>
@@ -420,7 +439,7 @@ const ArticleGrid = ({
                     e.stopPropagation();
                     onArticleSelect(article);
                   }}
-                  className="flex items-center space-x-1 px-3 py-1 bg-green-50 text-green-600 rounded-md hover:bg-green-100 text-xs font-medium transition-colors"
+                  className="flex items-center space-x-1 px-2 py-1 bg-green-50 text-green-600 rounded-md hover:bg-green-100 text-xs font-medium transition-colors"
                 >
                   <Edit className="h-3 w-3" />
                   <span>Edit</span>

@@ -833,6 +833,296 @@ class DocumentPreprocessor:
             # ENHANCED: Provide more informative error message
             return f"<p>Failed to convert PDF '{os.path.basename(file_path)}': {str(e)}</p>", []
     
+    async def _convert_pdf_with_pymupdf(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using PyMuPDF (fitz) - best for text and image extraction"""
+        try:
+            import fitz  # PyMuPDF
+            
+            doc = fitz.open(file_path)
+            html_parts = []
+            images = []
+            
+            print(f"📖 Processing PDF with {len(doc)} pages using PyMuPDF")
+            
+            for page_num in range(len(doc)):
+                page = doc.load_page(page_num)
+                
+                # Extract text with formatting
+                text_dict = page.get_text("dict")
+                page_html = await self._process_pymupdf_page(text_dict, page_num)
+                
+                if page_html.strip():
+                    html_parts.append(f"<h2>Page {page_num + 1}</h2>")
+                    html_parts.append(page_html)
+                
+                # Extract images from this page
+                page_images = await self._extract_images_from_pymupdf_page(page, page_num)
+                images.extend(page_images)
+                
+                # Add small delay for large PDFs
+                if page_num % 10 == 0 and page_num > 0:
+                    await asyncio.sleep(0.1)
+            
+            doc.close()
+            
+            html_content = '\n\n'.join(html_parts) if html_parts else "<p>No readable content found in PDF</p>"
+            print(f"✅ PyMuPDF: Extracted {len(html_parts)} pages, {len(images)} images")
+            
+            return html_content, images
+            
+        except ImportError:
+            raise Exception("PyMuPDF (fitz) not available")
+        except Exception as e:
+            raise Exception(f"PyMuPDF processing failed: {str(e)}")
+    
+    async def _process_pymupdf_page(self, text_dict: dict, page_num: int) -> str:
+        """Process PyMuPDF text dictionary into structured HTML"""
+        try:
+            html_elements = []
+            
+            blocks = text_dict.get("blocks", [])
+            for block in blocks:
+                if "lines" not in block:
+                    continue
+                    
+                for line in block["lines"]:
+                    line_text_parts = []
+                    line_formatting = {}
+                    
+                    for span in line.get("spans", []):
+                        text = span.get("text", "").strip()
+                        if not text:
+                            continue
+                            
+                        # Analyze formatting
+                        font_size = span.get("size", 12)
+                        font_flags = span.get("flags", 0)
+                        
+                        # Determine if this is a heading based on font size and formatting
+                        is_bold = font_flags & 2**4  # Bold flag
+                        is_large = font_size > 14
+                        
+                        if is_large and is_bold:
+                            # Likely a heading
+                            if font_size > 18:
+                                line_formatting["tag"] = "h1"
+                            elif font_size > 16:
+                                line_formatting["tag"] = "h2"
+                            else:
+                                line_formatting["tag"] = "h3"
+                        elif is_bold:
+                            text = f"<strong>{text}</strong>"
+                            
+                        line_text_parts.append(text)
+                    
+                    # Combine line text
+                    line_text = " ".join(line_text_parts).strip()
+                    if not line_text:
+                        continue
+                    
+                    # Apply formatting
+                    if line_formatting.get("tag"):
+                        html_elements.append(f'<{line_formatting["tag"]}>{line_text}</{line_formatting["tag"]}>')
+                    else:
+                        html_elements.append(f"<p>{line_text}</p>")
+            
+            return '\n'.join(html_elements)
+            
+        except Exception as e:
+            print(f"⚠️ Error processing PyMuPDF page {page_num}: {e}")
+            return "<p>Error processing page content</p>"
+    
+    async def _extract_images_from_pymupdf_page(self, page, page_num: int) -> list:
+        """Extract images from a PyMuPDF page"""
+        try:
+            images = []
+            image_list = page.get_images()
+            
+            for img_index, img in enumerate(image_list):
+                try:
+                    # Get the XREF of the image
+                    xref = img[0]
+                    
+                    # Extract the image
+                    base_image = page.parent.extract_image(xref)
+                    image_bytes = base_image["image"]
+                    image_ext = base_image["ext"]
+                    
+                    # Save image
+                    self.image_counter += 1
+                    image_filename = f"pdf_page{page_num + 1}_img{img_index + 1}.{image_ext}"
+                    image_path = os.path.join(self.asset_dir, image_filename)
+                    
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(image_bytes)
+                    
+                    # Store image metadata
+                    image_id = f"pdf_{self.session_id}_p{page_num + 1}_img{img_index + 1}"
+                    self.extracted_images[image_id] = {
+                        'filename': image_filename,
+                        'path': image_path,
+                        'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                        'alt_text': f"PDF Page {page_num + 1} Image {img_index + 1}",
+                        'content_type': f"image/{image_ext}",
+                        'size_bytes': len(image_bytes)
+                    }
+                    
+                    images.append({
+                        'id': image_id,
+                        'filename': image_filename,
+                        'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                        'alt_text': f"PDF Page {page_num + 1} Image {img_index + 1}"
+                    })
+                    
+                    print(f"💾 Extracted PDF image: {image_filename} ({len(image_bytes)} bytes)")
+                    
+                except Exception as img_error:
+                    print(f"⚠️ Failed to extract image {img_index} from page {page_num}: {img_error}")
+                    continue
+            
+            return images
+            
+        except Exception as e:
+            print(f"⚠️ Error extracting images from page {page_num}: {e}")
+            return []
+    
+    async def _convert_pdf_with_pdfplumber(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using pdfplumber - good for structured content and tables"""
+        try:
+            import pdfplumber
+            
+            html_parts = []
+            images = []
+            
+            with pdfplumber.open(file_path) as pdf:
+                print(f"📖 Processing PDF with {len(pdf.pages)} pages using pdfplumber")
+                
+                for page_num, page in enumerate(pdf.pages):
+                    # Extract text
+                    page_text = page.extract_text()
+                    if page_text:
+                        # Convert text to basic HTML structure
+                        page_html = self._convert_text_to_basic_html(page_text)
+                        if page_html.strip():
+                            html_parts.append(f"<h2>Page {page_num + 1}</h2>")
+                            html_parts.append(page_html)
+                    
+                    # Extract tables
+                    tables = page.extract_tables()
+                    for table_num, table in enumerate(tables):
+                        if table:
+                            table_html = self._convert_table_to_html(table, page_num, table_num)
+                            html_parts.append(table_html)
+                    
+                    # Add delay for large PDFs
+                    if page_num % 10 == 0 and page_num > 0:
+                        await asyncio.sleep(0.1)
+            
+            html_content = '\n\n'.join(html_parts) if html_parts else "<p>No readable content found in PDF</p>"
+            print(f"✅ pdfplumber: Extracted {len(html_parts)} content blocks")
+            
+            return html_content, images
+            
+        except ImportError:
+            raise Exception("pdfplumber not available")
+        except Exception as e:
+            raise Exception(f"pdfplumber processing failed: {str(e)}")
+    
+    def _convert_table_to_html(self, table: list, page_num: int, table_num: int) -> str:
+        """Convert a table array to HTML table"""
+        try:
+            if not table or not any(table):
+                return ""
+            
+            html = [f'<h4>Table {table_num + 1} (Page {page_num + 1})</h4>']
+            html.append('<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; margin: 1rem 0;">')
+            
+            # Process rows
+            for row_num, row in enumerate(table):
+                if not row or not any(cell for cell in row if cell):
+                    continue
+                    
+                html.append('<tr>')
+                for cell in row:
+                    cell_content = str(cell).strip() if cell else ""
+                    tag = "th" if row_num == 0 else "td"
+                    html.append(f'<{tag}>{cell_content}</{tag}>')
+                html.append('</tr>')
+            
+            html.append('</table>')
+            return '\n'.join(html)
+            
+        except Exception as e:
+            print(f"⚠️ Error converting table to HTML: {e}")
+            return f"<p>Table {table_num + 1} (conversion error)</p>"
+    
+    async def _convert_pdf_with_pdfminer(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using pdfminer.six - robust text extraction"""
+        try:
+            from pdfminer.high_level import extract_text
+            from pdfminer.layout import LAParams
+            
+            # Extract text with layout analysis
+            laparams = LAParams(
+                line_margin=0.5,
+                char_margin=2.0,
+                word_margin=0.1,
+                boxes_flow=0.5
+            )
+            
+            text = extract_text(file_path, laparams=laparams)
+            
+            if not text or not text.strip():
+                raise Exception("No text content extracted")
+            
+            # Convert to HTML structure
+            html_content = self._convert_text_to_basic_html(text)
+            print(f"✅ pdfminer.six: Extracted {len(text)} characters")
+            
+            return html_content, []
+            
+        except ImportError:
+            raise Exception("pdfminer.six not available")
+        except Exception as e:
+            raise Exception(f"pdfminer.six processing failed: {str(e)}")
+    
+    async def _convert_pdf_with_pypdf2(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using PyPDF2 - basic fallback"""
+        try:
+            import PyPDF2
+            
+            text_parts = []
+            
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                
+                print(f"📖 Processing PDF with {len(pdf_reader.pages)} pages using PyPDF2")
+                
+                for page_num, page in enumerate(pdf_reader.pages):
+                    try:
+                        page_text = page.extract_text()
+                        if page_text and page_text.strip():
+                            text_parts.append(f"Page {page_num + 1}")
+                            text_parts.append(page_text)
+                            text_parts.append("")  # Add spacing
+                    except Exception as page_error:
+                        print(f"⚠️ Error extracting page {page_num}: {page_error}")
+                        continue
+            
+            if not text_parts:
+                raise Exception("No text content extracted from any page")
+            
+            full_text = '\n'.join(text_parts)
+            html_content = self._convert_text_to_basic_html(full_text)
+            
+            print(f"✅ PyPDF2: Extracted {len(full_text)} characters")
+            return html_content, []
+            
+        except ImportError:
+            raise Exception("PyPDF2 not available")
+        except Exception as e:
+            raise Exception(f"PyPDF2 processing failed: {str(e)}")
+    
     async def _convert_ppt_to_html(self, file_path: str) -> tuple[str, list]:
         """Convert PowerPoint to HTML with slide structure"""
         try:

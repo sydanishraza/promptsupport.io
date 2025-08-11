@@ -3962,27 +3962,8 @@ const PromptSupportEditor = ({
                   key={`editor-${isEditing}-${article?.id}`}
                   ref={contentRef}
                   contentEditable={true}
-                  onInput={useCallback((e) => {
-                    // PERFORMANCE FIX: Batch state updates and debounce content changes
-                    const newContent = e.target.innerHTML;
-                    setContent(newContent);
-                    setHasUnsavedChanges(true);
-                    
-                    // Update active formats after a short delay to ensure selection is stable
-                    setTimeout(() => {
-                      detectActiveFormats();
-                    }, 10);
-                  }, [])}
-                  onMouseUp={useCallback((e) => {
-                    // MOUSE SELECTION FIX: Handle text selection after mouse up
-                    setTimeout(() => {
-                      detectActiveFormats();
-                      const selection = window.getSelection();
-                      if (selection && selection.toString().length > 0) {
-                        setSelectedText(selection.toString());
-                      }
-                    }, 10);
-                  }, [])}
+                  onInput={handleEditorInput}
+                  onMouseUp={handleEditorMouseUp}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   onDragOver={handleDragOver}
@@ -3991,23 +3972,8 @@ const PromptSupportEditor = ({
                   onMouseOver={handleLinkHover}
                   onMouseOut={handleLinkMouseOut}
                   onClick={handleLinkClick}
-                  onContextMenu={useCallback((e) => {
-                    // RIGHT-CLICK CONTEXT MENU FIX: Prevent default and show custom menu
-                    e.preventDefault();
-                    const selection = window.getSelection();
-                    if (selection && selection.toString().length > 0) {
-                      // Show context menu for selected text
-                      console.log('🖱️ Context menu for selected text:', selection.toString());
-                    } else {
-                      // Show context menu for cursor position
-                      console.log('🖱️ Context menu at cursor position');
-                    }
-                    // TODO: Implement custom context menu modal
-                  }, [])}
-                  onFocus={useCallback((e) => {
-                    // FOCUS FIX: Ensure proper focus without interfering with selection
-                    console.log('📝 Editor focused');
-                  }, [])}
+                  onContextMenu={handleEditorContextMenu}
+                  onFocus={handleEditorFocus}
                   className="wysiwyg-content wysiwyg-editor h-full p-6 focus:outline-none"
                   style={{
                     // ISSUE 3 FIX: Clean, full-space layout with proper scrolling

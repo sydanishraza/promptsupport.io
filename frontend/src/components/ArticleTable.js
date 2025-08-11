@@ -26,13 +26,15 @@ import {
   Square,
   CheckSquare,
   X,
-  Download
+  Download,
+  FileCheck
 } from 'lucide-react';
 
 const ArticleTable = ({ 
   articles, 
   onArticleSelect, 
   onDeleteArticle, 
+  onDownloadPDF,
   selectionMode, 
   selectedItems, 
   onToggleSelection,
@@ -41,7 +43,9 @@ const ArticleTable = ({
   renameTitle,
   setRenameTitle,
   onExecuteRename,
-  onCancelRename
+  onCancelRename,
+  onStatusChange,
+  bulkActionLoading
 }) => {
   const [sortField, setSortField] = useState('updated_at');
   const [sortDirection, setSortDirection] = useState('desc');
@@ -220,6 +224,19 @@ const ArticleTable = ({
     return sortDirection === 'asc' ? 
       <ArrowUp className="h-4 w-4 text-blue-600" /> : 
       <ArrowDown className="h-4 w-4 text-blue-600" />;
+  };
+
+  // Download PDF function
+  const downloadArticlePDF = async (articleId, articleTitle) => {
+    try {
+      if (onDownloadPDF) {
+        await onDownloadPDF(articleId, articleTitle);
+      } else {
+        console.error('onDownloadPDF function not provided');
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
   };
 
   if (articles.length === 0) {
@@ -466,7 +483,7 @@ const ArticleTable = ({
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>
-                      <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-32 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                      <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-40 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -480,22 +497,59 @@ const ArticleTable = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onStartRename(article);
+                            onArticleSelect(article);
                           }}
                           className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                         >
                           <Edit className="h-3 w-3" />
-                          <span>Rename</span>
+                          <span>Edit</span>
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Download PDF logic here
+                            onStartRename(article);
+                          }}
+                          className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        >
+                          <FileEdit className="h-3 w-3" />
+                          <span>Rename</span>
+                        </button>
+                        <hr className="my-1" />
+                        {article.status !== 'published' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusChange(article.id, 'published');
+                            }}
+                            className="flex items-center space-x-2 px-3 py-1 text-sm text-green-700 hover:bg-green-50 w-full text-left"
+                            disabled={bulkActionLoading}
+                          >
+                            <FileCheck className="h-3 w-3" />
+                            <span>Publish</span>
+                          </button>
+                        )}
+                        {article.status !== 'draft' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusChange(article.id, 'draft');
+                            }}
+                            className="flex items-center space-x-2 px-3 py-1 text-sm text-yellow-700 hover:bg-yellow-50 w-full text-left"
+                            disabled={bulkActionLoading}
+                          >
+                            <FileEdit className="h-3 w-3" />
+                            <span>Move to Draft</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadArticlePDF(article.id, article.title);
                           }}
                           className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                         >
                           <Download className="h-3 w-3" />
-                          <span>PDF</span>
+                          <span>Download PDF</span>
                         </button>
                         <hr className="my-1" />
                         <button

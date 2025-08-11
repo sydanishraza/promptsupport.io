@@ -266,7 +266,7 @@ const ArticleTable = ({
   return (
     <div className="w-full">
       <div className="overflow-x-auto max-w-full">
-        <table className="w-full table-fixed min-w-[1200px]">
+        <table className="w-full table-fixed min-w-[1200px]">{/* Ensure minimum width for proper columns */}
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
             {/* Selection Column */}

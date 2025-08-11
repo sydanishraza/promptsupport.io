@@ -2173,7 +2173,7 @@ const PromptSupportEditor = ({
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
               title="Clear Formatting"
             >
-              <X className="h-4 w-4" />
+              <RemoveFormatting className="h-4 w-4" />
             </button>
           </div>
 

@@ -18,10 +18,30 @@ import {
   ExternalLink,
   Mic,
   Brain,
-  Download
+  Download,
+  MoreVertical,
+  Check,
+  Square,
+  CheckSquare,
+  X,
+  RotateCcw
 } from 'lucide-react';
 
-const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle, onDownloadPDF }) => {
+const ArticleGrid = ({ 
+  articles, 
+  onArticleSelect, 
+  onDeleteArticle, 
+  onDownloadPDF, 
+  selectionMode, 
+  selectedItems, 
+  onToggleSelection,
+  onStartRename,
+  renamingItem,
+  renameTitle,
+  setRenameTitle,
+  onExecuteRename,
+  onCancelRename
+}) => {
   
   // Download PDF function
   const downloadArticlePDF = async (articleId, articleTitle) => {
@@ -155,63 +175,143 @@ const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle, onDownloadPDF
   }
 
   return (
-    <div className="p-4 lg:p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+    <div className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {articles.map((article, index) => (
           <motion.div
             key={article.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1, duration: 0.3 }}
-            className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer"
-            onClick={() => onArticleSelect(article)}
+            className={`bg-white border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer relative ${
+              selectionMode && selectedItems.has(article.id) 
+                ? 'border-blue-500 bg-blue-50 shadow-md' 
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+            onClick={() => selectionMode ? onToggleSelection(article.id) : onArticleSelect(article)}
           >
+            {/* Selection Checkbox - Top Left */}
+            {selectionMode && (
+              <div className="absolute top-2 left-2 z-10">
+                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center cursor-pointer transition-colors ${
+                  selectedItems.has(article.id)
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'bg-white border-gray-300 hover:border-blue-500'
+                }`}>
+                  {selectedItems.has(article.id) && <Check className="h-4 w-4" />}
+                </div>
+              </div>
+            )}
+
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-gray-900 truncate">
-                  {article.title || 'Untitled'}
-                </h3>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
-                    {getStatusIcon(article.status)}
-                    <span className="ml-1">{article.status || 'draft'}</span>
-                  </span>
-                  <span className="text-xs text-gray-500">v{article.version || 1}</span>
+                {renamingItem === article.id ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={renameTitle}
+                      onChange={(e) => setRenameTitle(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-2 py-1 text-sm font-semibold border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onExecuteRename(article.id);
+                        }}
+                        className="p-1 text-green-600 hover:text-green-700 rounded"
+                        title="Save"
+                      >
+                        <Check className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCancelRename();
+                        }}
+                        className="p-1 text-red-600 hover:text-red-700 rounded"
+                        title="Cancel"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className={`text-sm font-semibold text-gray-900 truncate ${selectionMode ? 'pl-8' : ''}`}>
+                      {article.title || 'Untitled'}
+                    </h3>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
+                        {getStatusIcon(article.status)}
+                        <span className="ml-1">{article.status || 'draft'}</span>
+                      </span>
+                      <span className="text-xs text-gray-500">v{article.version || 1}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {!selectionMode && renamingItem !== article.id && (
+                <div className="flex items-center space-x-1 ml-2">
+                  <div className="relative group">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                    <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-32 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onArticleSelect(article);
+                        }}
+                        className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                      >
+                        <Eye className="h-3 w-3" />
+                        <span>View</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStartRename(article);
+                        }}
+                        className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                      >
+                        <Edit className="h-3 w-3" />
+                        <span>Rename</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadArticlePDF(article.id, article.title);
+                        }}
+                        className="flex items-center space-x-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>PDF</span>
+                      </button>
+                      <hr className="my-1" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteArticle(article.id);
+                        }}
+                        className="flex items-center space-x-2 px-3 py-1 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center space-x-1 ml-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onArticleSelect(article);
-                  }}
-                  className="p-1 text-gray-400 hover:text-blue-600 rounded"
-                  title="View Article"
-                >
-                  <Eye className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    downloadArticlePDF(article.id, article.title);
-                  }}
-                  className="p-1 text-gray-400 hover:text-purple-600 rounded"
-                  title="Download PDF"
-                >
-                  <Download className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteArticle(article.id);
-                  }}
-                  className="p-1 text-gray-400 hover:text-red-600 rounded"
-                  title="Delete Article"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+              )}
             </div>
 
             {/* Metadata */}
@@ -290,44 +390,48 @@ const ArticleGrid = ({ articles, onArticleSelect, onDeleteArticle, onDownloadPDF
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <div className="flex items-center space-x-2">
+            {/* Actions - Only show if not in selection mode */}
+            {!selectionMode && renamingItem !== article.id && (
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onArticleSelect(article);
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs font-medium transition-colors"
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span>View</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadArticlePDF(article.id, article.title);
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 text-xs font-medium transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    <span>PDF</span>
+                  </button>
+                </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onArticleSelect(article);
                   }}
-                  className="flex items-center space-x-1 px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs font-medium transition-colors"
+                  className="flex items-center space-x-1 px-3 py-1 bg-green-50 text-green-600 rounded-md hover:bg-green-100 text-xs font-medium transition-colors"
                 >
-                  <Eye className="h-3 w-3" />
-                  <span>View</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    downloadArticlePDF(article.id, article.title);
-                  }}
-                  className="flex items-center space-x-1 px-3 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 text-xs font-medium transition-colors"
-                >
-                  <Download className="h-3 w-3" />
-                  <span>PDF</span>
+                  <Edit className="h-3 w-3" />
+                  <span>Edit</span>
                 </button>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onArticleSelect(article);
-                }}
-                className="flex items-center space-x-1 px-3 py-1 bg-green-50 text-green-600 rounded-md hover:bg-green-100 text-xs font-medium transition-colors"
-              >
-                <Edit className="h-3 w-3" />
-                <span>Edit</span>
-              </button>
-              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                <span>{article.metadata?.views || 0} views</span>
-              </div>
-            </div>
+            )}
+
+            {/* Selection indicator overlay */}
+            {selectionMode && selectedItems.has(article.id) && (
+              <div className="absolute inset-0 bg-blue-500 bg-opacity-10 rounded-lg pointer-events-none" />
+            )}
           </motion.div>
         ))}
       </div>

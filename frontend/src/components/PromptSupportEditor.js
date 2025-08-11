@@ -143,6 +143,8 @@ const PromptSupportEditor = ({
   const [showAiDropdown, setShowAiDropdown] = useState(false);
   const [showImageDropdown, setShowImageDropdown] = useState(false);
   const [showContentAnalysis, setShowContentAnalysis] = useState(false);
+  // FIX: Disable automatic content analysis
+  const [autoContentAnalysis, setAutoContentAnalysis] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [showAiBrainModal, setShowAiBrainModal] = useState(false);
   const [aiResults, setAiResults] = useState(null);

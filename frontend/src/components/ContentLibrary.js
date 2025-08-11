@@ -163,16 +163,20 @@ const ContentLibrary = () => {
     setBulkActionLoading(true);
     try {
       const article = articles.find(a => a.id === articleId);
-      const formData = new FormData();
-      formData.append('title', article.title);
-      formData.append('content', article.content);
-      formData.append('status', newStatus);
-      formData.append('tags', JSON.stringify(article.tags || []));
-      formData.append('metadata', JSON.stringify(article.metadata || {}));
+      const requestData = {
+        title: article.title,
+        content: article.content,
+        status: newStatus,
+        tags: article.tags || [],
+        metadata: article.metadata || {}
+      };
 
       const response = await fetch(`${backendUrl}/api/content-library/${articleId}`, {
         method: 'PUT',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {

@@ -1021,6 +1021,7 @@ const ContentLibrary = () => {
                 <ArticleGrid 
                   articles={filteredAndSortedArticles}
                   onArticleSelect={handleArticleSelect}
+                  onArticleEdit={handleArticleEdit}
                   onDeleteArticle={handleDeleteArticle}
                   onDownloadPDF={downloadArticlePDF}
                   selectionMode={selectionMode}

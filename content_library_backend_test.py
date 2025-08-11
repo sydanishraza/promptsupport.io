@@ -87,8 +87,23 @@ class ContentLibraryBackendTest:
             test_article_id = self.test_article_ids[0]
             print(f"Testing status change for article ID: {test_article_id}")
             
-            # Test changing status to 'published'
+            # First get the current article to get title and content
+            get_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+            if get_response.status_code != 200:
+                print("❌ Could not fetch current article data")
+                return False
+            
+            articles = get_response.json().get('articles', [])
+            current_article = next((a for a in articles if a.get('id') == test_article_id), None)
+            
+            if not current_article:
+                print("❌ Could not find test article")
+                return False
+            
+            # Test changing status to 'published' with required fields
             update_data = {
+                "title": current_article.get('title', 'Test Article'),
+                "content": current_article.get('content', '<p>Test content</p>'),
                 "status": "published"
             }
             

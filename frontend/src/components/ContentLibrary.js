@@ -315,21 +315,25 @@ const ContentLibrary = () => {
         }
       });
 
-      // Create new merged article
-      const formData = new FormData();
-      formData.append('title', mergeTitle);
-      formData.append('content', mergedContent);
-      formData.append('status', mergeStatus);
-      formData.append('tags', JSON.stringify([...mergedTags]));
-      formData.append('metadata', JSON.stringify({
-        created_by: 'User',
-        merge_source: Array.from(selectedItems),
-        merged_at: new Date().toISOString()
-      }));
+      // Create new merged article with JSON format
+      const requestData = {
+        title: mergeTitle,
+        content: mergedContent,
+        status: mergeStatus,
+        tags: [...mergedTags],
+        metadata: {
+          created_by: 'User',
+          merge_source: Array.from(selectedItems),
+          merged_at: new Date().toISOString()
+        }
+      };
 
       const response = await fetch(`${backendUrl}/api/content-library`, {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {

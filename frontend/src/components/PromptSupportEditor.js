@@ -145,6 +145,9 @@ const PromptSupportEditor = ({
   const [showContentAnalysis, setShowContentAnalysis] = useState(false);
   // FIX: Disable automatic content analysis
   const [autoContentAnalysis, setAutoContentAnalysis] = useState(false);
+  // FIX: Add state for persistent Table and Callout menus
+  const [showTableMenu, setShowTableMenu] = useState(false);
+  const [showCalloutMenu, setShowCalloutMenu] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [showAiBrainModal, setShowAiBrainModal] = useState(false);
   const [aiResults, setAiResults] = useState(null);

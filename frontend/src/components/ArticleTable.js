@@ -442,7 +442,7 @@ const ArticleTable = ({
                 </div>
               </td>
               
-              <td className="p-4">
+              <td className="p-3">
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
                   {getStatusIcon(article.status)}
                   <span className="ml-1">{article.status || 'draft'}</span>

@@ -351,12 +351,18 @@ const PromptSupportEditor = ({
     return () => clearTimeout(autoSaveTimer);
   }, [hasUnsavedChanges, content, title, isEditing]);
 
-  // Phase 4: Content analytics and selection tracking
+  // Phase 4: Content analytics and selection tracking with debouncing to prevent excessive calls
   useEffect(() => {
-    if (content && isEditing) {
-      analyzeContent(content);
+    if (content && isEditing && autoContentAnalysis) {
+      // PERFORMANCE FIX: Debounce content analysis to prevent excessive calls
+      const analysisTimer = setTimeout(() => {
+        console.log('🔍 Running debounced content analysis...');
+        analyzeContent(content);
+      }, 2000); // Wait 2 seconds after user stops typing
+
+      return () => clearTimeout(analysisTimer);
     }
-  }, [content, isEditing]);
+  }, [content, isEditing, autoContentAnalysis]);
 
   // Phase 4: Track text selection for commenting and format detection
   useEffect(() => {

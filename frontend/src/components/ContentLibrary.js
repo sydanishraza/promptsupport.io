@@ -84,7 +84,7 @@ const ContentLibrary = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [articlesPerPage] = useState(20);
+  const [articlesPerPage] = useState(10); // Reduced from 20 to 10 to show pagination
   const [totalArticles, setTotalArticles] = useState(0);
   
   // State for asset pagination

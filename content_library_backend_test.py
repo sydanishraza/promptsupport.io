@@ -168,11 +168,26 @@ class ContentLibraryBackendTest:
             
             print(f"Testing article renaming for ID: {test_article_id}")
             
+            # First get the current article to get content
+            get_response = requests.get(f"{self.base_url}/content-library", timeout=10)
+            if get_response.status_code != 200:
+                print("❌ Could not fetch current article data")
+                return False
+            
+            articles = get_response.json().get('articles', [])
+            current_article = next((a for a in articles if a.get('id') == test_article_id), None)
+            
+            if not current_article:
+                print("❌ Could not find test article")
+                return False
+            
             # Generate unique title for testing
             new_title = f"Test Article Renamed - {int(time.time())}"
             
             update_data = {
-                "title": new_title
+                "title": new_title,
+                "content": current_article.get('content', '<p>Test content</p>'),
+                "status": current_article.get('status', 'draft')
             }
             
             response = requests.put(

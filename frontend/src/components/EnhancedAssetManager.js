@@ -1065,6 +1065,105 @@ const EnhancedAssetManager = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Asset View Modal */}
+      <AnimatePresence>
+        {showModal && selectedAsset && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setShowModal(false);
+              setSelectedAsset(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">{selectedAsset.name}</h3>
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    setSelectedAsset(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Asset Preview */}
+                <div className="flex justify-center bg-gray-50 rounded-lg p-4">
+                  <img 
+                    src={selectedAsset.dataUrl} 
+                    alt={selectedAsset.name}
+                    className="max-w-full max-h-96 object-contain rounded"
+                  />
+                </div>
+                
+                {/* Asset Details */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Format:</span>
+                    <span className="ml-2">{selectedAsset.format?.toUpperCase()}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Size:</span>
+                    <span className="ml-2">{formatFileSize(selectedAsset.size)}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Source:</span>
+                    <span className="ml-2">{selectedAsset.articleTitle}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Date Added:</span>
+                    <span className="ml-2">{new Date(selectedAsset.dateAdded).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t">
+                  {selectedAsset.articleId && (
+                    <button
+                      onClick={() => {
+                        handleViewInArticle(selectedAsset);
+                        setShowModal(false);
+                        setSelectedAsset(null);
+                      }}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>View in Article</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDownload(selectedAsset)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download</span>
+                  </button>
+                  <button
+                    onClick={() => handleCopyToClipboard(selectedAsset)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span>Copy URL</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

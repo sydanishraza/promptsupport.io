@@ -269,9 +269,7 @@ const PromptSupportEditor = ({
           editorRef.current.contentEditable = true;
           editorRef.current.focus();
           
-          // ISSUE 2 FIX: Add visual indication that editor is active
-          editorRef.current.style.outline = '2px solid #3b82f6';
-          editorRef.current.style.outlineOffset = '-1px';
+          // FIX: Remove blue border outline that causes conflicts
           editorRef.current.style.backgroundColor = '#fefefe';
           
           // Place cursor at the end for immediate editing

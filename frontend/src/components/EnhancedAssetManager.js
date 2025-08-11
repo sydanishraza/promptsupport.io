@@ -475,39 +475,9 @@ const EnhancedAssetManager = ({
       const successfulUploads = results.filter(r => r !== null);
 
       if (successfulUploads.length > 0) {
-        // Refresh assets by re-fetching
-        const fetchResponse = await fetch(`${backendUrl}/api/assets`);
-        if (fetchResponse.ok) {
-          const data = await fetchResponse.json();
-          
-          // Re-process and combine assets like in the main useEffect
-          const newBackendAssets = (data.assets || []).map(asset => ({
-            id: asset.id,
-            type: 'image',
-            format: asset.original_filename?.split('.').pop()?.toLowerCase() || 'unknown',
-            name: asset.name || asset.original_filename || 'Unnamed asset',
-            altText: asset.name || asset.original_filename || 'Image',
-            dataUrl: asset.url?.startsWith('/') ? `${backendUrl}${asset.url}` : asset.url || asset.data,
-            size: asset.size || 0,
-            articleId: null,
-            articleTitle: 'Asset Library',
-            dateAdded: asset.created_at,
-            lastUpdated: asset.updated_at,
-            source: 'asset_library',
-            processed: true,
-            isBackendAsset: true
-          }));
-
-          // Update assets and trigger parent count update
-          setAssets(prev => {
-            const extractedAssets = prev.filter(a => !a.isBackendAsset);
-            const combined = [...newBackendAssets, ...extractedAssets];
-            if (onAssetCountUpdate) {
-              onAssetCountUpdate(combined.length);
-            }
-            return combined;
-          });
-        }
+        console.log(`Successfully uploaded ${successfulUploads.length} assets`);
+        // Trigger re-fetch by updating a dependency - we'll use a refresh counter
+        setRefreshCounter(prev => prev + 1);
       }
 
       setShowUploadModal(false);

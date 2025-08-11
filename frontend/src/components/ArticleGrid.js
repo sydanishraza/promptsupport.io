@@ -467,7 +467,11 @@ const ArticleGrid = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onArticleSelect(article);
+                    if (onArticleEdit) {
+                      onArticleEdit(article);
+                    } else {
+                      onArticleSelect(article);
+                    }
                   }}
                   className="flex items-center space-x-1 px-2 py-1 bg-green-50 text-green-600 rounded-md hover:bg-green-100 text-xs font-medium transition-colors"
                 >

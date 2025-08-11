@@ -3133,6 +3133,71 @@ async def upload_asset(file: UploadFile = File(...)):
         print(f"Upload asset error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/api/assets/{asset_id}")
+async def delete_asset(asset_id: str):
+    """Delete an asset from the asset library"""
+    try:
+        collection = db["assets"]
+        
+        # Find the asset first to get file path
+        asset = await collection.find_one({"id": asset_id})
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        # Delete file from disk if it exists
+        if "file_path" in asset and asset["file_path"]:
+            file_path = asset["file_path"]
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"Deleted file: {file_path}")
+        
+        # Delete from database
+        result = await collection.delete_one({"id": asset_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        return {"success": True, "message": "Asset deleted successfully"}
+        
+    except Exception as e:
+        print(f"Delete asset error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/assets/{asset_id}")
+async def update_asset(asset_id: str, asset_data: dict):
+    """Update an asset (rename)"""
+    try:
+        collection = db["assets"]
+        
+        # Find the asset first
+        asset = await collection.find_one({"id": asset_id})
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        # Update allowed fields
+        update_data = {
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        if "name" in asset_data:
+            update_data["name"] = asset_data["name"]
+            update_data["title"] = asset_data["name"]  # Keep title in sync
+        
+        # Update in database
+        result = await collection.update_one(
+            {"id": asset_id}, 
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        return {"success": True, "message": "Asset updated successfully"}
+        
+    except Exception as e:
+        print(f"Update asset error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Health check endpoint
 @app.get("/api/health")
 async def health_check():

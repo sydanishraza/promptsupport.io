@@ -470,7 +470,7 @@ const ArticleTable = ({
                 <span className="text-sm text-gray-900">{getWordCount(article.content).toLocaleString()}</span>
               </td>
               
-              <td className="p-4">
+              <td className="p-3">
                 {hasMedia(article.content) ? (
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center space-x-1">

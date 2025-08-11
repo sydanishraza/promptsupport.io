@@ -80,55 +80,13 @@ const ContentLibrary = () => {
   const [renamingItem, setRenamingItem] = useState(null);
   const [renameTitle, setRenameTitle] = useState('');
   
-  // State for actual asset count  
+  // State for actual asset count from EnhancedAssetManager 
   const [actualAssetCount, setActualAssetCount] = useState(0);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [articlesPerPage] = useState(10); // Reduced from 20 to 10 to show pagination
-  const [totalArticles, setTotalArticles] = useState(0);
-  
-  // State for asset pagination
-  const [assetPagination, setAssetPagination] = useState(null);
-  
-  // State for asset filters
-  const [assetSearchQuery, setAssetSearchQuery] = useState('');
-  const [assetFilterType, setAssetFilterType] = useState('all');
-  const [assetSortBy, setAssetSortBy] = useState('dateAdded');
-  const [assetSortOrder, setAssetSortOrder] = useState('desc');
-  const [assetViewMode, setAssetViewMode] = useState('grid');
 
-  // Get backend URL
-  const backendUrl = process.env.REACT_APP_BACKEND_URL;
-
-  // Calculate actual asset count from articles
-  useEffect(() => {
-    let totalAssets = 0;
-    
-    articles.forEach(article => {
-      if (article.content && article.content.includes('data:image')) {
-        // Count markdown format images
-        const markdownImages = (article.content.match(/!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g) || []);
-        // Count HTML format images  
-        const htmlImages = (article.content.match(/<img[^>]*src="data:image\/([^;]+);base64,([^"]+)"[^>]*>/g) || []);
-        
-        // Filter out truncated images (less than 50 chars)
-        const validMarkdownImages = markdownImages.filter(img => {
-          const match = img.match(/base64,([^)]+)/);
-          return match && match[1].length >= 50;
-        });
-        
-        const validHtmlImages = htmlImages.filter(img => {
-          const match = img.match(/base64,([^"]+)/);
-          return match && match[1].length >= 50;
-        });
-        
-        totalAssets += validMarkdownImages.length + validHtmlImages.length;
-      }
-    });
-    
-    setActualAssetCount(totalAssets);
-  }, [articles]);
+  // Callback to receive asset count from EnhancedAssetManager
+  const handleAssetCountUpdate = (count) => {
+    setActualAssetCount(count);
+  };
 
   // NEW: Selection functionality
   const toggleSelection = (itemId) => {

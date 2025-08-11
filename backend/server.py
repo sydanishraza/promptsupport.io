@@ -675,12 +675,17 @@ class DocumentPreprocessor:
             # Continue with standard DOCX processing using mammoth
             import mammoth
             
-            # Prepare custom converter for better HTML structure
+            # Prepare custom converter for better HTML structure with enhanced table support
             style_map = """
                 p[style-name='Heading 1'] => h1:fresh
                 p[style-name='Heading 2'] => h2:fresh  
                 p[style-name='Heading 3'] => h3:fresh
                 p[style-name='Title'] => h1:fresh
+                p[style-name='Subtitle'] => h2:fresh
+                table => table.docx-table
+                tr => tr
+                td => td
+                th => th
             """
             
             # Convert DOCX to HTML with image extraction

@@ -466,7 +466,7 @@ const ArticleTable = ({
                 <div className="text-xs text-gray-500">{formatRelativeTime(article.updated_at)}</div>
               </td>
               
-              <td className="p-4">
+              <td className="p-3">
                 <span className="text-sm text-gray-900">{getWordCount(article.content).toLocaleString()}</span>
               </td>
               

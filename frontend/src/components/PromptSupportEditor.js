@@ -2680,8 +2680,8 @@ const PromptSupportEditor = ({
         }
         
         // Only exit edit mode if explicitly requested (for Draft/Publish actions)
-        if (shouldExitEdit && onEdit) {
-          onEdit(); // Switch to view mode, don't exit to library
+        if (shouldExitEdit && onCancel) {
+          onCancel(); // Exit to Content Library
         }
         
         return true;

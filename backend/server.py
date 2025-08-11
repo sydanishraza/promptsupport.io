@@ -757,6 +757,69 @@ class DocumentPreprocessor:
                 print(f"❌ Text fallback also failed: {fallback_error}")
                 return f"<p>Failed to convert DOCX: {str(e)}</p>", []
     
+    async def _enhance_docx_html_structure(self, html_content: str) -> str:
+        """Enhance DOCX HTML structure with better formatting and table styling"""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Enhance table styling
+            tables = soup.find_all('table')
+            for table in tables:
+                # Add better table styling
+                table['style'] = 'border-collapse: collapse; width: 100%; margin: 1rem 0; border: 1px solid #ddd;'
+                table['class'] = 'docx-table'
+                
+                # Style table cells
+                for cell in table.find_all(['td', 'th']):
+                    cell['style'] = 'border: 1px solid #ddd; padding: 8px; text-align: left;'
+                    if cell.name == 'th':
+                        cell['style'] += ' background-color: #f5f5f5; font-weight: bold;'
+            
+            # Fix empty paragraphs and improve spacing
+            paragraphs = soup.find_all('p')
+            for p in paragraphs:
+                # Remove completely empty paragraphs
+                if not p.get_text().strip() and not p.find('img'):
+                    p.extract()
+                else:
+                    # Ensure proper paragraph spacing
+                    p['style'] = 'margin-bottom: 1em;'
+            
+            # Enhance heading structure
+            headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+            for heading in headings:
+                # Clean up heading text
+                heading_text = heading.get_text().strip()
+                if heading_text:
+                    # Add proper heading styling
+                    level = int(heading.name[1])
+                    margin_top = max(2 - (level - 1) * 0.2, 1)
+                    heading['style'] = f'margin-top: {margin_top}em; margin-bottom: 0.5em; font-weight: bold;'
+            
+            # Enhance list formatting
+            lists = soup.find_all(['ul', 'ol'])
+            for list_elem in lists:
+                list_elem['style'] = 'margin: 1em 0; padding-left: 2em;'
+                
+                # Style list items
+                for li in list_elem.find_all('li'):
+                    li['style'] = 'margin-bottom: 0.5em;'
+            
+            # Clean up the HTML
+            cleaned_html = str(soup)
+            
+            # Remove excessive whitespace
+            import re
+            cleaned_html = re.sub(r'\n\s*\n', '\n\n', cleaned_html)
+            cleaned_html = re.sub(r'<p>\s*</p>', '', cleaned_html)
+            
+            print("✨ Enhanced DOCX HTML structure with improved formatting")
+            return cleaned_html
+            
+        except Exception as e:
+            print(f"⚠️ HTML enhancement failed: {e}, returning original")
+            return html_content
+    
     def _convert_text_to_basic_html(self, text_content: str) -> str:
         """Convert plain text content to basic HTML structure"""
         try:

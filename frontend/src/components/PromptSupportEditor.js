@@ -62,7 +62,8 @@ import {
   MessageCircle,
   User,
   Sparkles,
-  ImageIcon
+  ImageIcon,
+  RemoveFormatting
 } from 'lucide-react';
 
 /**

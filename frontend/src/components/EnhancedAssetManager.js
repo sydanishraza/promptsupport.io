@@ -674,12 +674,20 @@ const EnhancedAssetManager = ({
         <div className="flex items-center space-x-4">
           <h2 className="text-lg font-semibold">Assets ({filteredAssets.length})</h2>
           <button
-            onClick={() => {
-              console.log('Upload button clicked, current showUploadModal:', showUploadModal);
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🚀 Upload button clicked - Event:', e.type);
+              console.log('🚀 Current showUploadModal state:', showUploadModal);
+              console.log('🚀 Setting showUploadModal to true...');
               setShowUploadModal(true);
-              console.log('After setState, showUploadModal should be true');
+              // Force a small delay to ensure state updates
+              setTimeout(() => {
+                console.log('🚀 showUploadModal after timeout:', showUploadModal);
+              }, 100);
             }}
-            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm transition-colors"
+            type="button"
           >
             <Upload className="h-4 w-4" />
             <span>Upload</span>

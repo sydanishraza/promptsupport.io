@@ -123,7 +123,11 @@ class ContentLibraryBackendTest:
                     print("✅ Status change to 'published' successful")
                     
                     # Test changing status to 'draft'
-                    update_data = {"status": "draft"}
+                    update_data = {
+                        "title": current_article.get('title', 'Test Article'),
+                        "content": current_article.get('content', '<p>Test content</p>'),
+                        "status": "draft"
+                    }
                     response = requests.put(
                         f"{self.base_url}/content-library/{test_article_id}",
                         json=update_data,

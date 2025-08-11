@@ -2973,15 +2973,15 @@ async def get_assets():
         
         # Get file-based assets from the new assets collection
         file_assets_cursor = assets_collection.find({})
-        file_assets = await file_assets_cursor.to_list(length=200)
+        file_assets = await file_assets_cursor.to_list(length=500)  # Increased limit
         
         # Get direct image assets from content_library (legacy)
         direct_assets_cursor = content_collection.find({"type": {"$in": ["image", "media"]}})
-        direct_assets = await direct_assets_cursor.to_list(length=100)
+        direct_assets = await direct_assets_cursor.to_list(length=200)  # Keep reasonable limit for legacy
         
         # Get articles with embedded images
         articles_cursor = content_collection.find({"content": {"$regex": "data:image", "$options": "i"}})
-        articles_with_images = await articles_cursor.to_list(length=200)
+        articles_with_images = await articles_cursor.to_list(length=300)  # Increased limit
         
         formatted_assets = []
         

@@ -356,18 +356,31 @@ const EnhancedAssetManager = ({
       const asset = assets.find(a => a.id === assetId);
       
       if (asset?.isBackendAsset) {
-        // Delete backend asset
+        // Delete backend asset via API
         const response = await fetch(`${backendUrl}/api/assets/${assetId}`, {
           method: 'DELETE'
         });
 
         if (!response.ok) {
-          throw new Error('Failed to delete asset');
+          const errorData = await response.text();
+          throw new Error(`Failed to delete asset: ${errorData}`);
         }
+        
+        console.log('Successfully deleted backend asset');
+      } else {
+        // For extracted assets, just remove locally (they're part of articles)
+        console.log('Removing extracted asset from local state');
       }
 
-      // Remove from local state
+      // Remove from local state immediately
       setAssets(prev => prev.filter(a => a.id !== assetId));
+      
+      // Update parent component count
+      if (onAssetCountUpdate) {
+        const newCount = assets.length - 1;
+        onAssetCountUpdate(newCount);
+      }
+      
       console.log('Successfully deleted asset');
     } catch (error) {
       console.error('Error deleting asset:', error);

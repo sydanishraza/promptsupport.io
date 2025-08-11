@@ -238,7 +238,7 @@ const EnhancedAssetManager = ({
     };
 
     fetchAllAssets();
-  }, [articles, backendUrl]);
+  }, [articles, backendUrl, deletedAssetIds]);
 
   // Selection functionality
   const toggleSelection = (assetId) => {

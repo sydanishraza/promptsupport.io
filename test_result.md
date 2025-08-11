@@ -130,6 +130,19 @@ backend:
         -working: true
         -agent: "main"
         -comment: "✅ BOTH CRITICAL ISSUES SUCCESSFULLY RESOLVED: 1) CONTENT LIBRARY LOADING ISSUE FIXED - The content library was not loading due to backend service connectivity issues. Backend restart resolved the problem and content library now shows 384 total documents with 6 articles loading properly in the interface. 2) DOCX CHUNKING ISSUE FIXED - Lowered chunking threshold from 3000 to 1500 characters in MAX_SINGLE_ARTICLE_CHARS (line 7703) to force more aggressive chunking. Backend testing confirmed that content over 1500 characters now generates multiple articles correctly instead of single articles with 'single_article_simplified' approach. The chunking validation logic is working as intended with debug logs showing proper threshold detection and article generation. RESULT: Users can now see articles in the content library and DOCX files properly generate multiple focused articles instead of single comprehensive ones."
+
+  - task: "Enhanced Asset Manager Bug Fixes Testing - Action Menu Rendering Issue"
+    implemented: true
+    working: false
+    file: "frontend/src/components/EnhancedAssetManager.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "testing"
+        -comment: "❌ CRITICAL BUG DISCOVERED: Enhanced Asset Manager action menu buttons are not rendering properly in either Grid or List view. DETAILED FINDINGS: 1) ❌ ACTION MENU BUTTONS MISSING - List View shows proper table structure with 6 headers and 12 asset rows, but three-dot action menu buttons are NOT rendering in Actions column (found 1 action button per row but 0 three-dot menu buttons), 2) ❌ GRID VIEW ACTION MENUS ALSO MISSING - Grid view shows 12 asset cards with proper thumbnails but action menu buttons missing (0 action buttons found), 3) ✅ MODAL FUNCTIONALITY WORKING - Asset row/card clicks successfully open modals with Download and Copy URL buttons, 4) ✅ VIEW SWITCHING WORKING - Successfully switches between Grid/List views with correct asset count (200 assets) and pagination, 5) ❌ CANNOT TEST CORE FUNCTIONALITY - Due to missing action menu buttons, unable to test the requested bug fixes: asset renaming, download functionality, and action menu options (View, Rename, Download, Delete). ROOT CAUSE: MoreVertical icon buttons not rendering properly in EnhancedAssetManager component. IMPACT: CRITICAL BUG preventing access to essential asset management features. RECOMMENDATION: URGENT FIX REQUIRED for action menu button rendering before Enhanced Asset Manager can be production-ready."
+
 ##   - task: "Task name"
 ##     implemented: true
 ##     working: true  # or false or "NA"

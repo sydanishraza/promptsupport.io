@@ -377,20 +377,20 @@ const ArticleTable = ({
                 </td>
               )}
               
-              <td className="p-3">
-                <div className="flex items-center space-x-3">
+              <td className="p-3 max-w-0">
+                <div className="flex items-center space-x-2">
                   <div className="flex-shrink-0">
-                    <FileText className="h-5 w-5 text-gray-400" />
+                    <FileText className="h-4 w-4 text-gray-400" />
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
                     {renamingItem === article.id ? (
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
                         <input
                           type="text"
                           value={renameTitle}
                           onChange={(e) => setRenameTitle(e.target.value)}
                           onClick={(e) => e.stopPropagation()}
-                          className="flex-1 px-2 py-1 text-sm font-medium border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-2 py-1 text-xs font-medium border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                           autoFocus
                         />
                         <button
@@ -401,7 +401,7 @@ const ArticleTable = ({
                           className="p-1 text-green-600 hover:text-green-700 rounded"
                           title="Save"
                         >
-                          <Check className="h-4 w-4" />
+                          <Check className="h-3 w-3" />
                         </button>
                         <button
                           onClick={(e) => {
@@ -411,7 +411,7 @@ const ArticleTable = ({
                           className="p-1 text-red-600 hover:text-red-700 rounded"
                           title="Cancel"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3 w-3" />
                         </button>
                       </div>
                     ) : (
@@ -421,13 +421,13 @@ const ArticleTable = ({
                             e.stopPropagation();
                             if (!selectionMode) onArticleSelect(article);
                           }}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block w-full text-left"
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 truncate block w-full text-left"
                         >
                           {article.title || 'Untitled'}
                         </button>
                         <div className="text-xs text-gray-500 truncate">
                           {article.summary || 
-                           (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 60) + '...' : 'No content')}
+                           (article.content ? article.content.replace(/<[^>]*>/g, '').substring(0, 40) + '...' : 'No content')}
                         </div>
                       </>
                     )}

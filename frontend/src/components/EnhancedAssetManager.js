@@ -1048,9 +1048,12 @@ const EnhancedAssetManager = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent row click
+                              console.log(`List action menu clicked for asset ${asset.id}`);
+                              console.log('Current selectionMode:', selectionMode, 'renamingItem:', renamingItem);
                               setOpenMenuId(openMenuId === asset.id ? null : asset.id);
                             }}
-                            className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                            className="p-2 text-gray-600 hover:text-gray-800 bg-gray-50 rounded-full hover:bg-gray-100 border"
+                            title="Asset Actions"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>

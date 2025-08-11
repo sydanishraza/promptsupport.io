@@ -449,7 +449,7 @@ const ArticleTable = ({
                 </span>
               </td>
               
-              <td className="p-4">
+              <td className="p-3">
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-900">{article.metadata?.created_by || 'System'}</span>

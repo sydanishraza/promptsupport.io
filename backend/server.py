@@ -688,13 +688,16 @@ class DocumentPreprocessor:
                 th => th
             """
             
-            # Convert DOCX to HTML with image extraction
+            # Convert DOCX to HTML with enhanced image and table extraction
             with open(file_path, "rb") as docx_file:
-                # Use mammoth to convert with image handling
+                # Use mammoth to convert with enhanced options
                 result = mammoth.convert_to_html(
                     docx_file,
                     style_map=style_map,
-                    convert_image=mammoth.images.inline(self._save_docx_image)
+                    convert_image=mammoth.images.inline(self._save_docx_image),
+                    ignore_empty_paragraphs=False,  # Keep structure
+                    include_embedded_style_map=True,  # Use document styles
+                    include_default_style_map=True   # Use default styles
                 )
                 
                 html_content = result.value
@@ -705,6 +708,9 @@ class DocumentPreprocessor:
                     print(f"📋 Mammoth conversion messages: {len(messages)}")
                     for msg in messages[:5]:  # Show first 5 messages
                         print(f"   - {msg}")
+                
+                # ENHANCED: Post-process HTML for better structure
+                html_content = await self._enhance_docx_html_structure(html_content)
                 
                 print(f"📝 DOCX converted to HTML: {len(html_content)} characters")
                 

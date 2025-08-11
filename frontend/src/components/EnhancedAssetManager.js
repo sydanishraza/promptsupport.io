@@ -213,9 +213,11 @@ const EnhancedAssetManager = ({
           }
         });
         
-        // Combine all assets
-        const allAssets = [...backendAssets, ...extractedAssets];
-        console.log(`EnhancedAssetManager: Found ${allAssets.length} total assets (${backendAssets.length} backend, ${extractedAssets.length} extracted)`);
+        // Combine all assets and filter out deleted ones
+        const allAssets = [...backendAssets, ...extractedAssets].filter(asset => 
+          !deletedAssetIds.has(asset.id)
+        );
+        console.log(`EnhancedAssetManager: Found ${allAssets.length} total assets (${backendAssets.length} backend, ${extractedAssets.length} extracted, ${deletedAssetIds.size} deleted)`);
         setAssets(allAssets);
         
         // Update parent component with asset count

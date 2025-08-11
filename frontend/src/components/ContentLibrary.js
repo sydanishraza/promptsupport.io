@@ -468,11 +468,18 @@ const ContentLibrary = () => {
     // Remove auto-refresh to prevent unexpected reloads
   }, [backendUrl]);
 
-  // Handle article selection
+  // Handle article selection for viewing
   const handleArticleSelect = (article) => {
     setFilterState({ searchQuery, selectedFilter, selectedSort, viewMode }); // Save current state
     setSelectedArticle(article);
     setIsEditing(false);
+  };
+
+  // Handle article selection for editing
+  const handleArticleEdit = (article) => {
+    setFilterState({ searchQuery, selectedFilter, selectedSort, viewMode }); // Save current state
+    setSelectedArticle(article);
+    setIsEditing(true);
   };
 
   // Handle back to library

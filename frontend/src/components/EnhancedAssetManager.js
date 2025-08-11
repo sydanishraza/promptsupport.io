@@ -582,7 +582,10 @@ const EnhancedAssetManager = ({
         <div className="flex items-center space-x-4">
           <h2 className="text-lg font-semibold">Assets ({filteredAssets.length})</h2>
           <button
-            onClick={() => setShowUploadModal(true)}
+            onClick={() => {
+              console.log('Upload button clicked');
+              setShowUploadModal(true);
+            }}
             className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
           >
             <Upload className="h-4 w-4" />
@@ -592,6 +595,7 @@ const EnhancedAssetManager = ({
         
         <button
           onClick={() => {
+            console.log('Selection mode toggled');
             setSelectionMode(!selectionMode);
             if (selectionMode) clearSelection();
           }}

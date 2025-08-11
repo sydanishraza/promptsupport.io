@@ -600,6 +600,7 @@ const ArticleTable = ({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 };

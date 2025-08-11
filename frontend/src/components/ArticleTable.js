@@ -366,7 +366,7 @@ const ArticleTable = ({
             >
               {/* Selection Column */}
               {selectionMode && (
-                <td className="p-4">
+                <td className="p-3">
                   <div className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
                     selectedItems.has(article.id)
                       ? 'bg-blue-600 border-blue-600 text-white'
@@ -377,7 +377,7 @@ const ArticleTable = ({
                 </td>
               )}
               
-              <td className="p-4">
+              <td className="p-3">
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
                     <FileText className="h-5 w-5 text-gray-400" />

@@ -991,22 +991,32 @@ const EnhancedAssetManager = ({
                         </div>
                         <div>
                           {renamingItem === asset.id ? (
-                            <div className="flex items-center space-x-2">
+                            <div 
+                              className="flex items-center space-x-2"
+                              onClick={(e) => e.stopPropagation()} // Prevent row click during rename
+                            >
                               <input
                                 type="text"
                                 value={renameTitle}
                                 onChange={(e) => setRenameTitle(e.target.value)}
                                 className="px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 autoFocus
+                                onClick={(e) => e.stopPropagation()} // Prevent row click
                               />
                               <button
-                                onClick={() => executeRename(asset.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click
+                                  executeRename(asset.id);
+                                }}
                                 className="p-1 text-green-600 hover:text-green-700"
                               >
                                 <Check className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={cancelRename}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row click
+                                  cancelRename();
+                                }}
                                 className="p-1 text-red-600 hover:text-red-700"
                               >
                                 <X className="h-4 w-4" />

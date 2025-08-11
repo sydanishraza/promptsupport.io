@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://5281eecc-eac8-4f65-9a23-23445575ef21.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://804e26ce-e2cd-4ae9-bd9c-fe7be1b5493a.preview.emergentagent.com') + '/api'
 
 class TrainingEnginePerformanceTest:
     def __init__(self):
@@ -39,7 +39,7 @@ class TrainingEnginePerformanceTest:
             
             # Test OPTIONS request for training/process endpoint
             headers = {
-                'Origin': 'https://5281eecc-eac8-4f65-9a23-23445575ef21.preview.emergentagent.com',
+                'Origin': 'https://804e26ce-e2cd-4ae9-bd9c-fe7be1b5493a.preview.emergentagent.com',
                 'Access-Control-Request-Method': 'POST',
                 'Access-Control-Request-Headers': 'Content-Type'
             }

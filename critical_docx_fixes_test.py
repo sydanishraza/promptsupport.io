@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://5281eecc-eac8-4f65-9a23-23445575ef21.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://804e26ce-e2cd-4ae9-bd9c-fe7be1b5493a.preview.emergentagent.com') + '/api'
 
 def test_force_chunking_fix():
     """Test ISSUE 1: Force chunking at 3,000 character threshold"""

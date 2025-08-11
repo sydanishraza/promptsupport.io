@@ -35,7 +35,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Configuration
-BACKEND_URL = "https://5281eecc-eac8-4f65-9a23-23445575ef21.preview.emergentagent.com/api"
+BACKEND_URL = "https://804e26ce-e2cd-4ae9-bd9c-fe7be1b5493a.preview.emergentagent.com/api"
 
 class SemanticImagePlacementTester:
     """Comprehensive tester for the semantic image placement system"""

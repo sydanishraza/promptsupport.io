@@ -188,9 +188,17 @@ const EnhancedAssetManager = ({
         const allAssets = [...backendAssets, ...extractedAssets];
         setAssets(allAssets);
         
+        // Update parent component with asset count
+        if (onAssetCountUpdate) {
+          onAssetCountUpdate(allAssets.length);
+        }
+        
       } catch (error) {
         console.error('Error fetching assets:', error);
         setAssets([]);
+        if (onAssetCountUpdate) {
+          onAssetCountUpdate(0);
+        }
       } finally {
         setLoading(false);
       }

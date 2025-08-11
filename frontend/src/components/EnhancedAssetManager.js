@@ -354,6 +354,7 @@ const EnhancedAssetManager = ({
     setBulkActionLoading(true);
     try {
       const asset = assets.find(a => a.id === assetId);
+      console.log('🗑️ Deleting asset:', asset?.name, 'Type:', asset?.isBackendAsset ? 'Backend' : 'Extracted');
       
       if (asset?.isBackendAsset) {
         // Delete backend asset via API
@@ -366,25 +367,34 @@ const EnhancedAssetManager = ({
           throw new Error(`Failed to delete asset: ${errorData}`);
         }
         
-        console.log('Successfully deleted backend asset');
+        console.log('✅ Successfully deleted backend asset from server');
       } else {
-        // For extracted assets, add to deletion tracking
-        setDeletedAssetIds(prev => new Set([...prev, assetId]));
-        console.log('Marked extracted asset for local deletion');
+        // For extracted assets, add to deletion tracking (but don't trigger useEffect)
+        console.log('📝 Marking extracted asset for local deletion');
       }
 
-      // Remove from local state immediately
-      setAssets(prev => prev.filter(a => a.id !== assetId));
+      // Remove from local state immediately (this is the key fix)
+      setAssets(prev => {
+        const filtered = prev.filter(a => a.id !== assetId);
+        console.log(`🔄 Asset state updated: ${prev.length} -> ${filtered.length} assets`);
+        return filtered;
+      });
+      
+      // Update deletion tracking for extracted assets (after state update)
+      if (!asset?.isBackendAsset) {
+        setDeletedAssetIds(prev => new Set([...prev, assetId]));
+      }
       
       // Update parent component count
       if (onAssetCountUpdate) {
         const newCount = assets.length - 1;
         onAssetCountUpdate(newCount);
+        console.log(`📊 Parent count updated to: ${newCount}`);
       }
       
-      console.log('Successfully deleted asset');
+      console.log('✅ Asset deletion completed successfully');
     } catch (error) {
-      console.error('Error deleting asset:', error);
+      console.error('❌ Error deleting asset:', error);
       alert('Error deleting asset. Please try again.');
     } finally {
       setBulkActionLoading(false);

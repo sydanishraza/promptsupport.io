@@ -201,11 +201,13 @@ const EnhancedAssetManager = ({
         
         // Combine all assets
         const allAssets = [...backendAssets, ...extractedAssets];
+        console.log(`EnhancedAssetManager: Found ${allAssets.length} total assets (${backendAssets.length} backend, ${extractedAssets.length} extracted)`);
         setAssets(allAssets);
         
         // Update parent component with asset count
         if (onAssetCountUpdate) {
           onAssetCountUpdate(allAssets.length);
+          console.log(`EnhancedAssetManager: Updated parent with count ${allAssets.length}`);
         }
         
       } catch (error) {

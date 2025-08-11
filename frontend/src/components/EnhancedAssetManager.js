@@ -954,9 +954,14 @@ const EnhancedAssetManager = ({
                 {paginatedAssets.map((asset) => (
                   <tr 
                     key={asset.id} 
-                    className={`border-b border-gray-100 hover:bg-gray-50 ${
+                    className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
                       selectionMode && selectedItems.has(asset.id) ? 'bg-blue-50' : ''
                     }`}
+                    onClick={() => {
+                      if (!selectionMode && renamingItem !== asset.id) {
+                        handleAssetClick(asset);
+                      }
+                    }}
                   >
                     {selectionMode && (
                       <td className="p-4">

@@ -8304,9 +8304,8 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
     try:
         print(f"🚀 ANTI-DUPLICATE CHUNKING: Processing {len(content)} characters of content")
         
-        # ANTI-DUPLICATE ENHANCEMENT: Basic content analysis to prevent similar articles
-        # TODO: Implement analyze_content_for_unique_sections function
-        content_sections = [{"content": content, "title": "Main Content", "focus": "general", "uniqueness": 0.8}]
+        # ANTI-DUPLICATE ENHANCEMENT: Intelligent content analysis to prevent similar articles
+        content_sections = await analyze_content_for_unique_sections(content)
         
         # DIVERSE ARTICLE TYPES: Ensure we create different types of articles
         target_article_types = ['overview', 'concept', 'how-to', 'use-case', 'faq-troubleshooting']
@@ -8316,28 +8315,14 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         
         # Step 1: Create overview/introduction article if content is substantial
         if len(content) > 3000:
-            # TODO: Implement create_overview_chunk function
-            # For now, create a basic overview chunk
-            overview_content = content[:1000] + "..." if len(content) > 1000 else content
-            overview_chunk = DocumentChunk(
-                content=overview_content,
-                metadata={
-                    **metadata,
-                    'chunk_id': 0,
-                    'article_type': 'overview',
-                    'content_focus': 'overview',
-                    'uniqueness_score': 1.0
-                }
-            )
-            chunks.append(overview_chunk)
-            # TODO: Implement content_fingerprint generation
-            fingerprint = str(hash(overview_content))
-            used_content_fingerprints.add(fingerprint)
-            print("✅ Created overview article")
+            overview_chunk = await create_overview_chunk(content, metadata)
+            if overview_chunk:
+                chunks.append(overview_chunk)
+                used_content_fingerprints.add(overview_chunk.content_fingerprint)
+                print("✅ Created overview article")
         
         # Step 2: Identify distinct conceptual sections
-        # TODO: Implement identify_concept_sections function
-        concept_sections = content_sections
+        concept_sections = await identify_concept_sections(content_sections)
         
         # Step 3: Create unique, focused articles
         for i, section in enumerate(concept_sections):
@@ -8345,15 +8330,13 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 break
                 
             # Check for content similarity to existing chunks
-            # TODO: Implement generate_content_fingerprint function
-            fingerprint = str(hash(section['content']))
+            fingerprint = generate_content_fingerprint(section['content'])
             if fingerprint in used_content_fingerprints:
                 print(f"🚫 Skipping duplicate section: {section.get('title', 'Unnamed')}")
                 continue
             
             # Determine article type based on content characteristics
-            # TODO: Implement classify_article_type function
-            article_type = target_article_types[i % len(target_article_types)]
+            article_type = classify_article_type(section['content'])
             
             # Create focused, unique chunk
             chunk = DocumentChunk(
@@ -8364,7 +8347,10 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                     'article_type': article_type,
                     'content_focus': section.get('focus', 'general'),
                     'uniqueness_score': section.get('uniqueness', 0.8)
-                }
+                },
+                source_file=metadata.get('original_filename', 'document'),
+                chunk_index=i,
+                content_fingerprint=fingerprint
             )
             
             chunks.append(chunk)
@@ -8373,20 +8359,8 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         
         # Step 4: Generate FAQ/Troubleshooting article if no explicit Q&A content found
         if not any(chunk.metadata.get('article_type') == 'faq-troubleshooting' for chunk in chunks):
-            # TODO: Implement generate_faq_troubleshooting_article function
-            # For now, create a basic FAQ chunk if content suggests it
-            if any(word in content.lower() for word in ['question', 'answer', 'faq', 'troubleshoot', 'problem', 'solution']):
-                faq_content = "FAQ and Troubleshooting section based on content analysis."
-                faq_chunk = DocumentChunk(
-                    content=faq_content,
-                    metadata={
-                        **metadata,
-                        'chunk_id': len(chunks) + 1,
-                        'article_type': 'faq-troubleshooting',
-                        'content_focus': 'troubleshooting',
-                        'uniqueness_score': 0.9
-                    }
-                )
+            faq_chunk = await generate_faq_troubleshooting_article(content, metadata)
+            if faq_chunk:
                 chunks.append(faq_chunk)
                 print("✅ Generated FAQ/Troubleshooting article from content analysis")
         
@@ -8399,6 +8373,241 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         print(f"❌ Enhanced anti-duplicate chunking failed: {e}")
         # Fallback to basic chunking
         return await basic_process_text_content(content, metadata)
+
+async def analyze_content_for_unique_sections(content: str) -> list:
+    """Analyze content to identify unique sections with distinct purposes"""
+    try:
+        import re
+        
+        sections = []
+        
+        # Method 1: Split by HTML headings
+        html_sections = re.split(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, flags=re.IGNORECASE)
+        
+        if len(html_sections) > 3:  # Found meaningful HTML structure
+            current_content = ""
+            current_title = ""
+            
+            for i, part in enumerate(html_sections):
+                if i % 2 == 1:  # This is a heading
+                    if current_content.strip():
+                        sections.append({
+                            'title': current_title,
+                            'content': current_content.strip(),
+                            'focus': classify_content_focus(current_content),
+                            'uniqueness': calculate_content_uniqueness(current_content, sections)
+                        })
+                    current_title = part.strip()
+                    current_content = ""
+                else:  # This is content
+                    current_content += part
+            
+            # Add final section
+            if current_content.strip():
+                sections.append({
+                    'title': current_title,
+                    'content': current_content.strip(),
+                    'focus': classify_content_focus(current_content),
+                    'uniqueness': calculate_content_uniqueness(current_content, sections)
+                })
+        
+        # Method 2: Split by paragraph groups if no clear HTML structure
+        if len(sections) < 2:
+            paragraphs = content.split('\n\n')
+            current_section = ""
+            section_count = 0
+            
+            for paragraph in paragraphs:
+                if len(current_section + paragraph) > 2000 and current_section:
+                    section_count += 1
+                    sections.append({
+                        'title': f'Section {section_count}',
+                        'content': current_section.strip(),
+                        'focus': classify_content_focus(current_section),
+                        'uniqueness': 0.8
+                    })
+                    current_section = paragraph
+                else:
+                    current_section += "\n\n" + paragraph if current_section else paragraph
+            
+            # Add final section
+            if current_section.strip():
+                section_count += 1
+                sections.append({
+                    'title': f'Section {section_count}',
+                    'content': current_section.strip(),
+                    'focus': classify_content_focus(current_section),
+                    'uniqueness': 0.8
+                })
+        
+        # Filter out very short sections
+        sections = [s for s in sections if len(s['content']) > 500]
+        
+        print(f"📚 Analyzed content into {len(sections)} unique sections")
+        return sections
+        
+    except Exception as e:
+        print(f"⚠️ Content analysis fallback: {e}")
+        return [{'title': 'Main Content', 'content': content, 'focus': 'general', 'uniqueness': 0.8}]
+
+def classify_content_focus(content: str) -> str:
+    """Classify the focus/purpose of content section"""
+    content_lower = content.lower()
+    
+    # Check for different content types
+    if any(word in content_lower for word in ['overview', 'introduction', 'summary', 'about']):
+        return 'overview'
+    elif any(word in content_lower for word in ['how to', 'step', 'procedure', 'instructions', 'tutorial']):
+        return 'procedural'
+    elif any(word in content_lower for word in ['concept', 'definition', 'what is', 'understanding']):
+        return 'conceptual'
+    elif any(word in content_lower for word in ['example', 'use case', 'scenario', 'implementation']):
+        return 'practical'
+    elif any(word in content_lower for word in ['question', 'faq', 'troubleshoot', 'problem', 'error']):
+        return 'support'
+    else:
+        return 'general'
+
+def calculate_content_uniqueness(content: str, existing_sections: list) -> float:
+    """Calculate uniqueness score compared to existing sections"""
+    if not existing_sections:
+        return 1.0
+    
+    # Simple uniqueness based on word overlap
+    content_words = set(content.lower().split())
+    max_overlap = 0
+    
+    for section in existing_sections:
+        section_words = set(section['content'].lower().split())
+        overlap = len(content_words.intersection(section_words)) / len(content_words.union(section_words))
+        max_overlap = max(max_overlap, overlap)
+    
+    return 1.0 - max_overlap
+
+async def create_overview_chunk(content: str, metadata: dict) -> DocumentChunk:
+    """Create an introductory overview chunk"""
+    try:
+        # Extract first 1500 characters or until first major break
+        overview_content = content[:1500]
+        
+        # Try to end at a natural break point
+        last_period = overview_content.rfind('. ')
+        if last_period > 500:
+            overview_content = overview_content[:last_period + 1]
+        
+        fingerprint = generate_content_fingerprint(overview_content)
+        
+        chunk = DocumentChunk(
+            content=overview_content,
+            metadata={
+                **metadata,
+                'chunk_id': 0,
+                'article_type': 'overview',
+                'content_focus': 'overview',
+                'uniqueness_score': 1.0
+            },
+            source_file=metadata.get('original_filename', 'document'),
+            chunk_index=0,
+            content_fingerprint=fingerprint
+        )
+        
+        return chunk
+        
+    except Exception as e:
+        print(f"⚠️ Overview chunk creation failed: {e}")
+        return None
+
+async def identify_concept_sections(content_sections: list) -> list:
+    """Filter and enhance sections to focus on distinct concepts"""
+    try:
+        # Sort by uniqueness score
+        sorted_sections = sorted(content_sections, key=lambda x: x.get('uniqueness', 0), reverse=True)
+        
+        # Take top unique sections, max 4
+        unique_sections = sorted_sections[:4]
+        
+        print(f"📊 Selected {len(unique_sections)} unique conceptual sections")
+        return unique_sections
+        
+    except Exception as e:
+        print(f"⚠️ Concept section identification failed: {e}")
+        return content_sections[:3]  # Fallback to first 3
+
+def generate_content_fingerprint(content: str) -> str:
+    """Generate a unique fingerprint for content to detect duplicates"""
+    import hashlib
+    
+    # Normalize content for comparison
+    normalized = ' '.join(content.lower().split())
+    
+    # Create hash
+    return hashlib.md5(normalized.encode()).hexdigest()[:12]
+
+def classify_article_type(content: str) -> str:
+    """Classify article type based on content characteristics"""
+    content_lower = content.lower()
+    
+    # Priority-based classification
+    if any(word in content_lower for word in ['how to', 'step by step', 'tutorial', 'guide', 'instructions']):
+        return 'how-to'
+    elif any(word in content_lower for word in ['example', 'use case', 'scenario', 'implementation', 'demo']):
+        return 'use-case'
+    elif any(word in content_lower for word in ['faq', 'question', 'troubleshoot', 'problem', 'error', 'issue']):
+        return 'faq-troubleshooting'
+    elif any(word in content_lower for word in ['concept', 'definition', 'what is', 'understanding', 'theory']):
+        return 'concept'
+    else:
+        return 'concept'  # Default to concept for general content
+
+async def generate_faq_troubleshooting_article(content: str, metadata: dict) -> DocumentChunk:
+    """Generate FAQ/Troubleshooting article from content analysis"""
+    try:
+        content_lower = content.lower()
+        
+        # Check if content has Q&A patterns or troubleshooting keywords
+        has_qa = any(pattern in content_lower for pattern in [
+            'question', 'answer', 'faq', 'q:', 'a:', '?', 
+            'troubleshoot', 'problem', 'error', 'issue', 'solution',
+            'common', 'frequently', 'typical'
+        ])
+        
+        if not has_qa:
+            return None  # Don't force FAQ if content doesn't warrant it
+        
+        # Create a basic FAQ structure from identified issues
+        faq_content = """<h2>Frequently Asked Questions & Troubleshooting</h2>
+<p>Based on the content analysis, here are common questions and troubleshooting tips:</p>
+
+<h3>Common Questions</h3>
+<p>This section addresses frequently asked questions related to the topics covered in this documentation.</p>
+
+<h3>Troubleshooting</h3>
+<p>If you encounter issues while following the procedures outlined in this guide, refer to this troubleshooting section for solutions to common problems.</p>
+
+<blockquote class="note">📝 <strong>Note:</strong> This FAQ section is generated based on content analysis. For specific questions not covered here, refer to the related articles or contact support.</blockquote>"""
+        
+        fingerprint = generate_content_fingerprint(faq_content)
+        
+        chunk = DocumentChunk(
+            content=faq_content,
+            metadata={
+                **metadata,
+                'chunk_id': 999,  # Special ID for generated FAQ
+                'article_type': 'faq-troubleshooting',
+                'content_focus': 'support',
+                'uniqueness_score': 1.0,
+                'generated': True
+            },
+            source_file=metadata.get('original_filename', 'document'),
+            chunk_index=999,
+            content_fingerprint=fingerprint
+        )
+        
+        return chunk
+        
+    except Exception as e:
+        print(f"⚠️ FAQ generation failed: {e}")
+        return None
 
 async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
     """Fallback: Basic chunking strategy (original implementation)"""

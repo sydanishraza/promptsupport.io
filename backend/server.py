@@ -8103,6 +8103,20 @@ Original context: {metadata.get('original_filename', 'Document content')}
                 continue
         
         print(f"🎉 CHUNK CONVERSION COMPLETE: Successfully created {len(created_articles)} articles from {len(chunks)} chunks")
+        
+        # ENHANCEMENT: Create introductory article with TOC when multiple articles are generated
+        if len(created_articles) > 1:
+            intro_article = await create_introductory_toc_article(created_articles, metadata)
+            if intro_article:
+                created_articles.insert(0, intro_article)  # Add as first article
+                print(f"✅ Created introductory TOC article: {intro_article['title']}")
+        
+        # ENHANCEMENT: Add related links to each article
+        if len(created_articles) > 1:
+            updated_articles = await add_related_links_to_articles(created_articles)
+            print(f"✅ Added related links to {len(updated_articles)} articles")
+            return updated_articles
+        
         return created_articles
         
     except Exception as e:

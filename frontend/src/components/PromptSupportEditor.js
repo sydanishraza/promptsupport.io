@@ -308,45 +308,27 @@ const PromptSupportEditor = ({
     }
   }, [article]);
 
-  // ISSUE 2 FIX: IMMEDIATE EDITOR ACTIVATION - Enhanced activation with immediate focus
+  // EDITOR ACTIVATION FIX: Simplified activation to prevent conflicts and flickering
   useEffect(() => {
-    if (isEditing && editorRef.current) {
-      // ISSUE 2 FIX: Make editor immediately active and editable
-      const activateEditor = () => {
-        if (editorRef.current && !editorRef.current.contains(document.activeElement)) {
-          // MOUSE FIX: Only activate if editor is not already focused to prevent interference
-          editorRef.current.contentEditable = true;
-          editorRef.current.focus();
-          
-          // FIX: Remove blue border outline that causes conflicts
-          editorRef.current.style.backgroundColor = '#fefefe';
-          
-          // MOUSE FIX: Only set cursor position if there's no active selection
-          try {
-            const selection = window.getSelection();
-            if (!selection || selection.toString().length === 0) {
-              const range = document.createRange();
-              range.selectNodeContents(editorRef.current);
-              range.collapse(false); // Collapse to end
-              selection.removeAllRanges();
-              selection.addRange(range);
-            }
-            
-            console.log('📝 Editor activated (optimized)');
-          } catch (e) {
-            console.log('📝 Editor focused (fallback)');
-          }
-          
-          // Remove outline after showing activation
-          setTimeout(() => {
-            if (editorRef.current) {
-              editorRef.current.style.outline = '';
-              editorRef.current.style.outlineOffset = '';
-              editorRef.current.style.backgroundColor = '';
-            }
-          }, 1500);
-        }
-      };
+    if (isEditing && editorRef.current && content) {
+      // FLICKER FIX: Only activate once when switching to edit mode, not on every content change
+      const element = editorRef.current;
+      
+      // Ensure editor is properly set up
+      if (!element.isContentEditable) {
+        element.contentEditable = true;
+        console.log('✅ Editor made editable');
+      }
+      
+      // FOCUS FIX: Focus only if not already focused, preventing interference
+      if (document.activeElement !== element) {
+        setTimeout(() => {
+          element.focus();
+          console.log('✅ Editor focused and ready');
+        }, 50);
+      }
+    }
+  }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
       // ISSUE 2 FIX: Activate immediately, no delay
       activateEditor();

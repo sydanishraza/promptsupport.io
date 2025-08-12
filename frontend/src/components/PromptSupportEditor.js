@@ -914,6 +914,10 @@ const PromptSupportEditor = ({
   const detectActiveFormats = () => {
     if (!isEditing || !editorRef.current) return;
 
+    // CRITICAL BUG FIX: Store current selection before format detection
+    const currentSelection = window.getSelection();
+    const selectedRange = currentSelection && currentSelection.rangeCount > 0 ? currentSelection.getRangeAt(0) : null;
+
     const formats = {
       bold: document.queryCommandState('bold'),
       italic: document.queryCommandState('italic'),
@@ -927,10 +931,9 @@ const PromptSupportEditor = ({
       ol: document.queryCommandState('insertOrderedList')
     };
 
-    // Check for heading formats
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      let node = selection.anchorNode;
+    // Check for heading formats without disturbing selection
+    if (currentSelection && currentSelection.rangeCount > 0) {
+      let node = currentSelection.anchorNode;
       while (node && node !== editorRef.current) {
         if (node.nodeType === Node.ELEMENT_NODE) {
           const tagName = node.tagName?.toLowerCase();
@@ -940,6 +943,17 @@ const PromptSupportEditor = ({
           if (tagName === 'h4') formats.h4 = true;
         }
         node = node.parentNode;
+      }
+    }
+
+    // CRITICAL BUG FIX: Restore selection if it was disturbed
+    if (selectedRange && currentSelection) {
+      try {
+        currentSelection.removeAllRanges();
+        currentSelection.addRange(selectedRange);
+      } catch (e) {
+        // Selection restoration failed, but don't break the editor
+        console.warn('Selection restoration failed:', e);
       }
     }
 

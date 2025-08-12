@@ -509,6 +509,182 @@ async def add_related_links_to_articles(articles: list) -> list:
 
 # === END HELPER FUNCTIONS ===
 
+async def create_introductory_toc_article(articles: list, metadata: dict) -> dict:
+    """Create an introductory article with table of contents when multiple articles are generated"""
+    try:
+        source_filename = metadata.get('original_filename', 'Document')
+        
+        # Generate specific title based on source document
+        if source_filename:
+            doc_name = source_filename.replace('.docx', '').replace('.pdf', '').replace('_', ' ').title()
+            toc_title = f"{doc_name}: Complete Guide Overview"
+        else:
+            toc_title = "Document Overview and Table of Contents"
+        
+        # Generate TOC content with enhanced structure
+        toc_items = []
+        for i, article in enumerate(articles):
+            title = article.get('title', f'Article {i+1}')
+            article_type = article.get('metadata', {}).get('article_type', 'guide')
+            toc_items.append(f'<li><strong>{title}</strong> <em>({article_type})</em></li>')
+        
+        toc_html = f"""<h2>Document Overview</h2>
+<p>This comprehensive guide has been intelligently processed and organized into <strong>{len(articles)} focused articles</strong> for optimal learning and reference. Each article covers a specific aspect of the topic in depth.</p>
+
+<blockquote class="note">📝 <strong>Note:</strong> This document has been structured using professional technical writing standards to provide the most effective learning experience.</blockquote>
+
+<h2>Article Structure</h2>
+<ol>
+{chr(10).join(toc_items)}
+</ol>
+
+<h2>Reading Recommendations</h2>
+<ul>
+<li><strong>Sequential Reading:</strong> Follow the articles in order for comprehensive understanding</li>
+<li><strong>Reference Use:</strong> Jump to specific articles based on your immediate needs</li>
+<li><strong>Cross-References:</strong> Use the "Related Articles" links at the bottom of each article for navigation</li>
+</ul>
+
+<blockquote class="tip">💡 <strong>Tip:</strong> Each article includes specific takeaways, examples, and related links to help you master the content effectively.</blockquote>"""
+        
+        # Create comprehensive markdown version
+        markdown_content = f"""## Document Overview
+
+This comprehensive guide has been intelligently processed and organized into **{len(articles)} focused articles** for optimal learning and reference. Each article covers a specific aspect of the topic in depth.
+
+> 📝 **Note:** This document has been structured using professional technical writing standards to provide the most effective learning experience.
+
+## Article Structure
+
+{chr(10).join([f"{i+1}. **{article.get('title', f'Article {i+1}')}** *({article.get('metadata', {}).get('article_type', 'guide')})*" for i, article in enumerate(articles)])}
+
+## Reading Recommendations
+
+- **Sequential Reading:** Follow the articles in order for comprehensive understanding
+- **Reference Use:** Jump to specific articles based on your immediate needs  
+- **Cross-References:** Use the "Related Articles" links at the bottom of each article for navigation
+
+> 💡 **Tip:** Each article includes specific takeaways, examples, and related links to help you master the content effectively."""
+
+        # Create TOC article structure
+        intro_article = {
+            "id": str(uuid.uuid4()),
+            "title": toc_title,
+            "content": toc_html,
+            "summary": f"Overview and navigation guide for {len(articles)} articles generated from {source_filename}",
+            "tags": ["overview", "table-of-contents", "navigation", "guide"],
+            "takeaways": [
+                f"Document contains {len(articles)} focused articles for comprehensive coverage",
+                "Articles are organized for both sequential reading and reference use",
+                "Each article includes related links for easy navigation"
+            ],
+            "source_job_id": metadata.get("source_job_id", ""),
+            "source_document": source_filename,
+            "processing_metadata": {
+                "created_from": "table_of_contents_generator",
+                "article_type": "overview",
+                "total_articles": len(articles)
+            },
+            "status": "published",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        print(f"✅ Created TOC article: '{toc_title}' for {len(articles)} articles")
+        return intro_article
+        
+    except Exception as e:
+        print(f"❌ Error creating TOC article: {e}")
+        return None
+
+async def add_related_links_to_articles(created_articles: list) -> list:
+    """Add related links section to each article for better navigation"""
+    try:
+        updated_articles = []
+        
+        for i, article in enumerate(created_articles):
+            # Skip adding related links to the TOC article itself
+            if "table-of-contents" in article.get('tags', []) or "overview" in article.get('tags', []):
+                updated_articles.append(article)
+                continue
+            
+            # Create related links for this article
+            related_links = []
+            
+            # Add back to overview link
+            overview_article = created_articles[0] if created_articles else None
+            if overview_article and ("table-of-contents" in overview_article.get('tags', []) or "overview" in overview_article.get('tags', [])):
+                related_links.append(f'<li>📋 <strong><a href="#overview">Back to {overview_article["title"]}</a></strong></li>')
+            
+            # Add previous article link (skip overview)
+            prev_idx = i - 1
+            if prev_idx > 0:  # Skip index 0 which is overview
+                prev_title = created_articles[prev_idx].get('title', f'Previous Article')
+                related_links.append(f'<li>← <a href="#article-{prev_idx}">Previous: {prev_title}</a></li>')
+            
+            # Add next article link
+            next_idx = i + 1
+            if next_idx < len(created_articles):
+                next_title = created_articles[next_idx].get('title', f'Next Article')
+                related_links.append(f'<li><a href="#article-{next_idx}">Next: {next_title}</a> →</li>')
+            
+            # Add related articles from same document
+            same_doc_articles = [a for j, a in enumerate(created_articles) 
+                               if j != i and a.get('source_document') == article.get('source_document') 
+                               and not ("overview" in a.get('tags', []))]
+            
+            if len(same_doc_articles) > 1:
+                other_articles = same_doc_articles[:3]  # Limit to 3 related articles
+                for other_article in other_articles:
+                    related_links.append(f'<li>📄 <a href="#related">{other_article["title"]}</a></li>')
+            
+            # Only add related links section if there are links to show
+            if related_links:
+                related_section = f"""
+<hr style="margin: 2rem 0; border: none; border-top: 2px solid #e5e7eb;">
+
+<div class="related-links" style="background-color: #f8fafc; padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6;">
+    <h3 style="color: #1f2937; margin-top: 0;">Related Articles</h3>
+    <ul style="margin-bottom: 0;">
+        {chr(10).join(related_links)}
+    </ul>
+</div>"""
+                
+                # Add to content
+                updated_article = article.copy()
+                original_content = article.get('content', '')
+                updated_article['content'] = original_content + related_section
+                
+                # Create markdown version
+                markdown_links = []
+                if overview_article and ("table-of-contents" in overview_article.get('tags', []) or "overview" in overview_article.get('tags', [])):
+                    markdown_links.append(f'- 📋 **[Back to {overview_article["title"]}](#overview)**')
+                
+                if prev_idx > 0:
+                    prev_title = created_articles[prev_idx].get('title', 'Previous Article')
+                    markdown_links.append(f'- ← [Previous: {prev_title}](#article-{prev_idx})')
+                    
+                if next_idx < len(created_articles):
+                    next_title = created_articles[next_idx].get('title', 'Next Article')
+                    markdown_links.append(f'- [Next: {next_title}](#article-{next_idx}) →')
+                
+                if markdown_links:
+                    markdown_related = f"\n\n---\n\n### Related Articles\n\n" + "\n".join(markdown_links)
+                    # Handle articles that might not have markdown field
+                    original_markdown = article.get('markdown', '')
+                    updated_article['markdown'] = original_markdown + markdown_related
+                
+                updated_articles.append(updated_article)
+            else:
+                updated_articles.append(article)
+        
+        print(f"✅ Added related links to {len([a for a in updated_articles if not ('overview' in a.get('tags', []))])} articles")
+        return updated_articles
+        
+    except Exception as e:
+        print(f"❌ Error adding related links: {e}")
+        return created_articles
+
 # === HTML PREPROCESSING PIPELINE FOR ACCURATE IMAGE REINSERTION ===
 
 class DocumentPreprocessor:

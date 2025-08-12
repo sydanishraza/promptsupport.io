@@ -232,13 +232,21 @@ const PromptSupportEditor = ({
   }, []);
   
   const handleEditorMouseUp = useCallback((e) => {
-    // MOUSE SELECTION FIX: Handle text selection after mouse up
+    // CRITICAL BUG FIX: Preserve text selection while detecting formats
     setTimeout(() => {
-      detectActiveFormats();
       const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) {
-        setSelectedText(selection.toString());
+      const selectedText = selection ? selection.toString() : '';
+      
+      // Only set selected text if there is actually selected text
+      if (selectedText.length > 0) {
+        setSelectedText(selectedText);
+        console.log('🖱️ Mouse selection detected:', selectedText.substring(0, 30) + (selectedText.length > 30 ? '...' : ''));
+      } else {
+        setSelectedText('');
       }
+      
+      // Detect active formats AFTER handling selection to prevent interference
+      detectActiveFormats();
     }, 10);
   }, []);
   

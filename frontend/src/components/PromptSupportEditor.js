@@ -295,9 +295,8 @@ const PromptSupportEditor = ({
       editorRef.current = null;
     }
   }, [isEditing, content]);
-        element.contentEditable = true;
-        element.style.minHeight = '400px';
-        element.style.overflowY = 'auto';
+
+  // Set up article data when article prop changes
         
         // Immediate focus and activation
         setTimeout(() => {

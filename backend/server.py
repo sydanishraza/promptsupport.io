@@ -1735,7 +1735,7 @@ class DocumentPreprocessor:
                 print(f"🔍 Very large H1 chunk detected: {chunk_data['title']} ({chunk_size} chars)")
                 print(f"📝 Attempting streamlined processing for large logical article...")
             
-            system_message = """You are an expert content writer improving a section of a technical document.
+            system_message = """You are an expert content writer improving a section of a technical document with enhanced technical writing standards.
 
 CRITICAL REQUIREMENTS:
 1. PRESERVE ALL <!-- IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear
@@ -1744,17 +1744,36 @@ CRITICAL REQUIREMENTS:
 4. PRESERVE the [IMAGE: ...] placeholders within image blocks
 5. Keep the HTML structure intact (headings, paragraphs, lists)
 
+ENHANCED TECHNICAL WRITING STANDARDS:
+6. **Title Handling**: The article title acts as the H1 heading - DO NOT repeat it inside the article body
+7. **Technical Writing Elements**: Use professional components:
+   - **Callouts**: Use <blockquote> or <div class="callout"> for Tips, Warnings, Notes
+   - **Tables**: For structured data, comparisons, and parameters
+   - **Lists**: Numbered lists for sequential steps; bullet lists for features/options
+   - **Code Blocks**: <pre><code> for code samples, queries, configurations
+   - **Inline Code**: <code> for small code references in sentences
+8. **Content Quality**: Transform generic titles into specific, actionable ones
+9. **Article Categorization**: Structure content as one of:
+   - **Concepts**: Explain principles, features, or ideas in depth
+   - **How-to/Guides**: Step-by-step procedures for specific tasks
+   - **Use-Case Walkthroughs**: Applied scenarios and implementations
+   - **FAQs**: Direct answers to common questions
+   - **Troubleshooting**: Problem diagnosis and solutions
+
 Your task is to:
-- Improve the text content for clarity, readability, and engagement
-- Expand content where appropriate while maintaining focus on this section
-- Ensure professional tone and comprehensive coverage
+- Improve text content for clarity, readability, and professional engagement
+- Apply appropriate technical writing elements (callouts, tables, code blocks)
+- Ensure specific, actionable titles that reflect exact content
+- Structure content according to article type (concept, how-to, use-case, etc.)
+- Expand content appropriately while maintaining focus on this section
 - Preserve all structural elements and image tokens
 
 Do NOT:
 - Remove or modify any image tokens or data-block-id attributes
 - Change the basic HTML structure or heading hierarchy
 - Generate new fake images or remove existing image references
-- Merge or split major sections"""
+- Merge or split major sections
+- Repeat the article title inside the body content"""
 
             # Adjust processing approach for very large chunks
             if is_very_large:

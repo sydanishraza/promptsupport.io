@@ -730,7 +730,7 @@ def extract_common_themes(titles: list) -> list:
         return []
 
 async def add_related_links_to_articles(created_articles: list) -> list:
-    """Add related links section to each article for better navigation"""
+    """Add comprehensive related links section to each article for better navigation"""
     try:
         updated_articles = []
         
@@ -740,7 +740,7 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                 updated_articles.append(article)
                 continue
             
-            # Create related links for this article
+            # Create comprehensive related links for this article
             related_links = []
             
             # Add back to overview link
@@ -760,15 +760,32 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                 next_title = created_articles[next_idx].get('title', f'Next Article')
                 related_links.append(f'<li><a href="#article-{next_idx}">Next: {next_title}</a> →</li>')
             
-            # Add related articles from same document
-            same_doc_articles = [a for j, a in enumerate(created_articles) 
-                               if j != i and a.get('source_document') == article.get('source_document') 
-                               and not ("overview" in a.get('tags', []))]
+            # ENHANCEMENT: Add co-related articles from same document with different types
+            article_type = article.get('metadata', {}).get('article_type', 'general')
+            same_doc_articles = []
             
-            if len(same_doc_articles) > 1:
-                other_articles = same_doc_articles[:3]  # Limit to 3 related articles
-                for other_article in other_articles:
-                    related_links.append(f'<li>📄 <a href="#related">{other_article["title"]}</a></li>')
+            for j, other_article in enumerate(created_articles):
+                if (j != i and 
+                    other_article.get('source_document') == article.get('source_document') and 
+                    not ("overview" in other_article.get('tags', [])) and
+                    other_article.get('metadata', {}).get('article_type') != article_type):
+                    same_doc_articles.append({
+                        'title': other_article['title'],
+                        'type': other_article.get('metadata', {}).get('article_type', 'general'),
+                        'index': j
+                    })
+            
+            # Add related articles by type
+            if same_doc_articles:
+                related_articles_by_type = same_doc_articles[:3]  # Limit to 3 related articles
+                for related_article in related_articles_by_type:
+                    icon = get_article_type_icon(related_article['type'])
+                    related_links.append(f'<li>{icon} <a href="#article-{related_article["index"]}">{related_article["title"]}</a> <em>({related_article["type"]})</em></li>')
+            
+            # ENHANCEMENT: Add external reference links based on content analysis
+            external_links = await generate_external_reference_links(article)
+            if external_links:
+                related_links.extend(external_links)
             
             # Only add related links section if there are links to show
             if related_links:
@@ -776,10 +793,16 @@ async def add_related_links_to_articles(created_articles: list) -> list:
 <hr style="margin: 2rem 0; border: none; border-top: 2px solid #e5e7eb;">
 
 <div class="related-links" style="background-color: #f8fafc; padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6;">
-    <h3 style="color: #1f2937; margin-top: 0;">Related Articles</h3>
-    <ul style="margin-bottom: 0;">
-        {chr(10).join(related_links)}
+    <h3 style="color: #1f2937; margin-top: 0;">Related Articles & Resources</h3>
+    
+    <h4 style="color: #374151; margin-bottom: 0.5rem; font-size: 1rem;">Navigation</h4>
+    <ul style="margin-bottom: 1rem;">
+        {chr(10).join([link for link in related_links if any(word in link for word in ['Back to', 'Previous:', 'Next:'])])}
     </ul>
+    
+    {'<h4 style="color: #374151; margin-bottom: 0.5rem; font-size: 1rem;">Related Topics</h4><ul style="margin-bottom: 1rem;">' + chr(10).join([link for link in related_links if not any(word in link for word in ['Back to', 'Previous:', 'Next:', 'External'])]) + '</ul>' if any(link for link in related_links if not any(word in link for word in ['Back to', 'Previous:', 'Next:', 'External'])) else ''}
+    
+    {'<h4 style="color: #374151; margin-bottom: 0.5rem; font-size: 1rem;">External Resources</h4><ul style="margin-bottom: 0;">' + chr(10).join([link for link in related_links if 'External' in link]) + '</ul>' if any('External' in link for link in related_links) else ''}
 </div>"""
                 
                 # Add to content
@@ -800,8 +823,15 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                     next_title = created_articles[next_idx].get('title', 'Next Article')
                     markdown_links.append(f'- [Next: {next_title}](#article-{next_idx}) →')
                 
+                # Add related articles
+                if same_doc_articles:
+                    markdown_links.append('')
+                    markdown_links.append('**Related Topics:**')
+                    for related_article in related_articles_by_type:
+                        markdown_links.append(f'- {get_article_type_icon(related_article["type"])} [{related_article["title"]}](#article-{related_article["index"]}) *({related_article["type"]})*')
+                
                 if markdown_links:
-                    markdown_related = f"\n\n---\n\n### Related Articles\n\n" + "\n".join(markdown_links)
+                    markdown_related = f"\n\n---\n\n### Related Articles & Resources\n\n" + "\n".join(markdown_links)
                     # Handle articles that might not have markdown field
                     original_markdown = article.get('markdown', '')
                     updated_article['markdown'] = original_markdown + markdown_related
@@ -810,12 +840,70 @@ async def add_related_links_to_articles(created_articles: list) -> list:
             else:
                 updated_articles.append(article)
         
-        print(f"✅ Added related links to {len([a for a in updated_articles if not ('overview' in a.get('tags', []))])} articles")
+        print(f"✅ Enhanced related links for {len([a for a in updated_articles if not ('overview' in a.get('tags', []))])} articles with navigation, co-related topics, and external resources")
         return updated_articles
         
     except Exception as e:
-        print(f"❌ Error adding related links: {e}")
+        print(f"❌ Error adding enhanced related links: {e}")
         return created_articles
+
+def get_article_type_icon(article_type: str) -> str:
+    """Get appropriate icon for article type"""
+    icons = {
+        'overview': '📋',
+        'concept': '💡',
+        'how-to': '🔧',
+        'use-case': '📄',
+        'faq-troubleshooting': '❓',
+        'general': '📖'
+    }
+    return icons.get(article_type, '📄')
+
+async def generate_external_reference_links(article: dict) -> list:
+    """Generate external reference links based on article content analysis"""
+    try:
+        content = article.get('content', '').lower()
+        title = article.get('title', '').lower()
+        external_links = []
+        
+        # Analyze content for common technical topics and generate relevant external links
+        if any(term in content or term in title for term in ['google maps', 'maps api', 'google api']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://developers.google.com/maps/documentation" target="_blank">Google Maps Platform Documentation</a></li>',
+                '<li>🌐 External: <a href="https://console.cloud.google.com/google/maps-apis" target="_blank">Google Cloud Console - Maps APIs</a></li>'
+            ])
+        
+        elif any(term in content or term in title for term in ['javascript', 'js', 'react', 'frontend']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">MDN JavaScript Documentation</a></li>',
+                '<li>🌐 External: <a href="https://reactjs.org/docs" target="_blank">React Documentation</a></li>'
+            ])
+        
+        elif any(term in content or term in title for term in ['api', 'rest', 'endpoint', 'integration']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://swagger.io/docs/" target="_blank">API Documentation Best Practices</a></li>',
+                '<li>🌐 External: <a href="https://restfulapi.net/" target="_blank">RESTful API Design Guidelines</a></li>'
+            ])
+        
+        elif any(term in content or term in title for term in ['troubleshoot', 'debug', 'error', 'problem']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://stackoverflow.com/" target="_blank">Stack Overflow - Developer Community</a></li>',
+                '<li>🌐 External: <a href="https://github.com/" target="_blank">GitHub - Code Examples and Issues</a></li>'
+            ])
+        
+        # Generic helpful resources if no specific topic detected
+        if not external_links:
+            external_links.extend([
+                '<li>🌐 External: <a href="https://developer.mozilla.org/" target="_blank">MDN Web Docs</a></li>',
+                '<li>🌐 External: <a href="https://stackoverflow.com/" target="_blank">Stack Overflow Community</a></li>'
+            ])
+        
+        # Limit to 2 external links to avoid overwhelming
+        return external_links[:2]
+        
+    except Exception as e:
+        print(f"⚠️ External link generation failed: {e}")
+        return []
 
 # === HTML PREPROCESSING PIPELINE FOR ACCURATE IMAGE REINSERTION ===
 

@@ -338,7 +338,7 @@ def test_content_library_integration():
         integration_checks.append(('Substantial content quality', quality_check))
         
         # Report results
-        passed_checks = sum(integration_checks)
+        passed_checks = sum(1 for _, result in integration_checks if result)
         total_checks = len(integration_checks)
         
         for i, (check_name, result) in enumerate(integration_checks):

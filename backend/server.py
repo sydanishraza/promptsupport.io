@@ -1778,17 +1778,36 @@ Do NOT:
             # Adjust processing approach for very large chunks
             if is_very_large:
                 # For very large chunks, focus on structural improvements rather than content expansion
-                user_message = f"""Please improve this large document section with focused structural improvements:
+                user_message = f"""Please improve this large document section with enhanced technical writing standards:
 
 SECTION: {chunk_data['title']}
 
 {chunk_data['content'][:50000]}...
 [Content truncated for processing - full content will be preserved]
 
+ENHANCEMENT REQUIREMENTS:
+1. **Title Optimization**: Ensure the title "{chunk_data['title']}" is specific and actionable, not generic
+2. **Technical Writing Elements**: Apply appropriate professional components:
+   - Use <blockquote> or styled <div> blocks for callouts (💡 Tips, 📝 Notes, ⚠️ Warnings)
+   - Structure data in <table> format for comparisons, parameters, configurations
+   - Use <ol> for sequential steps, <ul> for feature lists and options
+   - Apply <pre><code> for code samples and <code> for inline references
+3. **Content Categorization**: Structure this section as:
+   - **Concept**: If explaining principles or features
+   - **How-to Guide**: If providing step-by-step procedures
+   - **Use-Case Walkthrough**: If demonstrating implementations
+   - **FAQ/Troubleshooting**: If addressing problems/questions
+4. **Professional Standards**: 
+   - Clear heading hierarchy (H2, H3, H4 - NO H1 as that's the title)
+   - Actionable language for instructions
+   - Consistent terminology and UI references
+   - Remove ambiguity and improve transitions
+
 Focus on:
 - Structural improvements and formatting consistency
-- Key content organization and flow
-- Professional tone maintenance  
+- Professional technical writing element integration
+- Title optimization for clarity and specificity
+- Content organization according to article type
 - Preserving all image positions and tokens exactly as they are
 
 Note: This is a large logical section that should remain as one article. Focus on improvements without major content expansion."""

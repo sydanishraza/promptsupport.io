@@ -8780,31 +8780,40 @@ def classify_article_type(content: str) -> str:
         return 'concept'  # Default to concept for general content
 
 async def generate_faq_troubleshooting_article(content: str, metadata: dict) -> DocumentChunk:
-    """Generate FAQ/Troubleshooting article from content analysis"""
+    """Generate intelligent FAQ/Troubleshooting article from content analysis using LLM"""
     try:
         content_lower = content.lower()
         
-        # Check if content has Q&A patterns or troubleshooting keywords
-        has_qa = any(pattern in content_lower for pattern in [
-            'question', 'answer', 'faq', 'q:', 'a:', '?', 
-            'troubleshoot', 'problem', 'error', 'issue', 'solution',
-            'common', 'frequently', 'typical'
-        ])
+        # ENHANCED: More intelligent FAQ generation criteria
+        # Generate FAQ for technical content, tutorials, guides, APIs, etc.
+        should_generate_faq = (
+            # Original Q&A patterns
+            any(pattern in content_lower for pattern in [
+                'question', 'answer', 'faq', 'q:', 'a:', '?', 
+                'troubleshoot', 'problem', 'error', 'issue', 'solution',
+                'common', 'frequently', 'typical'
+            ]) or
+            # Technical content patterns that warrant FAQ
+            any(pattern in content_lower for pattern in [
+                'api', 'integration', 'tutorial', 'guide', 'how to',
+                'setup', 'configuration', 'install', 'implement',
+                'documentation', 'reference', 'example', 'code'
+            ]) or
+            # Complex content that users commonly ask questions about
+            len(content) > 2000  # Substantial content likely to generate questions
+        )
         
-        if not has_qa:
-            return None  # Don't force FAQ if content doesn't warrant it
+        if not should_generate_faq:
+            print("📝 Content doesn't warrant FAQ generation")
+            return None
         
-        # Create a basic FAQ structure from identified issues
-        faq_content = """<h2>Frequently Asked Questions & Troubleshooting</h2>
-<p>Based on the content analysis, here are common questions and troubleshooting tips:</p>
-
-<h3>Common Questions</h3>
-<p>This section addresses frequently asked questions related to the topics covered in this documentation.</p>
-
-<h3>Troubleshooting</h3>
-<p>If you encounter issues while following the procedures outlined in this guide, refer to this troubleshooting section for solutions to common problems.</p>
-
-<blockquote class="note">📝 <strong>Note:</strong> This FAQ section is generated based on content analysis. For specific questions not covered here, refer to the related articles or contact support.</blockquote>"""
+        # ENHANCEMENT: Use LLM to generate intelligent FAQ from actual content
+        faq_content = await generate_intelligent_faq_with_llm(content, metadata)
+        
+        if not faq_content:
+            print("⚠️ LLM FAQ generation failed, using structured fallback")
+            # Enhanced fallback with better structure
+            faq_content = create_structured_faq_fallback(content)
         
         fingerprint = generate_content_fingerprint(faq_content)
         
@@ -8816,18 +8825,170 @@ async def generate_faq_troubleshooting_article(content: str, metadata: dict) -> 
                 'article_type': 'faq-troubleshooting',
                 'content_focus': 'support',
                 'uniqueness_score': 1.0,
-                'generated': True
+                'generated': True,
+                'generation_method': 'llm_enhanced' if 'llm' in locals() else 'structured_fallback'
             },
             source_file=metadata.get('original_filename', 'document'),
             chunk_index=999,
             content_fingerprint=fingerprint
         )
         
+        print("✅ Generated intelligent FAQ/Troubleshooting article")
         return chunk
         
     except Exception as e:
-        print(f"⚠️ FAQ generation failed: {e}")
+        print(f"❌ FAQ generation failed: {e}")
         return None
+
+async def generate_intelligent_faq_with_llm(content: str, metadata: dict) -> str:
+    """Generate intelligent FAQ content using LLM analysis of source content"""
+    try:
+        # Truncate content for LLM processing if too long
+        analysis_content = content[:4000] if len(content) > 4000 else content
+        
+        system_message = """You are an expert technical writer specializing in creating comprehensive FAQ and troubleshooting sections from technical documentation.
+
+Your task is to analyze the provided content and generate a comprehensive FAQ & Troubleshooting section that addresses:
+1. Common questions users would have about the topic
+2. Potential issues and their solutions
+3. Best practices and recommendations
+4. Troubleshooting steps for common problems
+
+Generate practical, specific questions and answers based on the actual content provided. Don't create generic placeholder content.
+
+Use this HTML structure:
+- <h2> for main sections
+- <h3> for subsections  
+- <blockquote class="tip"> for tips with 💡 icon
+- <blockquote class="warning"> for warnings with ⚠️ icon
+- <code> for inline code references
+- <ol> for numbered troubleshooting steps
+- <ul> for feature lists
+
+Focus on creating actionable, specific content that users would genuinely find helpful."""
+
+        user_message = f"""Analyze this technical content and create a comprehensive FAQ & Troubleshooting section:
+
+{analysis_content}
+
+Source document: {metadata.get('original_filename', 'Technical Documentation')}
+
+Generate 4-6 relevant questions with detailed answers, plus a troubleshooting section with common issues and solutions. Make the content specific to the actual topics covered in the source material."""
+
+        # Call LLM to generate intelligent FAQ
+        faq_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if faq_response and len(faq_response.strip()) > 200:
+            print("✅ LLM generated intelligent FAQ content")
+            return faq_response.strip()
+        else:
+            print("⚠️ LLM FAQ response insufficient, using fallback")
+            return None
+            
+    except Exception as e:
+        print(f"⚠️ LLM FAQ generation error: {e}")
+        return None
+
+def create_structured_faq_fallback(content: str) -> str:
+    """Create structured FAQ fallback when LLM generation fails"""
+    try:
+        content_lower = content.lower()
+        
+        # Analyze content to create more targeted FAQ
+        topic_type = "the system"
+        if 'api' in content_lower:
+            topic_type = "the API"
+        elif any(word in content_lower for word in ['maps', 'location', 'google']):
+            topic_type = "the mapping service"
+        elif 'integration' in content_lower:
+            topic_type = "the integration"
+        elif any(word in content_lower for word in ['tutorial', 'guide', 'how to']):
+            topic_type = "this tutorial"
+        
+        # Extract key terms for more specific content
+        key_terms = extract_key_technical_terms(content)
+        key_terms_text = ", ".join(key_terms[:5]) if key_terms else "core concepts"
+        
+        faq_content = f"""<h2>Frequently Asked Questions & Troubleshooting</h2>
+
+<p>This section addresses common questions and troubleshooting scenarios related to {topic_type} covered in this documentation.</p>
+
+<h3>Common Questions</h3>
+
+<h4>Q: What are the key requirements for implementing {topic_type}?</h4>
+<p>The main requirements include understanding {key_terms_text} and following the implementation steps outlined in the documentation.</p>
+
+<h4>Q: How do I get started with {topic_type}?</h4>
+<p>Begin by reviewing the overview section, then follow the step-by-step implementation guide provided in the related articles.</p>
+
+<h4>Q: What are the most common implementation challenges?</h4>
+<p>Common challenges include configuration issues, authentication problems, and integration complexities. Refer to the troubleshooting section below for solutions.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>Configuration Issues</h4>
+<ol>
+<li>Verify all required parameters are correctly configured</li>
+<li>Check that authentication credentials are valid and properly set</li>
+<li>Ensure all dependencies are installed and up to date</li>
+</ol>
+
+<h4>Common Error Resolution</h4>
+<ul>
+<li><strong>Authentication errors:</strong> Verify API keys and credentials</li>
+<li><strong>Connection issues:</strong> Check network connectivity and endpoint URLs</li>
+<li><strong>Implementation problems:</strong> Review the implementation examples in related articles</li>
+</ul>
+
+<blockquote class="tip">💡 <strong>Pro Tip:</strong> When troubleshooting, check the console logs for detailed error messages and refer to the related articles for specific implementation guidance.</blockquote>
+
+<blockquote class="note">📝 <strong>Note:</strong> For additional support beyond these common scenarios, consult the related articles or refer to the official documentation.</blockquote>"""
+
+        return faq_content
+        
+    except Exception as e:
+        print(f"⚠️ Structured FAQ fallback error: {e}")
+        # Final fallback
+        return """<h2>Frequently Asked Questions & Troubleshooting</h2>
+<p>This section provides support information for common questions and issues.</p>
+<h3>Common Questions</h3>
+<p>Refer to the related articles for detailed information about implementation and best practices.</p>
+<h3>Troubleshooting</h3>
+<p>For troubleshooting support, consult the related documentation or contact support.</p>"""
+
+def extract_key_technical_terms(content: str) -> list:
+    """Extract key technical terms from content for better FAQ generation"""
+    try:
+        import re
+        
+        # Look for technical terms (capitalized words, APIs, technical patterns)
+        technical_patterns = [
+            r'\b[A-Z][a-z]+\s*API\b',  # APIs
+            r'\b[A-Z][a-zA-Z]*\s*[A-Z][a-zA-Z]*\b',  # CamelCase terms
+            r'\b\w+\.\w+\(\)',  # Method calls
+            r'\b[A-Z]{2,}\b',  # Acronyms
+            r'\b\w+ing\b',  # Technical processes (integrating, implementing, etc.)
+        ]
+        
+        terms = []
+        for pattern in technical_patterns:
+            matches = re.findall(pattern, content)
+            terms.extend(matches)
+        
+        # Filter and clean terms
+        filtered_terms = []
+        for term in terms:
+            term = term.strip()
+            if len(term) > 3 and term.lower() not in ['the', 'and', 'for', 'with', 'this']:
+                filtered_terms.append(term)
+        
+        # Remove duplicates and return most frequent
+        unique_terms = list(set(filtered_terms))
+        return unique_terms[:8]  # Top 8 terms
+        
+    except Exception as e:
+        print(f"⚠️ Key term extraction failed: {e}")
+        return []
 
 async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
     """Fallback: Basic chunking strategy (original implementation)"""

@@ -7829,23 +7829,54 @@ async def create_content_library_articles_from_chunks(chunks: List[DocumentChunk
             
             # Create comprehensive article using LLM enhancement
             try:
-                system_message = """You are a technical writing expert. Transform the provided content into a well-structured, comprehensive article.
+                system_message = """You are a technical writing expert specializing in professional documentation. Transform the provided content into a well-structured, comprehensive article following enhanced technical writing standards.
 
-Requirements:
-- Create a clear, descriptive title
-- Use proper HTML structure with H1, H2, H3 headings
-- Write comprehensive paragraphs with detailed explanations  
-- Ensure content is editor-compatible (no markdown)
-- Include proper HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>
-- Make the content informative and professional
+ENHANCED TECHNICAL WRITING REQUIREMENTS:
+
+1. **Title Creation Standards**:
+   - Create specific, actionable titles that reflect exact content
+   - **Concepts**: "API Core Concepts and Components" not "Understanding the API"
+   - **How-to**: "Integrating Google Maps into React Applications" not "Comprehensive Guide to Maps"
+   - **Use-Cases**: "Building Location-Based Store Finder" not "Maps Implementation Guide"
+   - **Troubleshooting**: "Resolving 'Invalid API Key' Errors" not "API Issues Guide"
+
+2. **Technical Writing Elements** (use appropriately based on content):
+   - **Callouts**: <blockquote class="tip">💡 Tip: ...</blockquote>, <blockquote class="warning">⚠️ Warning: ...</blockquote>, <blockquote class="note">📝 Note: ...</blockquote>
+   - **Tables**: Proper <table> structure for parameters, configurations, comparisons
+   - **Lists**: <ol> for sequential steps, <ul> for features/options/requirements  
+   - **Code Elements**: <pre><code> for multi-line code, <code> for inline references
+   - **Expand/Collapse**: <details><summary>Advanced Options</summary>content</details> for optional info
+
+3. **Content Structure by Article Type**:
+   - **Concept Articles**: Explain principles, features, definitions with clear examples
+   - **How-to/Guides**: Step-by-step procedures with numbered lists and clear outcomes
+   - **Use-Case Walkthroughs**: Applied scenarios with implementation details and examples
+   - **FAQs**: Direct question-answer format with problem-solution structure
+   - **Troubleshooting**: Problem diagnosis steps with clear resolution paths
+
+4. **Professional Standards**:
+   - Clear heading hierarchy: <h2>, <h3>, <h4> (NO <h1> - title serves as H1)
+   - Actionable, specific language for instructions
+   - Consistent terminology and UI references
+   - Proper transitions between sections
+   - Remove generic phrases like "comprehensive guide" or "understanding"
+
+5. **HTML Structure Requirements**:
+   - Use proper HTML structure with semantic elements
+   - Include proper table structure: <table>, <thead>, <tbody>, <tr>, <th>, <td>
+   - Apply <blockquote> for callouts and important notes
+   - Use <strong> for emphasis, <em> for slight emphasis
+   - NO MARKDOWN - Only HTML tags
+   - Content must be WYSIWYG editor compatible
 
 Respond with a JSON object:
 {
-    "title": "Clear, descriptive title",
-    "content": "Full HTML content with proper structure", 
-    "summary": "Brief summary of the article",
-    "tags": ["relevant", "tags"],
-    "takeaways": ["key point 1", "key point 2"]
+    "title": "Specific, actionable title reflecting exact content",
+    "content": "Full HTML content with enhanced technical writing elements", 
+    "summary": "Brief, specific summary of what the article covers",
+    "tags": ["specific", "relevant", "tags"],
+    "takeaways": ["specific actionable insight 1", "specific actionable insight 2", "specific actionable insight 3"],
+    "article_type": "concept|how-to|use-case|faq|troubleshooting"
 }"""
                 
                 user_message = f"""Transform this content into a comprehensive article:

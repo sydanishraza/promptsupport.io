@@ -510,7 +510,7 @@ async def add_related_links_to_articles(articles: list) -> list:
 # === END HELPER FUNCTIONS ===
 
 async def create_introductory_toc_article(articles: list, metadata: dict) -> dict:
-    """Create an introductory article with table of contents when multiple articles are generated"""
+    """Create a comprehensive introductory article with table of contents when multiple articles are generated"""
     try:
         source_filename = metadata.get('original_filename', 'Document')
         
@@ -521,81 +521,213 @@ async def create_introductory_toc_article(articles: list, metadata: dict) -> dic
         else:
             toc_title = "Document Overview and Table of Contents"
         
-        # Generate TOC content with enhanced structure
+        # ENHANCED INTRODUCTORY CONTENT: Create a proper introduction with topic summary
+        intro_summary = await generate_topic_summary(articles)
+        
+        # Generate TOC content with enhanced structure and mini TOC with links
         toc_items = []
+        article_links = []
+        
         for i, article in enumerate(articles):
             title = article.get('title', f'Article {i+1}')
             article_type = article.get('metadata', {}).get('article_type', 'guide')
-            toc_items.append(f'<li><strong>{title}</strong> <em>({article_type})</em></li>')
+            article_id = article.get('id', f'article-{i}')
+            
+            # Create proper links for navigation
+            toc_items.append(f'<li><strong><a href="#article-{article_id}">{title}</a></strong> <em>({article_type})</em></li>')
+            article_links.append({
+                'title': title,
+                'type': article_type,
+                'id': article_id
+            })
         
-        toc_html = f"""<h2>Document Overview</h2>
-<p>This comprehensive guide has been intelligently processed and organized into <strong>{len(articles)} focused articles</strong> for optimal learning and reference. Each article covers a specific aspect of the topic in depth.</p>
+        # ENHANCED INTRODUCTORY ARTICLE: Comprehensive overview with topic summary
+        toc_html = f"""<h2>Introduction</h2>
+{intro_summary}
 
-<blockquote class="note">📝 <strong>Note:</strong> This document has been structured using professional technical writing standards to provide the most effective learning experience.</blockquote>
+<blockquote class="note">📝 <strong>About This Guide:</strong> This comprehensive documentation has been intelligently processed and organized into <strong>{len(articles)} focused articles</strong> using professional technical writing standards to provide the most effective learning experience.</blockquote>
 
-<h2>Article Structure</h2>
-<ol>
+<h2>Complete Table of Contents</h2>
+<p>This guide covers the following topics in logical sequence:</p>
+
+<ol class="toc-list" style="margin: 1.5rem 0; padding-left: 1.5rem;">
 {chr(10).join(toc_items)}
 </ol>
 
-<h2>Reading Recommendations</h2>
+<h2>How to Use This Guide</h2>
+<table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+<thead>
+<tr style="background-color: #f8fafc;">
+<th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">Reading Approach</th>
+<th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">Recommended For</th>
+<th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid #e5e7eb; padding: 12px;"><strong>Sequential Reading</strong></td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Beginners, comprehensive learning</td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Follow the articles in order for complete understanding of the topic</td>
+</tr>
+<tr>
+<td style="border: 1px solid #e5e7eb; padding: 12px;"><strong>Reference Use</strong></td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Experienced users, specific needs</td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Jump directly to specific articles based on immediate requirements</td>
+</tr>
+<tr>
+<td style="border: 1px solid #e5e7eb; padding: 12px;"><strong>Cross-Reference Navigation</strong></td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">All users</td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Use "Related Articles" links at the bottom of each article for contextual navigation</td>
+</tr>
+</tbody>
+</table>
+
+<h2>Article Types Explained</h2>
 <ul>
-<li><strong>Sequential Reading:</strong> Follow the articles in order for comprehensive understanding</li>
-<li><strong>Reference Use:</strong> Jump to specific articles based on your immediate needs</li>
-<li><strong>Cross-References:</strong> Use the "Related Articles" links at the bottom of each article for navigation</li>
+<li><strong>Overview:</strong> High-level introductions and summaries</li>
+<li><strong>Concept:</strong> Detailed explanations of principles and features</li>
+<li><strong>How-to:</strong> Step-by-step procedural guides</li>
+<li><strong>Use-Case:</strong> Practical implementation examples and scenarios</li>
+<li><strong>FAQ/Troubleshooting:</strong> Common questions and problem resolution</li>
 </ul>
 
-<blockquote class="tip">💡 <strong>Tip:</strong> Each article includes specific takeaways, examples, and related links to help you master the content effectively.</blockquote>"""
+<blockquote class="tip">💡 <strong>Pro Tip:</strong> Each article includes specific takeaways, examples, and related links to help you master the content effectively. Use the Table of Contents above to navigate between articles seamlessly.</blockquote>
+
+<h2>Quick Navigation</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+{chr(10).join([f'<div style="background-color: #f8fafc; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6;"><strong><a href="#article-{link["id"]}">{link["title"]}</a></strong><br><em>{link["type"]}</em></div>' for link in article_links[:6]])}
+</div>"""
         
         # Create comprehensive markdown version
-        markdown_content = f"""## Document Overview
+        markdown_content = f"""## Introduction
+{intro_summary.replace('<p>', '').replace('</p>', '').replace('<strong>', '**').replace('</strong>', '**')}
 
-This comprehensive guide has been intelligently processed and organized into **{len(articles)} focused articles** for optimal learning and reference. Each article covers a specific aspect of the topic in depth.
+> 📝 **About This Guide:** This comprehensive documentation has been intelligently processed and organized into **{len(articles)} focused articles** using professional technical writing standards to provide the most effective learning experience.
 
-> 📝 **Note:** This document has been structured using professional technical writing standards to provide the most effective learning experience.
+## Complete Table of Contents
 
-## Article Structure
+This guide covers the following topics in logical sequence:
 
-{chr(10).join([f"{i+1}. **{article.get('title', f'Article {i+1}')}** *({article.get('metadata', {}).get('article_type', 'guide')})*" for i, article in enumerate(articles)])}
+{chr(10).join([f"{i+1}. **[{article.get('title', f'Article {i+1}')}](#article-{article.get('id', f'article-{i}')})** *({article.get('metadata', {}).get('article_type', 'guide')})*" for i, article in enumerate(articles)])}
 
-## Reading Recommendations
+## How to Use This Guide
 
-- **Sequential Reading:** Follow the articles in order for comprehensive understanding
-- **Reference Use:** Jump to specific articles based on your immediate needs  
-- **Cross-References:** Use the "Related Articles" links at the bottom of each article for navigation
+| Reading Approach | Recommended For | Description |
+|------------------|-----------------|-------------|
+| **Sequential Reading** | Beginners, comprehensive learning | Follow the articles in order for complete understanding |
+| **Reference Use** | Experienced users, specific needs | Jump directly to specific articles based on requirements |
+| **Cross-Reference Navigation** | All users | Use "Related Articles" links for contextual navigation |
 
-> 💡 **Tip:** Each article includes specific takeaways, examples, and related links to help you master the content effectively."""
+## Article Types Explained
 
-        # Create TOC article structure
+- **Overview:** High-level introductions and summaries
+- **Concept:** Detailed explanations of principles and features  
+- **How-to:** Step-by-step procedural guides
+- **Use-Case:** Practical implementation examples and scenarios
+- **FAQ/Troubleshooting:** Common questions and problem resolution
+
+> 💡 **Pro Tip:** Each article includes specific takeaways, examples, and related links to help you master the content effectively."""
+
+        # Create comprehensive TOC article structure
         intro_article = {
             "id": str(uuid.uuid4()),
             "title": toc_title,
             "content": toc_html,
-            "summary": f"Overview and navigation guide for {len(articles)} articles generated from {source_filename}",
-            "tags": ["overview", "table-of-contents", "navigation", "guide"],
+            "summary": f"Comprehensive overview and navigation guide for {len(articles)} articles covering {source_filename}. Includes topic introduction, complete table of contents with links, and usage recommendations.",
+            "tags": ["overview", "introduction", "table-of-contents", "navigation", "guide", "documentation"],
             "takeaways": [
-                f"Document contains {len(articles)} focused articles for comprehensive coverage",
-                "Articles are organized for both sequential reading and reference use",
-                "Each article includes related links for easy navigation"
+                f"Complete guide contains {len(articles)} focused articles organized by professional standards",
+                "Multiple reading approaches supported: sequential, reference, and cross-reference navigation",
+                "Each article includes related links and is categorized by type for optimal user experience",
+                "Content covers comprehensive topic overview with practical examples and troubleshooting"
             ],
             "source_job_id": metadata.get("source_job_id", ""),
             "source_document": source_filename,
             "processing_metadata": {
-                "created_from": "table_of_contents_generator",
+                "created_from": "introductory_toc_generator",
                 "article_type": "overview",
-                "total_articles": len(articles)
+                "total_articles": len(articles),
+                "has_topic_summary": True,
+                "enhanced_navigation": True
             },
             "status": "published",
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
         
-        print(f"✅ Created TOC article: '{toc_title}' for {len(articles)} articles")
+        print(f"✅ Created comprehensive introductory article: '{toc_title}' with topic summary for {len(articles)} articles")
         return intro_article
         
     except Exception as e:
-        print(f"❌ Error creating TOC article: {e}")
+        print(f"❌ Error creating introductory TOC article: {e}")
         return None
+
+async def generate_topic_summary(articles: list) -> str:
+    """Generate a topic summary based on article content for the introductory article"""
+    try:
+        # Analyze article titles and content to generate topic summary
+        titles = [article.get('title', '') for article in articles if article.get('title')]
+        article_types = [article.get('metadata', {}).get('article_type', 'general') for article in articles]
+        
+        # Extract common themes from titles
+        common_themes = extract_common_themes(titles)
+        
+        # Generate context-aware summary
+        if any('api' in title.lower() for title in titles):
+            topic_type = "API integration and development"
+        elif any(word in ' '.join(titles).lower() for word in ['maps', 'google', 'location']):
+            topic_type = "location-based services and mapping"
+        elif any(word in ' '.join(titles).lower() for word in ['tutorial', 'guide', 'implementation']):
+            topic_type = "technical implementation and best practices"
+        else:
+            topic_type = "comprehensive technical documentation"
+        
+        # Count article types for better summary
+        type_counts = {}
+        for article_type in article_types:
+            type_counts[article_type] = type_counts.get(article_type, 0) + 1
+        
+        type_summary = ', '.join([f"{count} {atype} article{'s' if count > 1 else ''}" for atype, count in type_counts.items() if count > 0])
+        
+        summary = f"""<p>This comprehensive documentation focuses on <strong>{topic_type}</strong>, providing both theoretical understanding and practical implementation guidance. The content has been carefully structured to cover all essential aspects of the topic.</p>
+
+<p>The guide includes <strong>{type_summary}</strong>, ensuring you have access to both conceptual explanations and hands-on examples. Whether you're looking for quick reference information or detailed step-by-step instructions, this documentation provides the comprehensive coverage you need.</p>
+
+<p><strong>Key topics covered:</strong> {', '.join(common_themes[:5]) if common_themes else 'Comprehensive coverage of the subject matter'}.</p>"""
+        
+        return summary
+        
+    except Exception as e:
+        print(f"⚠️ Topic summary generation failed: {e}")
+        return "<p>This comprehensive guide provides detailed coverage of the topic with multiple focused articles for effective learning and reference.</p>"
+
+def extract_common_themes(titles: list) -> list:
+    """Extract common themes from article titles"""
+    try:
+        import re
+        
+        # Common technical terms to look for
+        all_words = []
+        for title in titles:
+            # Extract meaningful words (exclude common words)
+            words = re.findall(r'\b[A-Za-z]{4,}\b', title.lower())
+            all_words.extend(words)
+        
+        # Count word frequency
+        word_counts = {}
+        for word in all_words:
+            word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # Filter out very common words and get meaningful themes
+        exclude_words = {'guide', 'comprehensive', 'tutorial', 'article', 'using', 'with', 'into', 'from'}
+        themes = [word for word, count in word_counts.items() 
+                 if count > 1 and word not in exclude_words]
+        
+        return sorted(themes, key=lambda x: word_counts[x], reverse=True)
+        
+    except Exception as e:
+        print(f"⚠️ Theme extraction failed: {e}")
+        return []
 
 async def add_related_links_to_articles(created_articles: list) -> list:
     """Add related links section to each article for better navigation"""

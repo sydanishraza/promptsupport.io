@@ -1812,16 +1812,44 @@ Focus on:
 
 Note: This is a large logical section that should remain as one article. Focus on improvements without major content expansion."""
             else:
-                user_message = f"""Please improve this document section while preserving all structure and tokens:
+                user_message = f"""Please improve this document section with enhanced technical writing standards:
 
 SECTION: {chunk_data['title']}
 
 {chunk_data['content']}
 
+ENHANCEMENT REQUIREMENTS:
+1. **Title Optimization**: Refine the title "{chunk_data['title']}" to be specific and actionable:
+   - **Concepts**: "API Core Concepts and Components" instead of "Understanding the API"
+   - **How-to**: "Integrating Maps into React Applications" instead of "Comprehensive Guide to Maps"
+   - **Use-Cases**: "Building Location-Based Store Finder" instead of "Maps Implementation Guide"
+   - **Troubleshooting**: "Resolving 'Invalid API Key' Errors" instead of "API Issues Guide"
+
+2. **Technical Writing Elements**: Apply professional components:
+   - **Callouts**: Use <blockquote class="tip">, <blockquote class="warning">, <blockquote class="note"> with appropriate emoji (💡 📝 ⚠️)
+   - **Tables**: Structure parameters, configurations, and comparisons in proper <table> format
+   - **Lists**: <ol> for sequential procedures, <ul> for features/options/requirements
+   - **Code Elements**: <pre><code> for multi-line code, <code> for inline references
+   - **Expand/Collapse**: Use <details><summary> for optional or detailed information
+
+3. **Content Structure by Type**:
+   - **Concept Articles**: Explain principles, features, definitions with examples
+   - **How-to Guides**: Clear step-by-step procedures with numbered lists
+   - **Use-Case Walkthroughs**: Applied scenarios with implementation details
+   - **FAQ/Troubleshooting**: Problem-solution format with clear diagnosis steps
+
+4. **Professional Standards**:
+   - Clear heading hierarchy starting with H2 (NO H1 - that's the title)
+   - Actionable, specific language for all instructions
+   - Consistent UI terminology and interface references
+   - Proper transitions between sections
+   - Remove generic phrases and improve specificity
+
 Focus on:
-- Making content more comprehensive and informative
+- Making content comprehensive, informative, and professionally structured
+- Applying appropriate technical writing elements based on content type
+- Optimizing title for clarity and searchability
 - Improving readability and flow within this section
-- Maintaining professional tone
 - Preserving all image positions and tokens exactly as they are"""
 
             # Use the existing LLM fallback system with chunk-specific session ID

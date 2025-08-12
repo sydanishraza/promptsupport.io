@@ -391,6 +391,122 @@ async def generate_enhanced_markdown_content(article_data: dict, template_data: 
     
     return '\n\n'.join(md_parts)
 
+async def create_introductory_toc_article(articles: list, metadata: dict) -> dict:
+    """Create an introductory article with table of contents when multiple articles are generated"""
+    try:
+        # Generate TOC content
+        toc_items = []
+        for i, article in enumerate(articles):
+            title = article.get('title', f'Article {i+1}')
+            toc_items.append(f"<li><a href=\"#article-{i+1}\">{title}</a></li>")
+        
+        toc_html = f"""
+        <h1>Table of Contents</h1>
+        <p>This document has been processed and split into {len(articles)} articles for better readability and navigation.</p>
+        <h2>Articles in this Document:</h2>
+        <ol>
+            {''.join(toc_items)}
+        </ol>
+        <p><em>Click on any article title above to navigate directly to that section.</em></p>
+        """
+        
+        # Create TOC article structure
+        intro_article = {
+            "id": str(uuid.uuid4()),
+            "title": "Table of Contents",
+            "html": toc_html,
+            "markdown": f"# Table of Contents\n\nThis document has been processed and split into {len(articles)} articles for better readability and navigation.\n\n## Articles in this Document:\n\n" + "\n".join([f"{i+1}. {article.get('title', f'Article {i+1}')}" for i, article in enumerate(articles)]),
+            "content": toc_html,
+            "media": [],
+            "tags": ["toc", "navigation", "generated"],
+            "status": "training",
+            "template_id": articles[0].get('template_id', ''),
+            "session_id": articles[0].get('session_id', ''),
+            "word_count": len(toc_html.split()),
+            "image_count": 0,
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": True,
+            "ai_model": "system_generated",
+            "training_mode": True,
+            "metadata": {
+                "article_type": "table_of_contents",
+                "total_articles": len(articles),
+                "phase": "toc_generation"
+            }
+        }
+        
+        return intro_article
+        
+    except Exception as e:
+        print(f"❌ Error creating TOC article: {e}")
+        return None
+
+async def add_related_links_to_articles(articles: list) -> list:
+    """Add related links section to each article for better navigation"""
+    try:
+        updated_articles = []
+        
+        for i, article in enumerate(articles):
+            # Create related links for this article
+            related_links = []
+            
+            # Add previous article link
+            if i > 0:
+                prev_title = articles[i-1].get('title', f'Article {i}')
+                related_links.append(f"<li>← Previous: <a href=\"#article-{i}\">{prev_title}</a></li>")
+            
+            # Add next article link
+            if i < len(articles) - 1:
+                next_title = articles[i+1].get('title', f'Article {i+2}')
+                related_links.append(f"<li>Next: <a href=\"#article-{i+2}\">{next_title}</a> →</li>")
+            
+            # Add back to TOC link (if this isn't the TOC itself)
+            if article.get('title') != 'Table of Contents':
+                related_links.append(f"<li>📋 <a href=\"#article-0\">Back to Table of Contents</a></li>")
+            
+            # Only add related links section if there are links to show
+            if related_links:
+                related_section = f"""
+                <hr>
+                <div class="related-links">
+                    <h3>Related Articles</h3>
+                    <ul>
+                        {''.join(related_links)}
+                    </ul>
+                </div>
+                """
+                
+                # Add to HTML content
+                updated_article = article.copy()
+                updated_article['html'] = article['html'] + related_section
+                updated_article['content'] = article['content'] + related_section
+                
+                # Update markdown content too
+                markdown_links = []
+                if i > 0:
+                    prev_title = articles[i-1].get('title', f'Article {i}')
+                    markdown_links.append(f"- ← Previous: [{prev_title}](#article-{i})")
+                if i < len(articles) - 1:
+                    next_title = articles[i+1].get('title', f'Article {i+2}')
+                    markdown_links.append(f"- Next: [{next_title}](#article-{i+2}) →")
+                if article.get('title') != 'Table of Contents':
+                    markdown_links.append(f"- 📋 [Back to Table of Contents](#article-0)")
+                
+                if markdown_links:
+                    markdown_related = f"\n\n---\n\n### Related Articles\n\n" + "\n".join(markdown_links)
+                    updated_article['markdown'] = article['markdown'] + markdown_related
+                
+                updated_articles.append(updated_article)
+            else:
+                updated_articles.append(article)
+        
+        return updated_articles
+        
+    except Exception as e:
+        print(f"❌ Error adding related links: {e}")
+        return articles
+
 # === END HELPER FUNCTIONS ===
 
 # === HTML PREPROCESSING PIPELINE FOR ACCURATE IMAGE REINSERTION ===

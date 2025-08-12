@@ -296,24 +296,6 @@ const PromptSupportEditor = ({
     }
   }, [isEditing, content]);
 
-  // Set up article data when article prop changes
-        
-        // Immediate focus and activation
-        setTimeout(() => {
-          if (element) {
-            element.focus();
-            // Add visual cue that editor is ready
-            element.style.backgroundColor = '#fafafa';
-            setTimeout(() => {
-              element.style.backgroundColor = '';
-            }, 800);
-            console.log('✅ ISSUE 2 FIX: Editor content loaded and IMMEDIATELY activated');
-          }
-        }, 1);
-      }
-    }
-  };
-  
   // === INITIALIZE CONTENT ===
   useEffect(() => {
     if (article) {

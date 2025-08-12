@@ -330,21 +330,6 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
-      // ISSUE 2 FIX: Activate immediately, no delay
-      activateEditor();
-      
-      // Also trigger on any interaction to ensure activation
-      const handleClick = () => activateEditor();
-      editorRef.current.addEventListener('click', handleClick);
-      
-      return () => {
-        if (editorRef.current) {
-          editorRef.current.removeEventListener('click', handleClick);
-        }
-      };
-    }
-  }, [isEditing]);
-
   // Phase 2 & 3: Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {

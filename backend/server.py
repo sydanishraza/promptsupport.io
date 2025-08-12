@@ -4642,37 +4642,62 @@ TARGET LENGTH: {section_data.get('estimated_words', 700)} words"""
 
 Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
 
-Follow these core rules:
+ENHANCED TECHNICAL WRITING STANDARDS:
 
-1. 🔁 Never summarize — Always enhance, elaborate, and expand source information.
-2. 🧱 Decompose intelligently — Break content into logical, titled sections with clear headings and structure.
-3. 📚 Add depth — Insert background, steps, examples, and best practices where appropriate.
-4. 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order.
-5. 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy, and instructional formatting.
-6. 📄 Generate clean, editor-friendly HTML only — Use only the following tags:
+1. **Title Creation Rules**:
+   - If source contains <h1>, extract and refine for specificity
+   - Generate specific, actionable titles that reflect exact content:
+     * **Concepts**: "API Core Concepts and Components" not "Understanding the API"  
+     * **How-to**: "Integrating Google Maps into React Applications" not "Comprehensive Guide to Maps"
+     * **Use-Cases**: "Building Location-Based Store Finder" not "Maps Implementation Guide"
+     * **Troubleshooting**: "Resolving 'Invalid API Key' Errors" not "API Issues Guide"
+   - NEVER use generic phrases like "Comprehensive Guide to..." or "Understanding..."
 
-   <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+2. **Technical Writing Elements** (apply based on content type):
+   - **Callouts**: <blockquote class="tip">💡 Tip: ...</blockquote>, <blockquote class="warning">⚠️ Warning: ...</blockquote>, <blockquote class="note">📝 Note: ...</blockquote>
+   - **Tables**: Proper <table> structure for parameters, configurations, comparisons, structured data
+   - **Lists**: <ol> for sequential procedures, <ul> for features/options/requirements
+   - **Code Elements**: <pre><code> for multi-line code samples, <code> for inline references
+   - **Expand/Collapse**: <details><summary>Advanced Options</summary>content</details> for optional information
 
-   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes.
+3. **Content Structure by Article Type**:
+   - **Concept Articles**: Explain principles, features, definitions with clear examples and context
+   - **How-to/Guides**: Step-by-step procedures with numbered lists, prerequisites, and expected outcomes
+   - **Use-Case Walkthroughs**: Applied scenarios with implementation details, code examples, and results
+   - **FAQs**: Direct question-answer format with problem-solution structure
+   - **Troubleshooting**: Problem diagnosis steps with symptoms, causes, and resolution paths
 
-💡 Title Rule:
-- If source contains <h1>, extract and reuse that.
-- If not, generate a specific, topic-focused title — never use "Comprehensive Guide to..." or generic phrases.
+4. **Core Content Rules**:
+   - 🔁 Never summarize — Always enhance, elaborate, and expand source information
+   - 🧱 Decompose intelligently — Break content into logical, titled sections with clear headings
+   - 📚 Add depth — Insert background, steps, examples, and best practices where appropriate
+   - 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order
+   - 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy
+
+5. **HTML Structure Requirements**:
+   - Generate clean, editor-friendly HTML using only: <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>, <details>, <summary>
+   - NO <h1> tags - title serves as H1 heading
+   - DO NOT include: image tags, markdown, CSS, JavaScript, or styling classes
+   - Content must be WYSIWYG editor compatible
 
 {section_info}
 
-SECTION REQUIREMENTS: Generate 800-1200 words minimum with logical flow: Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+SECTION REQUIREMENTS: Generate 800-1200 words minimum with logical flow based on content type:
+- **Concepts**: Introduction → Definition → Components → Examples → Implementation → Best Practices
+- **How-to**: Overview → Prerequisites → Step-by-Step Instructions → Examples → Troubleshooting → Next Steps
+- **Use-Cases**: Scenario Overview → Requirements → Implementation → Code Examples → Results → Variations
 
 EXPANSION MANDATE: You MUST significantly expand each section with:
-- Detailed explanations for every concept
-- Multiple practical examples 
-- Step-by-step breakdowns with context
-- Background information and rationale
-- Common pitfalls and troubleshooting
-- Best practices and recommendations
-- Real-world scenarios and use cases
+- Detailed explanations for every concept with context and rationale
+- Multiple practical examples with specific implementations
+- Step-by-step breakdowns with reasoning and expected outcomes
+- Background information and prerequisite knowledge
+- Common pitfalls, troubleshooting, and error resolution
+- Best practices, recommendations, and optimization tips
+- Real-world scenarios, use cases, and applied examples
+- Appropriate technical writing elements (tables, callouts, code blocks)
 
-DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic."""
+DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic using professional technical writing standards."""
 
         user_message = f"""The following content was extracted from a DOCX file section and must be transformed into a professionally written, fully enhanced, comprehensive HTML section using modern technical writing standards.
 

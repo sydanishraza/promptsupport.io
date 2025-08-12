@@ -269,15 +269,32 @@ const PromptSupportEditor = ({
     // TODO: Implement custom context menu modal
   }, []);
   
-  // === ISSUE 2 FIX: IMMEDIATE CONTENT REF CALLBACK ===  
-  const contentRef = (element) => {
-    editorRef.current = element;
-    if (element && isEditing && content && element.innerHTML !== content) {
-      // Set content only when needed, avoiding cursor issues
-      element.innerHTML = content;
+  // === EDITOR STABILITY FIX: STABLE CONTENT REF CALLBACK ===  
+  const contentRef = useCallback((element) => {
+    if (element) {
+      editorRef.current = element;
       
-      // ISSUE 2 FIX: Force immediate editor activation when content loads
-      if (isEditing) {
+      // FLICKER FIX: Only update content if it's actually different and we're in editing mode
+      if (isEditing && content && element.innerHTML !== content) {
+        element.innerHTML = content;
+        
+        // IMMEDIATE ACTIVATION FIX: Make editor ready immediately without delays
+        element.contentEditable = true;
+        element.style.backgroundColor = '#fefefe';
+        element.style.minHeight = '400px';
+        
+        // FOCUS FIX: Set focus without interfering with mouse interactions
+        setTimeout(() => {
+          if (element && element.isContentEditable) {
+            element.focus();
+            console.log('✅ Editor activated and focused');
+          }
+        }, 10);
+      }
+    } else {
+      editorRef.current = null;
+    }
+  }, [isEditing, content]);
         element.contentEditable = true;
         element.style.minHeight = '400px';
         element.style.overflowY = 'auto';

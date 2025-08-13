@@ -8699,20 +8699,33 @@ def classify_content_focus(content: str) -> str:
         return 'general'
 
 def calculate_content_uniqueness(content: str, existing_sections: list) -> float:
-    """Calculate uniqueness score compared to existing sections"""
+    """Calculate uniqueness score compared to existing sections with enhanced accuracy"""
     if not existing_sections:
         return 1.0
     
-    # Simple uniqueness based on word overlap
+    # ENHANCED: More sophisticated uniqueness calculation
     content_words = set(content.lower().split())
     max_overlap = 0
     
     for section in existing_sections:
         section_words = set(section['content'].lower().split())
-        overlap = len(content_words.intersection(section_words)) / len(content_words.union(section_words))
-        max_overlap = max(max_overlap, overlap)
+        
+        # Calculate Jaccard similarity (intersection over union)
+        intersection = len(content_words.intersection(section_words))
+        union = len(content_words.union(section_words))
+        
+        if union > 0:
+            overlap = intersection / union
+            max_overlap = max(max_overlap, overlap)
     
-    return 1.0 - max_overlap
+    # ENHANCED: Apply more stringent uniqueness scoring
+    uniqueness_score = 1.0 - max_overlap
+    
+    # PENALTY: Apply additional penalty for very similar content structure
+    if max_overlap > 0.6:  # High similarity threshold
+        uniqueness_score *= 0.5  # Significant penalty for similar content
+    
+    return uniqueness_score
 
 async def create_overview_chunk(content: str, metadata: dict) -> DocumentChunk:
     """Create an introductory overview chunk"""

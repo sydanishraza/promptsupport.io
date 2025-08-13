@@ -8648,7 +8648,8 @@ async def analyze_content_for_unique_sections(content: str) -> list:
             section_count = 0
             
             for paragraph in paragraphs:
-                if len(current_section + paragraph) > 2000 and current_section:
+                # ENHANCED CHUNKING: Larger chunks to prevent over-chunking (increased from 2000 to 3500)
+                if len(current_section + paragraph) > 3500 and current_section:
                     section_count += 1
                     sections.append({
                         'title': f'Section {section_count}',
@@ -8670,8 +8671,8 @@ async def analyze_content_for_unique_sections(content: str) -> list:
                     'uniqueness': 0.8
                 })
         
-        # Filter out very short sections
-        sections = [s for s in sections if len(s['content']) > 500]
+        # ENHANCED FILTERING: Filter out short sections more aggressively (increased from 500 to 1000)
+        sections = [s for s in sections if len(s['content']) > 1000]
         
         print(f"📚 Analyzed content into {len(sections)} unique sections")
         return sections

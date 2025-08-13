@@ -8546,13 +8546,23 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         
         # Step 3: Create unique, focused articles
         for i, section in enumerate(concept_sections):
-            if len(chunks) >= 5:  # Limit to prevent too many similar articles
+            if len(chunks) >= 4:  # REDUCED LIMIT: Prevent over-chunking (was 5)
                 break
                 
-            # Check for content similarity to existing chunks
+            # ENHANCED SIMILARITY CHECK: More stringent duplicate detection
             fingerprint = generate_content_fingerprint(section['content'])
             if fingerprint in used_content_fingerprints:
                 print(f"🚫 Skipping duplicate section: {section.get('title', 'Unnamed')}")
+                continue
+            
+            # ENHANCED UNIQUENESS THRESHOLD: Only include sections with high uniqueness
+            if section.get('uniqueness', 0) < 0.7:  # INCREASED threshold from 0.8 to 0.7
+                print(f"🚫 Skipping low-uniqueness section: {section.get('title', 'Unnamed')} (uniqueness: {section.get('uniqueness', 0)})")
+                continue
+            
+            # ENHANCED CONTENT SIZE CHECK: Ensure substantial content
+            if len(section['content']) < 800:  # INCREASED minimum from 500 to 800
+                print(f"🚫 Skipping short section: {section.get('title', 'Unnamed')} ({len(section['content'])} chars)")
                 continue
             
             # Determine article type based on content characteristics

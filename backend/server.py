@@ -10227,6 +10227,7 @@ def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str
         "tags": [metadata.get('type', 'upload'), 'content-chunk'],
         "takeaways": [],
         "source_type": metadata.get('type', 'text_processing'),
+        "source_document": metadata.get('original_filename', 'Document'),  # FIXED: Add source_document field
         "status": "draft",
         "metadata": {
             **metadata,
@@ -10236,7 +10237,8 @@ def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str
             "chunk_chars": len(chunk),
             "processing_approach": "fallback_chunking_with_related_links",
             "processing_timestamp": datetime.utcnow().isoformat(),
-            "has_related_links": True
+            "has_related_links": True,
+            "article_type": "concept"  # FIXED: Add article_type for proper correlation
         },
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()

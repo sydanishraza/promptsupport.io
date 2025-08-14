@@ -190,7 +190,7 @@ class FocusedCriticalTest:
     def test_mongodb_direct_access(self):
         """Test MongoDB direct access for Asset Library"""
         print("\n🔍 Testing MongoDB Direct Access...")
-        if not self.db:
+        if self.db is None:
             print("❌ MongoDB not available")
             return False
         

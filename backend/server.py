@@ -8854,6 +8854,7 @@ Create an engaging, informative hub article that introduces the topic and guides
             # Create hub article
             hub_chunk = DocumentChunk(
                 content=final_content,
+                content_fingerprint=generate_content_fingerprint(final_content),  # FIXED: Include in constructor
                 metadata={
                     **metadata,
                     'article_type': 'hub_overview',
@@ -8863,9 +8864,6 @@ Create an engaging, informative hub article that introduces the topic and guides
                     'processing_method': 'enhanced_hub_generation'
                 }
             )
-            
-            # Add content fingerprint
-            hub_chunk.content_fingerprint = generate_content_fingerprint(final_content)
             
             print(f"✅ Enhanced hub article created with {len(content_sections)} linked articles")
             return hub_chunk

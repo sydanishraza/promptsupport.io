@@ -8494,7 +8494,7 @@ Original context: {metadata.get('original_filename', 'Document content')}
                         fallback_article = {
                             "id": str(uuid.uuid4()),
                             "title": title,
-                            "content": f"<h1>{title}</h1>\n<p>{chunk.content}</p>",
+                            "content": f"<h1>{title}</h1>\n<p>{chunk['content']}</p>",
                             "summary": f"Content from {metadata.get('original_filename', 'document')}",
                             "tags": ["knowledge-engine", "fallback"],
                             "takeaways": [],

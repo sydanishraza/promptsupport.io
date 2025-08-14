@@ -8359,7 +8359,7 @@ async def process_content(request: ContentProcessRequest):
             )
         raise HTTPException(status_code=500, detail=str(e))
 
-async def create_content_library_articles_from_chunks(chunks: List[DocumentChunk], metadata: Dict[str, Any]) -> List[Dict]:
+async def create_content_library_articles_from_chunks(chunks: List[Dict], metadata: Dict[str, Any]) -> List[Dict]:
     """Convert document chunks into individual Content Library articles"""
     try:
         created_articles = []

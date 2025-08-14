@@ -3942,39 +3942,6 @@ const PromptSupportEditor = ({
                 }}
                 dangerouslySetInnerHTML={{ __html: content || '<p>No content available</p>' }} 
               />
-              
-              {/* RELATED LINKS STYLING FIX: Ensure related links are visible */}
-              <style jsx>{`
-                .related-links {
-                  margin: 2rem 0 !important;
-                  padding: 1.5rem !important;
-                  background-color: #f8fafc !important;
-                  border-radius: 0.5rem !important;
-                  border-left: 4px solid #3b82f6 !important;
-                  display: block !important;
-                  visibility: visible !important;
-                }
-                .related-links h3, .related-links h4 {
-                  color: #1f2937 !important;
-                  margin-bottom: 0.5rem !important;
-                  font-weight: 600 !important;
-                }
-                .related-links ul {
-                  margin-bottom: 1rem !important;
-                  list-style-type: disc !important;
-                  margin-left: 1.5rem !important;
-                }
-                .related-links li {
-                  margin-bottom: 0.25rem !important;
-                }
-                .related-links a {
-                  color: #3b82f6 !important;
-                  text-decoration: underline !important;
-                }
-                .related-links a:hover {
-                  color: #1d4ed8 !important;
-                }
-              `}</style>
             ) : (
               // ISSUE 3 FIX: Simplified edit mode with clean layout
               <>

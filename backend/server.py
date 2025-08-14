@@ -9001,11 +9001,30 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             used_content_fingerprints.add(fingerprint)
             print(f"✅ Created {article_type} article: {section.get('title', 'Article')} (uniqueness: {section.get('uniqueness', 0.8)})")
         
-        # Step 4: ENHANCED FAQ GENERATION - Always generate FAQ/Troubleshooting article
+        # Step 4: ENHANCED FAQ GENERATION - Always generate FAQ/Troubleshooting with deduplication
         faq_chunk = await generate_faq_troubleshooting_article(content, metadata)
         if faq_chunk:
-            chunks.append(faq_chunk.dict())
-            print("✅ Generated enhanced FAQ/Troubleshooting article with common issues")
+            # DEDUPLICATION: Check if FAQ content overlaps significantly with existing chunks
+            faq_content = faq_chunk.dict()['content']
+            is_duplicate = False
+            
+            for existing_chunk in chunks:
+                existing_content = existing_chunk.get('content', '')
+                overlap_ratio = calculate_content_overlap(faq_content, existing_content)
+                if overlap_ratio > 0.6:  # 60% overlap threshold
+                    print(f"⚠️ DEDUPLICATION: FAQ content overlaps {overlap_ratio:.1%} with existing article - merging instead")
+                    # Merge FAQ content into existing article
+                    existing_chunk['content'] += f"\n\n## Frequently Asked Questions\n{extract_faq_section(faq_content)}"
+                    existing_chunk['metadata']['has_faq_section'] = True
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                chunks.append(faq_chunk.dict())
+                print("✅ Generated enhanced FAQ/Troubleshooting article with common issues")
+        
+        # ENHANCEMENT: Apply deduplication across all chunks
+        chunks = await apply_content_deduplication(chunks, metadata)
         
         print(f"✅ ANTI-DUPLICATE CHUNKING COMPLETE: Created {len(chunks)} unique, focused articles")
         print(f"📊 Article types: {[chunk['metadata'].get('article_type', 'general') for chunk in chunks]}")  # FIXED: Access dict

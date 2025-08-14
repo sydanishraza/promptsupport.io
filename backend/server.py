@@ -11272,7 +11272,13 @@ File Information:
         
         await db.processing_jobs.update_one(
             {"job_id": job.job_id},
-            {"$set": job.dict()}
+            {"$set": {
+                "status": "completed", 
+                "chunks": chunks,
+                "completed_at": datetime.utcnow().isoformat(),
+                "final_stage": "completed",
+                "total_articles_created": len(chunks)
+            }}
         )
         
         return {
@@ -11281,7 +11287,7 @@ File Information:
             "file_type": file_extension,
             "extracted_content_length": len(extracted_content),
             "chunks_created": len(chunks),
-            "message": "File processed successfully"
+            "message": "File processed successfully with optimized pipeline"
         }
         
     except Exception as e:

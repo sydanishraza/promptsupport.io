@@ -1822,32 +1822,38 @@ class DocumentPreprocessor:
                             "extraction_filters_passed": "size,position,template,content"  # ADDED: Filtering info
                         }
                         
-                        # FIXED: Queue for batch Asset Library insertion
+                        # FIXED: Queue content image for batch Asset Library insertion
                         if not hasattr(self, 'pending_assets'):
                             self.pending_assets = []
                         self.pending_assets.append(asset_doc)
-                        print(f"📚 FIXED: Queued PDF image for batch Asset Library insertion: {asset_filename}")
+                        print(f"📚 CONTENT IMAGE: Queued for Asset Library: {asset_filename}")
                         
                     except Exception as asset_error:
-                        print(f"⚠️ Failed to prepare PDF image for Asset Library: {asset_error}")
+                        print(f"⚠️ Failed to prepare content image for Asset Library: {asset_error}")
                     
                     images.append({
                         'id': image_id,
                         'filename': image_filename,
                         'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
-                        'alt_text': f"PDF Page {page_num + 1} Image {img_index + 1}"
+                        'alt_text': f"Content Image from Page {page_num + 1}",
+                        'dimensions': f"{img_width}x{img_height}",
+                        'is_content': True
                     })
                     
-                    print(f"💾 Extracted PDF image: {image_filename} ({len(image_bytes)} bytes)")
+                    print(f"💾 CONTENT IMAGE: Extracted {image_filename} ({len(image_bytes)} bytes, {img_width}x{img_height})")
                     
                 except Exception as img_error:
                     print(f"⚠️ Failed to extract image {img_index} from page {page_num}: {img_error}")
                     continue
             
+            # Summary of filtering results
+            filtered_count = len(image_list) - len(images)
+            print(f"📊 Page {page_num + 1} filtering results: {len(images)} content images extracted, {filtered_count} decorative/template images filtered out")
+            
             return images
             
         except Exception as e:
-            print(f"⚠️ Error extracting images from page {page_num}: {e}")
+            print(f"❌ Error extracting images from page {page_num}: {e}")
             return []
     
     async def _convert_pdf_with_pdfplumber(self, file_path: str) -> tuple[str, list]:

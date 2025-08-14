@@ -1215,16 +1215,18 @@ const ContentLibrary = () => {
         <SnipAndRecord onClose={() => setShowSnipAndRecord(false)} />
       )}
 
-      {showKnowledgeUpload && (
-        <KnowledgeEngineUpload 
-          isOpen={showKnowledgeUpload}
-          onClose={() => setShowKnowledgeUpload(false)} 
-          onUploadComplete={() => {
-            fetchArticles();
-            setShowKnowledgeUpload(false);
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {showKnowledgeUpload && (
+          <KnowledgeEngineUpload 
+            isOpen={showKnowledgeUpload}
+            onClose={() => setShowKnowledgeUpload(false)} 
+            onUploadComplete={() => {
+              fetchArticles();
+              setShowKnowledgeUpload(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

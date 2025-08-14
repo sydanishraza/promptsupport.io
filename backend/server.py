@@ -9583,6 +9583,142 @@ def classify_article_type(content: str) -> str:
     else:
         return 'concept'  # Default to concept for general content
 
+def calculate_content_overlap(content1: str, content2: str) -> float:
+    """Calculate content overlap ratio between two text strings"""
+    try:
+        # Remove HTML tags and normalize whitespace
+        import re
+        clean1 = re.sub(r'<[^>]+>', '', content1).lower().strip()
+        clean2 = re.sub(r'<[^>]+>', '', content2).lower().strip()
+        
+        # Split into words
+        words1 = set(clean1.split())
+        words2 = set(clean2.split())
+        
+        if not words1 or not words2:
+            return 0.0
+        
+        # Calculate Jaccard similarity (intersection over union)
+        intersection = len(words1 & words2)
+        union = len(words1 | words2)
+        
+        return intersection / union if union > 0 else 0.0
+        
+    except Exception as e:
+        print(f"⚠️ Content overlap calculation failed: {e}")
+        return 0.0
+
+def extract_faq_section(faq_content: str) -> str:
+    """Extract FAQ section content from full FAQ article"""
+    try:
+        # Look for FAQ-specific content patterns
+        import re
+        
+        # Remove title/header if present
+        content = re.sub(r'^#.*FAQ.*\n', '', faq_content, flags=re.IGNORECASE | re.MULTILINE)
+        content = re.sub(r'^<h[1-6]>.*FAQ.*</h[1-6]>', '', content, flags=re.IGNORECASE | re.MULTILINE)
+        
+        # Extract Q&A pairs or troubleshooting steps
+        qa_patterns = [
+            r'(Q:|Question:|FAQ:).*?(?=Q:|Question:|FAQ:|$)',
+            r'(\*\*Q:|## Q).*?(?=\*\*Q:|## Q|$)',
+            r'(Problem:|Issue:|Error:).*?(?=Problem:|Issue:|Error:|$)'
+        ]
+        
+        extracted_content = []
+        for pattern in qa_patterns:
+            matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
+            extracted_content.extend(matches)
+        
+        if extracted_content:
+            return '\n\n'.join(extracted_content)
+        else:
+            # If no specific patterns found, return cleaned content
+            return content.strip()
+            
+    except Exception as e:
+        print(f"⚠️ FAQ section extraction failed: {e}")
+        return faq_content
+
+async def apply_content_deduplication(chunks: list, metadata: dict) -> list:
+    """Apply comprehensive content deduplication across all chunks"""
+    try:
+        if len(chunks) <= 1:
+            return chunks
+        
+        print(f"🔍 Applying content deduplication to {len(chunks)} chunks")
+        
+        deduplicated_chunks = []
+        processed_fingerprints = set()
+        
+        for i, chunk in enumerate(chunks):
+            content = chunk.get('content', '')
+            
+            # Create content fingerprint
+            import hashlib
+            content_words = content.lower().split()[:50]  # First 50 words
+            fingerprint = hashlib.md5(' '.join(content_words).encode()).hexdigest()
+            
+            # Check for exact duplicates
+            if fingerprint in processed_fingerprints:
+                print(f"⚠️ DEDUPLICATION: Skipping exact duplicate chunk {i+1}")
+                continue
+            
+            # Check for high similarity with existing chunks
+            is_similar = False
+            for existing_chunk in deduplicated_chunks:
+                overlap_ratio = calculate_content_overlap(content, existing_chunk.get('content', ''))
+                if overlap_ratio > 0.7:  # 70% similarity threshold
+                    print(f"⚠️ DEDUPLICATION: Merging similar chunk {i+1} (similarity: {overlap_ratio:.1%})")
+                    
+                    # Merge content by appending unique parts
+                    existing_content = existing_chunk.get('content', '')
+                    unique_parts = extract_unique_content_parts(content, existing_content)
+                    if unique_parts:
+                        existing_chunk['content'] += f"\n\n## Additional Information\n{unique_parts}"
+                        existing_chunk['metadata']['merged_chunks'] = existing_chunk['metadata'].get('merged_chunks', 0) + 1
+                    
+                    is_similar = True
+                    break
+            
+            if not is_similar:
+                deduplicated_chunks.append(chunk)
+                processed_fingerprints.add(fingerprint)
+        
+        print(f"✅ Deduplication complete: {len(chunks)} → {len(deduplicated_chunks)} chunks")
+        return deduplicated_chunks
+        
+    except Exception as e:
+        print(f"❌ Content deduplication failed: {e}")
+        return chunks
+
+def extract_unique_content_parts(new_content: str, existing_content: str) -> str:
+    """Extract unique parts from new content that don't exist in existing content"""
+    try:
+        import re
+        
+        # Split content into sentences
+        new_sentences = re.split(r'[.!?]+', new_content)
+        existing_sentences = re.split(r'[.!?]+', existing_content)
+        
+        # Normalize existing sentences for comparison
+        existing_normalized = [s.lower().strip() for s in existing_sentences]
+        
+        # Find unique sentences
+        unique_sentences = []
+        for sentence in new_sentences:
+            sentence_normalized = sentence.lower().strip()
+            if (sentence_normalized and 
+                len(sentence_normalized) > 20 and  # Minimum length
+                not any(sentence_normalized in existing for existing in existing_normalized)):
+                unique_sentences.append(sentence.strip())
+        
+        return '. '.join(unique_sentences) if unique_sentences else ''
+        
+    except Exception as e:
+        print(f"⚠️ Unique content extraction failed: {e}")
+        return ''
+
 async def generate_faq_troubleshooting_article(content: str, metadata: dict) -> DocumentChunk:
     """Generate intelligent FAQ/Troubleshooting article from content analysis using LLM"""
     try:

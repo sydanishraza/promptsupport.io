@@ -1680,24 +1680,99 @@ class DocumentPreprocessor:
             return "<p>Error processing page content</p>"
     
     async def _extract_images_from_pymupdf_page(self, page, page_num: int) -> list:
-        """Extract images from a PyMuPDF page"""
+        """Extract meaningful content images from a PyMuPDF page (filtering out headers, footers, decorative elements)"""
         try:
             images = []
             image_list = page.get_images()
+            
+            # Get page dimensions for position filtering
+            page_rect = page.rect
+            page_height = page_rect.height
+            page_width = page_rect.width
+            
+            # Define header/footer regions (top/bottom 10% of page)
+            header_boundary = page_height * 0.1
+            footer_boundary = page_height * 0.9
+            
+            print(f"📄 Page {page_num + 1}: Found {len(image_list)} images, applying content filtering...")
             
             for img_index, img in enumerate(image_list):
                 try:
                     # Get the XREF of the image
                     xref = img[0]
                     
-                    # Extract the image
+                    # Get image position and dimensions
+                    img_rects = page.get_image_rects(xref)
+                    if not img_rects:
+                        continue
+                    
+                    img_rect = img_rects[0]  # Use first occurrence
+                    img_y = img_rect.y0
+                    img_height = img_rect.height
+                    img_width = img_rect.width
+                    
+                    # Extract the image for size analysis
                     base_image = page.parent.extract_image(xref)
                     image_bytes = base_image["image"]
                     image_ext = base_image["ext"]
                     
+                    # INTELLIGENT FILTERING: Skip non-content images
+                    
+                    # Filter 1: Skip very small images (likely bullets, icons, decorative elements)
+                    if len(image_bytes) < 5000:  # Less than 5KB
+                        print(f"  ❌ Skipped small image: {len(image_bytes)} bytes (likely decorative)")
+                        continue
+                    
+                    # Filter 2: Skip images in header/footer regions
+                    if img_y < header_boundary:
+                        print(f"  ❌ Skipped header image at y={img_y:.1f} (header boundary: {header_boundary:.1f})")
+                        continue
+                    
+                    if img_y > footer_boundary:
+                        print(f"  ❌ Skipped footer image at y={img_y:.1f} (footer boundary: {footer_boundary:.1f})")
+                        continue
+                    
+                    # Filter 3: Skip very small visual dimensions (likely icons)
+                    if img_width < 50 or img_height < 50:
+                        print(f"  ❌ Skipped tiny image: {img_width}x{img_height} pixels (likely icon/bullet)")
+                        continue
+                    
+                    # Filter 4: Skip extremely wide but short images (likely decorative bars/lines)
+                    if img_width > 400 and img_height < 20:
+                        print(f"  ❌ Skipped decorative bar: {img_width}x{img_height} pixels")
+                        continue
+                    
+                    # Filter 5: Skip images that appear on multiple consecutive pages (likely template elements)
+                    if hasattr(self, 'image_fingerprints'):
+                        # Create a simple fingerprint based on size
+                        fingerprint = f"{len(image_bytes)}_{img_width}_{img_height}"
+                        
+                        if fingerprint in self.image_fingerprints:
+                            self.image_fingerprints[fingerprint]['pages'].append(page_num + 1)
+                            
+                            # If same image appears on 3+ pages, it's likely a template element
+                            if len(self.image_fingerprints[fingerprint]['pages']) >= 3:
+                                print(f"  ❌ Skipped template image: appears on pages {self.image_fingerprints[fingerprint]['pages']} (likely header/footer logo)")
+                                continue
+                        else:
+                            self.image_fingerprints[fingerprint] = {
+                                'pages': [page_num + 1],
+                                'size': len(image_bytes)
+                            }
+                    else:
+                        self.image_fingerprints = {}
+                        fingerprint = f"{len(image_bytes)}_{img_width}_{img_height}"
+                        self.image_fingerprints[fingerprint] = {
+                            'pages': [page_num + 1],
+                            'size': len(image_bytes)
+                        }
+                    
+                    # ✅ CONTENT IMAGE: Passed all filters - this is likely meaningful content
+                    print(f"  ✅ Content image accepted: {len(image_bytes)} bytes, {img_width}x{img_height} pixels, y={img_y:.1f}")
+                    
                     # Save image
                     self.image_counter += 1
-                    image_filename = f"pdf_page{page_num + 1}_img{img_index + 1}.{image_ext}"
+                    image_filename = f"content_img_page{page_num + 1}_{img_index + 1}.{image_ext}"
                     image_path = os.path.join(self.asset_dir, image_filename)
                     
                     with open(image_path, "wb") as img_file:
@@ -1709,9 +1784,12 @@ class DocumentPreprocessor:
                         'filename': image_filename,
                         'path': image_path,
                         'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
-                        'alt_text': f"PDF Page {page_num + 1} Image {img_index + 1}",
+                        'alt_text': f"Content Image from Page {page_num + 1}",
                         'content_type': f"image/{image_ext}",
-                        'size_bytes': len(image_bytes)
+                        'size_bytes': len(image_bytes),
+                        'dimensions': f"{img_width}x{img_height}",
+                        'position_y': img_y,
+                        'is_content_image': True
                     }
                     
                     # FIXED: Prepare Asset Library entry for batch insertion (same as DOCX processing)

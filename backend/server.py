@@ -1422,6 +1422,21 @@ class DocumentPreprocessor:
             # ENHANCED: Provide more informative error message
             return f"<p>Failed to convert PDF '{os.path.basename(file_path)}': {str(e)}</p>", []
     
+    async def _select_optimal_pdf_method(self, file_path: str, file_size: int) -> str:
+        """OPTIMIZATION: Select optimal PDF processing method based on file characteristics"""
+        try:
+            # Quick heuristics for method selection
+            if file_size < 1024 * 1024:  # Less than 1MB - likely simple text
+                return "pypdf2"  # Fastest for simple PDFs
+            elif file_size < 10 * 1024 * 1024:  # Less than 10MB - standard document
+                return "pymupdf"  # Best balance of features and speed
+            else:  # Large PDF - likely has complex formatting
+                return "pdfplumber"  # Better for complex layouts
+                
+        except Exception as e:
+            print(f"⚠️ PDF method selection failed: {e}, defaulting to PyMuPDF")
+            return "pymupdf"
+    
     async def _convert_pdf_with_pymupdf(self, file_path: str) -> tuple[str, list]:
         """Convert PDF using PyMuPDF (fitz) - best for text and image extraction"""
         try:

@@ -9351,12 +9351,16 @@ def calculate_content_uniqueness(content: str, existing_sections: list) -> float
 async def create_enhanced_hub_article(content: str, metadata: dict, content_sections: list) -> DocumentChunk:
     """ENHANCED: Create comprehensive hub article with mini-TOC linking to all related articles"""
     try:
-        # Generate section summaries for mini-TOC
+        # Generate section summaries for mini-TOC based on ACTUAL articles that will be created
         section_summaries = []
-        for i, section in enumerate(content_sections[:6]):  # Limit to 6 for TOC
+        for i, section in enumerate(content_sections[:6]):  # Only include sections that will actually become articles
             title = section.get('title', f'Section {i+1}')
             focus = section.get('focus', 'general')
-            section_summaries.append(f"• **{title}** - {focus.replace('_', ' ').title()}")
+            stage_type = section.get('stage_type', 'general')
+            section_summaries.append(f"• **{title}** - {focus.replace('_', ' ').title()} ({stage_type})")
+        
+        # Add FAQ section if it will be generated
+        section_summaries.append("• **FAQ & Troubleshooting** - Common questions and solutions")
         
         toc_content = "\n".join(section_summaries)
         

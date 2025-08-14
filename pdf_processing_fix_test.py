@@ -186,7 +186,7 @@ Content Quality Improvements:
             final_asset_count = 0
             new_pdf_assets = []
             
-            if self.db:
+            if self.db is not None:
                 try:
                     final_asset_count = self.db.assets.count_documents({})
                     print(f"📊 Final Asset Library count: {final_asset_count}")

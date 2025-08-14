@@ -1076,15 +1076,31 @@ class DocumentPreprocessor:
                 html_content, images = await self._convert_pdf_to_html(file_path)
                 
                 # FIXED: Add Asset Library insertion for PDF images (same as DOCX)
+                print(f"🔍 DEBUG: Checking for PDF pending_assets: hasattr={hasattr(self, 'pending_assets')}")
+                if hasattr(self, 'pending_assets'):
+                    print(f"🔍 DEBUG: Found {len(self.pending_assets)} pending PDF assets to insert")
+                    
                 if hasattr(self, 'pending_assets') and self.pending_assets:
                     try:
                         # Batch insert PDF images into Asset Library
-                        await db.assets.insert_many(self.pending_assets)
-                        print(f"📚 FIXED: Inserted {len(self.pending_assets)} PDF images into Asset Library")
+                        result = await db.assets.insert_many(self.pending_assets)
+                        print(f"📚 FIXED: Successfully inserted {len(result.inserted_ids)} PDF images into Asset Library")
+                        print(f"🔍 DEBUG: Inserted IDs: {result.inserted_ids[:3]}...")  # Show first 3 IDs
+                        
+                        # Clear pending assets after successful insertion
+                        self.pending_assets.clear()
                         
                     except Exception as db_error:
-                        print(f"⚠️ Failed to insert PDF assets into Asset Library: {db_error}")
+                        print(f"❌ CRITICAL: Failed to insert PDF assets into Asset Library: {db_error}")
+                        import traceback
+                        traceback.print_exc()
                         # Continue processing even if Asset Library insertion fails
+                else:
+                    print(f"⚠️ DEBUG: No pending PDF assets found. hasattr={hasattr(self, 'pending_assets')}, pending_assets={getattr(self, 'pending_assets', [])}")
+                    if hasattr(self, 'pending_assets'):
+                        print(f"⚠️ DEBUG: pending_assets length: {len(self.pending_assets)}")
+                    print(f"⚠️ DEBUG: PDF images extracted: {len(images)}")
+            
             elif file_type.lower() in ['ppt', 'pptx']:
                 html_content, images = await self._convert_ppt_to_html(file_path)
             else:

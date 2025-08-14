@@ -1217,8 +1217,9 @@ const ContentLibrary = () => {
 
       {showKnowledgeUpload && (
         <KnowledgeEngineUpload 
+          isOpen={showKnowledgeUpload}
           onClose={() => setShowKnowledgeUpload(false)} 
-          onSuccess={() => {
+          onUploadComplete={() => {
             fetchArticles();
             setShowKnowledgeUpload(false);
           }}

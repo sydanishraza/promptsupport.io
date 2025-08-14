@@ -4382,6 +4382,41 @@ async def training_process_document(
         
         print(f"📚 Processing complete: {len(articles)} articles generated")
         
+        # CRITICAL BUG FIX: Add articles to Content Library
+        # Convert articles to chunks format for Content Library integration
+        try:
+            chunks_for_library = []
+            for article in articles:
+                chunk_data = {
+                    "content": article.get("content", ""),
+                    "metadata": {
+                        **article.get("metadata", {}),
+                        "source_job_id": training_session["session_id"],
+                        "original_filename": file.filename,
+                        "article_type": article.get("metadata", {}).get("article_type", "general"),
+                        "training_mode": True
+                    }
+                }
+                chunks_for_library.append(chunk_data)
+            
+            # Create Content Library articles from training articles
+            if chunks_for_library:
+                metadata_for_library = {
+                    "source_job_id": training_session["session_id"],
+                    "original_filename": file.filename,
+                    "processing_type": "training_endpoint",
+                    "template_id": template_id
+                }
+                
+                library_articles = await create_content_library_articles_from_chunks(chunks_for_library, metadata_for_library)
+                print(f"✅ CONTENT LIBRARY: Created {len(library_articles)} articles in Content Library from training")
+            else:
+                print("⚠️ No articles to add to Content Library")
+                
+        except Exception as library_error:
+            print(f"❌ Content Library integration failed: {library_error}")
+            print(f"⚠️ Training articles created but not added to Content Library")
+        
         # Add articles to training session before storing
         training_session["articles"] = articles
         

@@ -288,6 +288,18 @@ backend:
         -agent: "testing"
         -comment: "✅ CRITICAL FIX 1 MOSTLY SUCCESSFUL: Real Related Links functionality is implemented and working. DETAILED VERIFICATION: The add_related_links_to_articles() function (lines 732-897) successfully fetches existing Content Library articles for cross-references, creates real links using /content-library/article/{article_id} format, implements topic similarity matching based on tags and keywords, and generates external reference links. TESTING RESULTS: Generated articles contain real Content Library links (2 found), links use proper URL format instead of placeholders, topic similarity matching connects relevant articles based on content analysis. LIMITATION IDENTIFIED: Related links are only added when len(articles) > 1, so single articles don't get cross-references to existing Content Library articles. RECOMMENDATION: Consider modifying logic to add related links to single articles as well for better cross-referencing."
 
+  - task: "CRITICAL BUG TEST: Missing Articles & Phantom Links"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "testing"
+        -comment: "❌ CRITICAL BUG PARTIALLY RESOLVED: Comprehensive testing of the phantom links bug fix reveals mixed results (4/6 tests passed - 66.7% success rate). DETAILED VERIFICATION: 1) ✅ ARTICLE COUNT VERIFICATION PASSED - Generated 4 articles from comprehensive document (expected 4-6), multiple articles created beyond just overview + FAQ, comprehensive documents properly broken into logical stages, 2) ❌ LINK INTEGRITY VERIFICATION FAILED - Found 29 phantom anchor links across hub articles, 26 phantom links in 'Whisk Studio Integration: Step-by-Step Guide for Developers' article including #what-is-whisk-studio, #getting-started, #create-an-account, etc., 0 working Content Library links found, hub articles still contain links to non-existent content sections, 3) ✅ CONTENT COVERAGE ANALYSIS PASSED - 100% of articles have substantial content (4402 avg chars), 2/5 functional stages covered (troubleshooting, overview), comprehensive coverage with proper article breakdown, 4) ❌ HUB ARTICLE ACCURACY FAILED - Hub articles promise 51 total articles but 0 actually exist (0.0% accuracy), TOC does not accurately reflect generated articles, critical phantom links issue not resolved in hub article generation, 5) ✅ SEAMLESS NAVIGATION PARTIAL - 50% of articles have navigation elements, related sections detected but limited working links. CRITICAL FINDINGS: Article generation improvements are working (multiple articles created, substantial content), but phantom links issue persists with 29 phantom anchor links found. Hub articles contain extensive TOCs with links like #what-is-whisk-studio, #getting-started that point to non-existent sections instead of real Content Library articles. TECHNICAL ANALYSIS: Phantom links categorized as 9 setup-related, 11 implementation-related, 6 other types. System generates comprehensive articles but hub article generation still uses phantom anchor links instead of real article IDs. RECOMMENDATION: URGENT - Replace phantom anchor links with real Content Library article links, create actual articles for sections referenced by phantom links, update hub article generation to use actual article IDs, implement link validation to prevent phantom links in generated content."
+
   - task: "CRITICAL FIX 2: PDF Image Extraction & Asset Library Integration"
     implemented: true
     working: true

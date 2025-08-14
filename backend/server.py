@@ -827,8 +827,11 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                 if same_doc_articles:
                     markdown_links.append('')
                     markdown_links.append('**Related Topics:**')
-                    for related_article in related_articles_by_type:
-                        markdown_links.append(f'- {get_article_type_icon(related_article["type"])} [{related_article["title"]}](#article-{related_article["index"]}) *({related_article["type"]})*')
+                    for related_article in same_doc_articles[:3]:  # Limit to 3 related articles
+                        article_type = related_article.get('metadata', {}).get('article_type', 'general')
+                        article_title = related_article.get('title', 'Related Article')
+                        article_index = created_articles.index(related_article) if related_article in created_articles else 0
+                        markdown_links.append(f'- {get_article_type_icon(article_type)} [{article_title}](#article-{article_index}) *({article_type})*')
                 
                 if markdown_links:
                     markdown_related = f"\n\n---\n\n### Related Articles & Resources\n\n" + "\n".join(markdown_links)

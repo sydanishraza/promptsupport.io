@@ -9436,12 +9436,12 @@ Create an engaging, informative hub article that introduces the topic and guides
             else:
                 raise Exception("OpenAI API key not configured")
             
-            # Add related links section
+            # Add related links section with REAL article IDs instead of phantom anchors
             related_links_html = f"""
 <div class="related-links">
 <h3>📚 Related Articles in This Guide</h3>
 <ul>
-{chr(10).join([f'<li><a href="#{section.get("title", "section").lower().replace(" ", "-")}">{section.get("title", "Section")}</a></li>' for section in content_sections[:6]])}
+{chr(10).join([f'<li><a href="/content-library/article/{section.get("article_id", "pending")}" target="_blank">{section.get("title", "Section")}</a> - {section.get("stage_type", "general")}</li>' for section in content_sections[:6]])}
 </ul>
 
 <h4>🔗 External Resources</h4>

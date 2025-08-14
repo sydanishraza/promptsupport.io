@@ -8982,15 +8982,21 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             # Determine article type based on content characteristics
             article_type = classify_article_type(section['content'])
             
-            # Create focused, unique chunk
+            # Create focused, unique chunk with enhanced metadata
             chunk = DocumentChunk(
                 content=section['content'],
                 metadata={
                     **metadata,
                     'chunk_id': i + 1,
                     'article_type': article_type,
+                    'stage_type': section.get('stage_type', 'general'),  # FIXED: Add stage_type for procedural navigation
                     'content_focus': section.get('focus', 'general'),
-                    'uniqueness_score': section.get('uniqueness', 0.8)
+                    'uniqueness_score': section.get('uniqueness', 0.8),
+                    'procedural_flow': section.get('procedural_flow', False),  # FIXED: Add procedural flow info
+                    'is_procedural_sequence': section.get('is_procedural_sequence', False),
+                    'platform': section.get('platform', 'generic'),  # FIXED: Add platform info
+                    'stage_order': section.get('stage_order', 99),  # FIXED: Add stage ordering
+                    'processing_method': 'enhanced_functional_stage_chunking'
                 },
                 source_file=metadata.get('original_filename', 'document'),
                 chunk_index=i,

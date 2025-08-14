@@ -8550,19 +8550,22 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         chunks = []
         used_content_fingerprints = set()  # Prevent duplicate content
         
-        # Step 1: Create overview/introduction article if content is substantial
+        # Step 1: ENHANCED HUB ARTICLE GENERATION - Create comprehensive introduction with mini-TOC
         if len(content) > 3000:
+            # Enhanced overview with better structure and navigation
             overview_chunk = await create_overview_chunk(content, metadata)
             if overview_chunk:
-                chunks.append(overview_chunk.dict())  # FIXED: Convert to dictionary
+                chunks.append(overview_chunk.dict())
                 used_content_fingerprints.add(overview_chunk.content_fingerprint)
-                print("✅ Created overview article")
+                print("✅ Created enhanced hub article with comprehensive overview")
         
-        # Step 2: Identify distinct conceptual sections
+        # Step 2: MERGE DETECTION - Identify and consolidate similar sections before creating articles
+        # Apply intelligent analysis to reduce redundancy
         concept_sections = await identify_concept_sections(content_sections)
+        print(f"📊 MERGE OPTIMIZATION: {len(content_sections)} → {len(concept_sections)} sections after analysis")
         
-        # Step 3: Create unique, focused articles
-        for i, section in enumerate(concept_sections):
+        # Step 3: Create focused articles from analyzed sections (REDUCED LIMIT: max 4 articles + hub + FAQ = 6 total)
+        for i, section in enumerate(concept_sections[:4]):  # Reduced from unlimited to max 4
             if len(chunks) >= 4:  # REDUCED LIMIT: Prevent over-chunking (was 5)
                 break
                 

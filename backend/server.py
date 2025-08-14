@@ -1812,10 +1812,14 @@ class DocumentPreprocessor:
                             "url": f"/api/static/uploads/{asset_filename}",
                             "session_url": f"/api/static/uploads/session_{self.session_id}/{image_filename}",
                             "created_at": datetime.utcnow().isoformat(),
-                            "source": "pdf_extraction",
+                            "source": "pdf_content_extraction",  # UPDATED: Specify content extraction
                             "session_id": self.session_id,
                             "page_number": page_num + 1,
-                            "image_index": img_index + 1
+                            "image_index": img_index + 1,
+                            "dimensions": f"{img_width}x{img_height}",
+                            "position_y": img_y,
+                            "is_content_image": True,  # ADDED: Mark as content image
+                            "extraction_filters_passed": "size,position,template,content"  # ADDED: Filtering info
                         }
                         
                         # FIXED: Queue for batch Asset Library insertion

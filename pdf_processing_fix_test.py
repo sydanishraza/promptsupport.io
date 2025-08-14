@@ -137,7 +137,7 @@ Content Quality Improvements:
             
             # Record Asset Library count before processing
             initial_asset_count = 0
-            if self.db:
+            if self.db is not None:
                 try:
                     initial_asset_count = self.db.assets.count_documents({})
                     print(f"📊 Initial Asset Library count: {initial_asset_count}")

@@ -8461,7 +8461,7 @@ Original context: {metadata.get('original_filename', 'Document content')}
                         article_record = {
                             "id": str(uuid.uuid4()),
                             "title": article_data.get("title", title),
-                            "content": article_data.get("content", chunk.content),
+                            "content": article_data.get("content", chunk["content"]),
                             "summary": article_data.get("summary", ""),
                             "tags": article_data.get("tags", ["knowledge-engine"]),
                             "takeaways": article_data.get("takeaways", []),

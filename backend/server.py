@@ -8887,6 +8887,7 @@ Create an engaging, informative hub article that introduces the topic and guides
             
             hub_chunk = DocumentChunk(
                 content=fallback_content,
+                content_fingerprint=generate_content_fingerprint(fallback_content),  # FIXED: Include in constructor
                 metadata={
                     **metadata,
                     'article_type': 'hub_overview',
@@ -8895,8 +8896,6 @@ Create an engaging, informative hub article that introduces the topic and guides
                     'processing_method': 'fallback_hub_generation'
                 }
             )
-            
-            hub_chunk.content_fingerprint = generate_content_fingerprint(fallback_content)
             return hub_chunk
             
     except Exception as e:

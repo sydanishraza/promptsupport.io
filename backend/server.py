@@ -9165,9 +9165,17 @@ async def create_content_library_article_from_chunks(chunks: List[DocumentChunk]
     if should_create_multiple:
         print(f"📝 Using simplified smart chunking approach for: {title}")
         articles = await create_multiple_articles_from_content(full_content, metadata)
+        
+        # FIXED: Add related links BEFORE database insertion
+        if len(articles) > 1:
+            print(f"🔗 FIXING RELATED LINKS: Adding navigation links to {len(articles)} articles")
+            articles = await add_related_links_to_articles(articles)
+            print(f"✅ FIXED: Related links added to all articles")
+        
+        # Insert articles with related links included
         for article in articles:
             await db.content_library.insert_one(article)
-            print(f"✅ Created article: '{article['title']}'")
+            print(f"✅ Created article with related links: '{article['title']}'")
         return articles
     else:
         # Create single comprehensive article

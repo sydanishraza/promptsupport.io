@@ -476,7 +476,7 @@ achieved by replacing PyPDF2 with the comprehensive DocumentPreprocessor."""
         try:
             print("📚 Verifying PDF images are properly stored in Asset Library")
             
-            if not self.db:
+            if not self.db is not None:
                 print("⚠️ MongoDB connection not available - skipping Asset Library verification")
                 return True
             

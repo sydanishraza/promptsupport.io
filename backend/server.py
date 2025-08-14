@@ -8607,12 +8607,11 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             used_content_fingerprints.add(fingerprint)
             print(f"✅ Created {article_type} article: {section.get('title', 'Article')} (uniqueness: {section.get('uniqueness', 0.8)})")
         
-        # Step 4: Generate FAQ/Troubleshooting article if no explicit Q&A content found
-        if not any(chunk['metadata'].get('article_type') == 'faq-troubleshooting' for chunk in chunks):
-            faq_chunk = await generate_faq_troubleshooting_article(content, metadata)
-            if faq_chunk:
-                chunks.append(faq_chunk.dict())  # FIXED: Convert to dictionary
-                print("✅ Generated FAQ/Troubleshooting article from content analysis")
+        # Step 4: ENHANCED FAQ GENERATION - Always generate FAQ/Troubleshooting article
+        faq_chunk = await generate_faq_troubleshooting_article(content, metadata)
+        if faq_chunk:
+            chunks.append(faq_chunk.dict())
+            print("✅ Generated enhanced FAQ/Troubleshooting article with common issues")
         
         print(f"✅ ANTI-DUPLICATE CHUNKING COMPLETE: Created {len(chunks)} unique, focused articles")
         print(f"📊 Article types: {[chunk['metadata'].get('article_type', 'general') for chunk in chunks]}")  # FIXED: Access dict

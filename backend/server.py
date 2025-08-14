@@ -3645,6 +3645,7 @@ class DocumentChunk(BaseModel):
     content: str
     metadata: Dict[str, Any] = {}
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    content_fingerprint: Optional[str] = None  # FIXED: Add content_fingerprint field
 
 class ProcessingJob(BaseModel):
     job_id: str = Field(default_factory=lambda: str(uuid.uuid4()))

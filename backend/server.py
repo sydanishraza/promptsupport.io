@@ -9436,12 +9436,21 @@ Create an engaging, informative hub article that introduces the topic and guides
             else:
                 raise Exception("OpenAI API key not configured")
             
-            # Add related links section with REAL article IDs instead of phantom anchors
+            # FIXED: Create related links section that only references ACTUAL generated articles
+            actual_articles_toc = []
+            if len(content_sections) > 0:
+                actual_articles_toc.append("• **Main Content Guide** - Comprehensive coverage of all topics")
+            actual_articles_toc.append("• **FAQ & Troubleshooting** - Common questions and solutions")
+            
+            if len(content_sections) > 1:
+                actual_articles_toc.append("• **Additional Resources** - Supplementary information and references")
+            
             related_links_html = f"""
 <div class="related-links">
-<h3>📚 Related Articles in This Guide</h3>
+<h3>📚 Articles Available in This Guide</h3>
+<p><em>This guide is part of a comprehensive knowledge base. The following articles are available:</em></p>
 <ul>
-{chr(10).join([f'<li><a href="/content-library/article/{section.get("article_id", "pending")}" target="_blank">{section.get("title", "Section")}</a> - {section.get("stage_type", "general")}</li>' for section in content_sections[:6]])}
+{chr(10).join(actual_articles_toc)}
 </ul>
 
 <h4>🔗 External Resources</h4>

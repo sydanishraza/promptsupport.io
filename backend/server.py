@@ -3651,7 +3651,7 @@ class ProcessingJob(BaseModel):
     status: str = "processing"  # processing, completed, failed
     input_type: str  # text, audio, video, url, image
     original_filename: Optional[str] = None
-    chunks: List[DocumentChunk] = []
+    chunks: List[Dict[str, Any]] = []
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None

@@ -8553,7 +8553,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         # Step 1: ENHANCED HUB ARTICLE GENERATION - Create comprehensive introduction with mini-TOC
         if len(content) > 3000:
             # Enhanced overview with better structure and navigation
-            overview_chunk = await create_overview_chunk(content, metadata)
+            overview_chunk = await create_enhanced_hub_article(content, metadata, content_sections)
             if overview_chunk:
                 chunks.append(overview_chunk.dict())
                 used_content_fingerprints.add(overview_chunk.content_fingerprint)

@@ -748,39 +748,85 @@ async def add_related_links_to_articles(created_articles: list) -> list:
             if overview_article and ("table-of-contents" in overview_article.get('tags', []) or "overview" in overview_article.get('tags', [])):
                 related_links.append(f'<li>📋 <strong><a href="#overview">Back to {overview_article["title"]}</a></strong></li>')
             
-            # Add previous article link (skip overview)
-            prev_idx = i - 1
-            if prev_idx > 0:  # Skip index 0 which is overview
-                prev_title = created_articles[prev_idx].get('title', f'Previous Article')
-                related_links.append(f'<li>← <a href="#article-{prev_idx}">Previous: {prev_title}</a></li>')
+            # FIXED: Add real links to actual Content Library articles instead of placeholders
+            # Get existing Content Library articles for real cross-references  
+            try:
+                existing_articles = []
+                async for existing_article in db.content_library.find().limit(20):
+                    existing_articles.append({
+                        'id': existing_article.get('id'),
+                        'title': existing_article.get('title', 'Untitled'),
+                        'tags': existing_article.get('tags', []),
+                        'summary': existing_article.get('summary', '')
+                    })
+                print(f"🔗 Found {len(existing_articles)} existing articles for cross-linking")
+            except Exception as e:
+                print(f"⚠️ Could not fetch existing articles for linking: {e}")
+                existing_articles = []
             
-            # Add next article link
-            next_idx = i + 1
-            if next_idx < len(created_articles):
-                next_title = created_articles[next_idx].get('title', f'Next Article')
-                related_links.append(f'<li><a href="#article-{next_idx}">Next: {next_title}</a> →</li>')
-            
-            # ENHANCEMENT: Add co-related articles from same document with different types
-            article_type = article.get('metadata', {}).get('article_type', 'general')
+            # FIXED: Add links to articles from same document with real article IDs
             same_doc_articles = []
-            
             for j, other_article in enumerate(created_articles):
                 if (j != i and 
                     other_article.get('source_document') == article.get('source_document') and 
-                    not ("overview" in other_article.get('tags', [])) and
-                    other_article.get('metadata', {}).get('article_type') != article_type):
-                    same_doc_articles.append({
-                        'title': other_article['title'],
-                        'type': other_article.get('metadata', {}).get('article_type', 'general'),
-                        'index': j
-                    })
+                    not ("overview" in other_article.get('tags', []))):
+                    
+                    article_id = other_article.get('id', f'article-{j}')
+                    article_title = other_article.get('title', 'Related Article')
+                    article_type = other_article.get('metadata', {}).get('article_type', 'general')
+                    icon = get_article_type_icon(article_type)
+                    
+                    # REAL LINK: Link to actual Content Library article
+                    related_links.append(f'<li>{icon} <a href="/content-library/article/{article_id}" target="_blank">{article_title}</a> <em>({article_type})</em></li>')
+                    same_doc_articles.append(other_article)
             
-            # Add related articles by type
-            if same_doc_articles:
-                related_articles_by_type = same_doc_articles[:3]  # Limit to 3 related articles
-                for related_article in related_articles_by_type:
-                    icon = get_article_type_icon(related_article['type'])
-                    related_links.append(f'<li>{icon} <a href="#article-{related_article["index"]}">{related_article["title"]}</a> <em>({related_article["type"]})</em></li>')
+            # FIXED: Add links to related articles from Content Library based on topic similarity
+            if existing_articles:
+                article_tags = set(article.get('tags', []))
+                article_keywords = extract_keywords_from_content(article.get('content', ''))
+                
+                related_from_library = []
+                for existing_article in existing_articles:
+                    # Skip if it's one of the articles we're currently processing
+                    if any(existing_article['id'] == art.get('id') for art in created_articles):
+                        continue
+                        
+                    existing_tags = set(existing_article.get('tags', []))
+                    existing_title = existing_article.get('title', '').lower()
+                    
+                    # Calculate relevance based on tags and keywords
+                    tag_overlap = len(article_tags & existing_tags)
+                    keyword_match = any(keyword.lower() in existing_title for keyword in article_keywords[:5])
+                    
+                    if tag_overlap > 0 or keyword_match:
+                        related_from_library.append({
+                            'article': existing_article,
+                            'relevance': tag_overlap + (1 if keyword_match else 0)
+                        })
+                
+                # Sort by relevance and add top matches
+                related_from_library.sort(key=lambda x: x['relevance'], reverse=True)
+                for related_item in related_from_library[:2]:  # Add top 2 related from library
+                    related_article = related_item['article']
+                    article_id = related_article.get('id')
+                    article_title = related_article.get('title', 'Related Article')
+                    # REAL LINK: Link to actual existing Content Library article
+                    related_links.append(f'<li>🔗 <a href="/content-library/article/{article_id}" target="_blank">{article_title}</a></li>')
+            
+            # Add previous/next navigation within current document
+            prev_idx = i - 1
+            if prev_idx >= 0 and prev_idx < len(created_articles):
+                prev_article = created_articles[prev_idx]
+                prev_id = prev_article.get('id', f'article-{prev_idx}')
+                prev_title = prev_article.get('title', 'Previous Article')
+                related_links.append(f'<li>← <a href="/content-library/article/{prev_id}" target="_blank">Previous: {prev_title}</a></li>')
+            
+            next_idx = i + 1
+            if next_idx < len(created_articles):
+                next_article = created_articles[next_idx]
+                next_id = next_article.get('id', f'article-{next_idx}')
+                next_title = next_article.get('title', 'Next Article')
+                related_links.append(f'<li><a href="/content-library/article/{next_id}" target="_blank">Next: {next_title}</a> →</li>')
             
             # ENHANCEMENT: Add external reference links based on content analysis
             external_links = await generate_external_reference_links(article)

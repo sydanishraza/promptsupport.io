@@ -896,6 +896,40 @@ async def add_related_links_to_articles(created_articles: list) -> list:
         print(f"❌ Error adding enhanced related links: {e}")
         return created_articles
 
+def extract_keywords_from_content(content: str) -> list:
+    """Extract keywords from article content for topic similarity matching"""
+    try:
+        import re
+        
+        # Remove HTML tags
+        clean_content = re.sub(r'<[^>]+>', '', content)
+        
+        # Extract meaningful words (4+ characters, not common words)
+        words = re.findall(r'\b[A-Za-z]{4,}\b', clean_content.lower())
+        
+        # Common words to exclude
+        exclude_words = {
+            'this', 'that', 'with', 'have', 'will', 'from', 'they', 'been', 
+            'were', 'said', 'each', 'which', 'their', 'time', 'more', 'very',
+            'what', 'know', 'just', 'first', 'into', 'over', 'think', 'also',
+            'your', 'work', 'life', 'only', 'still', 'should', 'after',
+            'being', 'made', 'before', 'here', 'through', 'when', 'where'
+        }
+        
+        # Filter and count word frequency
+        word_counts = {}
+        for word in words:
+            if word not in exclude_words and len(word) > 3:
+                word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # Return top keywords sorted by frequency
+        top_keywords = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
+        return [keyword for keyword, count in top_keywords[:10]]
+        
+    except Exception as e:
+        print(f"⚠️ Keyword extraction failed: {e}")
+        return []
+
 def get_article_type_icon(article_type: str) -> str:
     """Get appropriate icon for article type"""
     icons = {

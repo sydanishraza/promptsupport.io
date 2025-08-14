@@ -8935,81 +8935,255 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         return await basic_process_text_content(content, metadata)
 
 async def analyze_content_for_unique_sections(content: str) -> list:
-    """Analyze content to identify unique sections with distinct purposes"""
+    """ENHANCED: Analyze content with functional stage grouping and procedural continuity preservation"""
     try:
         import re
         
         sections = []
         
-        # Method 1: Split by HTML headings
-        html_sections = re.split(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, flags=re.IGNORECASE)
-        
-        if len(html_sections) > 3:  # Found meaningful HTML structure
-            current_content = ""
-            current_title = ""
+        # ENHANCEMENT: Functional stage detection for procedural content
+        def detect_functional_stages(text: str) -> list:
+            """Identify functional stages in procedural content to prevent over-segmentation"""
             
-            for i, part in enumerate(html_sections):
-                if i % 2 == 1:  # This is a heading
-                    if current_content.strip():
-                        sections.append({
-                            'title': current_title,
-                            'content': current_content.strip(),
-                            'focus': classify_content_focus(current_content),
-                            'uniqueness': calculate_content_uniqueness(current_content, sections)
-                        })
-                    current_title = part.strip()
-                    current_content = ""
-                else:  # This is content
-                    current_content += part
+            # Common procedural patterns that should stay together
+            procedural_patterns = [
+                r'(setup|installation|configuration|authentication|initialization)',
+                r'(implementation|integration|development|coding)',
+                r'(customization|advanced|features|options)',
+                r'(testing|troubleshooting|debugging|errors)',
+                r'(deployment|production|publishing|finalization)'
+            ]
             
-            # Add final section
-            if current_content.strip():
-                sections.append({
-                    'title': current_title,
-                    'content': current_content.strip(),
-                    'focus': classify_content_focus(current_content),
-                    'uniqueness': calculate_content_uniqueness(current_content, sections)
-                })
-        
-        # Method 2: Split by paragraph groups if no clear HTML structure
-        if len(sections) < 2:
-            paragraphs = content.split('\n\n')
-            current_section = ""
-            section_count = 0
+            # Platform-specific patterns that should be grouped
+            platform_patterns = [
+                r'(shopify|wordpress|api|sdk|plugin)',
+                r'(google|maps|javascript|react|vue)',
+                r'(authentication|oauth|key|token)',
+                r'(sync|integration|webhook|callback)'
+            ]
             
-            for paragraph in paragraphs:
-                # ENHANCED CHUNKING: Larger chunks to prevent over-chunking (increased from 2000 to 3500)
-                if len(current_section + paragraph) > 3500 and current_section:
-                    section_count += 1
-                    sections.append({
-                        'title': f'Section {section_count}',
-                        'content': current_section.strip(),
-                        'focus': classify_content_focus(current_section),
-                        'uniqueness': 0.8
-                    })
-                    current_section = paragraph
+            stages = []
+            lines = text.split('\n')
+            current_stage = {'type': 'general', 'content': '', 'start_line': 0}
+            
+            for i, line in enumerate(lines):
+                line_lower = line.lower()
+                
+                # Check if this line indicates a new functional stage
+                stage_detected = None
+                for pattern in procedural_patterns:
+                    if re.search(pattern, line_lower):
+                        if 'setup' in pattern or 'installation' in pattern:
+                            stage_detected = 'setup'
+                        elif 'implementation' in pattern or 'integration' in pattern:
+                            stage_detected = 'implementation'
+                        elif 'customization' in pattern or 'advanced' in pattern:
+                            stage_detected = 'customization'
+                        elif 'testing' in pattern or 'troubleshooting' in pattern:
+                            stage_detected = 'troubleshooting'
+                        break
+                
+                # Check for platform-specific grouping
+                platform_detected = None
+                for pattern in platform_patterns:
+                    if re.search(pattern, line_lower):
+                        platform_detected = pattern.split('|')[0]  # Get first pattern
+                        break
+                
+                # If we detected a new stage, save current and start new
+                if stage_detected and stage_detected != current_stage['type']:
+                    if current_stage['content'].strip():
+                        current_stage['end_line'] = i
+                        stages.append(current_stage)
+                    
+                    current_stage = {
+                        'type': stage_detected,
+                        'platform': platform_detected,
+                        'content': line + '\n',
+                        'start_line': i
+                    }
                 else:
-                    current_section += "\n\n" + paragraph if current_section else paragraph
+                    current_stage['content'] += line + '\n'
             
-            # Add final section
-            if current_section.strip():
-                section_count += 1
-                sections.append({
-                    'title': f'Section {section_count}',
-                    'content': current_section.strip(),
-                    'focus': classify_content_focus(current_section),
-                    'uniqueness': 0.8
-                })
+            # Add final stage
+            if current_stage['content'].strip():
+                current_stage['end_line'] = len(lines)
+                stages.append(current_stage)
+            
+            return stages
         
-        # ENHANCED FILTERING: Filter out short sections more aggressively (increased from 500 to 1000)
-        sections = [s for s in sections if len(s['content']) > 1000]
+        # ENHANCEMENT: Content similarity detection with functional awareness
+        def calculate_functional_similarity(section1: dict, section2: dict) -> float:
+            """Calculate similarity considering functional context, not just text overlap"""
+            
+            # Check if they're the same functional stage
+            if section1.get('stage_type') == section2.get('stage_type'):
+                base_similarity = 0.3  # Base similarity for same stage
+            else:
+                base_similarity = 0.0
+            
+            # Text similarity
+            text1 = section1.get('content', '').lower()
+            text2 = section2.get('content', '').lower()
+            
+            words1 = set(re.findall(r'\w+', text1))
+            words2 = set(re.findall(r'\w+', text2))
+            
+            if not words1 or not words2:
+                return base_similarity
+            
+            intersection = len(words1 & words2)
+            union = len(words1 | words2)
+            text_similarity = intersection / union if union > 0 else 0.0
+            
+            # Check for procedural flow indicators
+            flow_keywords = ['first', 'then', 'next', 'finally', 'after', 'before', 'step']
+            flow1 = sum(1 for word in flow_keywords if word in text1)
+            flow2 = sum(1 for word in flow_keywords if word in text2)
+            
+            if flow1 > 0 and flow2 > 0:
+                base_similarity += 0.2  # Boost similarity for procedural content
+            
+            return min(base_similarity + text_similarity, 1.0)
         
-        print(f"📚 Analyzed content into {len(sections)} unique sections")
-        return sections
+        # Step 1: Detect functional stages in content
+        functional_stages = detect_functional_stages(content)
+        print(f"🔍 FUNCTIONAL ANALYSIS: Detected {len(functional_stages)} functional stages")
+        
+        for stage in functional_stages:
+            print(f"  📋 Stage: {stage['type']} ({len(stage['content'])} chars)")
+        
+        # Step 2: Process by functional stages instead of arbitrary splits
+        if functional_stages and len(functional_stages) > 1:
+            for i, stage in enumerate(functional_stages):
+                # Only create section if it has substantial content
+                if len(stage['content'].strip()) >= 300:  # Minimum content threshold
+                    
+                    # Determine section focus based on stage type
+                    if stage['type'] == 'setup':
+                        focus = 'setup_and_configuration'
+                    elif stage['type'] == 'implementation':
+                        focus = 'implementation_and_integration'
+                    elif stage['type'] == 'customization':
+                        focus = 'customization_and_features'
+                    elif stage['type'] == 'troubleshooting':
+                        focus = 'troubleshooting_and_support'
+                    else:
+                        focus = 'general_information'
+                    
+                    sections.append({
+                        'title': f"{stage['type'].title()} Guide",
+                        'content': stage['content'].strip(),
+                        'type': 'functional_stage',
+                        'stage_type': stage['type'],
+                        'platform': stage.get('platform'),
+                        'focus': focus,
+                        'procedural_flow': True,
+                        'stage_order': i,
+                        'is_procedural_sequence': True
+                    })
+        
+        # Fallback: If no clear functional stages, use enhanced heading-based approach
+        if not sections:
+            # Enhanced heading-based splitting with functional awareness
+            html_sections = re.split(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, flags=re.IGNORECASE)
+            
+            if len(html_sections) > 3:
+                current_content = ""
+                current_title = ""
+                accumulated_sections = []
+                
+                for i, part in enumerate(html_sections):
+                    if i % 2 == 1:  # This is a heading
+                        if current_content.strip():
+                            # Analyze content to determine if it's procedural
+                            is_procedural = bool(re.search(r'step\s*\d+|first.*then|next.*after', current_content.lower()))
+                            
+                            accumulated_sections.append({
+                                'title': current_title,
+                                'content': current_content.strip(),
+                                'type': 'concept',
+                                'is_procedural_sequence': is_procedural,
+                                'focus': 'general_information'
+                            })
+                        current_title = part.strip()
+                        current_content = ""
+                    else:
+                        current_content += part
+                
+                # Add final section
+                if current_content.strip():
+                    is_procedural = bool(re.search(r'step\s*\d+|first.*then|next.*after', current_content.lower()))
+                    accumulated_sections.append({
+                        'title': current_title,
+                        'content': current_content.strip(),
+                        'type': 'concept',
+                        'is_procedural_sequence': is_procedural,
+                        'focus': 'general_information'
+                    })
+                
+                # ENHANCEMENT: Apply intelligent merging based on functional similarity
+                merged_sections = []
+                merge_threshold = 0.4  # Lower threshold for functional merging
+                
+                for section in accumulated_sections:
+                    merged = False
+                    
+                    # Try to merge with existing sections based on functional similarity
+                    for existing in merged_sections:
+                        similarity = calculate_functional_similarity(section, existing)
+                        
+                        if similarity > merge_threshold:
+                            # FUNCTIONAL MERGE: Combine related functional content
+                            existing['content'] = f"{existing['content']}\n\n## {section['title']}\n{section['content']}"
+                            existing['title'] = f"{existing['title']} & {section['title']}"
+                            existing['merged_from'] = existing.get('merged_from', []) + [section['title']]
+                            existing['is_procedural_sequence'] = existing.get('is_procedural_sequence') or section.get('is_procedural_sequence')
+                            merged = True
+                            print(f"🔗 FUNCTIONAL MERGE: '{section['title']}' into '{existing['title']}' (similarity: {similarity:.2f})")
+                            break
+                    
+                    if not merged:
+                        merged_sections.append(section)
+                
+                sections = merged_sections
+        
+        # ENHANCEMENT: Final quality check with minimum content and procedural flow preservation
+        quality_sections = []
+        min_content_length = 800  # Increased minimum for more substantial articles
+        
+        for section in sections:
+            content_length = len(section['content'])
+            
+            if content_length < min_content_length:
+                # Try to merge with a procedural section or thematically similar content
+                merged = False
+                for existing in quality_sections:
+                    # Prefer merging with same stage type or procedural content
+                    if (existing.get('stage_type') == section.get('stage_type') or 
+                        existing.get('is_procedural_sequence') or 
+                        calculate_functional_similarity(section, existing) > 0.3):
+                        
+                        existing['content'] = f"{existing['content']}\n\n### {section['title']}\n{section['content']}"
+                        existing['merged_from'] = existing.get('merged_from', []) + [section['title']]
+                        merged = True
+                        print(f"🔗 QUALITY MERGE: '{section['title']}' into '{existing['title']}' (procedural grouping)")
+                        break
+                
+                if not merged:
+                    print(f"⚠️ FILTERED LOW CONTENT: '{section['title']}' ({content_length} chars) - below {min_content_length}")
+            else:
+                quality_sections.append(section)
+        
+        print(f"📊 FUNCTIONAL PROCESSING: {len(sections)} → {len(quality_sections)} sections after functional grouping and quality filtering")
+        return quality_sections
         
     except Exception as e:
-        print(f"⚠️ Content analysis fallback: {e}")
-        return [{'title': 'Main Content', 'content': content, 'focus': 'general', 'uniqueness': 0.8}]
+        print(f"❌ Enhanced functional content analysis failed: {e}")
+        # Fallback to simple splitting
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        return [{'title': f'Section {i+1}', 'content': p, 'type': 'general', 'focus': 'general_information'} 
+                for i, p in enumerate(paragraphs[:3])]
 
 def classify_content_focus(content: str) -> str:
     """Classify the focus/purpose of content section"""

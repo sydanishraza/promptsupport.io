@@ -905,6 +905,40 @@ async def generate_external_reference_links(article: dict) -> list:
         print(f"⚠️ External link generation failed: {e}")
         return []
 
+def extract_keywords_from_content(content: str) -> list:
+    """Extract keywords from article content for topic similarity matching"""
+    try:
+        import re
+        
+        # Remove HTML tags
+        clean_content = re.sub(r'<[^>]+>', '', content)
+        
+        # Extract meaningful words (4+ characters, not common words)
+        words = re.findall(r'\b[A-Za-z]{4,}\b', clean_content.lower())
+        
+        # Common words to exclude
+        exclude_words = {
+            'this', 'that', 'with', 'have', 'will', 'from', 'they', 'been', 
+            'were', 'said', 'each', 'which', 'their', 'time', 'more', 'very',
+            'what', 'know', 'just', 'first', 'into', 'over', 'think', 'also',
+            'your', 'work', 'life', 'only', 'can', 'still', 'should', 'after',
+            'being', 'now', 'made', 'before', 'here', 'through', 'when', 'where'
+        }
+        
+        # Filter and count word frequency
+        word_counts = {}
+        for word in words:
+            if word not in exclude_words and len(word) > 3:
+                word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # Return top keywords sorted by frequency
+        keywords = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
+        return [word for word, count in keywords[:10]]  # Top 10 keywords
+        
+    except Exception as e:
+        print(f"⚠️ Keyword extraction failed: {e}")
+        return []
+
 # === HTML PREPROCESSING PIPELINE FOR ACCURATE IMAGE REINSERTION ===
 
 class DocumentPreprocessor:

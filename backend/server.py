@@ -8470,8 +8470,8 @@ Original context: {metadata.get('original_filename', 'Document content')}
                             "chunk_metadata": {
                                 "chunk_number": i + 1,
                                 "total_chunks": len(chunks),
-                                "chunk_type": chunk.metadata.get("chunk_type", "standard"),
-                                "word_count": len(chunk.content.split())
+                                "chunk_type": chunk["metadata"].get("chunk_type", "standard"),
+                                "word_count": len(chunk["content"].split())
                             },
                             "processing_metadata": {
                                 "processing_approach": "enhanced_chunking",

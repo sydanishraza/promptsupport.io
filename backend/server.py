@@ -8435,7 +8435,7 @@ Respond with a JSON object:
                 
                 user_message = f"""Transform this content into a comprehensive article:
 
-{chunk.content}
+{chunk["content"]}
 
 Original context: {metadata.get('original_filename', 'Document content')}
 """

@@ -1074,6 +1074,17 @@ class DocumentPreprocessor:
                         
             elif file_type.lower() == 'pdf':
                 html_content, images = await self._convert_pdf_to_html(file_path)
+                
+                # FIXED: Add Asset Library insertion for PDF images (same as DOCX)
+                if hasattr(self, 'pending_assets') and self.pending_assets:
+                    try:
+                        # Batch insert PDF images into Asset Library
+                        await db.assets.insert_many(self.pending_assets)
+                        print(f"📚 FIXED: Inserted {len(self.pending_assets)} PDF images into Asset Library")
+                        
+                    except Exception as db_error:
+                        print(f"⚠️ Failed to insert PDF assets into Asset Library: {db_error}")
+                        # Continue processing even if Asset Library insertion fails
             elif file_type.lower() in ['ppt', 'pptx']:
                 html_content, images = await self._convert_ppt_to_html(file_path)
             else:

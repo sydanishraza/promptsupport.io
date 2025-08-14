@@ -8366,14 +8366,14 @@ async def create_content_library_articles_from_chunks(chunks: List[Dict], metada
         print(f"📚 CHUNK CONVERSION: Converting {len(chunks)} chunks to Content Library articles")
         
         for i, chunk in enumerate(chunks):
-            if not chunk.content.strip():
+            if not chunk["content"].strip():
                 continue
                 
             # Generate article title based on chunk content
             title = f"Article {i+1}: {metadata.get('original_filename', 'Document')}"
-            if len(chunk.content) > 100:
+            if len(chunk["content"]) > 100:
                 # Try to extract a meaningful title from the first sentence or heading
-                first_line = chunk.content.split('\n')[0].strip()
+                first_line = chunk["content"].split('\n')[0].strip()
                 if first_line and len(first_line) < 100:
                     # Remove HTML tags for title
                     import re

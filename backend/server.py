@@ -9031,7 +9031,7 @@ def extract_key_technical_terms(content: str) -> list:
         print(f"⚠️ Key term extraction failed: {e}")
         return []
 
-async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
+async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Fallback: Basic chunking strategy (original implementation)"""
     try:
         # Simple chunking strategy (split by sentences, max 500 chars)

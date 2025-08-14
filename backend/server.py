@@ -8536,7 +8536,7 @@ Original context: {metadata.get('original_filename', 'Document content')}
         print(f"❌ Critical error in chunk conversion: {str(e)}")
         return []
 
-async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[DocumentChunk]:
+async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """ENHANCED: Process text content into comprehensive, non-duplicate chunks with diverse article types"""
     try:
         print(f"🚀 ANTI-DUPLICATE CHUNKING: Processing {len(content)} characters of content")
@@ -8554,7 +8554,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         if len(content) > 3000:
             overview_chunk = await create_overview_chunk(content, metadata)
             if overview_chunk:
-                chunks.append(overview_chunk)
+                chunks.append(overview_chunk.dict())  # FIXED: Convert to dictionary
                 used_content_fingerprints.add(overview_chunk.content_fingerprint)
                 print("✅ Created overview article")
         

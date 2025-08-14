@@ -1112,12 +1112,11 @@ class DocumentPreprocessor:
                             "session_id": self.session_id
                         }
                         
-                        # Note: Asset Library insertion will be handled by the calling async function
-                        # Store asset_doc for later insertion
+                        # OPTIMIZED: Batch Asset Library insertion at end instead of during processing
                         if not hasattr(self, 'pending_assets'):
                             self.pending_assets = []
                         self.pending_assets.append(asset_doc)
-                        print(f"📚 Prepared for Asset Library: {asset_filename}")
+                        print(f"📚 OPTIMIZED: Queued for batch Asset Library insertion: {asset_filename}")
                         
                     except Exception as asset_error:
                         print(f"⚠️ Failed to prepare Asset Library entry: {asset_error}")

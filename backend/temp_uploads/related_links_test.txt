@@ -1,0 +1,47 @@
+Related Links Fix Test Document
+
+This document tests the fix for related links being added to articles before database insertion.
+
+Article 1: Introduction to Related Links
+Related links are navigation elements that help users discover related content within a document collection. The system should automatically generate these links based on content relationships and document structure.
+
+Key features of the related links system:
+- Automatic generation based on content analysis
+- Links to previous and next articles in sequence
+- Links to related topics within the same document
+- Back-to-overview navigation for multi-article documents
+
+Article 2: Technical Implementation
+The related links fix ensures that navigation elements are added to articles before they are inserted into the database. This prevents issues where articles were saved without proper navigation.
+
+Technical details:
+- Links are generated during the article creation process
+- HTML structure includes proper anchor tags and navigation elements
+- Related links section is appended to article content
+- Database insertion happens after link generation is complete
+
+Article 3: User Experience Benefits
+With the related links fix, users experience improved navigation:
+- Easy movement between related articles
+- Clear document structure understanding
+- Reduced need to return to main navigation
+- Better content discovery and exploration
+
+The fix ensures that all articles have proper source_document and article_type fields for accurate link generation.
+
+Article 4: Testing Verification
+This test document should generate multiple articles, each with:
+- Related links section at the bottom
+- Proper HTML structure for navigation
+- Links to other articles in the same document
+- Back-to-overview navigation where applicable
+
+Expected HTML structure:
+<div class="related-links">
+  <h3>Related Articles</h3>
+  <ul>
+    <li>Previous: [Article Title]</li>
+    <li>Next: [Article Title]</li>
+    <li>Back to Overview</li>
+  </ul>
+</div>

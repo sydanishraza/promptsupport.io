@@ -10804,12 +10804,29 @@ async def upload_file(
         
         await db.processing_jobs.insert_one(job.dict())
         
+        # OPTIMIZED: Add progress tracking for better UI feedback
+        async def update_job_progress(stage: str, details: str = ""):
+            """Update job progress to prevent UI timeout"""
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {
+                    "status": "processing", 
+                    "current_stage": stage,
+                    "stage_details": details,
+                    "last_updated": datetime.utcnow().isoformat()
+                }}
+            )
+            print(f"📊 PROGRESS: {stage} - {details}")
+        
+        await update_job_progress("initializing", "Reading file content...")
+        
         # Read file content
         file_content = await file.read()
         
         # Get file extension for proper handling
         file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
         
+        await update_job_progress("analyzing", f"Processing {file_extension.upper()} file ({len(file_content)} bytes)")
         print(f"Processing file: {file.filename}, Extension: {file_extension}, Size: {len(file_content)} bytes")
         
         extracted_content = ""

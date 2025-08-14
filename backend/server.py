@@ -11213,6 +11213,7 @@ File Information:
 
         # Process the extracted content with timeout protection
         try:
+            await update_job_progress("processing", "Creating articles from extracted content...")
             print(f"🚀 Starting content processing with timeout protection...")
             
             # Add timeout protection for content processing
@@ -11227,6 +11228,7 @@ File Information:
                 
                 # SIMPLIFIED: Images are extracted and saved to Asset Library only (no automatic embedding)
                 if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
+                    await update_job_progress("processing", f"Saved {len(embedded_media)} images to Asset Library")
                     print(f"📁 SIMPLIFIED MODE: {len(embedded_media)} images extracted and saved to Asset Library")
                     print(f"🎯 Images are available for manual insertion via the article editor")
                     # No contextual_images metadata needed - images are just in Asset Library
@@ -11235,6 +11237,7 @@ File Information:
             
             # Set a 10-minute timeout for processing
             chunks = await asyncio.wait_for(process_with_timeout(), timeout=600)
+            await update_job_progress("finalizing", f"Created {len(chunks)} articles successfully")
             print(f"✅ Content processing completed: {len(chunks)} chunks created")
             
         except asyncio.TimeoutError:

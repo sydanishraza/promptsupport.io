@@ -9451,34 +9451,42 @@ def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 60
     return chunks
 
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
-    """ISSUE 1 FIX: FORCE CHUNKING - Lower threshold to ensure content gets properly chunked"""
+    """OPTIMIZED CHUNKING: Refined threshold for better content consolidation"""
     
-    # CHUNKING FIX: Aggressive threshold for forcing multiple articles
-    MAX_SINGLE_ARTICLE_CHARS = 8000  # CORRECTED: Increased to 8000 for proper chunking balance
+    # OPTIMIZATION: Increased threshold to create more comprehensive articles  
+    MAX_SINGLE_ARTICLE_CHARS = 15000  # OPTIMIZED: Increased from 8000 to create fewer, more comprehensive articles
     
-    print(f"🔍 ISSUE 1 FIX: Chunking validation for {file_extension} content:")
+    print(f"🎯 OPTIMIZED CHUNKING: Validation for {file_extension} content:")
     print(f"   - Content length: {len(content)} characters")
     print(f"   - Max single article: {MAX_SINGLE_ARTICLE_CHARS} characters")
-    print(f"   - FORCE CHUNKING: {'YES' if len(content) > MAX_SINGLE_ARTICLE_CHARS else 'NO'}")
     
-    # If content is under 3,000 characters, keep as single article
+    # Keep smaller content as single comprehensive article
     if len(content) <= MAX_SINGLE_ARTICLE_CHARS:
-        print(f"✅ ISSUE 1: Content under {MAX_SINGLE_ARTICLE_CHARS} limit - creating single article")
+        print(f"✅ OPTIMIZED: Content under {MAX_SINGLE_ARTICLE_CHARS} limit - creating single comprehensive article")
         return False
     
-    # If content is over 3,000 characters, FORCE split into multiple articles
-    print(f"📏 ISSUE 1: Content length: {len(content)} characters - EXCEEDS {MAX_SINGLE_ARTICLE_CHARS} limit")
-    print(f"🔥 FORCE CHUNKING: Content will be split into multiple articles")
+    # ENHANCED: Check content structure before forcing split
+    print(f"📏 OPTIMIZED: Content length: {len(content)} characters - analyzing structure for optimal chunking")
     
-    # Additional validation for better chunking
-    has_headings = bool(re.search(r'(?:^|\n)#{1,6}\s+.+', content, re.MULTILINE))
-    has_sections = bool(re.search(r'(?:^|\n)(?:\w+:|\d+\.)', content, re.MULTILINE))
+    # Advanced content analysis for better chunking decisions
+    has_major_headings = bool(re.search(r'(?:^|\n)#{1,2}\s+.+', content, re.MULTILINE))
+    heading_count = len(re.findall(r'(?:^|\n)#{1,3}\s+.+', content, re.MULTILINE))
+    section_count = len(re.findall(r'(?:^|\n)(?:\w+:|\d+\.)', content, re.MULTILINE))
     
-    print(f"   - Has markdown headings: {has_headings}")  
-    print(f"   - Has structured sections: {has_sections}")
-    print(f"✅ ISSUE 1: CHUNKING IS FORCED ACTIVE - will create multiple articles")
+    print(f"   - Has major headings (H1/H2): {has_major_headings}")
+    print(f"   - Total heading count: {heading_count}")  
+    print(f"   - Section markers: {section_count}")
     
-    return True
+    # OPTIMIZED: Only chunk if content has clear structure AND is very large
+    if len(content) > 25000 and (has_major_headings or heading_count >= 4):
+        print(f"✅ OPTIMIZED: Large structured content - will create {min(heading_count, 4)} focused articles")
+        return True
+    elif len(content) > MAX_SINGLE_ARTICLE_CHARS and heading_count >= 3:
+        print(f"✅ OPTIMIZED: Medium structured content - will create {min(heading_count, 3)} articles")
+        return True
+    else:
+        print(f"✅ OPTIMIZED: Content will remain as single comprehensive article for better readability")
+        return False
 
 def sanitize_json_response(json_text):
     """Sanitize JSON content to handle control characters and escaping issues"""

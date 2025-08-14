@@ -9080,7 +9080,7 @@ async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> 
         print(f"Error processing text content: {e}")
         raise
 
-async def create_content_library_article_from_chunks(chunks: List[DocumentChunk], metadata: Dict[str, Any]):
+async def create_content_library_article_from_chunks(chunks: List[Dict[str, Any]], metadata: Dict[str, Any]):
     """Create structured articles in Content Library from processed chunks using enhanced documentation processing"""
     if not chunks:
         return

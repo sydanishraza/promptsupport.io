@@ -9064,7 +9064,7 @@ async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> 
                 content=chunk_text,
                 metadata=metadata
             )
-            chunks.append(chunk)
+            chunks.append(chunk.dict())  # FIXED: Convert to dictionary
             await db.document_chunks.insert_one(chunk.dict())
         
         # After processing chunks, create Content Library articles

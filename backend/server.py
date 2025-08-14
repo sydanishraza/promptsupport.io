@@ -1372,38 +1372,41 @@ class DocumentPreprocessor:
             file_size = os.path.getsize(file_path)
             print(f"📊 PDF file size: {file_size} bytes")
             
-            # Try multiple PDF processing approaches in order of preference
+            # OPTIMIZED: Smart PDF processing method selection based on file characteristics
             html_content = None
             images = []
             
-            # Method 1: Try PyMuPDF (fitz) - best for text and image extraction
+            # Quick file analysis to choose optimal processing method
+            processing_method = await self._select_optimal_pdf_method(file_path, file_size)
+            print(f"🎯 OPTIMIZED: Selected {processing_method} for PDF processing based on file analysis")
+            
+            # Process with selected method first, then fallback only if necessary
             try:
-                html_content, images = await self._convert_pdf_with_pymupdf(file_path)
-                print("✅ PDF processed successfully with PyMuPDF")
-            except Exception as pymupdf_error:
-                print(f"⚠️ PyMuPDF failed: {pymupdf_error}")
-                
-                # Method 2: Try pdfplumber - good for structured content and tables
-                try:
+                if processing_method == "pymupdf":
+                    html_content, images = await self._convert_pdf_with_pymupdf(file_path)
+                    print("✅ PDF processed successfully with PyMuPDF (optimized selection)")
+                elif processing_method == "pdfplumber":
                     html_content, images = await self._convert_pdf_with_pdfplumber(file_path)
-                    print("✅ PDF processed successfully with pdfplumber")
-                except Exception as pdfplumber_error:
-                    print(f"⚠️ pdfplumber failed: {pdfplumber_error}")
+                    print("✅ PDF processed successfully with pdfplumber (optimized selection)")
+                else:
+                    # Fallback to PyMuPDF as default
+                    html_content, images = await self._convert_pdf_with_pymupdf(file_path)
+                    print("✅ PDF processed successfully with PyMuPDF (default)")
                     
-                    # Method 3: Try pdfminer.six - robust text extraction
-                    try:
-                        html_content, images = await self._convert_pdf_with_pdfminer(file_path)
-                        print("✅ PDF processed successfully with pdfminer.six")
-                    except Exception as pdfminer_error:
-                        print(f"⚠️ pdfminer.six failed: {pdfminer_error}")
-                        
-                        # Method 4: Final fallback - PyPDF2
-                        try:
-                            html_content, images = await self._convert_pdf_with_pypdf2(file_path)
-                            print("✅ PDF processed successfully with PyPDF2 (fallback)")
-                        except Exception as pypdf2_error:
-                            print(f"❌ All PDF processing methods failed. PyPDF2 error: {pypdf2_error}")
-                            raise Exception("All PDF processing methods failed")
+            except Exception as primary_error:
+                print(f"⚠️ Primary method {processing_method} failed: {primary_error}")
+                
+                # OPTIMIZED: Single fallback instead of sequential failures
+                try:
+                    if processing_method != "pypdf2":
+                        html_content, images = await self._convert_pdf_with_pypdf2(file_path)
+                        print("✅ PDF processed successfully with PyPDF2 (optimized fallback)")
+                    else:
+                        html_content, images = await self._convert_pdf_with_pymupdf(file_path)
+                        print("✅ PDF processed successfully with PyMuPDF (optimized fallback)")
+                except Exception as fallback_error:
+                    print(f"❌ Optimized PDF processing failed. Fallback error: {fallback_error}")
+                    raise Exception(f"PDF processing failed: {primary_error}")
             
             if not html_content:
                 raise Exception("No content extracted from PDF")

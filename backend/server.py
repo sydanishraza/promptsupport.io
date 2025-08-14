@@ -8617,6 +8617,14 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         print(f"✅ ANTI-DUPLICATE CHUNKING COMPLETE: Created {len(chunks)} unique, focused articles")
         print(f"📊 Article types: {[chunk['metadata'].get('article_type', 'general') for chunk in chunks]}")  # FIXED: Access dict
         
+        # CRITICAL FIX: Create Content Library articles from chunks
+        try:
+            articles_created = await create_content_library_articles_from_chunks(chunks, metadata)
+            print(f"✅ CONTENT LIBRARY: Created {len(articles_created)} articles in Content Library from {len(chunks)} chunks")
+        except Exception as e:
+            print(f"❌ Content Library article creation failed: {e}")
+            print(f"⚠️ Chunks created but not converted to Content Library articles")
+        
         return chunks
         
     except Exception as e:

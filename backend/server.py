@@ -11253,24 +11253,61 @@ async def upload_file(
                 print(f"⚠️ Used latin-1 fallback, extracted {len(extracted_content)} characters")
                 
         elif file_extension == 'pdf':
-            await update_job_progress("extracting", "Processing PDF pages...")
+            await update_job_progress("extracting", "Processing PDF with comprehensive image extraction...")
             try:
-                import PyPDF2
-                pdf_file = io.BytesIO(file_content)
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                extracted_content = ""
-                for page_num, page in enumerate(pdf_reader.pages):
-                    page_text = page.extract_text()
-                    extracted_content += f"=== Page {page_num + 1} ===\n{page_text}\n\n"
-                    if page_num % 5 == 0:  # Update progress every 5 pages
-                        await update_job_progress("extracting", f"Processed {page_num + 1}/{len(pdf_reader.pages)} pages...")
-                print(f"✅ Extracted {len(extracted_content)} characters from PDF ({len(pdf_reader.pages)} pages)")
-            except ImportError:
-                print("⚠️ PyPDF2 not available, treating as binary file")
-                extracted_content = f"PDF file: {file.filename} (content extraction requires PyPDF2)"
-            except Exception as e:
-                print(f"⚠️ PDF extraction error: {e}")
-                extracted_content = f"PDF file: {file.filename} (extraction failed: {str(e)})"
+                # FIXED: Use DocumentPreprocessor for comprehensive PDF processing with image extraction
+                # Create temporary file for DocumentPreprocessor processing
+                temp_pdf_path = f"/app/backend/temp_uploads/temp_{file.filename}"
+                os.makedirs(os.path.dirname(temp_pdf_path), exist_ok=True)
+                
+                with open(temp_pdf_path, 'wb') as temp_file:
+                    temp_file.write(file_content)
+                
+                # Use DocumentPreprocessor for comprehensive PDF processing
+                doc_processor = DocumentPreprocessor(session_id=job.job_id[:8])
+                html_content, pdf_images = await doc_processor._convert_pdf_to_html(temp_pdf_path)
+                
+                # Convert HTML back to text for extracted_content
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_content, 'html.parser')
+                extracted_content = soup.get_text()
+                
+                await update_job_progress("extracting", f"Extracted content and {len(pdf_images)} images from PDF")
+                
+                # FIXED: Save PDF images to Asset Library
+                if hasattr(doc_processor, 'pending_assets') and doc_processor.pending_assets:
+                    try:
+                        result = await db.assets.insert_many(doc_processor.pending_assets)
+                        print(f"📚 FIXED: Successfully inserted {len(result.inserted_ids)} PDF images into Asset Library")
+                        await update_job_progress("extracting", f"Saved {len(result.inserted_ids)} images to Asset Library")
+                    except Exception as db_error:
+                        print(f"❌ Failed to save PDF images to Asset Library: {db_error}")
+                
+                # Clean up temp file
+                try:
+                    os.unlink(temp_pdf_path)
+                except:
+                    pass
+                
+                print(f"✅ COMPREHENSIVE PDF PROCESSING: {len(extracted_content)} characters, {len(pdf_images)} images extracted")
+                
+            except Exception as pdf_error:
+                print(f"⚠️ Comprehensive PDF processing failed: {pdf_error}")
+                # Fallback to basic PyPDF2 processing
+                try:
+                    import PyPDF2
+                    pdf_file = io.BytesIO(file_content)
+                    pdf_reader = PyPDF2.PdfReader(pdf_file)
+                    extracted_content = ""
+                    for page_num, page in enumerate(pdf_reader.pages):
+                        page_text = page.extract_text()
+                        extracted_content += f"=== Page {page_num + 1} ===\n{page_text}\n\n"
+                        if page_num % 5 == 0:  # Update progress every 5 pages
+                            await update_job_progress("extracting", f"Processed {page_num + 1}/{len(pdf_reader.pages)} pages...")
+                    print(f"✅ Fallback PDF processing: {len(extracted_content)} characters from PDF ({len(pdf_reader.pages)} pages)")
+                except Exception as fallback_error:
+                    print(f"❌ Both PDF processing methods failed: {fallback_error}")
+                    extracted_content = f"PDF file: {file.filename} (extraction failed: {str(fallback_error)})"
                 
         elif file_extension in ['doc', 'docx']:
             await update_job_progress("extracting", "Processing DOCX content and media...")

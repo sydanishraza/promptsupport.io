@@ -1687,6 +1687,41 @@ class DocumentPreprocessor:
                         'size_bytes': len(image_bytes)
                     }
                     
+                    # FIXED: Prepare Asset Library entry for batch insertion (same as DOCX processing)
+                    asset_id = str(uuid.uuid4())
+                    asset_filename = f"{asset_id}_{image_filename}"
+                    asset_path = os.path.join("/app/backend/static/uploads", asset_filename)
+                    
+                    # Copy to main uploads directory for Asset Library  
+                    try:
+                        with open(asset_path, "wb") as asset_file:
+                            asset_file.write(image_bytes)
+                        
+                        asset_doc = {
+                            "id": asset_id,
+                            "filename": image_filename,
+                            "original_filename": image_filename,
+                            "asset_type": "image",
+                            "file_size": len(image_bytes),
+                            "content_type": f"image/{image_ext}",
+                            "url": f"/api/static/uploads/{asset_filename}",
+                            "session_url": f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                            "created_at": datetime.utcnow().isoformat(),
+                            "source": "pdf_extraction",
+                            "session_id": self.session_id,
+                            "page_number": page_num + 1,
+                            "image_index": img_index + 1
+                        }
+                        
+                        # FIXED: Queue for batch Asset Library insertion
+                        if not hasattr(self, 'pending_assets'):
+                            self.pending_assets = []
+                        self.pending_assets.append(asset_doc)
+                        print(f"📚 FIXED: Queued PDF image for batch Asset Library insertion: {asset_filename}")
+                        
+                    except Exception as asset_error:
+                        print(f"⚠️ Failed to prepare PDF image for Asset Library: {asset_error}")
+                    
                     images.append({
                         'id': image_id,
                         'filename': image_filename,

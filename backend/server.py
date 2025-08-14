@@ -10832,6 +10832,8 @@ async def upload_file(
         extracted_content = ""
         
         # Extract content based on file type
+        await update_job_progress("extracting", f"Extracting content from {file_extension.upper()} file...")
+        
         if file_extension in ['txt', 'md', 'csv']:
             try:
                 extracted_content = file_content.decode('utf-8')
@@ -10841,6 +10843,7 @@ async def upload_file(
                 print(f"⚠️ Used latin-1 fallback, extracted {len(extracted_content)} characters")
                 
         elif file_extension == 'pdf':
+            await update_job_progress("extracting", "Processing PDF pages...")
             try:
                 import PyPDF2
                 pdf_file = io.BytesIO(file_content)
@@ -10849,6 +10852,8 @@ async def upload_file(
                 for page_num, page in enumerate(pdf_reader.pages):
                     page_text = page.extract_text()
                     extracted_content += f"=== Page {page_num + 1} ===\n{page_text}\n\n"
+                    if page_num % 5 == 0:  # Update progress every 5 pages
+                        await update_job_progress("extracting", f"Processed {page_num + 1}/{len(pdf_reader.pages)} pages...")
                 print(f"✅ Extracted {len(extracted_content)} characters from PDF ({len(pdf_reader.pages)} pages)")
             except ImportError:
                 print("⚠️ PyPDF2 not available, treating as binary file")
@@ -10858,6 +10863,7 @@ async def upload_file(
                 extracted_content = f"PDF file: {file.filename} (extraction failed: {str(e)})"
                 
         elif file_extension in ['doc', 'docx']:
+            await update_job_progress("extracting", "Processing DOCX content and media...")
             try:
                 import docx
                 from docx.document import Document as DocxDocument

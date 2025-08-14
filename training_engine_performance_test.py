@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://29ab9b48-9f0b-482b-8a23-9ef1aebd2745.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smartdocs-23.preview.emergentagent.com') + '/api'
 
 class TrainingEnginePerformanceTest:
     def __init__(self):
@@ -39,7 +39,7 @@ class TrainingEnginePerformanceTest:
             
             # Test OPTIONS request for training/process endpoint
             headers = {
-                'Origin': 'https://29ab9b48-9f0b-482b-8a23-9ef1aebd2745.preview.emergentagent.com',
+                'Origin': 'https://smartdocs-23.preview.emergentagent.com',
                 'Access-Control-Request-Method': 'POST',
                 'Access-Control-Request-Headers': 'Content-Type'
             }

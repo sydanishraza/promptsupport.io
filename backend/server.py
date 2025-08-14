@@ -8748,6 +8748,194 @@ def calculate_content_uniqueness(content: str, existing_sections: list) -> float
     
     return uniqueness_score
 
+async def create_enhanced_hub_article(content: str, metadata: dict, content_sections: list) -> DocumentChunk:
+    """ENHANCED: Create comprehensive hub article with mini-TOC linking to all related articles"""
+    try:
+        # Generate section summaries for mini-TOC
+        section_summaries = []
+        for i, section in enumerate(content_sections[:6]):  # Limit to 6 for TOC
+            title = section.get('title', f'Section {i+1}')
+            focus = section.get('focus', 'general')
+            section_summaries.append(f"• **{title}** - {focus.replace('_', ' ').title()}")
+        
+        toc_content = "\n".join(section_summaries)
+        
+        # Extract key concepts for overview
+        concepts = extract_key_concepts(content)
+        concept_list = "\n".join([f"• {concept}" for concept in concepts[:5]])
+        
+        system_message = """You are a technical writing expert specializing in creating comprehensive hub articles.
+
+Create an engaging introduction article that serves as the main entry point for a knowledge base topic.
+
+Requirements:
+- Start with a clear overview of what the topic covers
+- Include prerequisites and key concepts
+- Add a structured mini table of contents linking to related articles
+- End with external reference links for further learning
+- Use professional, accessible language
+- Include practical context and use cases
+
+Structure:
+1. Introduction & Overview
+2. Key Concepts
+3. Prerequisites  
+4. What You'll Learn (Mini TOC)
+5. Related Resources
+"""
+
+        user_message = f"""Create a comprehensive hub article for this content:
+
+**Topic**: {metadata.get('original_filename', 'Technical Guide')}
+**Content Preview**: {content[:1500]}...
+
+**Key Concepts Identified**:
+{concept_list}
+
+**Mini Table of Contents** (related articles):
+{toc_content}
+
+Create an engaging, informative hub article that introduces the topic and guides users to related content."""
+
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message}
+        ]
+        
+        try:
+            # Use the same pattern as other OpenAI calls in the codebase
+            if OPENAI_API_KEY:
+                headers = {
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                
+                data = {
+                    "model": "gpt-4o-mini",
+                    "messages": messages,
+                    "max_tokens": 2500,
+                    "temperature": 0.3
+                }
+                
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json=data,
+                    timeout=45
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    hub_content = result["choices"][0]["message"]["content"].strip()
+                else:
+                    raise Exception(f"OpenAI API error: {response.status_code} {response.text}")
+            else:
+                raise Exception("OpenAI API key not configured")
+            
+            # Add related links section
+            related_links_html = f"""
+<div class="related-links">
+<h3>📚 Related Articles in This Guide</h3>
+<ul>
+{chr(10).join([f'<li><a href="#{section.get("title", "section").lower().replace(" ", "-")}">{section.get("title", "Section")}</a></li>' for section in content_sections[:6]])}
+</ul>
+
+<h4>🔗 External Resources</h4>
+<ul>
+<li><a href="#" target="_blank">Official Documentation</a></li>
+<li><a href="#" target="_blank">Community Guidelines</a></li>
+<li><a href="#" target="_blank">Best Practices Guide</a></li>
+</ul>
+</div>
+"""
+            
+            final_content = f"{hub_content}\n\n{related_links_html}"
+            
+            # Create hub article
+            hub_chunk = DocumentChunk(
+                content=final_content,
+                metadata={
+                    **metadata,
+                    'article_type': 'hub_overview',
+                    'content_focus': 'comprehensive_introduction',
+                    'has_mini_toc': True,
+                    'related_articles_count': len(content_sections),
+                    'processing_method': 'enhanced_hub_generation'
+                }
+            )
+            
+            # Add content fingerprint
+            hub_chunk.content_fingerprint = generate_content_fingerprint(final_content)
+            
+            print(f"✅ Enhanced hub article created with {len(content_sections)} linked articles")
+            return hub_chunk
+            
+        except Exception as llm_error:
+            print(f"⚠️ LLM hub generation failed: {llm_error}")
+            # Create fallback hub
+            fallback_content = f"""
+<h1>📖 {metadata.get('original_filename', 'Technical Guide')}</h1>
+
+<h2>Overview</h2>
+<p>This comprehensive guide covers essential concepts and practical implementations. The content has been organized into focused articles for easy navigation and reference.</p>
+
+<h2>📋 Contents in This Guide</h2>
+<ul>
+{chr(10).join([f'<li><strong>{section.get("title", "Section")}</strong> - {section.get("focus", "general").replace("_", " ").title()}</li>' for section in content_sections[:6]])}
+</ul>
+
+{related_links_html}
+"""
+            
+            hub_chunk = DocumentChunk(
+                content=fallback_content,
+                metadata={
+                    **metadata,
+                    'article_type': 'hub_overview',
+                    'content_focus': 'comprehensive_introduction',
+                    'has_mini_toc': True,
+                    'processing_method': 'fallback_hub_generation'
+                }
+            )
+            
+            hub_chunk.content_fingerprint = generate_content_fingerprint(fallback_content)
+            return hub_chunk
+            
+    except Exception as e:
+        print(f"❌ Enhanced hub article creation failed: {e}")
+        return None
+
+def extract_key_concepts(content: str) -> list:
+    """Extract key concepts from content for hub article"""
+    import re
+    
+    # Extract concepts from headings, bold text, and key phrases
+    concepts = []
+    
+    # From headings
+    headings = re.findall(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, re.IGNORECASE)
+    concepts.extend([h.strip() for h in headings[:3]])
+    
+    # From markdown headings
+    md_headings = re.findall(r'^#{1,6}\s+(.+)$', content, re.MULTILINE)
+    concepts.extend([h.strip() for h in md_headings[:3]])
+    
+    # From bold text
+    bold_text = re.findall(r'\*\*([^*]+)\*\*', content)
+    concepts.extend([b.strip() for b in bold_text[:2]])
+    
+    # From code terms
+    code_terms = re.findall(r'`([^`]+)`', content)
+    concepts.extend([c.strip() for c in code_terms[:2]])
+    
+    # Clean and deduplicate
+    cleaned_concepts = []
+    for concept in concepts:
+        if len(concept) > 3 and len(concept) < 50 and concept not in cleaned_concepts:
+            cleaned_concepts.append(concept)
+    
+    return cleaned_concepts[:5]
+
 async def create_overview_chunk(content: str, metadata: dict) -> DocumentChunk:
     """Create an introductory overview chunk"""
     try:

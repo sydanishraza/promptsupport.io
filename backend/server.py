@@ -730,171 +730,262 @@ def extract_common_themes(titles: list) -> list:
         return []
 
 async def add_related_links_to_articles(created_articles: list) -> list:
-    """Add comprehensive related links section to each article for better navigation"""
+    """ENHANCED: Add comprehensive navigation, cross-references, and procedural flow links"""
     try:
         updated_articles = []
         
+        # Get existing Content Library articles for cross-references
+        try:
+            existing_articles = []
+            async for existing_article in db.content_library.find().limit(30):
+                existing_articles.append({
+                    'id': existing_article.get('id'),
+                    'title': existing_article.get('title', 'Untitled'),
+                    'tags': existing_article.get('tags', []),
+                    'summary': existing_article.get('summary', ''),
+                    'stage_type': existing_article.get('metadata', {}).get('stage_type'),
+                    'focus': existing_article.get('metadata', {}).get('content_focus', 'general')
+                })
+            print(f"🔗 Found {len(existing_articles)} existing articles for comprehensive cross-linking")
+        except Exception as e:
+            print(f"⚠️ Could not fetch existing articles for linking: {e}")
+            existing_articles = []
+        
+        # ENHANCEMENT: Detect procedural sequences and add navigation
+        def detect_procedural_sequence(articles: list) -> dict:
+            """Detect procedural sequences for proper navigation ordering"""
+            
+            stage_order = {
+                'setup': 1,
+                'implementation': 2, 
+                'customization': 3,
+                'troubleshooting': 4
+            }
+            
+            sequences = {}
+            for article in articles:
+                stage_type = article.get('metadata', {}).get('stage_type', 'general')
+                stage_order_num = stage_order.get(stage_type, 99)
+                
+                if 'procedural_sequence' not in sequences:
+                    sequences['procedural_sequence'] = []
+                
+                sequences['procedural_sequence'].append({
+                    'article': article,
+                    'stage': stage_type,
+                    'order': stage_order_num
+                })
+            
+            # Sort by procedural order
+            for seq_name in sequences:
+                sequences[seq_name].sort(key=lambda x: x['order'])
+            
+            return sequences
+        
+        # Detect procedural sequences
+        sequences = detect_procedural_sequence(created_articles)
+        
         for i, article in enumerate(created_articles):
-            # Skip adding related links to the TOC article itself
-            if "table-of-contents" in article.get('tags', []) or "overview" in article.get('tags', []):
-                updated_articles.append(article)
-                continue
+            original_content = article.get('content', '')
+            article_stage = article.get('metadata', {}).get('stage_type', 'general')
+            article_focus = article.get('metadata', {}).get('content_focus', 'general')
             
-            # Create comprehensive related links for this article
-            related_links = []
+            # ENHANCEMENT 1: Procedural Navigation (Previous/Next Steps)
+            procedural_nav = []
             
-            # Add back to overview link
-            overview_article = created_articles[0] if created_articles else None
-            if overview_article and ("table-of-contents" in overview_article.get('tags', []) or "overview" in overview_article.get('tags', [])):
-                related_links.append(f'<li>📋 <strong><a href="#overview">Back to {overview_article["title"]}</a></strong></li>')
-            
-            # FIXED: Add real links to actual Content Library articles instead of placeholders
-            # Get existing Content Library articles for real cross-references  
-            try:
-                existing_articles = []
-                async for existing_article in db.content_library.find().limit(20):
-                    existing_articles.append({
-                        'id': existing_article.get('id'),
-                        'title': existing_article.get('title', 'Untitled'),
-                        'tags': existing_article.get('tags', []),
-                        'summary': existing_article.get('summary', '')
-                    })
-                print(f"🔗 Found {len(existing_articles)} existing articles for cross-linking")
-            except Exception as e:
-                print(f"⚠️ Could not fetch existing articles for linking: {e}")
-                existing_articles = []
-            
-            # FIXED: Add links to articles from same document with real article IDs
-            same_doc_articles = []
-            for j, other_article in enumerate(created_articles):
-                if (j != i and 
-                    other_article.get('source_document') == article.get('source_document') and 
-                    not ("overview" in other_article.get('tags', []))):
+            if 'procedural_sequence' in sequences:
+                proc_sequence = sequences['procedural_sequence']
+                current_pos = next((idx for idx, item in enumerate(proc_sequence) 
+                                  if item['article']['id'] == article.get('id')), -1)
+                
+                if current_pos >= 0:
+                    # Previous step link
+                    if current_pos > 0:
+                        prev_article = proc_sequence[current_pos - 1]['article']
+                        prev_id = prev_article.get('id')
+                        prev_title = prev_article.get('title', 'Previous Step')
+                        prev_stage = proc_sequence[current_pos - 1]['stage']
+                        procedural_nav.append(f'<li>⬅️ <strong>Previous:</strong> <a href="/content-library/article/{prev_id}" target="_blank">{prev_title}</a> <em>({prev_stage})</em></li>')
                     
-                    article_id = other_article.get('id', f'article-{j}')
-                    article_title = other_article.get('title', 'Related Article')
-                    article_type = other_article.get('metadata', {}).get('article_type', 'general')
-                    icon = get_article_type_icon(article_type)
-                    
-                    # REAL LINK: Link to actual Content Library article
-                    related_links.append(f'<li>{icon} <a href="/content-library/article/{article_id}" target="_blank">{article_title}</a> <em>({article_type})</em></li>')
-                    same_doc_articles.append(other_article)
+                    # Next step link
+                    if current_pos < len(proc_sequence) - 1:
+                        next_article = proc_sequence[current_pos + 1]['article']
+                        next_id = next_article.get('id')
+                        next_title = next_article.get('title', 'Next Step')
+                        next_stage = proc_sequence[current_pos + 1]['stage']
+                        procedural_nav.append(f'<li>➡️ <strong>Next:</strong> <a href="/content-library/article/{next_id}" target="_blank">{next_title}</a> <em>({next_stage})</em></li>')
             
-            # FIXED: Add links to related articles from Content Library based on topic similarity
+            # ENHANCEMENT 2: Thematic Cross-References (Same Document/Topic)
+            thematic_links = []
+            
+            # Links to articles from same document
+            same_doc_articles = [art for art in created_articles if art != article and 
+                               art.get('source_document') == article.get('source_document')]
+            
+            for related_article in same_doc_articles[:3]:  # Limit to prevent clutter
+                related_id = related_article.get('id')
+                related_title = related_article.get('title', 'Related Article')
+                related_stage = related_article.get('metadata', {}).get('stage_type', 'general')
+                related_icon = get_article_type_icon(related_stage)
+                thematic_links.append(f'<li>{related_icon} <a href="/content-library/article/{related_id}" target="_blank">{related_title}</a> <em>({related_stage})</em></li>')
+            
+            # ENHANCEMENT 3: Content Library Cross-References (Topic Similarity)
+            library_links = []
+            
             if existing_articles:
                 article_tags = set(article.get('tags', []))
                 article_keywords = extract_keywords_from_content(article.get('content', ''))
                 
+                # Find related articles from Content Library
                 related_from_library = []
                 for existing_article in existing_articles:
-                    # Skip if it's one of the articles we're currently processing
+                    # Skip if it's one of the current articles being processed
                     if any(existing_article['id'] == art.get('id') for art in created_articles):
                         continue
-                        
+                    
                     existing_tags = set(existing_article.get('tags', []))
                     existing_title = existing_article.get('title', '').lower()
+                    existing_focus = existing_article.get('focus', 'general')
                     
-                    # Calculate relevance based on tags and keywords
+                    # Calculate relevance score
+                    relevance_score = 0
+                    
+                    # Tag overlap
                     tag_overlap = len(article_tags & existing_tags)
-                    keyword_match = any(keyword.lower() in existing_title for keyword in article_keywords[:5])
+                    relevance_score += tag_overlap * 0.3
                     
-                    if tag_overlap > 0 or keyword_match:
+                    # Keyword matching
+                    keyword_matches = sum(1 for keyword in article_keywords[:8] 
+                                        if keyword.lower() in existing_title)
+                    relevance_score += keyword_matches * 0.2
+                    
+                    # Focus area similarity
+                    if existing_focus == article_focus:
+                        relevance_score += 0.2
+                    
+                    # Stage type similarity (for procedural content)
+                    if (existing_article.get('stage_type') == article_stage and 
+                        article_stage != 'general'):
+                        relevance_score += 0.3
+                    
+                    if relevance_score > 0.3:  # Minimum relevance threshold
                         related_from_library.append({
                             'article': existing_article,
-                            'relevance': tag_overlap + (1 if keyword_match else 0)
+                            'relevance': relevance_score
                         })
                 
                 # Sort by relevance and add top matches
                 related_from_library.sort(key=lambda x: x['relevance'], reverse=True)
-                for related_item in related_from_library[:2]:  # Add top 2 related from library
+                for related_item in related_from_library[:2]:  # Top 2 most relevant
                     related_article = related_item['article']
-                    article_id = related_article.get('id')
-                    article_title = related_article.get('title', 'Related Article')
-                    # REAL LINK: Link to actual existing Content Library article
-                    related_links.append(f'<li>🔗 <a href="/content-library/article/{article_id}" target="_blank">{article_title}</a></li>')
+                    related_id = related_article.get('id')
+                    related_title = related_article.get('title', 'Related Article')
+                    library_links.append(f'<li>🔗 <a href="/content-library/article/{related_id}" target="_blank">{related_title}</a></li>')
             
-            # Add previous/next navigation within current document
-            prev_idx = i - 1
-            if prev_idx >= 0 and prev_idx < len(created_articles):
-                prev_article = created_articles[prev_idx]
-                prev_id = prev_article.get('id', f'article-{prev_idx}')
-                prev_title = prev_article.get('title', 'Previous Article')
-                related_links.append(f'<li>← <a href="/content-library/article/{prev_id}" target="_blank">Previous: {prev_title}</a></li>')
+            # ENHANCEMENT 4: External Reference Links (Context-Aware)
+            external_links = generate_contextual_external_links(article.get('content', ''), 
+                                                               article.get('tags', []), 
+                                                               article_stage)
             
-            next_idx = i + 1
-            if next_idx < len(created_articles):
-                next_article = created_articles[next_idx]
-                next_id = next_article.get('id', f'article-{next_idx}')
-                next_title = next_article.get('title', 'Next Article')
-                related_links.append(f'<li><a href="/content-library/article/{next_id}" target="_blank">Next: {next_title}</a> →</li>')
+            # ENHANCEMENT 5: Build Comprehensive Related Links Section  
+            related_links_sections = []
             
-            # ENHANCEMENT: Add external reference links based on content analysis
-            external_links = await generate_external_reference_links(article)
+            # Procedural Navigation Section
+            if procedural_nav:
+                nav_section = f"""
+<h4>🔄 Procedural Navigation</h4>
+<ul>
+{chr(10).join(procedural_nav)}
+</ul>"""
+                related_links_sections.append(nav_section)
+            
+            # Thematic Links Section
+            if thematic_links:
+                thematic_section = f"""
+<h4>📚 Related in This Guide</h4>
+<ul>
+{chr(10).join(thematic_links)}
+</ul>"""
+                related_links_sections.append(thematic_section)
+            
+            # Content Library Links Section
+            if library_links:
+                library_section = f"""
+<h4>🔗 Related Articles</h4>
+<ul>
+{chr(10).join(library_links)}
+</ul>"""
+                related_links_sections.append(library_section)
+            
+            # External References Section
             if external_links:
-                related_links.extend(external_links)
+                external_section = f"""
+<h4>🌐 External Resources</h4>
+<ul>
+{chr(10).join(external_links)}
+</ul>"""
+                related_links_sections.append(external_section)
             
-            # Only add related links section if there are links to show
-            if related_links:
+            # Create final related links HTML
+            if related_links_sections:
                 related_section = f"""
-<hr style="margin: 2rem 0; border: none; border-top: 2px solid #e5e7eb;">
-
-<div class="related-links" style="background-color: #f8fafc; padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6;">
-    <h3 style="color: #1f2937; margin-top: 0;">Related Articles & Resources</h3>
-    
-    <h4 style="color: #374151; margin-bottom: 0.5rem; font-size: 1rem;">Navigation</h4>
-    <ul style="margin-bottom: 1rem;">
-        {chr(10).join([link for link in related_links if any(word in link for word in ['Back to', 'Previous:', 'Next:'])])}
-    </ul>
-    
-    {'<h4 style="color: #374151; margin-bottom: 0.5rem; font-size: 1rem;">Related Topics</h4><ul style="margin-bottom: 1rem;">' + chr(10).join([link for link in related_links if not any(word in link for word in ['Back to', 'Previous:', 'Next:', 'External'])]) + '</ul>' if any(link for link in related_links if not any(word in link for word in ['Back to', 'Previous:', 'Next:', 'External'])) else ''}
-    
-    {'<h4 style="color: #374151; margin-bottom: 0.5rem; font-size: 1rem;">External Resources</h4><ul style="margin-bottom: 0;">' + chr(10).join([link for link in related_links if 'External' in link]) + '</ul>' if any('External' in link for link in related_links) else ''}
-</div>"""
-                
-                # Add to content
-                updated_article = article.copy()
-                original_content = article.get('content', '')
-                updated_article['content'] = original_content + related_section
-                
-                # Create markdown version
-                markdown_links = []
-                if overview_article and ("table-of-contents" in overview_article.get('tags', []) or "overview" in overview_article.get('tags', [])):
-                    markdown_links.append(f'- 📋 **[Back to {overview_article["title"]}](#overview)**')
-                
-                if prev_idx > 0:
-                    prev_title = created_articles[prev_idx].get('title', 'Previous Article')
-                    markdown_links.append(f'- ← [Previous: {prev_title}](#article-{prev_idx})')
-                    
-                if next_idx < len(created_articles):
-                    next_title = created_articles[next_idx].get('title', 'Next Article')
-                    markdown_links.append(f'- [Next: {next_title}](#article-{next_idx}) →')
-                
-                # Add related articles
-                if same_doc_articles:
-                    markdown_links.append('')
-                    markdown_links.append('**Related Topics:**')
-                    for related_article in same_doc_articles[:3]:  # Limit to 3 related articles
-                        article_type = related_article.get('metadata', {}).get('article_type', 'general')
-                        article_title = related_article.get('title', 'Related Article')
-                        article_index = created_articles.index(related_article) if related_article in created_articles else 0
-                        markdown_links.append(f'- {get_article_type_icon(article_type)} [{article_title}](#article-{article_index}) *({article_type})*')
-                
-                if markdown_links:
-                    markdown_related = f"\n\n---\n\n### Related Articles & Resources\n\n" + "\n".join(markdown_links)
-                    # Handle articles that might not have markdown field
-                    original_markdown = article.get('markdown', '')
-                    updated_article['markdown'] = original_markdown + markdown_related
-                
-                updated_articles.append(updated_article)
-            else:
-                updated_articles.append(article)
+<hr>
+<div class="related-links">
+<h3>🔗 Related Articles & Resources</h3>
+{chr(10).join(related_links_sections)}
+</div>
+"""
+                # Add to content with deduplication check
+                if 'related-links' not in original_content:
+                    article['content'] = original_content + related_section
+                    link_count = len(procedural_nav) + len(thematic_links) + len(library_links) + len(external_links)
+                    print(f"✅ Added {link_count} comprehensive links to: {article.get('title', 'Untitled')[:50]}")
+                else:
+                    print(f"⚠️ Related links already exist in: {article.get('title', 'Untitled')[:50]}")
+            
+            updated_articles.append(article)
         
-        print(f"✅ Enhanced related links for {len([a for a in updated_articles if not ('overview' in a.get('tags', []))])} articles with navigation, co-related topics, and external resources")
         return updated_articles
         
     except Exception as e:
-        print(f"❌ Error adding enhanced related links: {e}")
+        print(f"❌ Error adding comprehensive related links: {e}")
         return created_articles
+
+def generate_contextual_external_links(content: str, tags: list, stage_type: str = 'general') -> list:
+    """Generate context-aware external reference links based on content analysis and stage"""
+    external_links = []
+    
+    content_lower = content.lower()
+    
+    # Stage-specific external links
+    if stage_type == 'setup':
+        if 'api' in content_lower and 'key' in content_lower:
+            external_links.append('<li>🔑 <a href="https://developers.google.com/maps/gmp-get-started" target="_blank">Getting Started with Google APIs</a></li>')
+        if 'authentication' in content_lower or 'auth' in content_lower:
+            external_links.append('<li>🔐 <a href="https://auth0.com/docs/get-started" target="_blank">Authentication Best Practices</a></li>')
+            
+    elif stage_type == 'implementation':
+        if 'javascript' in content_lower and 'api' in content_lower:
+            external_links.append('<li>📖 <a href="https://developer.mozilla.org/en-US/docs/Web/API" target="_blank">Web APIs Reference (MDN)</a></li>')
+        if 'integration' in content_lower:
+            external_links.append('<li>⚙️ <a href="https://docs.github.com/en/developers/overview/about-integrations" target="_blank">Integration Guidelines</a></li>')
+            
+    elif stage_type == 'troubleshooting':
+        external_links.append('<li>🐛 <a href="https://stackoverflow.com/questions/tagged/api" target="_blank">Common API Issues (Stack Overflow)</a></li>')
+        external_links.append('<li>📋 <a href="https://httpstatuses.com/" target="_blank">HTTP Status Code Reference</a></li>')
+    
+    # Content-specific external links
+    if 'google' in content_lower and 'maps' in content_lower:
+        external_links.append('<li>🗺️ <a href="https://developers.google.com/maps/documentation" target="_blank">Google Maps API Documentation</a></li>')
+    elif 'shopify' in content_lower:
+        external_links.append('<li>🛍️ <a href="https://shopify.dev/api" target="_blank">Shopify API Documentation</a></li>')
+    elif 'wordpress' in content_lower:
+        external_links.append('<li>📝 <a href="https://developer.wordpress.org/plugins/" target="_blank">WordPress Plugin Development</a></li>')
+    elif 'webhook' in content_lower or 'callback' in content_lower:
+        external_links.append('<li>🔄 <a href="https://webhooks.fyi/" target="_blank">Webhooks Guide</a></li>')
+    
+    # Limit to prevent clutter
+    return external_links[:3]
 
 def extract_keywords_from_content(content: str) -> list:
     """Extract keywords from article content for topic similarity matching"""

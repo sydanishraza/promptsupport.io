@@ -10078,6 +10078,7 @@ RESPONSE FORMAT:
                     "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
                     "takeaways": article_data.get("takeaways", []),
                     "source_type": metadata.get('type', 'text_processing'),
+                    "source_document": original_filename,  # FIXED: Add source_document field for related links correlation
                     "status": "draft",
                     "metadata": {
                         **metadata,
@@ -10089,7 +10090,8 @@ RESPONSE FORMAT:
                         "processing_approach": "smart_chunking_with_related_links",
                         "processing_timestamp": datetime.utcnow().isoformat(),
                         "document_batch_id": document_batch_id,
-                        "has_related_links": True
+                        "has_related_links": True,
+                        "article_type": "concept"  # FIXED: Add article_type for proper correlation
                     },
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()

@@ -9317,11 +9317,11 @@ async def create_enhanced_hub_article(content: str, metadata: dict, content_sect
         concepts = extract_key_concepts(content)
         concept_list = "\n".join([f"• {concept}" for concept in concepts[:5]])
         
-        system_message = """You are a technical writing expert specializing in creating comprehensive hub articles.
+        system_message = f"""You are a technical writing expert specializing in creating comprehensive hub articles.
 
 Create an engaging introduction article that serves as the main entry point for a knowledge base topic.
 
-CRITICAL REQUIREMENT: DO NOT create any anchor links (#section-name) or phantom links to non-existent articles. Only create descriptive content.
+{PHANTOM_LINK_PREVENTION}
 
 Requirements:
 - Start with a clear overview of what the topic covers

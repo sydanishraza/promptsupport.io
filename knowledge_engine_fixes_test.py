@@ -23,14 +23,14 @@ BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smartdocs-23.prev
 class KnowledgeEngineFixesTest:
     def __init__(self):
         self.base_url = BACKEND_URL
-        self.session_id = None
-        print(f"🎯 Testing Knowledge Engine Fixes at: {self.base_url}")
-        print("🔍 CRITICAL TESTING REQUIREMENTS:")
-        print("  1. Upload a DOCX file with images via /api/content/upload")
-        print("  2. Check extracted images are saved properly with correct URLs")
-        print("  3. Verify Content Library article has proper image URLs (not broken)")
-        print("  4. Check content completeness - articles should have comprehensive content")
-        print("  5. Test actual image accessibility by checking the URLs work")
+        self.test_job_id = None
+        self.test_articles = []
+        print(f"Testing Knowledge Engine Critical Fixes at: {self.base_url}")
+        print("🎯 CRITICAL FIXES TESTING:")
+        print("  1. Content Segmentation Fix: Generate 4-6 articles instead of 2")
+        print("  2. Phantom Links Fix: Remove broken anchor links from hub articles")
+        print("  3. Cross-References Fix: Implement real article-to-article linking")
+        print("  4. End-to-End Workflow: Complete document processing verification")
         
     def create_test_docx_with_images(self):
         """Create a comprehensive test DOCX content that should contain images"""

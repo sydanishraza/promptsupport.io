@@ -11156,7 +11156,7 @@ def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str
     related_links_html = '<h2>Related Articles</h2>\n<p>Other parts of this document:</p>\n<ul>\n'
     for j, info in enumerate(article_info):
         if j != current_index:  # Don't link to self
-            related_links_html += f'<li><a href="#article-{info["id"]}" data-article-id="{info["id"]}">{info["title"]}</a></li>\n'
+            related_links_html += f'<li><a href="/content-library/article/{info["id"]}" data-article-id="{info["id"]}" target="_blank">{info["title"]}</a></li>\n'
     related_links_html += '</ul>'
     
     content_html += f'\n\n{related_links_html}'

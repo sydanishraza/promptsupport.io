@@ -9784,6 +9784,268 @@ def calculate_document_complexity_score(content: str) -> float:
         print(f"⚠️ Complexity calculation failed: {e}")
         return 0.5
 
+def detect_ultra_large_document(content: str, section_count: int) -> dict:
+    """
+    Detect ultra-large documents that may need special handling beyond 12 articles
+    """
+    try:
+        import re
+        
+        content_length = len(content)
+        word_count = len(content.split())
+        
+        # Ultra-large indicators
+        heading_pattern = r'(?:^|\n)#{1,3}\s+.+'
+        major_section_pattern = r'(?:^|\n)#{1,2}\s+.+'
+        
+        heading_count = len(re.findall(heading_pattern, content, re.MULTILINE))
+        major_sections = len(re.findall(major_section_pattern, content, re.MULTILINE))
+        
+        # Calculate estimated articles needed for comprehensive coverage
+        # Rule of thumb: 1 article per major section + 1 per 3 minor sections
+        estimated_articles = major_sections + (heading_count - major_sections) // 3
+        
+        is_ultra_large = (
+            content_length > 50000 or  # 50k+ characters
+            word_count > 12000 or      # 12k+ words
+            heading_count > 15 or      # 15+ headings
+            section_count > 12         # 12+ sections
+        )
+        
+        # Determine handling strategy
+        if estimated_articles > 20:
+            strategy = "document_splitting"
+            recommendation = "Consider splitting into multiple documents"
+        elif estimated_articles > 15:
+            strategy = "hierarchical_articles"
+            recommendation = "Create hierarchical article structure"
+        elif estimated_articles > 12:
+            strategy = "multi_level_overflow"
+            recommendation = "Use multi-level overflow handling"
+        else:
+            strategy = "standard_processing"
+            recommendation = "Standard intelligent processing"
+        
+        return {
+            'is_ultra_large': is_ultra_large,
+            'content_length': content_length,
+            'word_count': word_count,
+            'heading_count': heading_count,
+            'major_sections': major_sections,
+            'estimated_articles_needed': estimated_articles,
+            'strategy': strategy,
+            'recommendation': recommendation,
+            'exceeds_max_limit': estimated_articles > 12
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Ultra-large document detection failed: {e}")
+        return {'is_ultra_large': False, 'strategy': 'standard_processing'}
+
+def create_hierarchical_article_structure(sections: list, metadata: dict) -> dict:
+    """
+    Create hierarchical article structure for ultra-large documents
+    Main articles with detailed sub-articles
+    """
+    try:
+        print(f"🏗️ HIERARCHICAL STRUCTURE: Creating for {len(sections)} sections")
+        
+        # Group sections into major categories
+        categories = {
+            'introduction': {'keywords': ['introduction', 'overview', 'getting started'], 'sections': []},
+            'setup': {'keywords': ['setup', 'installation', 'configuration', 'authentication'], 'sections': []},
+            'implementation': {'keywords': ['implementation', 'integration', 'development', 'api'], 'sections': []},
+            'advanced': {'keywords': ['advanced', 'customization', 'optimization', 'scaling'], 'sections': []},
+            'operations': {'keywords': ['monitoring', 'troubleshooting', 'maintenance', 'deployment'], 'sections': []},
+            'reference': {'keywords': ['reference', 'appendix', 'glossary', 'resources'], 'sections': []}
+        }
+        
+        # Classify sections into categories
+        unclassified_sections = []
+        
+        for section in sections:
+            section_text = (section.get('title', '') + ' ' + section.get('content', '')).lower()
+            
+            classified = False
+            for category, info in categories.items():
+                if any(keyword in section_text for keyword in info['keywords']):
+                    info['sections'].append(section)
+                    classified = True
+                    break
+            
+            if not classified:
+                unclassified_sections.append(section)
+        
+        # Handle unclassified sections
+        if unclassified_sections:
+            categories['general'] = {'keywords': [], 'sections': unclassified_sections}
+        
+        # Create hierarchical structure
+        hierarchical_articles = []
+        detailed_articles = []
+        
+        for category, info in categories.items():
+            if not info['sections']:
+                continue
+            
+            # Create main category article (overview)
+            section_titles = []
+            for s in info['sections']:
+                title = s.get('title', 'Topic')
+                section_titles.append(f"<li><strong>{title}</strong></li>")
+            section_list = ''.join(section_titles)
+            
+            main_content_parts = [
+                f"<h1>{category.title()} Overview</h1>",
+                f"<p>This section provides comprehensive coverage of {category} topics with detailed articles for each area.</p>",
+                "<h2>Topics Covered</h2>",
+                f"<ul>{section_list}</ul>",
+                "<h2>Quick Summary</h2>",
+                f"<p>The following detailed articles provide step-by-step coverage of all {category} aspects:</p>"
+            ]
+            
+            # Add first section content as preview
+            if info['sections']:
+                preview_content = info['sections'][0].get('content', '')[:1000]
+                ellipsis = '...' if len(preview_content) == 1000 else ''
+                preview_block = f"<blockquote><strong>Preview:</strong> {preview_content}{ellipsis}</blockquote>"
+                main_content_parts.append(preview_block)
+            
+            main_content = '\n'.join(main_content_parts)
+            
+            hierarchical_articles.append({
+                'title': f"{category.title()} - Complete Guide",
+                'content': main_content,
+                'stage_type': f'{category}_overview',
+                'article_type': 'overview',
+                'is_hierarchical_main': True,
+                'subsection_count': len(info['sections'])
+            })
+            
+            # Create detailed articles for each section in this category
+            for i, section in enumerate(info['sections']):
+                detailed_article = {
+                    'title': f"{category.title()}: {section.get('title', f'Section {i+1}')}",
+                    'content': section.get('content', ''),
+                    'stage_type': category,
+                    'article_type': 'detailed',
+                    'is_hierarchical_detail': True,
+                    'parent_category': category,
+                    'section_index': i
+                }
+                detailed_articles.append(detailed_article)
+        
+        return {
+            'hierarchical_articles': hierarchical_articles,
+            'detailed_articles': detailed_articles,
+            'total_articles': len(hierarchical_articles) + len(detailed_articles),
+            'categories_created': len([c for c, info in categories.items() if info['sections']])
+        }
+        
+    except Exception as e:
+        print(f"❌ Hierarchical structure creation failed: {e}")
+        return {'hierarchical_articles': [], 'detailed_articles': [], 'total_articles': 0}
+
+def create_multi_level_overflow_articles(overflow_sections: list, metadata: dict) -> list:
+    """
+    Create multiple overflow articles when there's too much overflow content for a single article
+    """
+    try:
+        if len(overflow_sections) <= 5:
+            # Single overflow article is sufficient
+            return [create_overflow_summary_article(overflow_sections, metadata)]
+        
+        print(f"📚 MULTI-LEVEL OVERFLOW: Creating multiple overflow articles for {len(overflow_sections)} sections")
+        
+        # Group overflow sections into manageable chunks
+        overflow_articles = []
+        chunk_size = 5  # 5 sections per overflow article
+        
+        for i in range(0, len(overflow_sections), chunk_size):
+            chunk_sections = overflow_sections[i:i + chunk_size]
+            chunk_number = (i // chunk_size) + 1
+            total_chunks = (len(overflow_sections) + chunk_size - 1) // chunk_size
+            
+            # Create themed overflow article
+            theme = determine_overflow_theme(chunk_sections)
+            
+            overflow_content = ""
+            for section in chunk_sections:
+                section_title = section.get('title', 'Additional Topic')
+                section_content = section.get('content', '')
+                overflow_content += f"\n\n## {section_title}\n\n{section_content}"
+            
+            section_list_items = []
+            for s in chunk_sections:
+                title = s.get('title', 'Additional Topic')
+                section_list_items.append(f"<li><strong>{title}</strong></li>")
+            section_list = ''.join(section_list_items)
+            
+            overflow_html_parts = [
+                f"<h1>Additional Topics: {theme} (Part {chunk_number} of {total_chunks})</h1>",
+                '<div class="multi-overflow-summary">',
+                '<blockquote class="tip">',
+                f'💡 <strong>Multi-Part Series:</strong> This is part {chunk_number} of {total_chunks} additional topic articles',
+                'covering supplementary material from the source document.',
+                '</blockquote>',
+                '<h2>Topics in This Section</h2>',
+                f'<ul>{section_list}</ul>',
+                overflow_content.replace('## ', '<h2>').replace('\n\n', '</p><p>').replace('<p></p>', ''),
+                '<hr>',
+                f'<p><em>This is part {chunk_number} of {total_chunks} in the additional topics series.',
+                'All parts together provide complete coverage of the source material.</em></p>',
+                '</div>'
+            ]
+            
+            overflow_html = '\n'.join(overflow_html_parts)
+            
+            overflow_article = {
+                'title': f'Additional Topics: {theme} (Part {chunk_number}/{total_chunks})',
+                'content': overflow_html,
+                'html': overflow_html,
+                'stage_type': 'multi_level_overflow',
+                'article_type': 'reference',
+                'is_multi_overflow': True,
+                'overflow_part': chunk_number,
+                'overflow_total_parts': total_chunks,
+                'overflow_theme': theme,
+                'section_count': len(chunk_sections)
+            }
+            
+            overflow_articles.append(overflow_article)
+            print(f"✅ Created overflow article part {chunk_number}: {theme}")
+        
+        print(f"✅ MULTI-LEVEL OVERFLOW COMPLETE: Created {len(overflow_articles)} overflow articles")
+        return overflow_articles
+        
+    except Exception as e:
+        print(f"❌ Multi-level overflow creation failed: {e}")
+        return [create_overflow_summary_article(overflow_sections, metadata)]
+
+def determine_overflow_theme(sections: list) -> str:
+    """Determine a theme for overflow article sections"""
+    try:
+        # Analyze section titles and content for common themes
+        all_text = ' '.join([s.get('title', '') + ' ' + s.get('content', '') for s in sections]).lower()
+        
+        themes = {
+            'Advanced Topics': ['advanced', 'optimization', 'scaling', 'performance'],
+            'Configuration & Setup': ['configuration', 'setup', 'installation', 'environment'],
+            'Integration & APIs': ['integration', 'api', 'webhook', 'endpoint'],
+            'Security & Authentication': ['security', 'authentication', 'authorization', 'oauth'],
+            'Troubleshooting & Support': ['troubleshooting', 'error', 'debugging', 'support'],
+            'Reference & Resources': ['reference', 'resources', 'documentation', 'examples']
+        }
+        
+        for theme, keywords in themes.items():
+            if any(keyword in all_text for keyword in keywords):
+                return theme
+        
+        return 'Additional References'
+        
+    except Exception:
+        return 'Additional Topics'
+
 def determine_intelligent_article_limit(content: str, section_count: int) -> dict:
     """
     Intelligently determine article limit based on content complexity and completeness needs

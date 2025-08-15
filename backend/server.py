@@ -8967,15 +8967,13 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 print(f"🚫 Skipping duplicate section: {section.get('title', 'Unnamed')}")
                 continue
             
-            # ENHANCED UNIQUENESS THRESHOLD: Only include sections with high uniqueness
-            if section.get('uniqueness', 0) < 0.7:  # INCREASED threshold from 0.8 to 0.7
-                print(f"🚫 Skipping low-uniqueness section: {section.get('title', 'Unnamed')} (uniqueness: {section.get('uniqueness', 0)})")
-                continue
+            # FIXED: Remove overly restrictive uniqueness check that filters out functional stages
+            # Functional stages should be preserved even if they have common content
             
-            # ENHANCED CONTENT SIZE CHECK: Ensure substantial content for each functional stage
-            if len(section['content']) < 500:  # Reduced minimum to allow more granular articles
-                print(f"⚠️ SECTION TOO SMALL: '{section.get('title', 'Untitled')}' ({len(section['content'])} chars) - will merge with related section")
-                continue
+            # FIXED: Lower content threshold to allow more granular functional articles
+            if len(section['content']) < 200:  # Much lower threshold to preserve functional stages
+                print(f"⚠️ SECTION TOO SMALL: '{section.get('title', 'Untitled')}' ({len(section['content'])} chars) - will still include for completeness")
+                # Don't continue - include small sections for comprehensive coverage
             
             # Determine article type based on content characteristics
             article_type = classify_article_type(section['content'])

@@ -8953,14 +8953,13 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 used_content_fingerprints.add(overview_chunk.content_fingerprint)
                 print("✅ Created enhanced hub article with comprehensive overview")
         
-        # Step 2: MERGE DETECTION - Identify and consolidate similar sections before creating articles
-        # Apply intelligent analysis to reduce redundancy
-        concept_sections = await identify_concept_sections(content_sections)
-        print(f"📊 MERGE OPTIMIZATION: {len(content_sections)} → {len(concept_sections)} sections after analysis")
+        # Step 2: FIXED CHUNKING - Create proper functional stage articles (4-6 articles)
+        merged_sections = await identify_concept_sections(content_sections)
+        print(f"📊 FUNCTIONAL STAGE CHUNKING: {len(content_sections)} → {len(merged_sections)} functional articles")
         
-        # Step 3: Create focused articles from analyzed sections (REDUCED LIMIT: max 4 articles + hub + FAQ = 6 total)
-        for i, section in enumerate(concept_sections[:4]):  # Reduced from unlimited to max 4
-            if len(chunks) >= 4:  # REDUCED LIMIT: Prevent over-chunking (was 5)
+        # Step 3: Create articles from functional stages (INCREASED LIMIT: 4-6 articles)
+        for i, section in enumerate(merged_sections[:6]):  # Allow up to 6 functional articles
+            if len(chunks) >= 6:  # INCREASED LIMIT: Allow more functional articles
                 break
                 
             # ENHANCED SIMILARITY CHECK: More stringent duplicate detection
@@ -8974,9 +8973,9 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 print(f"🚫 Skipping low-uniqueness section: {section.get('title', 'Unnamed')} (uniqueness: {section.get('uniqueness', 0)})")
                 continue
             
-            # ENHANCED CONTENT SIZE CHECK: Ensure substantial content
-            if len(section['content']) < 800:  # INCREASED minimum from 500 to 800
-                print(f"🚫 Skipping short section: {section.get('title', 'Unnamed')} ({len(section['content'])} chars)")
+            # ENHANCED CONTENT SIZE CHECK: Ensure substantial content for each functional stage
+            if len(section['content']) < 500:  # Reduced minimum to allow more granular articles
+                print(f"⚠️ SECTION TOO SMALL: '{section.get('title', 'Untitled')}' ({len(section['content'])} chars) - will merge with related section")
                 continue
             
             # Determine article type based on content characteristics

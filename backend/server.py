@@ -10532,41 +10532,35 @@ def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 60
     return chunks
 
 async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
-    """OPTIMIZED CHUNKING: Refined threshold for better content consolidation"""
+    """FIXED: Always create multiple articles for structured content to provide focused coverage"""
     
-    # OPTIMIZATION: Increased threshold to create more comprehensive articles  
-    MAX_SINGLE_ARTICLE_CHARS = 15000  # OPTIMIZED: Increased from 8000 to create fewer, more comprehensive articles
-    
-    print(f"🎯 OPTIMIZED CHUNKING: Validation for {file_extension} content:")
+    print(f"🎯 MULTI-ARTICLE CREATION: Analyzing {file_extension} content for segmentation:")
     print(f"   - Content length: {len(content)} characters")
-    print(f"   - Max single article: {MAX_SINGLE_ARTICLE_CHARS} characters")
     
-    # Keep smaller content as single comprehensive article
-    if len(content) <= MAX_SINGLE_ARTICLE_CHARS:
-        print(f"✅ OPTIMIZED: Content under {MAX_SINGLE_ARTICLE_CHARS} limit - creating single comprehensive article")
-        return False
-    
-    # ENHANCED: Check content structure before forcing split
-    print(f"📏 OPTIMIZED: Content length: {len(content)} characters - analyzing structure for optimal chunking")
-    
-    # Advanced content analysis for better chunking decisions
+    # FIXED: Analyze content structure regardless of length
     has_major_headings = bool(re.search(r'(?:^|\n)#{1,2}\s+.+', content, re.MULTILINE))
     heading_count = len(re.findall(r'(?:^|\n)#{1,3}\s+.+', content, re.MULTILINE))
     section_count = len(re.findall(r'(?:^|\n)(?:\w+:|\d+\.)', content, re.MULTILINE))
+    paragraph_count = len([p for p in content.split('\n\n') if p.strip()])
     
     print(f"   - Has major headings (H1/H2): {has_major_headings}")
     print(f"   - Total heading count: {heading_count}")  
     print(f"   - Section markers: {section_count}")
+    print(f"   - Paragraph count: {paragraph_count}")
     
-    # OPTIMIZED: Only chunk if content has clear structure AND is very large
-    if len(content) > 25000 and (has_major_headings or heading_count >= 4):
-        print(f"✅ OPTIMIZED: Large structured content - will create {min(heading_count, 4)} focused articles")
+    # FIXED: Create multiple articles if content has clear structure
+    if has_major_headings or heading_count >= 2 or section_count >= 3:
+        expected_articles = max(heading_count, section_count, 3)  # Minimum 3 articles
+        print(f"✅ MULTI-ARTICLE: Structured content detected - will create {min(expected_articles, 6)} focused articles")
         return True
-    elif len(content) > MAX_SINGLE_ARTICLE_CHARS and heading_count >= 3:
-        print(f"✅ OPTIMIZED: Medium structured content - will create {min(heading_count, 3)} articles")
+    elif len(content) >= 5000 and paragraph_count >= 8:  # Large content with many paragraphs
+        print(f"✅ MULTI-ARTICLE: Large content with {paragraph_count} paragraphs - will create multiple articles")
+        return True
+    elif paragraph_count >= 6:  # Even smaller content with clear paragraphs
+        print(f"✅ MULTI-ARTICLE: Content with {paragraph_count} paragraphs - will create focused articles")
         return True
     else:
-        print(f"✅ OPTIMIZED: Content will remain as single comprehensive article for better readability")
+        print(f"✅ SINGLE ARTICLE: Limited structure detected - will create comprehensive single article")
         return False
 
 def sanitize_json_response(json_text):

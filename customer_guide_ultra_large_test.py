@@ -8,7 +8,11 @@ import requests
 import json
 import os
 import time
+import urllib3
 from dotenv import load_dotenv
+
+# Disable SSL warnings for testing
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Load environment variables
 load_dotenv('/app/frontend/.env')

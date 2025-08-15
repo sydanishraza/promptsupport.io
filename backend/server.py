@@ -9042,7 +9042,57 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             used_content_fingerprints.add(fingerprint)
             print(f"✅ Created {article_type} article: {section.get('title', 'Article')} (uniqueness: {section.get('uniqueness', 0.8)})")
         
-        # Step 4: ENHANCED FAQ GENERATION - Always generate FAQ/Troubleshooting with deduplication
+        # Step 4: OVERFLOW HANDLING - Create comprehensive overflow summary if needed
+        if overflow_sections:
+            overflow_article = create_overflow_summary_article(overflow_sections, metadata)
+            if overflow_article:
+                # Convert overflow article to DocumentChunk format
+                overflow_chunk = DocumentChunk(
+                    content=overflow_article['content'],
+                    metadata={
+                        **metadata,
+                        'chunk_id': len(chunks) + 1,
+                        'article_type': 'reference',
+                        'stage_type': 'overflow_summary',
+                        'content_focus': 'completeness',
+                        'uniqueness_score': 0.9,
+                        'is_overflow_summary': True,
+                        'original_section_count': overflow_article['original_section_count'],
+                        'processing_method': 'intelligent_overflow_handling'
+                    },
+                    source_file=metadata.get('original_filename', 'document'),
+                    chunk_index=len(chunks),
+                    content_fingerprint=generate_content_fingerprint(overflow_article['content'])
+                )
+                
+                chunks.append(overflow_chunk.dict())
+                print(f"✅ OVERFLOW SUMMARY: Created comprehensive overflow article covering {len(overflow_sections)} additional sections")
+        
+        # Step 5: COMPLETENESS VERIFICATION - Calculate content coverage
+        all_processed_sections = sections_to_process + (overflow_sections if overflow_sections else [])
+        coverage_analysis = calculate_content_coverage_score(content, all_processed_sections)
+        
+        print(f"📊 CONTENT COVERAGE ANALYSIS:")
+        print(f"   - Overall coverage: {coverage_analysis['overall_coverage']:.1%}")
+        print(f"   - Word coverage: {coverage_analysis['word_coverage']:.1%}")
+        print(f"   - Heading coverage: {coverage_analysis['heading_coverage']:.1%}")
+        print(f"   - Concept coverage: {coverage_analysis['concept_coverage']:.1%}")
+        
+        # Add coverage metadata to all chunks
+        for chunk in chunks:
+            chunk['metadata']['content_coverage'] = coverage_analysis
+            chunk['metadata']['intelligent_processing'] = True
+            chunk['metadata']['total_articles_created'] = len(chunks)
+            chunk['metadata']['overflow_handled'] = len(overflow_sections) > 0
+        
+        # COMPLETENESS WARNING if coverage is low
+        if coverage_analysis['overall_coverage'] < 0.7:
+            print(f"⚠️ COMPLETENESS WARNING: Only {coverage_analysis['overall_coverage']:.1%} content coverage achieved")
+            print(f"   Consider reviewing the generated articles for missing information")
+        else:
+            print(f"✅ COMPLETENESS VERIFIED: {coverage_analysis['overall_coverage']:.1%} content coverage achieved")
+        
+        # Step 6: ENHANCED FAQ GENERATION - Always generate FAQ/Troubleshooting with deduplication
         faq_chunk = await generate_faq_troubleshooting_article(content, metadata)
         if faq_chunk:
             # DEDUPLICATION: Check if FAQ content overlaps significantly with existing chunks

@@ -10368,8 +10368,9 @@ def clean_article_content(content: str) -> str:
     content = process_unordered_lists(content)
     content = process_ordered_lists(content)
     
-    # PHANTOM LINK PREVENTION: Remove phantom anchor links
+    # PHANTOM LINK PREVENTION: Aggressive multi-pass cleanup
     content = validate_and_remove_phantom_links(content)
+    content = aggressive_phantom_link_cleanup_final_pass(content)
     
     # Clean up extra whitespace and newlines
     content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Multiple newlines to double

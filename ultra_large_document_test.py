@@ -479,10 +479,14 @@ For additional support and resources, consult the official documentation, commun
         try:
             upload_data = {
                 "content": content,
-                "filename": "completeness_test_ultra_large.txt"
+                "content_type": "text",
+                "metadata": {
+                    "filename": "completeness_test_ultra_large.txt",
+                    "test_type": "completeness_verification"
+                }
             }
             
-            async with self.session.post(f"{API_BASE}/upload-text", json=upload_data) as response:
+            async with self.session.post(f"{API_BASE}/content/process", json=upload_data) as response:
                 if response.status == 200:
                     result = await response.json()
                     job_id = result.get('job_id')

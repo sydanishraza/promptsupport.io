@@ -8876,10 +8876,9 @@ Original context: {metadata.get('original_filename', 'Document content')}
                             "updated_at": datetime.utcnow()
                         }
                         
-                        # Save to Content Library
-                        await db.content_library.insert_one(article_record)
+                        # Store article record (don't insert to DB yet)
                         created_articles.append(article_record)
-                        print(f"✅ Created article {i+1}/{len(chunks)}: {article_record['title'][:50]}...")
+                        print(f"📚 CHUNK CONVERSION: Created article '{article_record['title']}'")
                         
                     except json.JSONDecodeError as e:
                         print(f"⚠️ JSON parsing failed for chunk {i+1}, using fallback")
@@ -8898,7 +8897,6 @@ Original context: {metadata.get('original_filename', 'Document content')}
                             "created_at": datetime.utcnow(),
                             "updated_at": datetime.utcnow()
                         }
-                        await db.content_library.insert_one(fallback_article)
                         created_articles.append(fallback_article)
                         
                 else:
@@ -8908,7 +8906,7 @@ Original context: {metadata.get('original_filename', 'Document content')}
                 print(f"❌ Error processing chunk {i+1}: {str(chunk_error)}")
                 continue
         
-        print(f"🎉 CHUNK CONVERSION COMPLETE: Successfully created {len(created_articles)} articles from {len(chunks)} chunks")
+        print(f"📚 CHUNK CONVERSION: Converting {len(created_articles)} chunks to Content Library articles")
         
         # ENHANCEMENT: Create introductory article with TOC when multiple articles are generated
         if len(created_articles) > 1:
@@ -8917,13 +8915,22 @@ Original context: {metadata.get('original_filename', 'Document content')}
                 created_articles.insert(0, intro_article)  # Add as first article
                 print(f"✅ Created introductory TOC article: {intro_article['title']}")
         
-        # ENHANCEMENT: Add related links to each article
+        # FIXED: Add cross-references to articles before database insertion
+        articles_with_links = []
         if len(created_articles) > 1:
-            updated_articles = await add_related_links_to_articles(created_articles)
-            print(f"✅ Added related links to {len(updated_articles)} articles")
-            return updated_articles
+            print(f"🔗 ADDING CROSS-REFERENCES: Processing {len(created_articles)} articles for navigation links")
+            articles_with_links = await add_related_links_to_articles(created_articles)
+            print(f"✅ CROSS-REFERENCES ADDED: Enhanced {len(articles_with_links)} articles with navigation")
+        else:
+            articles_with_links = created_articles
+            print(f"ℹ️ Single article - no cross-references needed")
         
-        return created_articles
+        # Insert articles with cross-references to Content Library
+        for article in articles_with_links:
+            await db.content_library.insert_one(article)
+            print(f"✅ SAVED WITH CROSS-REFERENCES: '{article['title']}'")
+        
+        return articles_with_links
         
     except Exception as e:
         print(f"❌ Critical error in chunk conversion: {str(e)}")

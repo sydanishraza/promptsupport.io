@@ -11358,7 +11358,19 @@ async def should_split_into_multiple_articles(content: str, file_extension: str)
     # FIXED: Create multiple articles if content has clear structure
     if has_major_headings or heading_count >= 2 or section_count >= 3:
         expected_articles = max(heading_count, section_count, 3)  # Minimum 3 articles
-        print(f"✅ MULTI-ARTICLE: Structured content detected - will create {min(expected_articles, 6)} focused articles")
+        
+        # ULTRA-LARGE FIX: Use intelligent limits instead of hard limit
+        content_length = len(content)
+        if content_length > 50000:  # Ultra-large document
+            max_expected = min(expected_articles, 20)
+            print(f"✅ MULTI-ARTICLE: Ultra-large structured content - will create up to {max_expected} focused articles")
+        elif content_length > 25000:  # Large document  
+            max_expected = min(expected_articles, 15)
+            print(f"✅ MULTI-ARTICLE: Large structured content - will create up to {max_expected} focused articles")
+        else:
+            max_expected = min(expected_articles, 12)  # Standard increased limit
+            print(f"✅ MULTI-ARTICLE: Structured content detected - will create up to {max_expected} focused articles")
+        
         return True
     elif len(content) >= 5000 and paragraph_count >= 8:  # Large content with many paragraphs
         print(f"✅ MULTI-ARTICLE: Large content with {paragraph_count} paragraphs - will create multiple articles")

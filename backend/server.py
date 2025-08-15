@@ -9265,11 +9265,13 @@ async def create_enhanced_hub_article(content: str, metadata: dict, content_sect
 
 Create an engaging introduction article that serves as the main entry point for a knowledge base topic.
 
+CRITICAL REQUIREMENT: DO NOT create any anchor links (#section-name) or phantom links to non-existent articles. Only create descriptive content.
+
 Requirements:
 - Start with a clear overview of what the topic covers
 - Include prerequisites and key concepts
-- Add a structured mini table of contents linking to related articles
-- End with external reference links for further learning
+- Add a structured content overview (descriptive text only, NO LINKS)
+- End with external reference links for further learning (only if they are real external URLs)
 - Use professional, accessible language
 - Include practical context and use cases
 
@@ -9277,9 +9279,10 @@ Structure:
 1. Introduction & Overview
 2. Key Concepts
 3. Prerequisites  
-4. What You'll Learn (Mini TOC)
-5. Related Resources
-"""
+4. What You'll Learn (descriptive content only)
+5. External Resources (real URLs only)
+
+IMPORTANT: Do not create internal navigation links or anchor links. Focus on creating valuable descriptive content."""
 
         user_message = f"""Create a comprehensive hub article for this content:
 

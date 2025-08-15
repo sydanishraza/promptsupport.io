@@ -9117,13 +9117,27 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         # ENHANCEMENT: Apply deduplication across all chunks
         chunks = await apply_content_deduplication(chunks, metadata)
         
-        print(f"✅ ANTI-DUPLICATE CHUNKING COMPLETE: Created {len(chunks)} unique, focused articles")
-        print(f"📊 Article types: {[chunk['metadata'].get('article_type', 'general') for chunk in chunks]}")  # FIXED: Access dict
+        print(f"✅ INTELLIGENT COMPLETENESS PROCESSING COMPLETE: Created {len(chunks)} comprehensive articles")
+        print(f"📊 Article types: {[chunk['metadata'].get('article_type', 'general') for chunk in chunks]}")
+        print(f"🎯 Intelligent limit used: {intelligent_limit} (vs standard 6)")
+        print(f"🔄 Overflow handling: {'Yes' if overflow_sections else 'No'}")
+        print(f"📈 Content coverage: {coverage_analysis['overall_coverage']:.1%}")
         
         # CRITICAL FIX: Create Content Library articles from chunks
         try:
             articles_created = await create_content_library_articles_from_chunks(chunks, metadata)
             print(f"✅ CONTENT LIBRARY: Created {len(articles_created)} articles in Content Library from {len(chunks)} chunks")
+            
+            # COMPLETENESS LOG: Final summary
+            print(f"")
+            print(f"📋 INTELLIGENT PROCESSING SUMMARY:")
+            print(f"   - Total articles created: {len(articles_created)}")
+            print(f"   - Content coverage achieved: {coverage_analysis['overall_coverage']:.1%}")
+            print(f"   - Intelligent limit applied: {intelligent_limit}")
+            print(f"   - Sections processed: {len(sections_to_process)}")
+            print(f"   - Overflow sections handled: {len(overflow_sections)}")
+            print(f"   - Completeness ensured: {'✅ YES' if coverage_analysis['overall_coverage'] >= 0.7 else '⚠️ REVIEW NEEDED'}")
+            
         except Exception as e:
             print(f"❌ Content Library article creation failed: {e}")
             print(f"⚠️ Chunks created but not converted to Content Library articles")

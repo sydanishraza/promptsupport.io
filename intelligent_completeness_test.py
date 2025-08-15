@@ -473,7 +473,7 @@ Final thoughts and summary.
             
             print("📤 Testing complex document (should get 7-12 articles)")
             complex_response = requests.post(
-                f"{API_BASE}/process-text-content",
+                f"{API_BASE}/content/process",
                 json=complex_data,
                 timeout=120
             )

@@ -9952,7 +9952,9 @@ async def generate_intelligent_faq_with_llm(content: str, metadata: dict) -> str
         # Truncate content for LLM processing if too long
         analysis_content = content[:4000] if len(content) > 4000 else content
         
-        system_message = """You are an expert technical writer specializing in creating comprehensive FAQ and troubleshooting sections from technical documentation.
+        system_message = f"""You are an expert technical writer specializing in creating comprehensive FAQ and troubleshooting sections from technical documentation.
+
+{PHANTOM_LINK_PREVENTION}
 
 Your task is to analyze the provided content and generate a comprehensive FAQ & Troubleshooting section that addresses:
 1. Common questions users would have about the topic

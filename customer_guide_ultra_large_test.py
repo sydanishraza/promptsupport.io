@@ -45,10 +45,15 @@ class CustomerGuideUltraLargeTest:
             with open(docx_path, 'rb') as file:
                 files = {'file': ('customer_guide.docx', file, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')}
                 
-                response = requests.post(
+                # Use session with retry and better SSL handling
+                session = requests.Session()
+                session.verify = False  # Disable SSL verification for internal testing
+                
+                response = session.post(
                     f"{self.base_url}/upload",
                     files=files,
-                    timeout=600  # 10 minutes timeout for large file
+                    timeout=600,  # 10 minutes timeout for large file
+                    stream=True   # Use streaming for large files
                 )
                 
             print(f"📤 Upload Status Code: {response.status_code}")

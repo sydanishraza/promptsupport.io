@@ -542,7 +542,7 @@ MARKER_SECURITY: This section covers security implementation details.
             print("📤 Testing content loss prevention with trackable markers")
             
             response = requests.post(
-                f"{API_BASE}/process-text-content",
+                f"{API_BASE}/content/process",
                 json=test_data,
                 timeout=90
             )

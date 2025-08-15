@@ -9442,8 +9442,9 @@ Create an engaging, informative hub article that introduces the topic with descr
             else:
                 raise Exception("OpenAI API key not configured")
             
-            # FIXED: NO PHANTOM LINKS - Validate and remove any phantom links from LLM response
+            # AGGRESSIVE PHANTOM LINK PREVENTION: Multiple cleanup passes
             hub_content = validate_and_remove_phantom_links(hub_content)
+            hub_content = aggressive_phantom_link_cleanup_final_pass(hub_content)
             
             # FIXED: NO PHANTOM LINKS - Simple descriptive content without broken navigation
             related_links_html = f"""

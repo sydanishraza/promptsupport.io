@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://smartdocs-23.preview.emergentagent.com"
+BACKEND_URL = "https://promptsupport-2.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test(message):

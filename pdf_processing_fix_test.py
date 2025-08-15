@@ -17,7 +17,7 @@ from pymongo import MongoClient
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smartdocs-23.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://promptsupport-2.preview.emergentagent.com') + '/api'
 
 class PDFProcessingFixTest:
     def __init__(self):

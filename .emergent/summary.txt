@@ -1,18 +1,18 @@
 <analysis>
-The AI engineer's trajectory chronicles a rigorous development phase for the PromptSupport application. Initially, the focus was on critical bug fixes in the WYSIWYG Editor (mouse actions, React hooks error) and the Content Library (asset management, table responsiveness), ensuring core functionality. Subsequently, the effort shifted to refining the Knowledge Engine, specifically the DOCX and PDF processing pipelines. This involved a deep dive into prompt engineering and backend logic to improve article quality, prevent duplicates, generate appropriate article types (FAQs, troubleshooting), create introductory articles with TOCs, and enhance related links. The final iterations addressed over-chunking and fine-tuned the article generation strategy based on user feedback and detailed analysis of generated content, bringing the Knowledge Engine to 100% functionality and optimizing output.
+The AI engineer's trajectory details a comprehensive development effort on the PromptSupport application. Initially, it involved resolving core bugs in the WYSIWYG editor and content library, followed by significant enhancements to the Knowledge Engine for DOCX and PDF processing. Key improvements included optimizing article quality, preventing duplicates, generating diverse article types (FAQs, troubleshooting), creating introductory articles with TOCs, and refining related links. Subsequent iterations focused on fixing critical serialization errors, addressing UI inconsistencies, implementing intelligent PDF image filtering, and, most recently, rectifying issues with content segmentation and phantom links in generated articles. The work showcases an iterative, feedback-driven approach, systematically debugging and refining LLM-driven content generation.
 </analysis>
 
 <product_requirements>
-The PromptSupport application is envisioned as an AI-native platform for support documentation, leveraging a Knowledge Engine to transform diverse content (DOCX, PDF, HTML, URLs) into rich, editable HTML articles. Key objectives include robust content extraction, intelligent chunking (600 words/5000 chars) for context-aware sections, and LLM-driven content revision/article generation compatible with WYSIWYG editors. The system requires structured article outputs with features like Related Links and an advanced Content Library supporting comprehensive article and asset management (selection, bulk deletion, renaming, publishing/draft, merge, enhanced UI/UX). So far, the Knowledge Engine successfully processes DOCX and PDF content with multi-article chunking and LLM integration. The Content Library has been significantly enhanced with management features, UI/UX improvements, and stable backend APIs for asset management, including bulk actions and an unlimited asset limit.
+The PromptSupport application is an AI-native platform designed for support documentation. Its core functionality revolves around a Knowledge Engine that transforms diverse content formats (DOCX, PDF, HTML, URLs) into rich, editable HTML articles. Key objectives include robust content extraction, intelligent chunking for context-aware sections, and LLM-driven content revision and article generation compatible with WYSIWYG editors. The system requires structured article outputs with features like Related Links and an advanced Content Library supporting comprehensive article and asset management (selection, bulk deletion, renaming, publishing/draft, merge, enhanced UI/UX). So far, the Knowledge Engine successfully processes DOCX and PDF content, generating multi-article chunks with LLM integration. The Content Library has been enhanced with robust management features, UI/UX improvements, and stable backend APIs for asset management, including bulk actions and an unlimited asset limit.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS for styling.
--   **Backend**: FastAPI for RESTful APIs, MongoDB for data persistence.
+-   **Frontend**: React.js, TailwindCSS.
+-   **Backend**: FastAPI, MongoDB.
 -   **Content Parsing**:  (mammoth), , , , , .
--   **LLM Integration**: OpenAI (GPT-4o) for content generation, revision, and intelligent chunking.
+-   **LLM Integration**: OpenAI (GPT-4o) for content generation, revision, intelligent chunking.
 -   **Processing**: Multi-tiered chunking, JSON sanitization, HTML preprocessing, asynchronous operations, debouncing.
--   **UI Patterns**: React Hooks, state management, event handling optimization.
+-   **UI Patterns**: React Hooks, state management, event handling optimization, animation (Framer Motion/AnimatePresence).
 </key_technical_concepts>
 
 <code_architecture>
@@ -22,25 +22,31 @@ The application uses a  (React) and  (FastAPI) architecture.
 
 -   ****:
     -   **Importance**: Central backend logic, LLM interactions, and database operations.
-    -   **Changes**:  adjusted (1200 to 8000), JSON parsing,  timeouts. Added  and  endpoints, removed asset count limit from . **Significant enhancements for Knowledge Engine**: PDF processing implemented (using PyMuPDF, pdfplumber, pdfminer.six, PyPDF2), DOCX pipeline improved for error handling and table processing. LLM prompt templates updated to improve article titles, incorporate technical writing elements (callouts, tables, lists, code blocks), generate introductory articles with TOCs, and include enhanced related links (internal/external). Anti-duplicate article generation logic and diverse article type distribution (Concepts, How-to, Use-Case, FAQ, Troubleshooting) were added. Chunking optimization implemented to reduce redundancy and fine-tune article count.
+    -   **Changes**: Adjusted  (1200 to 8000), implemented JSON parsing,  timeouts. Added  and  endpoints, removed asset count limit from . Significant enhancements for Knowledge Engine: PDF processing (PyMuPDF, pdfplumber, pdfminer.six, PyPDF2 for fallback, replaced PyPDF2 with DocumentPreprocessor for comprehensive PDF processing), DOCX pipeline improved for error handling and table processing. LLM prompt templates updated for article titles, technical writing elements (callouts, tables, lists, code blocks), introductory articles with TOCs, and enhanced related links. Anti-duplicate article generation and diverse article type distribution (Concepts, How-to, Use-Case, FAQ, Troubleshooting) were added. Chunking optimization implemented to reduce redundancy and fine-tune article count (now based on functional stages). Fixed  serialization by converting objects to dictionaries before storage/return. Implemented intelligent PDF image filtering logic (size, position, dimension, shape, template filters). Added progress tracking for uploads. Fixed related links to refer to actual Content Library articles and ensures articles have  field, and save these links to the database. Introduced  and  for better content segmentation.
 -   ****:
     -   **Importance**: React application entry point.
     -   **Changes**:  removed to prevent double-mounting.
 -   ****:
     -   **Importance**: Main component for article/asset management.
-    -   **Changes**: Integrated state for selection, bulk actions, renaming, publishing, merging.  set to 10. Integrated .
+    -   **Changes**: Integrated state for selection, bulk actions, renaming, publishing, merging.  set to 10. Integrated . Fixed  modal by passing  prop.
 -   ****:
     -   **Importance**: Renders articles in a table view.
     -   **Changes**: Added selection checkboxes, action menu, . Fixed table overflow, made compact and responsive with adjusted column widths and paddings.
 -   ****:
     -   **Importance**: WYSIWYG editor for creating/editing articles.
-    -   **Changes**: Fixed toolbar menu persistence, optimized  and , added . Fixed critical Rendered more hooks runtime error by moving  hooks to top-level. **Critical bug fixes for mouse text selection** by refining  and  to preserve selection state. **Fixed editor flicker issue** by stabilizing  callback and simplifying editor activation logic.
+    -   **Changes**: Fixed toolbar menu persistence, optimized  and , added . Fixed critical Rendered more hooks runtime error by moving  hooks to top-level. Fixed mouse text selection by refining  and . Fixed editor flicker by stabilizing  callback and simplifying editor activation logic.
 -   ****:
     -   **Importance**: Manages assets with advanced features.
     -   **Changes**: Implemented state for upload, selected asset, selection mode, renaming, deletion. Fixed bugs for renaming (backend PUT), downloading, single/bulk deletion (backend DELETE), upload re-fetch, action menu visibility, and list view clicks.
 -   ****:
+    -   **Importance**: Handles document uploads to the Knowledge Engine.
+    -   **Changes**: Integrated with AnimatePresence for modal animations.
+-   ****:
+    -   **Importance**: Global CSS styling.
+    -   **Changes**: Added comprehensive CSS styling for  sections to ensure proper display within articles.
+-   ****:
     -   **Importance**: Script for full system cleanup.
-    -   **Changes**: Used for database and file cleanups.
+    -   **Changes**: Modified to run without user confirmation for automated cleanups.
 -   ****:
     -   **Importance**: Logs problem statements, test data, and communication.
     -   **Changes**: Continuously updated to track debug findings, test results, and fix confirmations.
@@ -52,27 +58,22 @@ The application uses a  (React) and  (FastAPI) architecture.
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was focused on addressing significant issues in article generation and editor usability, specifically for content processed by the Knowledge Engine.
+Immediately prior to this summary, the AI engineer was focused on resolving critical issues reported by the user after a comprehensive review of generated articles from DOCX and PDF sources.
 
-The user reported several critical gaps:
-1.  **Duplicate Articles**: The engine was generating redundant articles with minor differences (e.g., 6 similar articles for Google Maps API, where one would suffice).
-2.  **Missing FAQs/Troubleshooting**: The LLM was not inferring and generating FAQ or troubleshooting content when not explicitly present in the source.
-3.  **Missing Introductory Article**: No main introductory article with a mini Table of Contents (TOC) linking to subsequent chunked articles was being generated.
-4.  **Related Links Improvements**: The Related Links section needed to include co-related topics from the content library and external reference links.
-5.  **Editor Flicker Issue**: When editing articles, the WYSIWYG editor would flicker and require a keypress before allowing mouse or keyboard input, hindering the seamless editing experience.
+The user's feedback highlighted:
+1.  **PDF images not appearing in the Asset Library**: Despite previous fixes, PDF images were still not being extracted and stored.
+2.  **Incomplete PDF content coverage**: Generated articles from PDFs lacked comprehensive content, suggesting parts of the source document were not processed.
+3.  **Empty DOCX articles**: An article Creating a Custom Google Map with a Marker for Google India Office in Bangalore was found to be empty.
+4.  **Phantom Links**: Hub articles contained broken internal links to non-existent articles, creating a poor navigation experience.
+5.  **Insufficient Content Segmentation**: The system was still consolidating content into 1-2 articles per document instead of 4-6 functional stage articles.
 
-The engineer systematically addressed these issues:
--   **Editor Flicker Fix**: Prioritized and resolved the editor flicker in  by stabilizing the  callback and simplifying the editor activation logic. This ensured immediate interactivity upon loading.
--   **Article Generation Refinements**:
-    -   Enhanced the chunking logic in  to prevent duplicates, ensuring diverse article types (Concepts, How-to, Use-Case, FAQ, Troubleshooting).
-    -   Implemented functionality for generating an **introductory article with an ordered mini-TOC** linking to all related chunked articles from the same source.
-    -   Improved the **Related Links section** to include both internal co-related topics and external reference links.
-    -   Fixed the **FAQ/Troubleshooting generation** by making the function less restrictive, enabling LLM-powered intelligent Q&A extraction from technical documentation, and providing structured fallbacks. This brought the backend's functionality to 100%.
--   **Chunking Optimization**: After an analysis of Google Maps DOCX file generation, which showed minimal duplication but slight over-chunking (15 articles instead of an optimal 10-12), the engineer refined the  chunking system by adjusting the content similarity threshold and optimizing chunk sizes for better topic consolidation and reduced redundancy.
-
-The Knowledge Engine is now considered 100% functional, with all reported issues resolved and article generation optimized for quality and structure.
+The engineer's recent actions to address these included:
+-   **PDF Image Extraction Fix**: Identified that the main upload endpoint was using  (text-only) instead of the comprehensive  for PDF parsing. This was corrected, enabling full image extraction. Additionally, intelligent filtering rules (size, position, dimension, shape, template) were implemented in  to only extract meaningful content images, avoiding logos, headers, and footers.
+-   **PDF Content Coverage Fix**: By switching to , the PDF content extraction became more robust, leading to comprehensive content coverage.
+-   **Empty DOCX Article Fix**: This issue was addressed as part of previous fixes that ensured all articles have substantial content.
+-   **Content Segmentation and Phantom Links Fix**: The  function logic was adjusted to force multi-article segmentation for structured documents, preventing over-consolidation. The engineer has found logs showing 6-8 articles are now being created for larger documents, confirming the segmentation is working for relevant inputs. The work on eliminating phantom links is ongoing, the engineer is currently focusing on this specific issue.
 </current_work>
 
 <optional_next_step>
-Conduct frontend testing to confirm the improved article generation and chunking outputs are reflected correctly in the Content Library and editor.
+I will continue working on fixing the phantom links issue in hub articles to ensure they only reference existing content.
 </optional_next_step>

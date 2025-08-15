@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://3f47e1b1-5137-4d60-8c09-0e0792db3402.preview.emergentagent.com/api"
+BACKEND_URL = "https://promptsupport-2.preview.emergentagent.com/api"
 
 class IntelligentFilteringTester:
     def __init__(self):

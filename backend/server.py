@@ -9576,6 +9576,317 @@ async def create_overview_chunk(content: str, metadata: dict) -> DocumentChunk:
         print(f"⚠️ Overview chunk creation failed: {e}")
         return None
 
+def calculate_content_coverage_score(source_content: str, covered_sections: list) -> dict:
+    """
+    Calculate how much of the source content is covered by the generated articles
+    """
+    try:
+        import re
+        
+        # Extract key terms, concepts, and structural elements from source
+        word_pattern = r'\b\w{4,}\b'
+        heading_pattern = r'(?:^|\n)#{1,3}\s+(.+)'
+        concept_pattern = r'\b(?:API|integration|authentication|setup|implementation|configuration|troubleshooting)\b'
+        
+        source_words = set(re.findall(word_pattern, source_content.lower()))
+        source_headings = re.findall(heading_pattern, source_content, re.MULTILINE)
+        source_concepts = re.findall(concept_pattern, source_content.lower())
+        
+        # Calculate coverage from generated sections
+        covered_words = set()
+        covered_headings = []
+        covered_concepts = []
+        
+        for section in covered_sections:
+            section_content = section.get('content', '') + ' ' + section.get('title', '')
+            section_words = set(re.findall(word_pattern, section_content.lower()))
+            covered_words.update(section_words)
+            
+            section_headings = re.findall(heading_pattern, section_content, re.MULTILINE)
+            covered_headings.extend(section_headings)
+            
+            section_concepts = re.findall(concept_pattern, section_content.lower())
+            covered_concepts.extend(section_concepts)
+        
+        # Calculate coverage scores
+        word_coverage = len(covered_words & source_words) / max(len(source_words), 1) if source_words else 1.0
+        heading_coverage = len([h for h in covered_headings if any(orig.lower() in h.lower() or h.lower() in orig.lower() for orig in source_headings)]) / max(len(source_headings), 1) if source_headings else 1.0
+        concept_coverage = len(set(covered_concepts)) / max(len(set(source_concepts)), 1) if source_concepts else 1.0
+        
+        # Overall coverage score (weighted)
+        overall_score = (word_coverage * 0.4) + (heading_coverage * 0.4) + (concept_coverage * 0.2)
+        
+        return {
+            'overall_coverage': round(overall_score, 3),
+            'word_coverage': round(word_coverage, 3),
+            'heading_coverage': round(heading_coverage, 3), 
+            'concept_coverage': round(concept_coverage, 3),
+            'source_words_count': len(source_words),
+            'covered_words_count': len(covered_words & source_words),
+            'source_headings_count': len(source_headings),
+            'source_concepts_count': len(set(source_concepts))
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Content coverage calculation failed: {e}")
+        return {'overall_coverage': 0.5, 'word_coverage': 0.5, 'heading_coverage': 0.5, 'concept_coverage': 0.5}
+
+def calculate_document_complexity_score(content: str) -> float:
+    """
+    Calculate document complexity to determine if it needs more than 6 articles
+    """
+    try:
+        import re
+        
+        # Complexity factors
+        content_length = len(content)
+        heading_pattern = r'(?:^|\n)#{1,3}\s+.+'
+        section_pattern = r'(?:^|\n)(?:\w+:|\d+\.)'
+        technical_pattern = r'\b(?:API|SDK|authentication|OAuth|JWT|REST|GraphQL|webhook|endpoint|JSON|XML|YAML|configuration|integration|implementation|deployment|troubleshooting|debugging)\b'
+        code_pattern = r'```[\s\S]*?```|`[^`]+`'
+        step_pattern = r'(?:^|\n)\s*\d+\.\s+'
+        
+        heading_count = len(re.findall(heading_pattern, content, re.MULTILINE))
+        section_count = len(re.findall(section_pattern, content, re.MULTILINE))
+        paragraph_count = len([p for p in content.split('\n\n') if p.strip()])
+        
+        # Technical complexity indicators
+        technical_terms = len(re.findall(technical_pattern, content, re.IGNORECASE))
+        code_blocks = len(re.findall(code_pattern, content))
+        procedural_steps = len(re.findall(step_pattern, content, re.MULTILINE))
+        
+        # Normalize scores (0.0 to 1.0)
+        length_score = min(content_length / 20000, 1.0)  # 20k chars = max complexity
+        structure_score = min((heading_count + section_count) / 20, 1.0)  # 20 sections = max
+        paragraph_score = min(paragraph_count / 50, 1.0)  # 50 paragraphs = max
+        technical_score = min(technical_terms / 30, 1.0)  # 30 technical terms = max
+        code_score = min(code_blocks / 10, 1.0)  # 10 code blocks = max
+        procedural_score = min(procedural_steps / 20, 1.0)  # 20 steps = max
+        
+        # Weighted complexity score
+        complexity_score = (
+            length_score * 0.2 + 
+            structure_score * 0.25 + 
+            paragraph_score * 0.15 + 
+            technical_score * 0.2 + 
+            code_score * 0.1 + 
+            procedural_score * 0.1
+        )
+        
+        print(f"📊 COMPLEXITY ANALYSIS:")
+        print(f"   - Content length: {content_length} chars (score: {length_score:.2f})")
+        print(f"   - Structure elements: {heading_count + section_count} (score: {structure_score:.2f})")
+        print(f"   - Technical complexity: {technical_terms} terms (score: {technical_score:.2f})")
+        print(f"   - Overall complexity: {complexity_score:.3f}")
+        
+        return complexity_score
+        
+    except Exception as e:
+        print(f"⚠️ Complexity calculation failed: {e}")
+        return 0.5
+
+def determine_intelligent_article_limit(content: str, section_count: int) -> dict:
+    """
+    Intelligently determine article limit based on content complexity and completeness needs
+    """
+    try:
+        complexity_score = calculate_document_complexity_score(content)
+        
+        # Base limit
+        base_limit = 6
+        
+        # Adjust based on complexity
+        if complexity_score >= 0.8:  # Highly complex
+            recommended_limit = min(section_count, 12)  # Allow up to 12 for very complex docs
+            reason = "Highly complex document with extensive technical content"
+        elif complexity_score >= 0.6:  # Moderately complex
+            recommended_limit = min(section_count, 9)   # Allow up to 9 for complex docs
+            reason = "Moderately complex document requiring additional coverage"
+        elif complexity_score >= 0.4:  # Standard complexity
+            recommended_limit = min(section_count, 7)   # Allow up to 7 for standard docs
+            reason = "Standard complexity with structured content"
+        else:  # Simple content
+            recommended_limit = base_limit
+            reason = "Simple content within standard limits"
+        
+        # Ensure minimum completeness - never go below what's needed for basic coverage
+        minimum_needed = min(section_count, 4)  # At least 4 articles for structured content
+        final_limit = max(recommended_limit, minimum_needed)
+        
+        return {
+            'base_limit': base_limit,
+            'complexity_score': complexity_score,
+            'recommended_limit': recommended_limit,
+            'final_limit': final_limit,
+            'section_count': section_count,
+            'reason': reason,
+            'is_limit_increased': final_limit > base_limit
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Intelligent limit calculation failed: {e}")
+        return {'final_limit': 6, 'is_limit_increased': False, 'reason': 'Fallback to standard limit'}
+
+def smart_consolidate_sections(sections: list, target_limit: int) -> list:
+    """
+    Intelligently consolidate sections when there are too many for the target limit
+    """
+    try:
+        if len(sections) <= target_limit:
+            return sections
+        
+        print(f"🧠 INTELLIGENT CONSOLIDATION: {len(sections)} sections → target {target_limit}")
+        
+        # Classify sections by importance and consolidation potential
+        critical_sections = []
+        consolidatable_sections = []
+        
+        for section in sections:
+            section_content = section.get('content', '').lower()
+            section_title = section.get('title', '').lower()
+            
+            # Critical sections (should not be consolidated)
+            is_critical = any(keyword in section_content or keyword in section_title 
+                            for keyword in ['setup', 'installation', 'authentication', 'api', 'configuration', 'troubleshooting'])
+            
+            if is_critical or len(section.get('content', '')) > 2000:
+                critical_sections.append(section)
+                print(f"   🔒 Critical: {section.get('title', 'Unnamed')}")
+            else:
+                consolidatable_sections.append(section)
+                print(f"   📎 Consolidatable: {section.get('title', 'Unnamed')}")
+        
+        # If we have too many critical sections, we need to increase the limit
+        if len(critical_sections) > target_limit:
+            print(f"⚠️ WARNING: {len(critical_sections)} critical sections exceed target {target_limit}")
+            return sections[:target_limit]  # Take the first ones as fallback
+        
+        # Calculate how many consolidatable sections we can fit
+        available_slots = target_limit - len(critical_sections)
+        
+        if len(consolidatable_sections) <= available_slots:
+            # All sections fit
+            return critical_sections + consolidatable_sections
+        
+        # Need to consolidate some sections
+        consolidated_sections = critical_sections.copy()
+        
+        # Group consolidatable sections by similarity/theme
+        if available_slots > 0:
+            # Simple grouping by content length and themes
+            groups = []
+            current_group = []
+            current_group_size = 0
+            
+            for section in consolidatable_sections:
+                section_size = len(section.get('content', ''))
+                
+                if current_group_size + section_size > 3000 or len(current_group) >= 3:
+                    if current_group:
+                        groups.append(current_group)
+                    current_group = [section]
+                    current_group_size = section_size
+                else:
+                    current_group.append(section)
+                    current_group_size += section_size
+            
+            if current_group:
+                groups.append(current_group)
+            
+            # Take the first available_slots groups
+            for i, group in enumerate(groups[:available_slots]):
+                if len(group) == 1:
+                    consolidated_sections.append(group[0])
+                else:
+                    # Merge multiple sections into one
+                    merged_content = '\n\n'.join([s.get('content', '') for s in group])
+                    merged_title = f"Additional Topics: {', '.join([s.get('title', 'Unnamed') for s in group])}"
+                    
+                    merged_section = {
+                        'title': merged_title,
+                        'content': merged_content,
+                        'stage_type': 'consolidated',
+                        'uniqueness': 0.7,  # Slightly lower uniqueness for merged content
+                        'is_consolidated': True,
+                        'original_sections': [s.get('title', 'Unnamed') for s in group]
+                    }
+                    consolidated_sections.append(merged_section)
+                    print(f"   🔗 Consolidated: {merged_title}")
+        
+        print(f"✅ CONSOLIDATION COMPLETE: {len(sections)} → {len(consolidated_sections)} sections")
+        return consolidated_sections
+        
+    except Exception as e:
+        print(f"❌ Smart consolidation failed: {e}")
+        return sections[:target_limit]  # Fallback to simple truncation
+
+def create_overflow_summary_article(overflow_sections: list, metadata: dict) -> dict:
+    """
+    Create a comprehensive summary article for sections that couldn't fit in the main articles
+    """
+    try:
+        if not overflow_sections:
+            return None
+        
+        print(f"📋 CREATING OVERFLOW SUMMARY: {len(overflow_sections)} sections")
+        
+        # Combine all overflow content
+        overflow_content = ""
+        section_summaries = []
+        
+        for section in overflow_sections:
+            section_title = section.get('title', 'Additional Content')
+            section_content = section.get('content', '')[:500] + "..." if len(section.get('content', '')) > 500 else section.get('content', '')
+            
+            section_summaries.append(f"**{section_title}**\n{section_content}")
+            overflow_content += f"\n\n## {section_title}\n\n{section.get('content', '')}"
+        
+        # Create topic list HTML
+        topic_list_html = ''.join([f"<li><strong>{s.get('title', 'Additional Topic')}</strong></li>" for s in overflow_sections])
+        
+        # Process overflow content for HTML
+        overflow_html = overflow_content.replace('## ', '<h2>').replace('\n\n', '</p><p>').replace('<p></p>', '')
+        
+        summary_html = f"""
+        <h1>Additional Topics & Reference Material</h1>
+        
+        <div class="overflow-summary">
+            <p><strong>This article contains additional topics and reference material that complement the main documentation articles.</strong></p>
+            
+            <blockquote class="tip">
+                💡 <strong>Note:</strong> This content provides supplementary information to ensure complete coverage of the source material.
+            </blockquote>
+            
+            <h2>Covered Topics</h2>
+            <ul>
+                {topic_list_html}
+            </ul>
+            
+            {overflow_html}
+        </div>
+        """
+        
+        # Create overflow article
+        overflow_article = {
+            'title': 'Additional Topics & Reference Material',
+            'content': summary_html,
+            'html': summary_html,
+            'markdown': f"# Additional Topics & Reference Material\n\n" + overflow_content,
+            'stage_type': 'overflow_summary',
+            'article_type': 'reference',
+            'uniqueness': 0.9,
+            'is_overflow_summary': True,
+            'original_section_count': len(overflow_sections),
+            'overflow_sections': [s.get('title', 'Unnamed') for s in overflow_sections]
+        }
+        
+        print(f"✅ OVERFLOW SUMMARY CREATED: Covers {len(overflow_sections)} additional sections")
+        return overflow_article
+        
+    except Exception as e:
+        print(f"❌ Overflow summary creation failed: {e}")
+        return None
+
 async def create_functional_stage_articles(content_sections: list, full_content: str, metadata: dict) -> list:
     """FIXED: Create proper functional stage articles instead of over-consolidating"""
     try:

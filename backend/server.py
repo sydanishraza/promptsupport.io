@@ -10313,6 +10313,9 @@ def clean_article_content(content: str) -> str:
     content = process_unordered_lists(content)
     content = process_ordered_lists(content)
     
+    # PHANTOM LINK PREVENTION: Remove phantom anchor links
+    content = validate_and_remove_phantom_links(content)
+    
     # Clean up extra whitespace and newlines
     content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Multiple newlines to double
     content = re.sub(r'^\s+|\s+$', '', content)  # Trim whitespace

@@ -11004,8 +11004,10 @@ async def create_multiple_articles_from_content(content: str, metadata: Dict[str
         print(f"🔄 Processing chunk {i+1}/{len(content_chunks)} ({len(chunk)} characters)")
         
         # ISSUE 4 FIX: Enhanced system message to include related links structure
-        system_message = """You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG editor display with related links support.
+        system_message = f"""You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG editor display with related links support.
         
+{PHANTOM_LINK_PREVENTION}
+
 CRITICAL REQUIREMENTS:
 1. Use ONLY HTML tags: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
 2. NEVER use Markdown syntax (no ##, **, [], (), ```, ---)

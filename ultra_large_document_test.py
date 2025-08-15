@@ -383,10 +383,14 @@ For additional support and resources, consult the official documentation, commun
                 # Upload and process
                 upload_data = {
                     "content": content,
-                    "filename": f"strategy_test_{test_case['name']}.txt"
+                    "content_type": "text",
+                    "metadata": {
+                        "filename": f"strategy_test_{test_case['name']}.txt",
+                        "test_type": "strategy_selection"
+                    }
                 }
                 
-                async with self.session.post(f"{API_BASE}/upload-text", json=upload_data) as response:
+                async with self.session.post(f"{API_BASE}/content/process", json=upload_data) as response:
                     if response.status == 200:
                         result = await response.json()
                         job_id = result.get('job_id')

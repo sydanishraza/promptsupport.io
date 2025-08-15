@@ -813,14 +813,15 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                         procedural_nav.append(f'<li>➡️ <strong>Next:</strong> <a href="/content-library/article/{next_id}" target="_blank">{next_title}</a> <em>({next_stage})</em></li>')
                     break
             
-            # ENHANCEMENT 2: Thematic Cross-References (Same Document/Topic)
+            # FIXED: Thematic Cross-References (Same Document/Topic) with real article links
             thematic_links = []
             
-            # Links to articles from same document
+            # Links to articles from same document with proper validation
             same_doc_articles = [art for art in created_articles if art != article and 
-                               art.get('source_document') == article.get('source_document')]
+                               art.get('source_document') == article.get('source_document') and
+                               art.get('id')]  # Ensure article has valid ID
             
-            for related_article in same_doc_articles[:3]:  # Limit to prevent clutter
+            for related_article in same_doc_articles[:4]:  # Show up to 4 related articles
                 related_id = related_article.get('id')
                 related_title = related_article.get('title', 'Related Article')
                 related_stage = related_article.get('metadata', {}).get('stage_type', 'general')

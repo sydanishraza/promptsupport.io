@@ -10476,7 +10476,21 @@ async def create_functional_stage_articles(content_sections: list, full_content:
                     break
         
         print(f"✅ Created {len(substantial_sections)} functional stage articles")
-        return substantial_sections[:6]  # Limit to 6 articles maximum
+        
+        # ULTRA-LARGE FIX: Use intelligent limits instead of hard limit
+        # Allow more articles for ultra-large documents
+        content_length = len(full_content) if full_content else sum(len(s.get('content', '')) for s in substantial_sections)
+        if content_length > 50000:  # Ultra-large document
+            max_articles = 20
+            print(f"🏢 ULTRA-LARGE: Allowing up to {max_articles} articles for comprehensive coverage")
+        elif content_length > 25000:  # Large document
+            max_articles = 15
+            print(f"📚 LARGE DOCUMENT: Allowing up to {max_articles} articles")
+        else:
+            max_articles = 12  # Standard increased limit
+            print(f"📄 STANDARD: Allowing up to {max_articles} articles")
+        
+        return substantial_sections[:max_articles]
         
     except Exception as e:
         print(f"❌ Functional stage article creation failed: {e}")

@@ -9158,128 +9158,136 @@ async def analyze_content_for_unique_sections(content: str) -> list:
             
             return min(base_similarity + text_similarity, 1.0)
         
-        # Step 1: Detect functional stages in content
-        functional_stages = detect_functional_stages(content)
-        print(f"🔍 FUNCTIONAL ANALYSIS: Detected {len(functional_stages)} functional stages")
+        # Step 1: ENHANCED HIERARCHICAL SEGMENTATION - Detect multiple content structures
+        sections = []
         
-        for stage in functional_stages:
-            print(f"  📋 Stage: {stage['type']} ({len(stage['content'])} chars)")
-        
-        # Step 2: Process by functional stages instead of arbitrary splits
-        if functional_stages and len(functional_stages) > 1:
-            for i, stage in enumerate(functional_stages):
-                # Only create section if it has substantial content
-                if len(stage['content'].strip()) >= 300:  # Minimum content threshold
-                    
-                    # Determine section focus based on stage type
-                    if stage['type'] == 'setup':
-                        focus = 'setup_and_configuration'
-                    elif stage['type'] == 'implementation':
-                        focus = 'implementation_and_integration'
-                    elif stage['type'] == 'customization':
-                        focus = 'customization_and_features'
-                    elif stage['type'] == 'troubleshooting':
-                        focus = 'troubleshooting_and_support'
-                    else:
-                        focus = 'general_information'
-                    
-                    sections.append({
-                        'title': f"{stage['type'].title()} Guide",
-                        'content': stage['content'].strip(),
-                        'type': 'functional_stage',
-                        'stage_type': stage['type'],
-                        'platform': stage.get('platform'),
-                        'focus': focus,
-                        'procedural_flow': True,
-                        'stage_order': i,
-                        'is_procedural_sequence': True
-                    })
-        
-        # Fallback: If no clear functional stages, use enhanced heading-based approach
-        if not sections:
-            # Enhanced heading-based splitting with functional awareness
-            html_sections = re.split(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, flags=re.IGNORECASE)
+        # Method 1: HTML heading-based segmentation (most reliable)
+        html_sections = re.split(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, flags=re.IGNORECASE)
+        if len(html_sections) > 3:
+            current_content = ""
+            current_title = ""
             
-            if len(html_sections) > 3:
+            for i, part in enumerate(html_sections):
+                if i % 2 == 1:  # This is a heading
+                    if current_content.strip() and len(current_content.strip()) >= 200:
+                        sections.append({
+                            'title': current_title or f'Section {len(sections) + 1}',
+                            'content': current_content.strip(),
+                            'type': 'heading_based',
+                            'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
+                            'focus': 'general_information'
+                        })
+                    current_title = part.strip()
+                    current_content = ""
+                else:  # This is content
+                    current_content += part
+            
+            # Add final section
+            if current_content.strip() and len(current_content.strip()) >= 200:
+                sections.append({
+                    'title': current_title or f'Final Section',
+                    'content': current_content.strip(),
+                    'type': 'heading_based',
+                    'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
+                    'focus': 'general_information'
+                })
+        
+        # Method 2: Markdown heading-based segmentation (fallback)
+        if not sections:
+            markdown_sections = re.split(r'^#{1,6}\s+(.+)$', content, flags=re.MULTILINE)
+            if len(markdown_sections) > 3:
                 current_content = ""
                 current_title = ""
-                accumulated_sections = []
                 
-                for i, part in enumerate(html_sections):
+                for i, part in enumerate(markdown_sections):
                     if i % 2 == 1:  # This is a heading
-                        if current_content.strip():
-                            # Analyze content to determine if it's procedural
-                            is_procedural = bool(re.search(r'step\s*\d+|first.*then|next.*after', current_content.lower()))
-                            
-                            accumulated_sections.append({
-                                'title': current_title,
+                        if current_content.strip() and len(current_content.strip()) >= 200:
+                            sections.append({
+                                'title': current_title or f'Section {len(sections) + 1}',
                                 'content': current_content.strip(),
-                                'type': 'concept',
-                                'is_procedural_sequence': is_procedural,
+                                'type': 'markdown_based',
+                                'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
                                 'focus': 'general_information'
                             })
                         current_title = part.strip()
                         current_content = ""
-                    else:
+                    else:  # This is content
                         current_content += part
                 
                 # Add final section
-                if current_content.strip():
-                    is_procedural = bool(re.search(r'step\s*\d+|first.*then|next.*after', current_content.lower()))
-                    accumulated_sections.append({
-                        'title': current_title,
+                if current_content.strip() and len(current_content.strip()) >= 200:
+                    sections.append({
+                        'title': current_title or f'Final Section',
                         'content': current_content.strip(),
-                        'type': 'concept',
-                        'is_procedural_sequence': is_procedural,
+                        'type': 'markdown_based',
+                        'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
                         'focus': 'general_information'
                     })
-                
-                # ENHANCEMENT: Apply intelligent merging based on functional similarity
-                merged_sections = []
-                merge_threshold = 0.4  # Lower threshold for functional merging
-                
-                for section in accumulated_sections:
-                    merged = False
-                    
-                    # Try to merge with existing sections based on functional similarity
-                    for existing in merged_sections:
-                        similarity = calculate_functional_similarity(section, existing)
-                        
-                        if similarity > merge_threshold:
-                            # FUNCTIONAL MERGE: Combine related functional content
-                            existing['content'] = f"{existing['content']}\n\n## {section['title']}\n{section['content']}"
-                            existing['title'] = f"{existing['title']} & {section['title']}"
-                            existing['merged_from'] = existing.get('merged_from', []) + [section['title']]
-                            existing['is_procedural_sequence'] = existing.get('is_procedural_sequence') or section.get('is_procedural_sequence')
-                            merged = True
-                            print(f"🔗 FUNCTIONAL MERGE: '{section['title']}' into '{existing['title']}' (similarity: {similarity:.2f})")
-                            break
-                    
-                    if not merged:
-                        merged_sections.append(section)
-                
-                sections = merged_sections
         
-        # ENHANCEMENT: Final quality check with minimum content and procedural flow preservation
+        # Method 3: Paragraph-based segmentation (last resort)
+        if not sections:
+            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip() and len(p.strip()) >= 200]
+            for i, paragraph in enumerate(paragraphs[:6]):  # Limit to 6 for manageability
+                sections.append({
+                    'title': f'Content Section {i+1}',
+                    'content': paragraph,
+                    'type': 'paragraph_based',
+                    'is_procedural_sequence': False,
+                    'focus': 'general_information'
+                })
+        
+        print(f"🔍 HIERARCHICAL SEGMENTATION: Detected {len(sections)} distinct sections using {sections[0]['type'] if sections else 'none'}")
+        
+        # Step 2: Apply intelligent merging based on content similarity
+        if len(sections) > 1:
+            merged_sections = []
+            merge_threshold = 0.4
+            
+            for section in sections:
+                merged = False
+                
+                # Try to merge with existing sections based on similarity
+                for existing in merged_sections:
+                    # Calculate similarity (simplified version)
+                    title_similarity = 0.3 if any(word in existing['title'].lower() for word in section['title'].lower().split()) else 0
+                    content_similarity = 0.2 if len(set(section['content'].lower().split()) & set(existing['content'].lower().split())) > 5 else 0
+                    procedural_similarity = 0.3 if section.get('is_procedural_sequence') == existing.get('is_procedural_sequence') else 0
+                    
+                    total_similarity = title_similarity + content_similarity + procedural_similarity
+                    
+                    if total_similarity > merge_threshold:
+                        # Merge sections
+                        existing['content'] = f"{existing['content']}\n\n## {section['title']}\n{section['content']}"
+                        existing['title'] = f"{existing['title']} & {section['title']}"
+                        existing['merged_from'] = existing.get('merged_from', []) + [section['title']]
+                        existing['is_procedural_sequence'] = existing.get('is_procedural_sequence') or section.get('is_procedural_sequence')
+                        merged = True
+                        print(f"🔗 CONTENT MERGE: '{section['title']}' into '{existing['title']}' (similarity: {total_similarity:.2f})")
+                        break
+                
+                if not merged:
+                    merged_sections.append(section)
+            
+            sections = merged_sections
+        
+        # Step 3: Final quality check with minimum content requirements
         quality_sections = []
-        min_content_length = 800  # Increased minimum for more substantial articles
+        min_content_length = 800
         
         for section in sections:
             content_length = len(section['content'])
             
             if content_length < min_content_length:
-                # Try to merge with a procedural section or thematically similar content
+                # Try to merge with existing sections
                 merged = False
                 for existing in quality_sections:
-                    # Prefer merging with same stage type or procedural content
-                    if (existing.get('stage_type') == section.get('stage_type') or 
-                        existing.get('is_procedural_sequence') or 
-                        calculate_functional_similarity(section, existing) > 0.3):
+                    if (existing.get('is_procedural_sequence') == section.get('is_procedural_sequence') or
+                        len(existing['content']) < 2000):  # Don't make sections too large
                         
                         existing['content'] = f"{existing['content']}\n\n### {section['title']}\n{section['content']}"
                         existing['merged_from'] = existing.get('merged_from', []) + [section['title']]
                         merged = True
-                        print(f"🔗 QUALITY MERGE: '{section['title']}' into '{existing['title']}' (procedural grouping)")
+                        print(f"🔗 QUALITY MERGE: '{section['title']}' into '{existing['title']}' (content consolidation)")
                         break
                 
                 if not merged:
@@ -9287,11 +9295,11 @@ async def analyze_content_for_unique_sections(content: str) -> list:
             else:
                 quality_sections.append(section)
         
-        print(f"📊 FUNCTIONAL PROCESSING: {len(sections)} → {len(quality_sections)} sections after functional grouping and quality filtering")
+        print(f"📊 HIERARCHICAL PROCESSING: {len(sections)} → {len(quality_sections)} sections after intelligent merging and quality filtering")
         return quality_sections
         
     except Exception as e:
-        print(f"❌ Enhanced functional content analysis failed: {e}")
+        print(f"❌ Enhanced hierarchical content analysis failed: {e}")
         # Fallback to simple splitting
         paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
         return [{'title': f'Section {i+1}', 'content': p, 'type': 'general', 'focus': 'general_information'} 

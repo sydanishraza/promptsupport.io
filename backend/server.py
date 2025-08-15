@@ -10963,7 +10963,7 @@ Respond with valid JSON containing title and HTML content."""
         related_links_html = '<h2>Related Articles</h2>\n<p>Other parts of this document:</p>\n<ul>\n'
         for j, info in enumerate(article_info):
             if j != i:  # Don't link to self
-                related_links_html += f'<li><a href="#article-{info["id"]}" data-article-id="{info["id"]}">{info["title"]}</a></li>\n'
+                related_links_html += f'<li><a href="/content-library/article/{info["id"]}" data-article-id="{info["id"]}" target="_blank">{info["title"]}</a></li>\n'
         related_links_html += '</ul>'
         
         user_message = f"""Transform this content chunk into a clean, well-structured article with professional HTML formatting:

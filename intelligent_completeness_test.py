@@ -200,7 +200,7 @@ Official SDK documentation for JavaScript, Python, PHP, and other supported lang
             print(f"📤 Uploading complex document ({len(complex_content)} chars, 14 sections)")
             
             response = requests.post(
-                f"{API_BASE}/process-text-content",
+                f"{API_BASE}/content/process",
                 json=test_data,
                 timeout=120
             )

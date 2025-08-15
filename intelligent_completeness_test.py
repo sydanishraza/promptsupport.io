@@ -452,7 +452,7 @@ Final thoughts and summary.
             
             print("📤 Testing simple document (should get 4-6 articles)")
             simple_response = requests.post(
-                f"{API_BASE}/process-text-content",
+                f"{API_BASE}/content/process",
                 json=simple_data,
                 timeout=60
             )

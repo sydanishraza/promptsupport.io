@@ -14,7 +14,21 @@
 # Main and testing agents must follow this exact format to maintain testing data. 
 # The testing data must be entered in yaml format Below is the data structure:
 # 
-## user_problem_statement: {problem_statement}
+## user_problem_statement: Fix Phantom Links Issue
+
+The user reported that hub articles contain broken internal links to non-existent articles, creating a poor navigation experience. The testing showed 33-64 phantom anchor links across hub articles (including links like #what-is-whisk-studio, #getting-started, #create-an-account) that point to non-existent sections instead of real Content Library articles. The TOC accuracy was 0.0% and users encounter broken navigation with 0 working Content Library links.
+
+SOLUTION IMPLEMENTED:
+1. Fixed create_introductory_toc_article function to use /content-library/article/{id} format instead of #article-{id}
+2. Removed the first (incorrect) add_related_links_to_articles function that created phantom links
+3. Fixed remaining phantom links in Quick Navigation and related links sections
+4. All links now use proper Content Library URLs with target="_blank" for better UX
+
+TESTING NEEDED:
+- Verify that hub articles now have working links to actual Content Library articles
+- Confirm that TOC links work properly 
+- Ensure no phantom anchor links remain
+- Test that article navigation functions correctly
 backend:
   - task: "Backend Health Check"
     implemented: true

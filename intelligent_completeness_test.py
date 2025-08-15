@@ -476,8 +476,11 @@ Final thoughts and summary.
             complex_content = self.create_complex_test_document()
             complex_data = {
                 'content': complex_content,
-                'filename': 'complex_dynamic_test.txt',
-                'content_type': 'text/plain'
+                'content_type': 'text',
+                'metadata': {
+                    'filename': 'complex_dynamic_test.txt',
+                    'source': 'intelligent_completeness_test'
+                }
             }
             
             print("📤 Testing complex document (should get 7-12 articles)")

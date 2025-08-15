@@ -8954,7 +8954,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 print("✅ Created enhanced hub article with comprehensive overview")
         
         # Step 2: FIXED CHUNKING - Create proper functional stage articles (4-6 articles)
-        merged_sections = await identify_concept_sections(content_sections)
+        merged_sections = await create_functional_stage_articles(content_sections, content, metadata)
         print(f"📊 FUNCTIONAL STAGE CHUNKING: {len(content_sections)} → {len(merged_sections)} functional articles")
         
         # Step 3: Create articles from functional stages (INCREASED LIMIT: 4-6 articles)

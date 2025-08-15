@@ -480,7 +480,7 @@ async def create_introductory_toc_article(articles: list, metadata: dict) -> dic
 
 <h2>Quick Navigation</h2>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
-{chr(10).join([f'<div style="background-color: #f8fafc; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6;"><strong><a href="#article-{link["id"]}">{link["title"]}</a></strong><br><em>{link["type"]}</em></div>' for link in article_links[:6]])}
+{chr(10).join([f'<div style="background-color: #f8fafc; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6;"><strong><a href="/content-library/article/{link["id"]}" target="_blank">{link["title"]}</a></strong><br><em>{link["type"]}</em></div>' for link in article_links[:6]])}
 </div>"""
         
         # Create comprehensive markdown version

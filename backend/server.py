@@ -9388,6 +9388,9 @@ Create an engaging, informative hub article that introduces the topic with descr
             else:
                 raise Exception("OpenAI API key not configured")
             
+            # FIXED: NO PHANTOM LINKS - Validate and remove any phantom links from LLM response
+            hub_content = validate_and_remove_phantom_links(hub_content)
+            
             # FIXED: NO PHANTOM LINKS - Simple descriptive content without broken navigation
             related_links_html = f"""
 <div class="related-links">
@@ -9395,11 +9398,7 @@ Create an engaging, informative hub article that introduces the topic with descr
 <p><em>This comprehensive guide is organized into focused articles covering all aspects of the topic. Each article builds upon the previous one to provide complete coverage.</em></p>
 
 <h4>🔗 External Resources</h4>
-<ul>
-<li><a href="#" target="_blank">Official Documentation</a></li>
-<li><a href="#" target="_blank">Community Guidelines</a></li>
-<li><a href="#" target="_blank">Best Practices Guide</a></li>
-</ul>
+<p><em>For additional information, please refer to the official documentation and community resources available through your preferred search engine or the product's official website.</em></p>
 </div>
 """
             

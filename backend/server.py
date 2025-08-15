@@ -394,6 +394,16 @@ async def generate_enhanced_markdown_content(article_data: dict, template_data: 
 
 # === END HELPER FUNCTIONS ===
 
+# Universal phantom link prevention instruction for LLM prompts
+PHANTOM_LINK_PREVENTION = """
+CRITICAL LINK POLICY: 
+- NEVER create anchor links starting with # (like #section-name, #getting-started, etc.)
+- NEVER create links to non-existent articles or sections
+- Only create external links to real websites (https://example.com)
+- If you need to reference other content, use descriptive text without links
+- DO NOT create navigation links, TOC links, or internal page anchors
+"""
+
 def validate_and_remove_phantom_links(html_content: str, existing_article_ids: list = None) -> str:
     """
     Validate and remove phantom anchor links from HTML content.

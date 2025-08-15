@@ -9432,22 +9432,11 @@ Create an engaging, informative hub article that introduces the topic and guides
             else:
                 raise Exception("OpenAI API key not configured")
             
-            # FIXED: Create related links section that only references ACTUAL generated articles
-            actual_articles_toc = []
-            if len(content_sections) > 0:
-                actual_articles_toc.append("• **Main Content Guide** - Comprehensive coverage of all topics")
-            actual_articles_toc.append("• **FAQ & Troubleshooting** - Common questions and solutions")
-            
-            if len(content_sections) > 1:
-                actual_articles_toc.append("• **Additional Resources** - Supplementary information and references")
-            
+            # FIXED: NO PHANTOM LINKS - Simple descriptive content without broken navigation
             related_links_html = f"""
 <div class="related-links">
-<h3>📚 Articles Available in This Guide</h3>
-<p><em>This guide is part of a comprehensive knowledge base. The following articles are available:</em></p>
-<ul>
-{chr(10).join(actual_articles_toc)}
-</ul>
+<h3>📚 Complete Guide Structure</h3>
+<p><em>This comprehensive guide is organized into focused articles covering all aspects of the topic. Each article builds upon the previous one to provide complete coverage.</em></p>
 
 <h4>🔗 External Resources</h4>
 <ul>

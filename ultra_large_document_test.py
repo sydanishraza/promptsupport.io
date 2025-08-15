@@ -251,10 +251,14 @@ For additional support and resources, consult the official documentation, commun
                 # Upload as text content
                 upload_data = {
                     "content": content,
-                    "filename": f"ultra_large_test_{size_type}.txt"
+                    "content_type": "text",
+                    "metadata": {
+                        "filename": f"ultra_large_test_{size_type}.txt",
+                        "test_type": "ultra_large_detection"
+                    }
                 }
                 
-                async with self.session.post(f"{API_BASE}/upload-text", json=upload_data) as response:
+                async with self.session.post(f"{API_BASE}/content/process", json=upload_data) as response:
                     if response.status == 200:
                         result = await response.json()
                         job_id = result.get('job_id')

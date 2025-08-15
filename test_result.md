@@ -278,15 +278,18 @@ backend:
 
   - task: "CRITICAL FIX 1: Real Related Links Instead of Placeholders"
     implemented: true
-    working: true
+    working: false
     file: "backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "critical"
     needs_retesting: false
     status_history:
         -working: true
         -agent: "testing"
         -comment: "✅ CRITICAL FIX 1 MOSTLY SUCCESSFUL: Real Related Links functionality is implemented and working. DETAILED VERIFICATION: The add_related_links_to_articles() function (lines 732-897) successfully fetches existing Content Library articles for cross-references, creates real links using /content-library/article/{article_id} format, implements topic similarity matching based on tags and keywords, and generates external reference links. TESTING RESULTS: Generated articles contain real Content Library links (2 found), links use proper URL format instead of placeholders, topic similarity matching connects relevant articles based on content analysis. LIMITATION IDENTIFIED: Related links are only added when len(articles) > 1, so single articles don't get cross-references to existing Content Library articles. RECOMMENDATION: Consider modifying logic to add related links to single articles as well for better cross-referencing."
+        -working: false
+        -agent: "testing"
+        -comment: "❌ CRITICAL DATABASE PERSISTENCE BUG DISCOVERED: Cross-references debugging revealed that add_related_links_to_articles function IS being called but updated articles are NOT saved to database. ROOT CAUSE IDENTIFIED: In create_content_library_articles_from_chunks() function (line 8922), add_related_links_to_articles() is called and returns updated articles with cross-references, but these updated articles are only returned from the function - they are NOT saved back to the database. The original articles were already saved at line 8880, but the enhanced versions with cross-references exist only in memory. EVIDENCE: 1) Function call verification: add_related_links_to_articles() is called when len(created_articles) > 1 ✅, 2) Link generation debug: Function generates procedural navigation links, thematic cross-references, and external resources ✅, 3) Article structure analysis: Generated articles have substantial content (4000+ chars) but 0% have related-links div ❌, 4) Database integration: Updated articles with cross-references are not persisted to Content Library ❌. TECHNICAL ANALYSIS: Content Library shows 29 articles with substantial content but none contain 'related-links', 'Related Articles', or 'Procedural Navigation' sections. This confirms cross-references are generated in memory but lost when not saved to database. CRITICAL FIX REQUIRED: Add database update operation after add_related_links_to_articles() call to persist cross-references to Content Library. The function works perfectly but database persistence is missing."
 
   - task: "CRITICAL BUG TEST: Missing Articles & Phantom Links"
     implemented: true

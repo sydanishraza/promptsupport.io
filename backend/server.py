@@ -4159,6 +4159,9 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
         print("🤖 Attempting Local LLM fallback...")
         local_response = await call_local_llm(system_message, user_message)
         if local_response:
+            # PHANTOM LINK CLEANUP: Clean all LLM responses
+            local_response = validate_and_remove_phantom_links(local_response)
+            local_response = aggressive_phantom_link_cleanup_final_pass(local_response)
             return local_response
     except Exception as e:
         print(f"❌ Local LLM also failed: {e}")

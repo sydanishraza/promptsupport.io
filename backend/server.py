@@ -9136,7 +9136,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             else:
                 print(f"✅ OVERFLOW SUMMARY: Created overflow article covering {len(overflow_sections)} additional sections")
         
-        # Step 5: COMPLETENESS VERIFICATION - Calculate content coverage
+        # Step 5: ENHANCED COMPLETENESS VERIFICATION - Special handling for ultra-large documents
         all_processed_sections = sections_to_process + (overflow_sections if overflow_sections else [])
         coverage_analysis = calculate_content_coverage_score(content, all_processed_sections)
         
@@ -9146,19 +9146,56 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         print(f"   - Heading coverage: {coverage_analysis['heading_coverage']:.1%}")
         print(f"   - Concept coverage: {coverage_analysis['concept_coverage']:.1%}")
         
-        # Add coverage metadata to all chunks
+        # Enhanced completeness thresholds for ultra-large documents
+        if ultra_large_analysis['is_ultra_large']:
+            # More lenient thresholds for ultra-large documents since they're inherently more complex
+            completeness_threshold = 0.6  # 60% for ultra-large
+            good_coverage_threshold = 0.8  # 80% is excellent for ultra-large
+        else:
+            # Standard thresholds
+            completeness_threshold = 0.7  # 70% for standard
+            good_coverage_threshold = 0.85  # 85% is excellent for standard
+        
+        # Add enhanced metadata to all chunks
         for chunk in chunks:
             chunk['metadata']['content_coverage'] = coverage_analysis
             chunk['metadata']['intelligent_processing'] = True
+            chunk['metadata']['ultra_large_processing'] = ultra_large_analysis['is_ultra_large']
+            chunk['metadata']['ultra_large_strategy'] = ultra_large_analysis['strategy']
             chunk['metadata']['total_articles_created'] = len(chunks)
             chunk['metadata']['overflow_handled'] = len(overflow_sections) > 0
+            chunk['metadata']['multi_level_overflow'] = len(overflow_sections) > 5
+            chunk['metadata']['completeness_threshold'] = completeness_threshold
         
-        # COMPLETENESS WARNING if coverage is low
-        if coverage_analysis['overall_coverage'] < 0.7:
+        # Enhanced completeness warnings and recommendations
+        if coverage_analysis['overall_coverage'] < completeness_threshold:
             print(f"⚠️ COMPLETENESS WARNING: Only {coverage_analysis['overall_coverage']:.1%} content coverage achieved")
-            print(f"   Consider reviewing the generated articles for missing information")
+            if ultra_large_analysis['is_ultra_large']:
+                print(f"   💡 ULTRA-LARGE DOCUMENT: Consider {ultra_large_analysis['recommendation'].lower()}")
+                if ultra_large_analysis['strategy'] == 'document_splitting':
+                    print(f"   📋 RECOMMENDATION: Split this document into 2-3 smaller documents for optimal processing")
+                elif ultra_large_analysis['strategy'] == 'hierarchical_articles':
+                    print(f"   🏗️ RECOMMENDATION: Document processed with hierarchical structure for better organization")
+            else:
+                print(f"   Consider reviewing the generated articles for missing information")
+        elif coverage_analysis['overall_coverage'] >= good_coverage_threshold:
+            print(f"🎉 EXCELLENT COVERAGE: {coverage_analysis['overall_coverage']:.1%} content coverage achieved!")
+            if ultra_large_analysis['is_ultra_large']:
+                print(f"   🏢 ULTRA-LARGE SUCCESS: Comprehensive coverage achieved for complex document")
         else:
             print(f"✅ COMPLETENESS VERIFIED: {coverage_analysis['overall_coverage']:.1%} content coverage achieved")
+        
+        # Ultra-large document summary
+        if ultra_large_analysis['is_ultra_large']:
+            print(f"")
+            print(f"🏢 ULTRA-LARGE DOCUMENT PROCESSING SUMMARY:")
+            print(f"   - Document size: {ultra_large_analysis['content_length']:,} chars, {ultra_large_analysis['word_count']:,} words")
+            print(f"   - Structural complexity: {ultra_large_analysis['heading_count']} headings, {ultra_large_analysis['major_sections']} major sections")
+            print(f"   - Processing strategy: {ultra_large_analysis['strategy']}")
+            print(f"   - Articles created: {len(chunks)} (estimated need: {ultra_large_analysis['estimated_articles_needed']})")
+            print(f"   - Overflow articles: {len([c for c in chunks if c['metadata'].get('is_overflow_summary', False)])}")
+            print(f"   - Content coverage: {coverage_analysis['overall_coverage']:.1%}")
+            print(f"   - Completeness status: {'✅ ACHIEVED' if coverage_analysis['overall_coverage'] >= completeness_threshold else '⚠️ NEEDS REVIEW'}")
         
         # Step 6: ENHANCED FAQ GENERATION - Always generate FAQ/Troubleshooting with deduplication
         faq_chunk = await generate_faq_troubleshooting_article(content, metadata)

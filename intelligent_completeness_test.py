@@ -547,8 +547,11 @@ MARKER_SECURITY: This section covers security implementation details.
             
             test_data = {
                 'content': test_content,
-                'filename': 'content_loss_test.txt',
-                'content_type': 'text/plain'
+                'content_type': 'text',
+                'metadata': {
+                    'filename': 'content_loss_test.txt',
+                    'source': 'intelligent_completeness_test'
+                }
             }
             
             print("📤 Testing content loss prevention with trackable markers")

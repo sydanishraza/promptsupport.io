@@ -452,8 +452,11 @@ Final thoughts and summary.
             
             simple_data = {
                 'content': simple_content,
-                'filename': 'simple_guide.txt',
-                'content_type': 'text/plain'
+                'content_type': 'text',
+                'metadata': {
+                    'filename': 'simple_guide.txt',
+                    'source': 'intelligent_completeness_test'
+                }
             }
             
             print("📤 Testing simple document (should get 4-6 articles)")

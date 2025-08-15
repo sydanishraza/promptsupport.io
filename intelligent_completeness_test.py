@@ -321,8 +321,11 @@ Planned features and update procedures.
             
             test_data = {
                 'content': overflow_content,
-                'filename': 'overflow_test_guide.txt',
-                'content_type': 'text/plain'
+                'content_type': 'text',
+                'metadata': {
+                    'filename': 'overflow_test_guide.txt',
+                    'source': 'intelligent_completeness_test'
+                }
             }
             
             print(f"📤 Testing overflow handling ({len(overflow_content)} chars, 20 sections)")

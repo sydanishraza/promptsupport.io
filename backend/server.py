@@ -11255,9 +11255,11 @@ async def create_single_article_from_content(content: str, metadata: Dict[str, A
     print(f"📝 SIMPLIFIED: Creating single article from {len(content)} characters (no automatic image embedding)")
     
     # FIX 3: HTML OPTIMIZATION FOR EDITOR COMPATIBILITY - Enhanced system message with native editor block formatting
-    system_message = """You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
+    system_message = f"""You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
 
 Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
+
+{PHANTOM_LINK_PREVENTION}
 
 Follow these core rules:
 

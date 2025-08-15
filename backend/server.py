@@ -410,8 +410,8 @@ PHANTOM_LINK_PREVENTION = """
 
 def validate_and_remove_phantom_links(html_content: str, existing_article_ids: list = None) -> str:
     """
-    AGGRESSIVE phantom link removal function.
-    Removes ALL anchor links starting with # and validates content library links.
+    ULTRA-AGGRESSIVE phantom link removal using simple regex patterns.
+    Removes ALL anchor links starting with # plus invalid content library links.
     """
     try:
         import re
@@ -419,93 +419,82 @@ def validate_and_remove_phantom_links(html_content: str, existing_article_ids: l
         if existing_article_ids is None:
             existing_article_ids = []
         
-        # AGGRESSIVE STEP 1: Remove ALL anchor links that start with # 
-        # These are always phantom links since articles are separate pages
-        phantom_pattern = r'<a\s+[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>(.*?)</a>'
-        phantom_matches = re.findall(phantom_pattern, html_content, flags=re.IGNORECASE | re.DOTALL)
-        html_content = re.sub(phantom_pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
+        original_content = html_content
         
-        if phantom_matches:
-            print(f"🧹 AGGRESSIVE PHANTOM CLEANUP: Removed {len(phantom_matches)} phantom anchor links")
-            for i, match in enumerate(phantom_matches[:5]):  # Show first 5
-                print(f"   Removed: '{match[:50]}...'")
+        # STEP 1: Remove ALL anchor tags that have href starting with #
+        # This catches all phantom links like #what-is-*, #getting-started, etc.
+        phantom_anchor_pattern = r'<a[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>(.*?)</a>'
+        phantom_matches = re.findall(phantom_anchor_pattern, html_content, flags=re.IGNORECASE | re.DOTALL)
+        html_content = re.sub(phantom_anchor_pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
         
-        # AGGRESSIVE STEP 2: Remove empty href links
-        empty_href_pattern = r'<a\s+[^>]*href\s*=\s*["\']\s*["\']\s*[^>]*>(.*?)</a>'
+        # STEP 2: Remove anchor tags with empty or missing href
+        empty_href_pattern = r'<a[^>]*href\s*=\s*["\'][\s]*["\'][^>]*>(.*?)</a>'
         html_content = re.sub(empty_href_pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
         
-        # AGGRESSIVE STEP 3: Remove any remaining problematic link patterns
-        problematic_patterns = [
-            r'<a\s+[^>]*href\s*=\s*["\']#what-is[^"\']*["\'][^>]*>(.*?)</a>',
-            r'<a\s+[^>]*href\s*=\s*["\']#getting-started[^"\']*["\'][^>]*>(.*?)</a>',
-            r'<a\s+[^>]*href\s*=\s*["\']#setup[^"\']*["\'][^>]*>(.*?)</a>',
-            r'<a\s+[^>]*href\s*=\s*["\']#implementation[^"\']*["\'][^>]*>(.*?)</a>',
-            r'<a\s+[^>]*href\s*=\s*["\']#advanced[^"\']*["\'][^>]*>(.*?)</a>',
-            r'<a\s+[^>]*href\s*=\s*["\']#troubleshooting[^"\']*["\'][^>]*>(.*?)</a>',
-            r'<a\s+[^>]*href\s*=\s*["\']#create-an-account[^"\']*["\'][^>]*>(.*?)</a>',
-        ]
+        # STEP 3: Remove anchor tags without href attribute at all
+        no_href_pattern = r'<a(?![^>]*href)[^>]*>(.*?)</a>'
+        html_content = re.sub(no_href_pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
         
-        for pattern in problematic_patterns:
-            matches = re.findall(pattern, html_content, flags=re.IGNORECASE | re.DOTALL)
-            if matches:
-                print(f"🧹 TARGETED CLEANUP: Removing {len(matches)} specific phantom links")
-            html_content = re.sub(pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
-        
-        # STEP 4: Validate /content-library/article/{id} links if we have existing IDs
-        def validate_content_library_link(match):
-            full_link = match.group(0)
-            article_id = match.group(1)
-            link_text = match.group(2)
+        # STEP 4: Validate and clean content library links if we have existing article IDs
+        if existing_article_ids:
+            def validate_content_library_link(match):
+                article_id = match.group(1)
+                link_text = match.group(2)
+                
+                if article_id not in existing_article_ids:
+                    print(f"🧹 INVALID CONTENT LIBRARY LINK REMOVED: {article_id}")
+                    return link_text  # Return just the text, remove the link
+                
+                return match.group(0)  # Keep the link if valid
             
-            # If we have existing article IDs, validate against them
-            if existing_article_ids and article_id not in existing_article_ids:
-                print(f"🧹 INVALID LINK REMOVED: /content-library/article/{article_id}")
-                return link_text  # Return just the text, remove the link
-            
-            return full_link  # Keep the link if valid
+            content_library_pattern = r'<a[^>]*href\s*=\s*["\']/?content-library/article/([^"\']+)["\'][^>]*>(.*?)</a>'
+            html_content = re.sub(
+                content_library_pattern,
+                validate_content_library_link,
+                html_content,
+                flags=re.IGNORECASE | re.DOTALL
+            )
         
-        # Validate content library links
-        html_content = re.sub(
-            r'<a\s+[^>]*href\s*=\s*["\']/?content-library/article/([^"\']+)["\'][^>]*>(.*?)</a>',
-            validate_content_library_link,
-            html_content,
-            flags=re.IGNORECASE | re.DOTALL
-        )
+        # Log what was cleaned
+        if phantom_matches:
+            print(f"🧹 PHANTOM LINK CLEANUP: Removed {len(phantom_matches)} phantom anchor links")
+            for i, match in enumerate(phantom_matches[:3]):  # Show first 3
+                print(f"   Removed phantom link text: '{match[:30]}...'")
+        
+        if html_content != original_content:
+            print(f"🧹 CONTENT SANITIZED: {len(original_content)} → {len(html_content)} characters")
         
         return html_content
         
     except Exception as e:
-        print(f"⚠️ Error in aggressive phantom link cleanup: {e}")
+        print(f"⚠️ Error in phantom link cleanup: {e}")
         return html_content
 
 def aggressive_phantom_link_cleanup_final_pass(html_content: str) -> str:
     """
-    Final aggressive pass to remove any remaining phantom links that might have been generated.
-    This is the last line of defense against phantom links.
+    NUCLEAR OPTION: Remove ANY remaining anchor links that might be phantom.
+    This is the absolute final cleanup pass.
     """
     try:
         import re
         
-        # Remove any anchor links that remain
-        anchor_patterns = [
-            r'<a[^>]+href=["\']\#[^"\']*["\'][^>]*>([^<]+)</a>',
-            r'\[([^\]]+)\]\(#[^)]*\)',  # Markdown style anchor links
-            r'<a[^>]+href=["\']\#[^"\']*["\'][^>]*>',  # Opening anchor tags
-            r'</a>',  # Closing anchor tags without content
-        ]
+        # NUCLEAR STEP 1: Find and remove any remaining anchor tags
+        remaining_anchors = re.findall(r'<a[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>([^<]*)</a>', html_content, flags=re.IGNORECASE)
+        if remaining_anchors:
+            print(f"🚨 NUCLEAR CLEANUP: Found {len(remaining_anchors)} remaining phantom links, removing...")
+            for anchor in remaining_anchors[:3]:  # Show first 3
+                print(f"   Nuclear removal: '{anchor[:30]}...'")
         
-        for pattern in anchor_patterns:
-            if '([^<]+)' in pattern or '([^\]]+)' in pattern:
-                # Pattern has capture group, replace with captured text
-                html_content = re.sub(pattern, r'\1', html_content, flags=re.IGNORECASE)
-            else:
-                # Pattern doesn't have capture group, just remove
-                html_content = re.sub(pattern, '', html_content, flags=re.IGNORECASE)
+        # Remove all remaining # anchor links
+        html_content = re.sub(r'<a[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>([^<]*)</a>', r'\1', html_content, flags=re.IGNORECASE)
+        
+        # NUCLEAR STEP 2: Remove any stray anchor tags
+        html_content = re.sub(r'<a[^>]*href\s*=\s*["\'][\s]*["\'][^>]*>([^<]*)</a>', r'\1', html_content, flags=re.IGNORECASE)
         
         return html_content
         
     except Exception as e:
-        print(f"⚠️ Error in final phantom link cleanup: {e}")
+        print(f"⚠️ Error in nuclear phantom link cleanup: {e}")
         return html_content
 
 async def create_introductory_toc_article(articles: list, metadata: dict) -> dict:

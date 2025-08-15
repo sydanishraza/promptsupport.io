@@ -790,30 +790,28 @@ async def add_related_links_to_articles(created_articles: list) -> list:
             article_stage = article.get('metadata', {}).get('stage_type', 'general')
             article_focus = article.get('metadata', {}).get('content_focus', 'general')
             
-            # ENHANCEMENT 1: Procedural Navigation (Previous/Next Steps)
+            # FIXED: Procedural Navigation with real article links
             procedural_nav = []
             
-            if 'procedural_sequence' in sequences:
-                proc_sequence = sequences['procedural_sequence']
-                current_pos = next((idx for idx, item in enumerate(proc_sequence) 
-                                  if item['article']['id'] == article.get('id')), -1)
-                
-                if current_pos >= 0:
-                    # Previous step link
-                    if current_pos > 0:
-                        prev_article = proc_sequence[current_pos - 1]['article']
+            # Simple previous/next navigation based on article order
+            for idx, art in enumerate(created_articles):
+                if art.get('id') == article.get('id'):
+                    # Previous article link
+                    if idx > 0:
+                        prev_article = created_articles[idx - 1]
                         prev_id = prev_article.get('id')
-                        prev_title = prev_article.get('title', 'Previous Step')
-                        prev_stage = proc_sequence[current_pos - 1]['stage']
+                        prev_title = prev_article.get('title', 'Previous Article')
+                        prev_stage = prev_article.get('metadata', {}).get('stage_type', 'guide')
                         procedural_nav.append(f'<li>⬅️ <strong>Previous:</strong> <a href="/content-library/article/{prev_id}" target="_blank">{prev_title}</a> <em>({prev_stage})</em></li>')
                     
-                    # Next step link
-                    if current_pos < len(proc_sequence) - 1:
-                        next_article = proc_sequence[current_pos + 1]['article']
+                    # Next article link  
+                    if idx < len(created_articles) - 1:
+                        next_article = created_articles[idx + 1]
                         next_id = next_article.get('id')
-                        next_title = next_article.get('title', 'Next Step')
-                        next_stage = proc_sequence[current_pos + 1]['stage']
+                        next_title = next_article.get('title', 'Next Article')
+                        next_stage = next_article.get('metadata', {}).get('stage_type', 'guide')
                         procedural_nav.append(f'<li>➡️ <strong>Next:</strong> <a href="/content-library/article/{next_id}" target="_blank">{next_title}</a> <em>({next_stage})</em></li>')
+                    break
             
             # ENHANCEMENT 2: Thematic Cross-References (Same Document/Topic)
             thematic_links = []

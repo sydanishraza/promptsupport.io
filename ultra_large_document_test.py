@@ -772,7 +772,7 @@ For additional support and resources, consult the official documentation, commun
         
         while time.time() - start_time < timeout:
             try:
-                async with self.session.get(f"{API_BASE}/job-status/{job_id}") as response:
+                async with self.session.get(f"{API_BASE}/jobs/{job_id}") as response:
                     if response.status == 200:
                         result = await response.json()
                         status = result.get('status')

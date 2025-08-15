@@ -9578,6 +9578,135 @@ async def create_overview_chunk(content: str, metadata: dict) -> DocumentChunk:
         print(f"⚠️ Overview chunk creation failed: {e}")
         return None
 
+async def create_functional_stage_articles(content_sections: list, full_content: str, metadata: dict) -> list:
+    """FIXED: Create proper functional stage articles instead of over-consolidating"""
+    try:
+        print(f"🔧 Creating functional stage articles from {len(content_sections)} sections")
+        
+        # Define functional stages that should be separate articles
+        functional_stages = {
+            'introduction': {
+                'keywords': ['introduction', 'overview', 'what is', 'getting started', 'about'],
+                'stage_type': 'introduction',
+                'priority': 1
+            },
+            'setup': {
+                'keywords': ['setup', 'installation', 'configuration', 'account', 'credentials', 'api key', 'authentication'],
+                'stage_type': 'setup',
+                'priority': 2
+            },
+            'implementation': {
+                'keywords': ['implementation', 'integration', 'development', 'coding', 'api', 'endpoint', 'request'],
+                'stage_type': 'implementation', 
+                'priority': 3
+            },
+            'customization': {
+                'keywords': ['customization', 'advanced', 'features', 'options', 'configuration', 'settings'],
+                'stage_type': 'customization',
+                'priority': 4
+            },
+            'troubleshooting': {
+                'keywords': ['troubleshooting', 'problems', 'errors', 'debugging', 'issues', 'faq', 'common'],
+                'stage_type': 'troubleshooting',
+                'priority': 5
+            }
+        }
+        
+        # Classify sections into functional stages
+        classified_sections = []
+        
+        for section in content_sections:
+            section_content = section.get('content', '').lower()
+            section_title = section.get('title', '').lower()
+            combined_text = f"{section_title} {section_content}"
+            
+            # Find the best matching functional stage
+            best_match = None
+            best_score = 0
+            
+            for stage_name, stage_info in functional_stages.items():
+                score = 0
+                for keyword in stage_info['keywords']:
+                    if keyword in combined_text:
+                        score += combined_text.count(keyword)
+                
+                if score > best_score:
+                    best_score = score
+                    best_match = stage_info
+            
+            # Create functional stage article
+            if best_match and best_score > 0:
+                classified_sections.append({
+                    'title': f"{best_match['stage_type'].title()} Guide",
+                    'content': section['content'],
+                    'stage_type': best_match['stage_type'],
+                    'focus': f"{best_match['stage_type']}_guide",
+                    'priority': best_match['priority'],
+                    'procedural_flow': True,
+                    'is_procedural_sequence': True,
+                    'original_title': section.get('title', 'Untitled')
+                })
+            else:
+                # Default classification
+                classified_sections.append({
+                    'title': section.get('title', 'General Information'),
+                    'content': section['content'],
+                    'stage_type': 'general',
+                    'focus': 'general_information',
+                    'priority': 99,
+                    'procedural_flow': False,
+                    'is_procedural_sequence': False
+                })
+        
+        # Sort by priority to maintain logical flow
+        classified_sections.sort(key=lambda x: x['priority'])
+        
+        # Ensure we have at least 3-4 substantial articles
+        substantial_sections = []
+        for section in classified_sections:
+            if len(section['content']) >= 300:  # Minimum content for separate article
+                substantial_sections.append(section)
+        
+        # If we don't have enough articles, split larger sections
+        if len(substantial_sections) < 3:
+            print(f"⚠️ Only {len(substantial_sections)} substantial sections - attempting to create more articles")
+            
+            # Look for the largest section and try to split it
+            for section in substantial_sections:
+                if len(section['content']) > 2000:
+                    # Split large section into two parts
+                    content = section['content']
+                    mid_point = len(content) // 2
+                    
+                    # Try to find a good split point (paragraph break)
+                    split_point = content.find('\n\n', mid_point - 200, mid_point + 200)
+                    if split_point == -1:
+                        split_point = mid_point
+                    
+                    # Create two articles from one
+                    first_part = {
+                        **section,
+                        'title': f"{section['original_title']} - Part 1",
+                        'content': content[:split_point]
+                    }
+                    second_part = {
+                        **section,
+                        'title': f"{section['original_title']} - Part 2", 
+                        'content': content[split_point:],
+                        'priority': section['priority'] + 0.5
+                    }
+                    
+                    substantial_sections.remove(section)
+                    substantial_sections.extend([first_part, second_part])
+                    break
+        
+        print(f"✅ Created {len(substantial_sections)} functional stage articles")
+        return substantial_sections[:6]  # Limit to 6 articles maximum
+        
+    except Exception as e:
+        print(f"❌ Functional stage article creation failed: {e}")
+        return content_sections[:4]  # Fallback to original sections
+
 async def identify_concept_sections(content_sections: list) -> list:
     """Filter and enhance sections to focus on distinct concepts"""
     try:

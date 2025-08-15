@@ -54,7 +54,7 @@ class CustomerGuideUltraLargeTest:
                 session.verify = False  # Disable SSL verification for internal testing
                 
                 response = session.post(
-                    f"{self.base_url}/upload",
+                    f"{self.base_url}/content/upload",
                     files=files,
                     timeout=600,  # 10 minutes timeout for large file
                     stream=True   # Use streaming for large files

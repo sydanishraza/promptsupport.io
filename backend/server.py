@@ -394,6 +394,52 @@ async def generate_enhanced_markdown_content(article_data: dict, template_data: 
 
 # === END HELPER FUNCTIONS ===
 
+def validate_and_remove_phantom_links(html_content: str, existing_article_ids: list = None) -> str:
+    """
+    Validate and remove phantom anchor links from HTML content.
+    Only allows valid /content-library/article/{id} links or external URLs.
+    """
+    try:
+        import re
+        
+        if existing_article_ids is None:
+            existing_article_ids = []
+        
+        # Remove all anchor links that start with # (internal page anchors)
+        # These are phantom links since each article is a separate page
+        html_content = re.sub(r'<a\s+[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>(.*?)</a>', r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Validate /content-library/article/{id} links - remove invalid ones
+        def validate_content_library_link(match):
+            full_link = match.group(0)
+            article_id = match.group(1)
+            link_text = match.group(2)
+            
+            # If we have existing article IDs, validate against them
+            if existing_article_ids and article_id not in existing_article_ids:
+                return link_text  # Return just the text, remove the link
+            
+            return full_link  # Keep the link if valid
+        
+        # Validate content library links
+        html_content = re.sub(
+            r'<a\s+[^>]*href\s*=\s*["\']/?content-library/article/([^"\']+)["\'][^>]*>(.*?)</a>',
+            validate_content_library_link,
+            html_content,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        
+        # Log removed phantom links for debugging
+        phantom_links_removed = len(re.findall(r'<a\s+[^>]*href\s*=\s*["\']#[^"\']*["\']', html_content, re.IGNORECASE))
+        if phantom_links_removed > 0:
+            print(f"🧹 PHANTOM LINK CLEANUP: Removed {phantom_links_removed} phantom anchor links")
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"⚠️ Error validating links: {e}")
+        return html_content
+
 async def create_introductory_toc_article(articles: list, metadata: dict) -> dict:
     """Create a comprehensive introductory article with table of contents when multiple articles are generated"""
     try:

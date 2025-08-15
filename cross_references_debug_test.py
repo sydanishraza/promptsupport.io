@@ -143,7 +143,7 @@ class CrossReferencesDebugTest:
                     time.sleep(2)
                     attempt += 1
                     
-                    status_response = requests.get(f"{self.base_url}/upload-status/{job_id}", timeout=10)
+                    status_response = requests.get(f"{self.base_url}/jobs/{job_id}", timeout=10)
                     if status_response.status_code == 200:
                         status_data = status_response.json()
                         status = status_data.get('status')

@@ -396,12 +396,16 @@ async def generate_enhanced_markdown_content(article_data: dict, template_data: 
 
 # Universal phantom link prevention instruction for LLM prompts
 PHANTOM_LINK_PREVENTION = """
-CRITICAL LINK POLICY: 
-- NEVER create anchor links starting with # (like #section-name, #getting-started, etc.)
-- NEVER create links to non-existent articles or sections
-- Only create external links to real websites (https://example.com)
-- If you need to reference other content, use descriptive text without links
-- DO NOT create navigation links, TOC links, or internal page anchors
+🚫 ABSOLUTE PROHIBITION - NO ANCHOR LINKS ALLOWED:
+- NEVER, UNDER ANY CIRCUMSTANCES, create links starting with # (anchor links)
+- NEVER create href="#anything" - this creates broken navigation
+- NEVER create links like #getting-started, #what-is-whisk-studio, #setup, #implementation, etc.
+- NEVER create table of contents with clickable links - use plain text only
+- NEVER create navigation elements with links - use descriptive text instead
+- If referencing other sections, use phrases like "see the section on..." without links
+- Only external URLs (https://...) are allowed, and only if they are real websites
+- When listing topics or sections, use plain text bullets, not links
+- Replace any link temptation with descriptive text: "The setup section covers..." instead of links
 """
 
 def validate_and_remove_phantom_links(html_content: str, existing_article_ids: list = None) -> str:

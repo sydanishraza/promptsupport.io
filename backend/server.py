@@ -9091,31 +9091,50 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             used_content_fingerprints.add(fingerprint)
             print(f"✅ Created {article_type} article: {section.get('title', 'Article')} (uniqueness: {section.get('uniqueness', 0.8)})")
         
-        # Step 4: OVERFLOW HANDLING - Create comprehensive overflow summary if needed
+        # Step 4: ENHANCED OVERFLOW HANDLING - Multi-level overflow for ultra-large documents
         if overflow_sections:
-            overflow_article = create_overflow_summary_article(overflow_sections, metadata)
-            if overflow_article:
-                # Convert overflow article to DocumentChunk format
-                overflow_chunk = DocumentChunk(
-                    content=overflow_article['content'],
-                    metadata={
-                        **metadata,
-                        'chunk_id': len(chunks) + 1,
-                        'article_type': 'reference',
-                        'stage_type': 'overflow_summary',
-                        'content_focus': 'completeness',
-                        'uniqueness_score': 0.9,
-                        'is_overflow_summary': True,
-                        'original_section_count': overflow_article['original_section_count'],
-                        'processing_method': 'intelligent_overflow_handling'
-                    },
-                    source_file=metadata.get('original_filename', 'document'),
-                    chunk_index=len(chunks),
-                    content_fingerprint=generate_content_fingerprint(overflow_article['content'])
-                )
-                
-                chunks.append(overflow_chunk.dict())
-                print(f"✅ OVERFLOW SUMMARY: Created comprehensive overflow article covering {len(overflow_sections)} additional sections")
+            print(f"📋 PROCESSING OVERFLOW: {len(overflow_sections)} sections need overflow handling")
+            
+            # Determine overflow handling strategy based on document size
+            if ultra_large_analysis['is_ultra_large'] and len(overflow_sections) > 5:
+                print(f"🏢 ULTRA-LARGE OVERFLOW: Using multi-level overflow strategy")
+                overflow_articles = create_multi_level_overflow_articles(overflow_sections, metadata)
+            else:
+                print(f"📄 STANDARD OVERFLOW: Using single overflow summary")
+                single_overflow = create_overflow_summary_article(overflow_sections, metadata)
+                overflow_articles = [single_overflow] if single_overflow else []
+            
+            # Convert overflow articles to DocumentChunk format
+            for i, overflow_article in enumerate(overflow_articles):
+                if overflow_article:
+                    overflow_chunk = DocumentChunk(
+                        content=overflow_article['content'],
+                        metadata={
+                            **metadata,
+                            'chunk_id': len(chunks) + i + 1,
+                            'article_type': 'reference',
+                            'stage_type': overflow_article.get('stage_type', 'overflow_summary'),
+                            'content_focus': 'completeness',
+                            'uniqueness_score': 0.9,
+                            'is_overflow_summary': True,
+                            'is_multi_overflow': overflow_article.get('is_multi_overflow', False),
+                            'overflow_part': overflow_article.get('overflow_part', 1),
+                            'overflow_total_parts': overflow_article.get('overflow_total_parts', 1),
+                            'overflow_theme': overflow_article.get('overflow_theme', 'Additional Topics'),
+                            'processing_method': 'enhanced_overflow_handling'
+                        },
+                        source_file=metadata.get('original_filename', 'document'),
+                        chunk_index=len(chunks) + i,
+                        content_fingerprint=generate_content_fingerprint(overflow_article['content'])
+                    )
+                    
+                    chunks.append(overflow_chunk.dict())
+                    print(f"✅ OVERFLOW ARTICLE {i+1}: {overflow_article.get('title', 'Overflow Summary')}")
+            
+            if len(overflow_articles) > 1:
+                print(f"✅ MULTI-LEVEL OVERFLOW COMPLETE: Created {len(overflow_articles)} overflow articles for comprehensive coverage")
+            else:
+                print(f"✅ OVERFLOW SUMMARY: Created overflow article covering {len(overflow_sections)} additional sections")
         
         # Step 5: COMPLETENESS VERIFICATION - Calculate content coverage
         all_processed_sections = sections_to_process + (overflow_sections if overflow_sections else [])

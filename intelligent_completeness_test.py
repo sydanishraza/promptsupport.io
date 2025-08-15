@@ -325,7 +325,7 @@ Planned features and update procedures.
             print(f"📤 Testing overflow handling ({len(overflow_content)} chars, 20 sections)")
             
             response = requests.post(
-                f"{API_BASE}/process-text-content",
+                f"{API_BASE}/content/process",
                 json=test_data,
                 timeout=150
             )

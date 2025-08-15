@@ -8956,44 +8956,93 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 used_content_fingerprints.add(overview_chunk.content_fingerprint)
                 print("✅ Created enhanced hub article with comprehensive overview")
         
-        # Step 2: INTELLIGENT COMPLETENESS - Determine optimal article limit and handle overflow
+        # Step 2: ULTRA-LARGE DOCUMENT INTELLIGENCE - Enhanced completeness for massive documents
         merged_sections = await create_functional_stage_articles(content_sections, content, metadata)
         print(f"📊 FUNCTIONAL STAGE CHUNKING: {len(content_sections)} → {len(merged_sections)} functional articles")
         
-        # INTELLIGENCE UPGRADE: Determine intelligent article limit
-        limit_analysis = determine_intelligent_article_limit(content, len(merged_sections))
-        intelligent_limit = limit_analysis['final_limit']
+        # ULTRA-LARGE DETECTION: Check if document exceeds normal processing limits
+        ultra_large_analysis = detect_ultra_large_document(content, len(merged_sections))
         
-        print(f"🧠 INTELLIGENT LIMIT ANALYSIS:")
-        print(f"   - Original sections: {len(merged_sections)}")
-        print(f"   - Complexity score: {limit_analysis['complexity_score']:.3f}")
-        print(f"   - Recommended limit: {limit_analysis['recommended_limit']}")
-        print(f"   - Final limit: {intelligent_limit}")
-        print(f"   - Reason: {limit_analysis['reason']}")
+        if ultra_large_analysis['is_ultra_large']:
+            print(f"🏢 ULTRA-LARGE DOCUMENT DETECTED:")
+            print(f"   - Content: {ultra_large_analysis['content_length']} chars, {ultra_large_analysis['word_count']} words")
+            print(f"   - Structure: {ultra_large_analysis['heading_count']} headings, {ultra_large_analysis['major_sections']} major sections")
+            print(f"   - Estimated articles needed: {ultra_large_analysis['estimated_articles_needed']}")
+            print(f"   - Strategy: {ultra_large_analysis['strategy']}")
+            print(f"   - Recommendation: {ultra_large_analysis['recommendation']}")
+            
+            # Handle ultra-large documents with specialized strategies
+            if ultra_large_analysis['strategy'] == 'document_splitting':
+                print(f"📋 DOCUMENT SPLITTING RECOMMENDED: Document too large for single processing")
+                # For now, proceed with maximum intelligent processing but log the recommendation
+                intelligent_limit = 15  # Increased limit for splitting scenarios
+                
+            elif ultra_large_analysis['strategy'] == 'hierarchical_articles':
+                print(f"🏗️ HIERARCHICAL PROCESSING: Creating hierarchical article structure")
+                hierarchical_structure = create_hierarchical_article_structure(merged_sections, metadata)
+                
+                if hierarchical_structure['total_articles'] > 0:
+                    print(f"✅ HIERARCHICAL STRUCTURE: {hierarchical_structure['total_articles']} articles in {hierarchical_structure['categories_created']} categories")
+                    
+                    # Process hierarchical articles first
+                    all_hierarchical_sections = hierarchical_structure['hierarchical_articles'] + hierarchical_structure['detailed_articles']
+                    merged_sections = all_hierarchical_sections
+                    intelligent_limit = min(len(merged_sections), 20)  # Allow up to 20 for hierarchical
+                else:
+                    # Fallback to multi-level overflow
+                    intelligent_limit = 12
+                    
+            elif ultra_large_analysis['strategy'] == 'multi_level_overflow':
+                print(f"📚 MULTI-LEVEL OVERFLOW: Will create multiple overflow articles")
+                intelligent_limit = 12  # Standard limit but with enhanced overflow handling
+                
+            else:
+                # Standard processing with increased limit
+                intelligent_limit = 12
+        else:
+            # Standard intelligent limit determination
+            limit_analysis = determine_intelligent_article_limit(content, len(merged_sections))
+            intelligent_limit = limit_analysis['final_limit']
+            
+            print(f"🧠 STANDARD INTELLIGENT LIMIT:")
+            print(f"   - Complexity score: {limit_analysis['complexity_score']:.3f}")
+            print(f"   - Final limit: {intelligent_limit}")
+            print(f"   - Reason: {limit_analysis['reason']}")
         
-        # COMPLETENESS CHECK: Handle overflow intelligently
+        # COMPLETENESS CHECK: Handle overflow intelligently (enhanced for ultra-large)
         overflow_sections = []
         sections_to_process = merged_sections
         
         if len(merged_sections) > intelligent_limit:
-            print(f"⚠️ COMPLETENESS WARNING: {len(merged_sections)} sections exceed intelligent limit {intelligent_limit}")
+            print(f"⚠️ COMPLETENESS WARNING: {len(merged_sections)} sections exceed limit {intelligent_limit}")
             
-            # Smart consolidation attempt
-            consolidated_sections = smart_consolidate_sections(merged_sections, intelligent_limit - 1)  # Reserve 1 slot for overflow
-            
-            if len(consolidated_sections) < len(merged_sections):
-                print(f"✅ SMART CONSOLIDATION: {len(merged_sections)} → {len(consolidated_sections)} sections")
-                sections_to_process = consolidated_sections
+            # Enhanced consolidation for ultra-large documents
+            if ultra_large_analysis['is_ultra_large'] and ultra_large_analysis['strategy'] != 'hierarchical_articles':
+                print(f"🔧 ULTRA-LARGE CONSOLIDATION: Applying enhanced consolidation strategies")
                 
-                # Track remaining sections for overflow summary
-                processed_titles = set([s.get('title', '') for s in consolidated_sections])
-                overflow_sections = [s for s in merged_sections if s.get('title', '') not in processed_titles]
+                # More aggressive consolidation for ultra-large documents
+                target_articles = intelligent_limit - 2  # Reserve 2 slots for overflow
+                consolidated_sections = smart_consolidate_sections(merged_sections, target_articles)
+                
+                if len(consolidated_sections) < len(merged_sections):
+                    sections_to_process = consolidated_sections
+                    overflow_sections = merged_sections[len(consolidated_sections):]
+                else:
+                    sections_to_process = merged_sections[:target_articles]
+                    overflow_sections = merged_sections[target_articles:]
             else:
-                # Consolidation didn't help much, use hard limit but track overflow
-                sections_to_process = merged_sections[:intelligent_limit - 1]  # Reserve 1 slot for overflow
-                overflow_sections = merged_sections[intelligent_limit - 1:]
+                # Standard consolidation
+                consolidated_sections = smart_consolidate_sections(merged_sections, intelligent_limit - 1)
                 
-            print(f"📋 OVERFLOW TRACKING: {len(overflow_sections)} sections will be handled in overflow summary")
+                if len(consolidated_sections) < len(merged_sections):
+                    sections_to_process = consolidated_sections
+                    processed_titles = set([s.get('title', '') for s in consolidated_sections])
+                    overflow_sections = [s for s in merged_sections if s.get('title', '') not in processed_titles]
+                else:
+                    sections_to_process = merged_sections[:intelligent_limit - 1]
+                    overflow_sections = merged_sections[intelligent_limit - 1:]
+                
+            print(f"📋 OVERFLOW TRACKING: {len(overflow_sections)} sections will be handled in overflow")
         
         # Step 3: Create articles from processed sections with intelligent limits
         for i, section in enumerate(sections_to_process):

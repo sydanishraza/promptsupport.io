@@ -9987,8 +9987,11 @@ Generate 4-6 relevant questions with detailed answers, plus a troubleshooting se
         faq_response = await call_llm_with_fallback(system_message, user_message)
         
         if faq_response and len(faq_response.strip()) > 200:
-            print("✅ LLM generated intelligent FAQ content")
-            return faq_response.strip()
+            print("✅ LLM generated intelligent FAQ content - applying phantom link cleanup")
+            # PHANTOM LINK CLEANUP: Clean any phantom links from FAQ content
+            faq_response = validate_and_remove_phantom_links(faq_response.strip())
+            faq_response = aggressive_phantom_link_cleanup_final_pass(faq_response)
+            return faq_response
         else:
             print("⚠️ LLM FAQ response insufficient, using fallback")
             return None

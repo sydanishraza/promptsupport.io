@@ -9644,14 +9644,14 @@ async def create_functional_stage_articles(content_sections: list, full_content:
         # Sort by priority to maintain logical flow
         classified_sections.sort(key=lambda x: x['priority'])
         
-        # Ensure we have at least 3-4 substantial articles
+        # FIXED: Lower threshold to create more articles for better coverage
         substantial_sections = []
         for section in classified_sections:
-            if len(section['content']) >= 300:  # Minimum content for separate article
+            if len(section['content']) >= 150:  # Much lower threshold to create more articles
                 substantial_sections.append(section)
         
-        # If we don't have enough articles, split larger sections
-        if len(substantial_sections) < 3:
+        # FIXED: Create additional articles by splitting sections if needed
+        if len(substantial_sections) < 4:  # Ensure at least 4 articles
             print(f"⚠️ Only {len(substantial_sections)} substantial sections - attempting to create more articles")
             
             # Look for the largest section and try to split it

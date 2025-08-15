@@ -8956,13 +8956,48 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 used_content_fingerprints.add(overview_chunk.content_fingerprint)
                 print("✅ Created enhanced hub article with comprehensive overview")
         
-        # Step 2: FIXED CHUNKING - Create proper functional stage articles (4-6 articles)
+        # Step 2: INTELLIGENT COMPLETENESS - Determine optimal article limit and handle overflow
         merged_sections = await create_functional_stage_articles(content_sections, content, metadata)
         print(f"📊 FUNCTIONAL STAGE CHUNKING: {len(content_sections)} → {len(merged_sections)} functional articles")
         
-        # Step 3: Create articles from functional stages (INCREASED LIMIT: 4-6 articles)
-        for i, section in enumerate(merged_sections[:6]):  # Allow up to 6 functional articles
-            if len(chunks) >= 6:  # INCREASED LIMIT: Allow more functional articles
+        # INTELLIGENCE UPGRADE: Determine intelligent article limit
+        limit_analysis = determine_intelligent_article_limit(content, len(merged_sections))
+        intelligent_limit = limit_analysis['final_limit']
+        
+        print(f"🧠 INTELLIGENT LIMIT ANALYSIS:")
+        print(f"   - Original sections: {len(merged_sections)}")
+        print(f"   - Complexity score: {limit_analysis['complexity_score']:.3f}")
+        print(f"   - Recommended limit: {limit_analysis['recommended_limit']}")
+        print(f"   - Final limit: {intelligent_limit}")
+        print(f"   - Reason: {limit_analysis['reason']}")
+        
+        # COMPLETENESS CHECK: Handle overflow intelligently
+        overflow_sections = []
+        sections_to_process = merged_sections
+        
+        if len(merged_sections) > intelligent_limit:
+            print(f"⚠️ COMPLETENESS WARNING: {len(merged_sections)} sections exceed intelligent limit {intelligent_limit}")
+            
+            # Smart consolidation attempt
+            consolidated_sections = smart_consolidate_sections(merged_sections, intelligent_limit - 1)  # Reserve 1 slot for overflow
+            
+            if len(consolidated_sections) < len(merged_sections):
+                print(f"✅ SMART CONSOLIDATION: {len(merged_sections)} → {len(consolidated_sections)} sections")
+                sections_to_process = consolidated_sections
+                
+                # Track remaining sections for overflow summary
+                processed_titles = set([s.get('title', '') for s in consolidated_sections])
+                overflow_sections = [s for s in merged_sections if s.get('title', '') not in processed_titles]
+            else:
+                # Consolidation didn't help much, use hard limit but track overflow
+                sections_to_process = merged_sections[:intelligent_limit - 1]  # Reserve 1 slot for overflow
+                overflow_sections = merged_sections[intelligent_limit - 1:]
+                
+            print(f"📋 OVERFLOW TRACKING: {len(overflow_sections)} sections will be handled in overflow summary")
+        
+        # Step 3: Create articles from processed sections with intelligent limits
+        for i, section in enumerate(sections_to_process):
+            if len(chunks) >= intelligent_limit - (1 if overflow_sections else 0):  # Reserve slot for overflow if needed
                 break
                 
             # ENHANCED SIMILARITY CHECK: More stringent duplicate detection

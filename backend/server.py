@@ -9292,10 +9292,10 @@ IMPORTANT: Do not create internal navigation links or anchor links. Focus on cre
 **Key Concepts Identified**:
 {concept_list}
 
-**Mini Table of Contents** (related articles):
+**Content Areas to Cover** (descriptive overview only):
 {toc_content}
 
-Create an engaging, informative hub article that introduces the topic and guides users to related content."""
+Create an engaging, informative hub article that introduces the topic with descriptive content only. DO NOT create any links to non-existent articles or sections."""
 
         messages = [
             {"role": "system", "content": system_message},

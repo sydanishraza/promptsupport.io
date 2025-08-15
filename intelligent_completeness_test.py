@@ -190,11 +190,14 @@ Official SDK documentation for JavaScript, Python, PHP, and other supported lang
         try:
             complex_content = self.create_complex_test_document()
             
-            # Create a text file with complex content
+            # Create a text content request
             test_data = {
                 'content': complex_content,
-                'filename': 'complex_api_guide.txt',
-                'content_type': 'text/plain'
+                'content_type': 'text',
+                'metadata': {
+                    'filename': 'complex_api_guide.txt',
+                    'source': 'intelligent_completeness_test'
+                }
             }
             
             print(f"📤 Uploading complex document ({len(complex_content)} chars, 14 sections)")

@@ -126,7 +126,7 @@ class CrossReferencesDebugTest:
             }
             
             print("📤 Uploading test document...")
-            response = requests.post(f"{self.base_url}/upload", files=files, timeout=120)
+            response = requests.post(f"{self.base_url}/content/upload", files=files, timeout=120)
             print(f"Upload Status Code: {response.status_code}")
             
             if response.status_code == 200:

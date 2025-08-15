@@ -4144,6 +4144,9 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
                 result = response.json()
                 ai_response = result["content"][0]["text"]
                 print(f"✅ Claude response successful: {len(ai_response)} characters")
+                # PHANTOM LINK CLEANUP: Clean all LLM responses
+                ai_response = validate_and_remove_phantom_links(ai_response)
+                ai_response = aggressive_phantom_link_cleanup_final_pass(ai_response)
                 return ai_response
             else:
                 print(f"❌ Claude also failed: {response.status_code} - {response.text}")

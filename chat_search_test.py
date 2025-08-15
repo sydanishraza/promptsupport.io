@@ -7,7 +7,7 @@ import requests
 import json
 import uuid
 
-BACKEND_URL = "https://promptsupport-2.preview.emergentagent.com/api"
+BACKEND_URL = "https://docai-promptsupport.preview.emergentagent.com/api"
 
 def test_chat_search():
     """Test chat with different queries to see if search is working"""

@@ -18,7 +18,7 @@ from pymongo import MongoClient
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://promptsupport-2.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://docai-promptsupport.preview.emergentagent.com') + '/api'
 
 # MongoDB connection for direct database verification
 MONGO_URL = "mongodb://localhost:27017/"

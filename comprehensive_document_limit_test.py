@@ -31,8 +31,8 @@ API_BASE = f"{BACKEND_URL}/api"
 # Test documents with expected article counts
 TEST_DOCUMENTS = [
     {
-        "filename": "Customer Summary Screen User Guide 1.3.docx",
-        "path": "/app/Customer Summary Screen User Guide 1.3.docx",
+        "filename": "Customer_Summary_Screen_User_Guide_1.3.docx",
+        "path": "/app/Customer_Summary_Screen_User_Guide_1.3.docx",
         "size_mb": 4.6,
         "pages": 85,
         "expected_min": 15,
@@ -41,8 +41,8 @@ TEST_DOCUMENTS = [
         "description": "Large comprehensive user guide"
     },
     {
-        "filename": "Google Map JavaScript API Tutorial.docx", 
-        "path": "/app/Google Map JavaScript API Tutorial.docx",
+        "filename": "Google_Map_JavaScript_API_Tutorial.docx", 
+        "path": "/app/Google_Map_JavaScript_API_Tutorial.docx",
         "size_mb": 1.1,
         "pages": "unknown",
         "expected_min": 8,
@@ -51,8 +51,8 @@ TEST_DOCUMENTS = [
         "description": "Medium technical tutorial"
     },
     {
-        "filename": "Promotions Configuration and Management-v5.docx",
-        "path": "/app/Promotions Configuration and Management-v5.docx", 
+        "filename": "Promotions_Configuration_and_Management-v5-20220201_173002.docx",
+        "path": "/app/Promotions_Configuration_and_Management-v5-20220201_173002.docx", 
         "size_mb": 0.5,
         "pages": "unknown",
         "expected_min": 6,
@@ -61,8 +61,8 @@ TEST_DOCUMENTS = [
         "description": "Small technical configuration guide"
     },
     {
-        "filename": "Whisk Studio Integration Guide.pdf",
-        "path": "/app/Whisk Studio Integration Guide.pdf",
+        "filename": "Whisk_Studio_Integration_Guide.pdf",
+        "path": "/app/Whisk_Studio_Integration_Guide.pdf",
         "size_mb": 1.7,
         "pages": "unknown", 
         "expected_min": 10,

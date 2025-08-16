@@ -10158,36 +10158,19 @@ def determine_intelligent_article_limit(content: str, section_count: int) -> dic
     try:
         complexity_score = calculate_document_complexity_score(content)
         
-        # Base limit
-        base_limit = 6
         
-        # Adjust based on complexity
-        if complexity_score >= 0.8:  # Highly complex
-            recommended_limit = min(section_count, 12)  # Allow up to 12 for very complex docs
-            reason = "Highly complex document with extensive technical content"
-        elif complexity_score >= 0.6:  # Moderately complex
-            recommended_limit = min(section_count, 9)   # Allow up to 9 for complex docs
-            reason = "Moderately complex document requiring additional coverage"
-        elif complexity_score >= 0.4:  # Standard complexity
-            recommended_limit = min(section_count, 7)   # Allow up to 7 for standard docs
-            reason = "Standard complexity with structured content"
-        else:  # Simple content
-            recommended_limit = base_limit
-            reason = "Simple content within standard limits"
+        # NO HARD LIMITS: Calculate articles needed based purely on content analysis
+        content_length = len(content)
+        word_count = len(content.split())
         
-        # Ensure minimum completeness - never go below what's needed for basic coverage
-        minimum_needed = min(section_count, 4)  # At least 4 articles for structured content
-        final_limit = max(recommended_limit, minimum_needed)
+        # Estimate articles needed based on content structure and size
+        estimated_articles = max(section_count, word_count // 1500, content_length // 8000, 4)
         
-        return {
-            'base_limit': base_limit,
-            'complexity_score': complexity_score,
-            'recommended_limit': recommended_limit,
-            'final_limit': final_limit,
-            'section_count': section_count,
-            'reason': reason,
-            'is_limit_increased': final_limit > base_limit
-        }
+        print(f"🔄 DYNAMIC ARTICLE CALCULATION:")
+        print(f"   - Content: {content_length:,} characters, {word_count:,} words")
+        print(f"   - Sections detected: {section_count}")
+        print(f"   - Estimated articles needed: {estimated_articles}")
+        print(f"   - NO ARTIFICIAL LIMITS APPLIED")
         
     except Exception as e:
         print(f"⚠️ Intelligent limit calculation failed: {e}")

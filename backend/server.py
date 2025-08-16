@@ -9692,7 +9692,7 @@ Create an engaging, informative hub article that introduces the topic with descr
 
 <h2>📋 Contents in This Guide</h2>
 <ul>
-{chr(10).join([f'<li><strong>{section.get("title", "Section")}</strong> - {section.get("focus", "general").replace("_", " ").title()}</li>' for section in content_sections[:6]])}
+{chr(10).join([f'<li><strong>{section.get("title", "Section")}</strong> - {section.get("focus", "general").replace("_", " ").title()}</li>' for section in content_sections])}
 </ul>
 
 {related_links_html}

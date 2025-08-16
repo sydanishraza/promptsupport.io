@@ -94,6 +94,15 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
     { id: 'finalize', label: 'Finalizing and saving content', icon: 'Cloud' }
   ];
 
+  // Icon mapping to avoid dynamic imports
+  const iconMap = {
+    CheckCircle2,
+    Brain,
+    Zap,
+    Sparkles,
+    Cloud
+  };
+
   const urlTypes = [
     { name: 'Documentation', icon: '📚', description: 'Docs, wikis, guides' },
     { name: 'GitHub Repos', icon: '🐙', description: 'Code repositories' },

@@ -10172,6 +10172,16 @@ def determine_intelligent_article_limit(content: str, section_count: int) -> dic
         print(f"   - Estimated articles needed: {estimated_articles}")
         print(f"   - NO ARTIFICIAL LIMITS APPLIED")
         
+        return {
+            'base_limit': 0,  # No base limit anymore
+            'complexity_score': complexity_score,
+            'recommended_limit': estimated_articles,
+            'final_limit': estimated_articles,
+            'section_count': section_count,
+            'reason': "Dynamic calculation based on content analysis - no artificial limits",
+            'is_limit_increased': True  # Always true since we removed limits
+        }
+        
     except Exception as e:
         print(f"⚠️ Intelligent limit calculation failed: {e}")
         return {'final_limit': 6, 'is_limit_increased': False, 'reason': 'Fallback to standard limit'}

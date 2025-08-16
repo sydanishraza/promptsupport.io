@@ -92,7 +92,7 @@ def test_hard_limit_removal_with_customer_guide():
                 return False
             
             try:
-                status_response = requests.get(f"{API_BASE}/job-status/{job_id}", timeout=30)
+                status_response = requests.get(f"{API_BASE}/jobs/{job_id}", timeout=30)
                 if status_response.status_code == 200:
                     status_data = status_response.json()
                     status = status_data.get('status', 'unknown')

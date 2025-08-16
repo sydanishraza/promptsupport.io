@@ -10184,7 +10184,19 @@ def determine_intelligent_article_limit(content: str, section_count: int) -> dic
         
     except Exception as e:
         print(f"⚠️ Intelligent limit calculation failed: {e}")
-        return {'final_limit': 6, 'is_limit_increased': False, 'reason': 'Fallback to standard limit'}
+        # FALLBACK: Use basic content analysis instead of hard limit
+        content_length = len(content) if content else 10000
+        word_count = len(content.split()) if content else 1500
+        fallback_articles = max(section_count, word_count // 1500, content_length // 8000, 4)
+        return {
+            'final_limit': fallback_articles, 
+            'is_limit_increased': True, 
+            'reason': 'Fallback dynamic calculation - no hard limits',
+            'complexity_score': 0.5,
+            'section_count': section_count,
+            'base_limit': 0,
+            'recommended_limit': fallback_articles
+        }
 
 def smart_consolidate_sections(sections: list, target_limit: int) -> list:
     """

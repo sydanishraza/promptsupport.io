@@ -9044,10 +9044,9 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 
             print(f"📋 OVERFLOW TRACKING: {len(overflow_sections)} sections will be handled in overflow")
         
-        # Step 3: Create articles from processed sections with intelligent limits
+        # Step 3: Create articles from processed sections - NO ARTIFICIAL LIMITS
         for i, section in enumerate(sections_to_process):
-            if len(chunks) >= intelligent_limit - (1 if overflow_sections else 0):  # Reserve slot for overflow if needed
-                break
+            # NO BREAK - Process ALL sections for complete coverage
                 
             # ENHANCED SIMILARITY CHECK: More stringent duplicate detection
             fingerprint = generate_content_fingerprint(section['content'])

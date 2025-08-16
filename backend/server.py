@@ -9434,7 +9434,7 @@ async def analyze_content_for_unique_sections(content: str) -> list:
         # Method 3: Paragraph-based segmentation (last resort)
         if not sections:
             paragraphs = [p.strip() for p in content.split('\n\n') if p.strip() and len(p.strip()) >= 200]
-            for i, paragraph in enumerate(paragraphs[:6]):  # Limit to 6 for manageability
+            for i, paragraph in enumerate(paragraphs):  # NO LIMIT - Process ALL paragraphs
                 sections.append({
                     'title': f'Content Section {i+1}',
                     'content': paragraph,

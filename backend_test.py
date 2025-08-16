@@ -64,7 +64,7 @@ def test_hard_limit_removal_with_customer_guide():
             
             # Start processing
             start_time = time.time()
-            response = requests.post(f"{API_BASE}/upload", files=files, timeout=600)  # 10 minute timeout
+            response = requests.post(f"{API_BASE}/content/upload", files=files, timeout=600)  # 10 minute timeout
             
             if response.status_code != 200:
                 log_test_result(f"❌ Upload failed: Status {response.status_code}", "ERROR")

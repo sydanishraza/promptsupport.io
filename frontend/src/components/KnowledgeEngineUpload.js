@@ -641,6 +641,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                   // Processing steps
                   <div className="space-y-6">
                     {processSteps.map((step, index) => {
+                      const IconComponent = iconMap[step.icon];
                       const isActive = index === processModal.step - 1;
                       const isCompleted = index < processModal.step - 1;
 
@@ -651,27 +652,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                             isActive ? 'bg-blue-100 border-blue-300' : 
                             'bg-gray-50 border-gray-200'
                           }`}>
-                            {step.icon === 'CheckCircle2' && <CheckCircle2 className={`w-6 h-6 transition-all ${
-                              isCompleted ? 'text-green-600' : 
-                              isActive ? 'text-blue-600' : 
-                              'text-gray-400'
-                            }`} />}
-                            {step.icon === 'Brain' && <Brain className={`w-6 h-6 transition-all ${
-                              isCompleted ? 'text-green-600' : 
-                              isActive ? 'text-blue-600' : 
-                              'text-gray-400'
-                            }`} />}
-                            {step.icon === 'Zap' && <Zap className={`w-6 h-6 transition-all ${
-                              isCompleted ? 'text-green-600' : 
-                              isActive ? 'text-blue-600' : 
-                              'text-gray-400'
-                            }`} />}
-                            {step.icon === 'Sparkles' && <Sparkles className={`w-6 h-6 transition-all ${
-                              isCompleted ? 'text-green-600' : 
-                              isActive ? 'text-blue-600' : 
-                              'text-gray-400'
-                            }`} />}
-                            {step.icon === 'Cloud' && <Cloud className={`w-6 h-6 transition-all ${
+                            {IconComponent && <IconComponent className={`w-6 h-6 transition-all ${
                               isCompleted ? 'text-green-600' : 
                               isActive ? 'text-blue-600' : 
                               'text-gray-400'

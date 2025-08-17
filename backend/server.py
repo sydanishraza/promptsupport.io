@@ -9460,7 +9460,12 @@ async def analyze_content_for_unique_sections(content: str, is_ultra_large: bool
         # Step 2: Apply intelligent merging based on content similarity
         if len(sections) > 1:
             merged_sections = []
-            merge_threshold = 0.4
+            # CRITICAL FIX: Ultra-large documents need much more conservative merging
+            if is_ultra_large:
+                merge_threshold = 0.9  # Very high threshold to prevent over-merging
+                print(f"🏢 ULTRA-LARGE MERGING: Using conservative threshold {merge_threshold} to preserve comprehensive coverage")
+            else:
+                merge_threshold = 0.4  # Standard threshold for normal documents
             
             for section in sections:
                 merged = False

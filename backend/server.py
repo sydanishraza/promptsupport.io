@@ -569,14 +569,18 @@ Return only the complete HTML content for this article."""
                 faq_article_chunk = await generate_faq_troubleshooting_article(content, metadata)
                 if faq_article_chunk:
                     # Convert DocumentChunk to article format and save to database
+                    # Extract title from DocumentChunk content or metadata
+                    faq_title = getattr(faq_article_chunk, 'title', None) or \
+                                faq_article_chunk.metadata.get('title', 'FAQ and Troubleshooting')
+                    
                     faq_article = {
                         "id": str(uuid.uuid4()),
-                        "title": faq_article_chunk.title,
+                        "title": faq_title,
                         "content": faq_article_chunk.content,
                         "status": "published",
                         "article_type": "faq-troubleshooting",
                         "source_document": metadata.get("original_filename", "Unknown"),
-                        "tags": faq_article_chunk.tags or [],
+                        "tags": getattr(faq_article_chunk, 'tags', []) or [],
                         "created_at": datetime.utcnow(),
                         "metadata": {
                             "outline_based": True,

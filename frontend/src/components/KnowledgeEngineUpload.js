@@ -1,25 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Upload,
-  FileText,
-  Link2,
-  X,
-  File,
-  Video,
-  CheckCircle2,
-  Loader2,
-  AlertCircle,
-  Brain,
-  Zap,
-  Type,
-  Globe,
-  ArrowRight,
-  Sparkles,
-  FileAudio,
-  FileVideo,
-  Code
-} from 'lucide-react';
 
 const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
   const [activeBlock, setActiveBlock] = useState(null);

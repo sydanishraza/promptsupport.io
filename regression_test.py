@@ -65,19 +65,28 @@ def test_simple_document_processing():
         This concludes our test document with sufficient content for processing.
         """
         
-        # Test with text content upload
-        log_test_result("📤 Testing text content upload...")
+        # Test with file upload
+        log_test_result("📤 Testing file upload...")
         
-        payload = {
-            'content': test_content,
-            'filename': 'regression_test.txt'
-        }
+        # Create a temporary text file
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+            temp_file.write(test_content)
+            temp_file_path = temp_file.name
         
-        start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/upload-text", 
-                               json=payload, 
-                               timeout=300,
-                               headers={'Content-Type': 'application/json'})
+        try:
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('regression_test.txt', f, 'text/plain')}
+                metadata = {'metadata': '{}'}
+                
+                start_time = time.time()
+                response = requests.post(f"{API_BASE}/content/upload", 
+                                       files=files, 
+                                       data=metadata,
+                                       timeout=300)
+        finally:
+            # Clean up temp file
+            os.unlink(temp_file_path)
         
         if response.status_code != 200:
             log_test_result(f"❌ Text upload failed: Status {response.status_code}", "ERROR")

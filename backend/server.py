@@ -544,6 +544,47 @@ Return only the complete HTML content for this article."""
                 continue
         
         print(f"🎉 OUTLINE-BASED ARTICLE CREATION COMPLETE: {len(articles)} articles created")
+        
+        # ENHANCEMENT: Add missing features that were in the original pipeline
+        if articles:
+            print(f"🔗 ADDING ENHANCEMENTS: Related links, cross-references, and FAQ generation")
+            
+            # Add related links and cross-references
+            enhanced_articles = await add_related_links_to_articles(articles)
+            
+            # Generate FAQ/Troubleshooting article if content is substantial
+            content_length = len(content)
+            if content_length > 2000:  # Only for substantial content
+                print(f"❓ Generating FAQ/Troubleshooting article for comprehensive coverage")
+                faq_article_chunk = await generate_faq_troubleshooting_article(content, metadata)
+                if faq_article_chunk:
+                    # Convert DocumentChunk to article format and save to database
+                    faq_article = {
+                        "id": str(uuid.uuid4()),
+                        "title": faq_article_chunk.title,
+                        "content": faq_article_chunk.content,
+                        "status": "published",
+                        "article_type": "faq-troubleshooting",
+                        "source_document": metadata.get("original_filename", "Unknown"),
+                        "tags": faq_article_chunk.tags or [],
+                        "created_at": datetime.utcnow(),
+                        "metadata": {
+                            "outline_based": True,
+                            "enhancement_type": "faq_troubleshooting",
+                            "article_number": len(enhanced_articles) + 1,
+                            "total_articles": len(enhanced_articles) + 1,
+                            **metadata
+                        }
+                    }
+                    
+                    # Save FAQ article to database
+                    await db.content_library.insert_one(faq_article)
+                    enhanced_articles.append(faq_article)
+                    print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']}")
+            
+            print(f"✅ ENHANCED OUTLINE-BASED PROCESSING COMPLETE: {len(enhanced_articles)} total articles with full enhancements")
+            return enhanced_articles
+        
         return articles
         
     except Exception as e:

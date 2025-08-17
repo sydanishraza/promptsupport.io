@@ -9253,11 +9253,14 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         if outline:
             # Use outline-based article creation for comprehensive coverage
             outline_articles = await create_articles_from_outline(content, outline, metadata)
-            if outline_articles:
+            if outline_articles and len(outline_articles) > 0:
                 print(f"✅ OUTLINE-BASED SUCCESS: Created {len(outline_articles)} comprehensive articles")
+                print(f"🚫 SKIPPING LEGACY PROCESSING: Outline-first approach successful, returning immediately")
                 return outline_articles
             else:
-                print("⚠️ Outline-based creation failed, falling back to traditional approach")
+                print("⚠️ Outline-based creation failed (no articles returned), falling back to traditional approach")
+        else:
+            print("⚠️ Outline generation failed, falling back to traditional approach")
         
         # FALLBACK: Traditional diverse article types approach
         target_article_types = ['overview', 'concept', 'how-to', 'use-case', 'faq-troubleshooting']

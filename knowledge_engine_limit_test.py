@@ -248,12 +248,16 @@ This comprehensive guide continues with detailed coverage of all 29 chapters, pr
         # Process content through Knowledge Engine
         payload = {
             "content": test_content,
-            "source": "paste",
-            "filename": "Customer Summary Screen User Guide 1.3.docx"
+            "content_type": "text",
+            "metadata": {
+                "original_filename": "Customer Summary Screen User Guide 1.3.docx",
+                "source": "paste",
+                "content_length": len(test_content)
+            }
         }
         
         response = requests.post(
-            f"{API_BASE}/knowledge-engine/process-content",
+            f"{API_BASE}/content/process",
             json=payload,
             timeout=300  # 5 minute timeout for large document processing
         )

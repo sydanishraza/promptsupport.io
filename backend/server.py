@@ -9221,10 +9221,9 @@ Original context: {metadata.get('original_filename', 'Document content')}
             articles_with_links = created_articles
             print(f"ℹ️ Single article - no cross-references needed")
         
-        # Insert articles with cross-references to Content Library
-        for article in articles_with_links:
-            await db.content_library.insert_one(article)
-            print(f"✅ SAVED WITH CROSS-REFERENCES: '{article['title']}'")
+        # CRITICAL FIX: Don't insert articles here - they should be inserted by the calling function
+        # This prevents duplicate insertions when multiple processing paths are used
+        print(f"✅ LEGACY PROCESSING COMPLETE: Created {len(articles_with_links)} articles (caller will handle database insertion)")
         
         return articles_with_links
         

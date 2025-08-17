@@ -412,8 +412,9 @@ CRITICAL INSTRUCTIONS:
 5. Ensure NO content is skipped or summarized away
 6. For technical documents, include ALL procedures, features, and details
 
-OUTPUT FORMAT:
-Return a JSON object with this structure:
+OUTPUT FORMAT - RETURN ONLY VALID JSON:
+You must return ONLY a valid JSON object with this exact structure (no additional text, no explanations):
+
 {
   "document_title": "Main document title",
   "total_topics": 15,
@@ -435,7 +436,10 @@ Return a JSON object with this structure:
   ]
 }
 
-IMPORTANT: Create as many outline items as needed for COMPREHENSIVE coverage. Do not limit yourself."""
+IMPORTANT: 
+- Return ONLY the JSON object, no other text
+- Create as many outline items as needed for COMPREHENSIVE coverage
+- Do not limit yourself to any specific number of articles"""
 
         # Create comprehensive outline using LLM
         outline_response = await call_llm_with_fallback(

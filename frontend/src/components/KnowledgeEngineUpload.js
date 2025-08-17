@@ -17,7 +17,8 @@ import {
   ArrowRight,
   Sparkles,
   FileAudio,
-  FileVideo
+  FileVideo,
+  Code
 } from 'lucide-react';
 
 const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {

@@ -681,7 +681,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                         animate={{ scale: 1 }}
                         className="w-16 h-16 bg-red-100 rounded-full inline-flex items-center justify-center"
                       >
-                        <AlertCircle className="w-8 h-8 text-red-600" />
+                        {getProcessIcon('AlertCircle', 'w-8 h-8 text-red-600')}
                       </motion.div>
                       <div>
                         <h4 className="text-xl font-semibold text-gray-900 mb-2">Processing Failed</h4>

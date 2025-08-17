@@ -449,12 +449,24 @@ IMPORTANT:
         
         if outline_response:
             try:
-                outline_data = json.loads(outline_response)
+                # Clean the response to ensure it's valid JSON
+                cleaned_response = outline_response.strip()
+                
+                # Remove any markdown code block markers if present
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                
+                cleaned_response = cleaned_response.strip()
+                
+                outline_data = json.loads(cleaned_response)
                 total_articles = len(outline_data.get('comprehensive_outline', []))
                 print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_articles} articles planned")
                 return outline_data
             except json.JSONDecodeError as e:
                 print(f"⚠️ Outline JSON parsing error: {e}")
+                print(f"⚠️ Raw response (first 200 chars): {outline_response[:200]}")
                 
         print(f"⚠️ Falling back to section-based analysis")
         return None

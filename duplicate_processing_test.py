@@ -144,13 +144,17 @@ def test_duplicate_processing_fix():
         # Process content through Knowledge Engine
         start_time = time.time()
         
-        # Use the paste text endpoint
+        # Use the content processing endpoint
         payload = {
             "content": test_content,
-            "source": "paste"
+            "content_type": "text",
+            "metadata": {
+                "source": "duplicate_processing_test",
+                "original_filename": "test_duplicate_fix.txt"
+            }
         }
         
-        response = requests.post(f"{API_BASE}/content/process-text", 
+        response = requests.post(f"{API_BASE}/content/process", 
                                json=payload, 
                                timeout=180)  # 3 minute timeout
         

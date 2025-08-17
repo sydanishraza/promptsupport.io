@@ -9265,7 +9265,7 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         # Fallback to basic chunking
         return await basic_process_text_content(content, metadata)
 
-async def analyze_content_for_unique_sections(content: str) -> list:
+async def analyze_content_for_unique_sections(content: str, is_ultra_large: bool = False) -> list:
     """ENHANCED: Analyze content with functional stage grouping and procedural continuity preservation"""
     try:
         import re

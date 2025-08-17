@@ -86,6 +86,24 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
     }
   };
 
+  // Simple icon components to avoid constructor issues
+  const getProcessIcon = (iconName, className) => {
+    switch(iconName) {
+      case 'CheckCircle2':
+        return <CheckCircle2 className={className} />;
+      case 'Brain':
+        return <Brain className={className} />;
+      case 'Zap':
+        return <Zap className={className} />;
+      case 'Sparkles':
+        return <Sparkles className={className} />;
+      case 'Cloud':
+        return <Cloud className={className} />;
+      default:
+        return <CheckCircle2 className={className} />;
+    }
+  };
+
   const processSteps = [
     { id: 'upload', label: 'File uploaded successfully', icon: 'CheckCircle2' },
     { id: 'analyze', label: 'Analyzing content structure', icon: 'Brain' },
@@ -93,15 +111,6 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
     { id: 'generate', label: 'Generating enhanced articles', icon: 'Sparkles' },
     { id: 'finalize', label: 'Finalizing and saving content', icon: 'Cloud' }
   ];
-
-  // Icon mapping to avoid dynamic imports
-  const iconMap = {
-    CheckCircle2,
-    Brain,
-    Zap,
-    Sparkles,
-    Cloud
-  };
 
   const urlTypes = [
     { name: 'Documentation', icon: '📚', description: 'Docs, wikis, guides' },

@@ -502,7 +502,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                           onClick={(e) => { e.stopPropagation(); removeFile(file.id); }}
                           className="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
                         >
-                          <X className="w-4 h-4" />
+                          {getProcessIcon('X', 'w-4 h-4')}
                         </button>
                       </div>
                     ))}

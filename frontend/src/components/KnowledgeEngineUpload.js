@@ -620,7 +620,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5" />
+                    {getProcessIcon('Sparkles', 'w-5 h-5')}
                     <span>Generate Articles</span>
                     {getProcessIcon('ArrowRight', 'w-5 h-5')}
                   </>

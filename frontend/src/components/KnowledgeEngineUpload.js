@@ -411,7 +411,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-50 rounded-lg">
-                <Brain className="w-6 h-6 text-blue-600" />
+                {getProcessIcon('Brain', 'w-6 h-6 text-blue-600')}
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">Content Upload</h2>

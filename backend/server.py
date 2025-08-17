@@ -9097,7 +9097,19 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         # ANTI-DUPLICATE ENHANCEMENT: Intelligent content analysis with ultra-large handling
         content_sections = await analyze_content_for_unique_sections(content, is_ultra_large)
         
-        # DIVERSE ARTICLE TYPES: Ensure we create different types of articles
+        # NEW APPROACH: Generate comprehensive outline first, then create articles
+        outline = await generate_comprehensive_outline(content, metadata)
+        
+        if outline:
+            # Use outline-based article creation for comprehensive coverage
+            outline_articles = await create_articles_from_outline(content, outline, metadata)
+            if outline_articles:
+                print(f"✅ OUTLINE-BASED SUCCESS: Created {len(outline_articles)} comprehensive articles")
+                return outline_articles
+            else:
+                print("⚠️ Outline-based creation failed, falling back to traditional approach")
+        
+        # FALLBACK: Traditional diverse article types approach
         target_article_types = ['overview', 'concept', 'how-to', 'use-case', 'faq-troubleshooting']
         
         chunks = []

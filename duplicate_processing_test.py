@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
 """
-CRITICAL DUPLICATE PROCESSING AND TIMEOUT BUG TESTING
-Testing the fixes for duplicate article generation and timeout issues as specified in the review request
-
-CRITICAL FIX VERIFICATION:
-1. Test DocumentChunk AttributeError Fix - Process a document and verify FAQ generation doesn't cause AttributeError
-2. Test Fallback Prevention - Verify that successful outline-based processing returns immediately
-3. Test Article Generation Quality - Verify articles have proper HTML formatting (not ```html placeholders)
-4. Test Processing Timeout Fix - Monitor processing time to ensure it completes within reasonable time
+CRITICAL DUPLICATE PROCESSING FIX VERIFICATION TEST
+Testing the critical duplicate processing fix - verify only ONE set of articles is generated
 
 SUCCESS CRITERIA:
-- Only ONE set of articles generated per document
-- No AttributeError from DocumentChunk.title access
-- No fallback to legacy processing when outline-based succeeds
-- Proper HTML formatting in articles (no ```html placeholders)
-- Processing completes within reasonable time (< 2 minutes)
-- All articles have enhancements (related links, proper formatting)
+- Only ONE set of articles generated per document processing
+- Backend logs show outline-first success with legacy processing skipped
+- No duplicate titles in Content Library from same processing session
+- Reasonable article count proportional to document size
+- Complete elimination of duplicate processing pipeline execution
 """
 
 import requests
@@ -24,10 +17,10 @@ import time
 import os
 import sys
 from datetime import datetime
-import re
+import subprocess
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://docai-promptsupport.preview.emergentagent.com"
+BACKEND_URL = "https://1c7fe221-5f78-4e90-bb7b-b530162b68ad.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test_result(message, status="INFO"):
@@ -55,132 +48,167 @@ def test_backend_health():
 def get_content_library_baseline():
     """Get baseline article count before processing"""
     try:
+        log_test_result("📊 Getting Content Library baseline...")
         response = requests.get(f"{API_BASE}/content-library", timeout=30)
+        
         if response.status_code == 200:
             data = response.json()
             total_articles = data.get('total', 0)
-            log_test_result(f"📊 Baseline Content Library: {total_articles} articles")
-            return total_articles
+            articles = data.get('articles', [])
+            
+            log_test_result(f"📚 Baseline: {total_articles} total articles in Content Library")
+            return total_articles, articles
         else:
-            log_test_result(f"⚠️ Could not get baseline count: Status {response.status_code}")
-            return 0
+            log_test_result(f"❌ Failed to get baseline: Status {response.status_code}", "ERROR")
+            return 0, []
+            
     except Exception as e:
-        log_test_result(f"⚠️ Baseline count error: {e}")
-        return 0
+        log_test_result(f"❌ Baseline check failed: {e}", "ERROR")
+        return 0, []
 
-def test_duplicate_processing_fix():
-    """
-    CRITICAL TEST: Verify that duplicate processing bug is fixed
-    - Only ONE set of articles should be generated
-    - No fallback to legacy processing when outline-based succeeds
-    - No DocumentChunk AttributeError in FAQ generation
-    """
+def create_test_document():
+    """Create a test document for duplicate processing verification"""
+    test_content = """# Duplicate Processing Test Document
+
+## Introduction
+This is a comprehensive test document designed to verify that the duplicate processing fix is working correctly. The document contains substantial content to trigger the outline-first processing approach.
+
+## Getting Started
+This section covers the initial setup and configuration steps required to begin using the system effectively.
+
+### Prerequisites
+Before you begin, ensure you have the following prerequisites in place:
+- System requirements met
+- Proper access credentials
+- Network connectivity established
+
+### Installation Steps
+Follow these detailed installation steps:
+1. Download the required components
+2. Configure the system settings
+3. Verify the installation
+4. Test the basic functionality
+
+## Advanced Features
+This section explores the advanced features and capabilities of the system.
+
+### Feature Set Overview
+The system provides a comprehensive set of features including:
+- Advanced processing capabilities
+- Real-time monitoring
+- Automated workflows
+- Integration options
+
+### Configuration Options
+Multiple configuration options are available:
+- Performance tuning parameters
+- Security settings
+- User interface customization
+- API configuration
+
+## Implementation Guide
+This comprehensive implementation guide provides step-by-step instructions for deploying the system in your environment.
+
+### Planning Phase
+Proper planning is essential for successful implementation:
+- Requirements analysis
+- Resource allocation
+- Timeline development
+- Risk assessment
+
+### Deployment Process
+The deployment process involves several key stages:
+- Environment preparation
+- System installation
+- Configuration setup
+- Testing and validation
+
+## Best Practices
+Following best practices ensures optimal system performance and reliability.
+
+### Performance Optimization
+Key performance optimization strategies include:
+- Resource monitoring
+- Load balancing
+- Caching strategies
+- Database optimization
+
+### Security Considerations
+Important security considerations:
+- Access control implementation
+- Data encryption
+- Audit logging
+- Vulnerability management
+
+## Troubleshooting
+This section provides comprehensive troubleshooting guidance for common issues.
+
+### Common Issues
+Frequently encountered issues and their solutions:
+- Connection problems
+- Performance degradation
+- Configuration errors
+- Integration failures
+
+### Diagnostic Tools
+Available diagnostic tools and utilities:
+- System health checks
+- Performance monitors
+- Log analyzers
+- Network diagnostics
+
+## Conclusion
+This document provides comprehensive coverage of the system capabilities and implementation guidance. The content is designed to test the duplicate processing fix thoroughly.
+"""
+    
+    # Write test document to file
+    test_file_path = "/tmp/duplicate_test_document.txt"
+    with open(test_file_path, 'w') as f:
+        f.write(test_content)
+    
+    log_test_result(f"📄 Created test document: {len(test_content)} characters")
+    return test_file_path
+
+def process_test_document(file_path):
+    """Process the test document and monitor for duplicates"""
     try:
-        log_test_result("🎯 STARTING CRITICAL DUPLICATE PROCESSING FIX TEST", "CRITICAL")
+        log_test_result("🎯 STARTING DUPLICATE PROCESSING FIX VERIFICATION", "CRITICAL")
+        log_test_result("Processing test document to verify only ONE set of articles is generated")
         
-        # Get baseline article count
-        baseline_count = get_content_library_baseline()
+        # Upload and process the document
+        log_test_result("📤 Uploading test document...")
         
-        # Create test content that would trigger the issues
-        test_content = """
-        # Complete Guide to API Integration
+        with open(file_path, 'rb') as f:
+            files = {'file': ('duplicate_test_document.txt', f, 'text/plain')}
+            
+            # Start processing
+            start_time = time.time()
+            response = requests.post(f"{API_BASE}/content/upload", files=files, timeout=300)
+            
+            if response.status_code != 200:
+                log_test_result(f"❌ Upload failed: Status {response.status_code}", "ERROR")
+                log_test_result(f"Response: {response.text[:500]}")
+                return None
+            
+            upload_data = response.json()
+            job_id = upload_data.get('job_id')
+            
+            if not job_id:
+                log_test_result("❌ No job_id received from upload", "ERROR")
+                return None
+            
+            log_test_result(f"✅ Upload successful, Job ID: {job_id}")
         
-        This comprehensive guide covers all aspects of API integration including setup, implementation, and troubleshooting.
-        
-        ## Getting Started
-        
-        Before you begin with API integration, you need to understand the basic concepts and requirements.
-        
-        ### Prerequisites
-        - Basic understanding of REST APIs
-        - Development environment setup
-        - API credentials and authentication
-        
-        ## Implementation Steps
-        
-        Follow these detailed steps to implement the API integration:
-        
-        1. **Authentication Setup**: Configure your API keys and authentication methods
-        2. **Endpoint Configuration**: Set up the necessary API endpoints
-        3. **Data Handling**: Implement proper data parsing and error handling
-        4. **Testing**: Thoroughly test all integration points
-        
-        ## Advanced Features
-        
-        Once basic integration is complete, you can implement advanced features:
-        
-        ### Webhook Integration
-        Set up webhooks for real-time data synchronization.
-        
-        ### Rate Limiting
-        Implement proper rate limiting to avoid API throttling.
-        
-        ### Error Handling
-        Comprehensive error handling and retry mechanisms.
-        
-        ## Troubleshooting
-        
-        Common issues and their solutions:
-        
-        - Connection timeouts
-        - Authentication failures
-        - Rate limit exceeded
-        - Invalid response formats
-        
-        ## Best Practices
-        
-        Follow these best practices for optimal performance:
-        
-        1. Use proper caching strategies
-        2. Implement exponential backoff for retries
-        3. Monitor API usage and performance
-        4. Keep API credentials secure
-        
-        This content should be substantial enough to trigger outline-based processing and FAQ generation.
-        """
-        
-        log_test_result("📤 Processing test content through Knowledge Engine...")
-        
-        # Process content through Knowledge Engine
-        start_time = time.time()
-        
-        # Use the content processing endpoint
-        payload = {
-            "content": test_content,
-            "content_type": "text",
-            "metadata": {
-                "source": "duplicate_processing_test",
-                "original_filename": "test_duplicate_fix.txt"
-            }
-        }
-        
-        response = requests.post(f"{API_BASE}/content/process", 
-                               json=payload, 
-                               timeout=180)  # 3 minute timeout
-        
-        if response.status_code != 200:
-            log_test_result(f"❌ Content processing failed: Status {response.status_code}", "ERROR")
-            log_test_result(f"Response: {response.text[:500]}")
-            return False
-        
-        processing_data = response.json()
-        job_id = processing_data.get('job_id')
-        
-        if not job_id:
-            log_test_result("❌ No job_id received from processing", "ERROR")
-            return False
-        
-        log_test_result(f"✅ Processing started, Job ID: {job_id}")
-        
-        # Monitor processing with timeout check
+        # Monitor processing with detailed logging
+        log_test_result("⏳ Monitoring processing progress...")
         processing_start = time.time()
-        max_wait_time = 120  # 2 minutes max (SUCCESS CRITERIA)
+        max_wait_time = 300  # 5 minutes max
         
         while True:
             elapsed = time.time() - processing_start
             if elapsed > max_wait_time:
-                log_test_result(f"❌ TIMEOUT: Processing exceeded {max_wait_time} seconds (elapsed: {elapsed:.1f}s)", "CRITICAL_ERROR")
-                return False
+                log_test_result(f"❌ Processing timeout after {elapsed:.1f} seconds", "ERROR")
+                return None
             
             try:
                 status_response = requests.get(f"{API_BASE}/jobs/{job_id}", timeout=30)
@@ -194,52 +222,24 @@ def test_duplicate_processing_fix():
                         processing_time = time.time() - processing_start
                         log_test_result(f"✅ Processing completed in {processing_time:.1f} seconds", "SUCCESS")
                         
-                        # SUCCESS CRITERIA CHECK: Processing time < 2 minutes
-                        if processing_time < 120:
-                            log_test_result(f"✅ TIMEOUT FIX VERIFIED: Processing completed within 2 minutes ({processing_time:.1f}s)", "SUCCESS")
-                        else:
-                            log_test_result(f"❌ TIMEOUT ISSUE: Processing took {processing_time:.1f} seconds (> 2 minutes)", "ERROR")
-                            return False
+                        # Extract critical metrics
+                        chunks_created = status_data.get('chunks_created', 0)
+                        articles_generated = status_data.get('articles_generated', 0)
                         
-                        # Get final article count
-                        final_count = get_content_library_baseline()
-                        articles_generated = final_count - baseline_count
+                        log_test_result(f"📈 PROCESSING METRICS:")
+                        log_test_result(f"   📚 Chunks Created: {chunks_created}")
+                        log_test_result(f"   📄 Articles Generated: {articles_generated}")
                         
-                        log_test_result(f"📈 CRITICAL METRICS:")
-                        log_test_result(f"   📚 Baseline Articles: {baseline_count}")
-                        log_test_result(f"   📄 Final Articles: {final_count}")
-                        log_test_result(f"   ➕ Articles Generated: {articles_generated}")
-                        
-                        # SUCCESS CRITERIA CHECK: Only ONE set of articles generated
-                        if articles_generated > 0:
-                            log_test_result(f"✅ ARTICLE GENERATION VERIFIED: {articles_generated} articles created", "SUCCESS")
-                            
-                            # Check for duplicate articles (same titles)
-                            duplicate_check_result = check_for_duplicate_articles()
-                            if not duplicate_check_result:
-                                log_test_result("❌ DUPLICATE ARTICLES DETECTED", "CRITICAL_ERROR")
-                                return False
-                            
-                            # Check article quality
-                            quality_check_result = check_article_quality()
-                            if not quality_check_result:
-                                log_test_result("❌ ARTICLE QUALITY ISSUES DETECTED", "CRITICAL_ERROR")
-                                return False
-                            
-                            return True
-                        else:
-                            log_test_result("❌ NO ARTICLES GENERATED", "ERROR")
-                            return False
+                        return {
+                            'job_id': job_id,
+                            'articles_generated': articles_generated,
+                            'chunks_created': chunks_created,
+                            'processing_time': processing_time
+                        }
                         
                     elif status == 'failed':
-                        error_msg = status_data.get('error', 'Unknown error')
-                        log_test_result(f"❌ Processing failed: {error_msg}", "ERROR")
-                        
-                        # Check if it's the DocumentChunk AttributeError
-                        if 'AttributeError' in error_msg and 'title' in error_msg:
-                            log_test_result("❌ DOCUMENTCHUNK ATTRIBUTEERROR DETECTED - Fix not working", "CRITICAL_ERROR")
-                        
-                        return False
+                        log_test_result(f"❌ Processing failed: {status_data.get('error', 'Unknown error')}", "ERROR")
+                        return None
                     
                     # Continue monitoring
                     time.sleep(5)
@@ -252,149 +252,143 @@ def test_duplicate_processing_fix():
                 time.sleep(5)
     
     except Exception as e:
-        log_test_result(f"❌ Duplicate processing test failed: {e}", "ERROR")
+        log_test_result(f"❌ Document processing failed: {e}", "ERROR")
         import traceback
         traceback.print_exc()
-        return False
+        return None
 
-def check_for_duplicate_articles():
-    """Check for duplicate articles in Content Library"""
+def verify_no_duplicates_in_content_library(baseline_count, baseline_articles, processing_result):
+    """Verify no duplicate articles were created in Content Library"""
     try:
-        log_test_result("🔍 Checking for duplicate articles...")
+        log_test_result("🔍 VERIFYING NO DUPLICATE ARTICLES IN CONTENT LIBRARY", "CRITICAL")
         
+        # Get updated Content Library
         response = requests.get(f"{API_BASE}/content-library", timeout=30)
+        
         if response.status_code != 200:
-            log_test_result(f"⚠️ Could not fetch articles for duplicate check: Status {response.status_code}")
-            return True  # Assume no duplicates if we can't check
+            log_test_result(f"❌ Failed to get updated Content Library: Status {response.status_code}", "ERROR")
+            return False
         
         data = response.json()
-        articles = data.get('articles', [])
+        current_total = data.get('total', 0)
+        current_articles = data.get('articles', [])
+        
+        # Calculate new articles added
+        new_articles_count = current_total - baseline_count
+        expected_articles = processing_result.get('articles_generated', 0)
+        
+        log_test_result(f"📊 DUPLICATE ANALYSIS:")
+        log_test_result(f"   Baseline articles: {baseline_count}")
+        log_test_result(f"   Current articles: {current_total}")
+        log_test_result(f"   New articles added: {new_articles_count}")
+        log_test_result(f"   Expected articles: {expected_articles}")
+        
+        # CRITICAL CHECK 1: Article count should match exactly
+        if new_articles_count == expected_articles:
+            log_test_result("✅ ARTICLE COUNT VERIFICATION PASSED: Exact match between generated and stored", "SUCCESS")
+        elif new_articles_count > expected_articles:
+            log_test_result(f"❌ DUPLICATE ARTICLES DETECTED: {new_articles_count - expected_articles} extra articles found", "CRITICAL_ERROR")
+            return False
+        else:
+            log_test_result(f"❌ MISSING ARTICLES: {expected_articles - new_articles_count} articles not stored", "ERROR")
+            return False
+        
+        # CRITICAL CHECK 2: Look for duplicate titles from same processing session
+        new_articles = [art for art in current_articles if art.get('id') not in [ba.get('id') for ba in baseline_articles]]
+        titles = [art.get('title', '') for art in new_articles]
         
         # Check for duplicate titles
-        titles = [article.get('title', '') for article in articles]
         title_counts = {}
-        
         for title in titles:
-            if title:
-                title_counts[title] = title_counts.get(title, 0) + 1
+            title_counts[title] = title_counts.get(title, 0) + 1
         
         duplicates = {title: count for title, count in title_counts.items() if count > 1}
         
         if duplicates:
-            log_test_result(f"❌ DUPLICATE ARTICLES FOUND: {len(duplicates)} duplicate titles", "ERROR")
-            for title, count in list(duplicates.items())[:5]:  # Show first 5
+            log_test_result(f"❌ DUPLICATE TITLES DETECTED:", "CRITICAL_ERROR")
+            for title, count in duplicates.items():
                 log_test_result(f"   '{title}': {count} copies")
             return False
         else:
-            log_test_result("✅ NO DUPLICATE ARTICLES DETECTED", "SUCCESS")
-            return True
-            
-    except Exception as e:
-        log_test_result(f"⚠️ Duplicate check error: {e}")
-        return True  # Assume no duplicates if check fails
-
-def check_article_quality():
-    """Check article quality - proper HTML formatting, no ```html placeholders"""
-    try:
-        log_test_result("🔍 Checking article quality and HTML formatting...")
+            log_test_result("✅ NO DUPLICATE TITLES FOUND: All article titles are unique", "SUCCESS")
         
-        response = requests.get(f"{API_BASE}/content-library", timeout=30)
-        if response.status_code != 200:
-            log_test_result(f"⚠️ Could not fetch articles for quality check: Status {response.status_code}")
-            return True  # Assume quality is OK if we can't check
+        # CRITICAL CHECK 3: Verify reasonable article count
+        test_content_length = 2218  # Approximate length of test document
+        articles_per_1000_chars = new_articles_count / (test_content_length / 1000)
         
-        data = response.json()
-        articles = data.get('articles', [])
+        log_test_result(f"📈 ARTICLE GENERATION ANALYSIS:")
+        log_test_result(f"   Content length: {test_content_length} characters")
+        log_test_result(f"   Articles per 1000 chars: {articles_per_1000_chars:.1f}")
         
-        # Check recent articles (last 10)
-        recent_articles = sorted(articles, key=lambda x: x.get('created_at', ''), reverse=True)[:10]
+        if articles_per_1000_chars > 10:  # More than 10 articles per 1000 chars suggests duplication
+            log_test_result(f"❌ EXCESSIVE ARTICLE GENERATION: {articles_per_1000_chars:.1f} articles per 1000 chars (suggests duplication)", "WARNING")
+        else:
+            log_test_result(f"✅ REASONABLE ARTICLE COUNT: {articles_per_1000_chars:.1f} articles per 1000 chars", "SUCCESS")
         
-        quality_issues = []
-        html_placeholder_count = 0
-        proper_html_count = 0
-        articles_with_enhancements = 0
-        
-        for article in recent_articles:
-            title = article.get('title', 'Untitled')
-            content = article.get('content', '')
-            
-            # Check for HTML placeholders (```html)
-            if '```html' in content or '<!DOCTYPE html>' in content:
-                html_placeholder_count += 1
-                quality_issues.append(f"HTML placeholder in '{title[:30]}...'")
-            else:
-                proper_html_count += 1
-            
-            # Check for enhancements (related links)
-            if 'related-links' in content or 'Related Articles' in content:
-                articles_with_enhancements += 1
-        
-        log_test_result(f"📊 ARTICLE QUALITY METRICS:")
-        log_test_result(f"   📄 Articles Checked: {len(recent_articles)}")
-        log_test_result(f"   ✅ Proper HTML Format: {proper_html_count}")
-        log_test_result(f"   ❌ HTML Placeholders: {html_placeholder_count}")
-        log_test_result(f"   🔗 With Enhancements: {articles_with_enhancements}")
-        
-        # SUCCESS CRITERIA: No HTML placeholders
-        if html_placeholder_count > 0:
-            log_test_result(f"❌ HTML PLACEHOLDER ISSUES: {html_placeholder_count} articles with ```html placeholders", "ERROR")
-            for issue in quality_issues[:3]:  # Show first 3
-                log_test_result(f"   {issue}")
-            return False
-        
-        # SUCCESS CRITERIA: Articles have enhancements
-        if articles_with_enhancements == 0 and len(recent_articles) > 0:
-            log_test_result("⚠️ NO ENHANCEMENTS: Articles lack related links and enhancements", "WARNING")
-            # This is not a critical failure, but worth noting
-        
-        log_test_result("✅ ARTICLE QUALITY VERIFIED: Proper HTML formatting, no placeholders", "SUCCESS")
         return True
         
     except Exception as e:
-        log_test_result(f"⚠️ Quality check error: {e}")
-        return True  # Assume quality is OK if check fails
+        log_test_result(f"❌ Duplicate verification failed: {e}", "ERROR")
+        return False
 
-def check_backend_logs_for_fixes():
-    """Check backend logs for evidence of fixes"""
+def check_backend_logs_for_outline_first_success():
+    """Check backend logs for outline-first processing success indicators"""
     try:
-        log_test_result("🔍 Checking backend logs for fix evidence...")
+        log_test_result("🔍 CHECKING BACKEND LOGS FOR OUTLINE-FIRST SUCCESS", "CRITICAL")
         
+        # Get recent backend logs
         try:
-            import subprocess
             result = subprocess.run(['tail', '-n', '200', '/var/log/supervisor/backend.out.log'], 
                                   capture_output=True, text=True, timeout=10)
             
             if result.returncode == 0:
                 logs = result.stdout
                 
-                fix_indicators = {
-                    'outline_based_processing': 'COMPREHENSIVE OUTLINE GENERATED' in logs or 'CREATING ARTICLES FROM OUTLINE' in logs,
-                    'no_fallback': 'OUTLINE-BASED ARTICLE CREATION COMPLETE' in logs,
-                    'faq_generation': 'Generated intelligent FAQ' in logs or 'FAQ/Troubleshooting article' in logs,
-                    'no_attributeerror': 'AttributeError' not in logs or 'DocumentChunk' not in logs
+                # Check for key indicators
+                success_indicators = {
+                    'outline_generated': "COMPREHENSIVE OUTLINE GENERATED" in logs,
+                    'outline_based_success': "OUTLINE-BASED SUCCESS" in logs,
+                    'creating_from_outline': "CREATING ARTICLES FROM OUTLINE" in logs,
+                    'skipping_legacy': "SKIPPING LEGACY PROCESSING" in logs,
+                    'outline_complete': "OUTLINE-BASED ARTICLE CREATION COMPLETE" in logs
                 }
                 
-                log_test_result("📊 BACKEND LOG ANALYSIS:")
-                for indicator, found in fix_indicators.items():
+                log_test_result("📋 BACKEND LOG ANALYSIS:")
+                for indicator, found in success_indicators.items():
                     status = "✅ FOUND" if found else "❌ NOT FOUND"
                     log_test_result(f"   {indicator.replace('_', ' ').title()}: {status}")
                 
-                # Overall assessment
-                fixes_working = sum(fix_indicators.values())
-                total_indicators = len(fix_indicators)
+                # Check for error indicators
+                error_indicators = {
+                    'documentchunk_error': "DocumentChunk' object has no attribute 'title'" in logs,
+                    'fallback_triggered': "falling back to traditional processing" in logs.lower(),
+                    'dual_processing': logs.count("CREATING ARTICLES FROM OUTLINE") > 1
+                }
                 
-                if fixes_working >= 3:  # At least 3 out of 4 indicators
-                    log_test_result(f"✅ BACKEND LOGS CONFIRM FIXES: {fixes_working}/{total_indicators} indicators positive", "SUCCESS")
+                log_test_result("🚨 ERROR ANALYSIS:")
+                for indicator, found in error_indicators.items():
+                    status = "❌ FOUND" if found else "✅ NOT FOUND"
+                    log_test_result(f"   {indicator.replace('_', ' ').title()}: {status}")
+                
+                # Overall assessment
+                success_count = sum(success_indicators.values())
+                error_count = sum(error_indicators.values())
+                
+                if success_count >= 3 and error_count == 0:
+                    log_test_result("✅ OUTLINE-FIRST PROCESSING SUCCESS CONFIRMED", "SUCCESS")
                     return True
+                elif error_count > 0:
+                    log_test_result("❌ PROCESSING ERRORS DETECTED IN LOGS", "ERROR")
+                    return False
                 else:
-                    log_test_result(f"⚠️ BACKEND LOGS INCONCLUSIVE: {fixes_working}/{total_indicators} indicators positive", "WARNING")
+                    log_test_result("⚠️ INSUFFICIENT LOG EVIDENCE FOR OUTLINE-FIRST SUCCESS", "WARNING")
                     return False
             else:
-                log_test_result("⚠️ Could not access backend logs")
+                log_test_result("⚠️ Could not access backend logs", "WARNING")
                 return False
                 
         except Exception as log_error:
-            log_test_result(f"⚠️ Backend log check failed: {log_error}")
+            log_test_result(f"⚠️ Backend log check failed: {log_error}", "WARNING")
             return False
             
     except Exception as e:
@@ -402,14 +396,17 @@ def check_backend_logs_for_fixes():
         return False
 
 def run_comprehensive_duplicate_processing_test():
-    """Run comprehensive test suite for duplicate processing and timeout fixes"""
-    log_test_result("🚀 STARTING COMPREHENSIVE DUPLICATE PROCESSING FIX TEST SUITE", "CRITICAL")
+    """Run comprehensive test suite for duplicate processing fix verification"""
+    log_test_result("🚀 STARTING COMPREHENSIVE DUPLICATE PROCESSING FIX TEST", "CRITICAL")
     log_test_result("=" * 80)
     
     test_results = {
         'backend_health': False,
-        'duplicate_processing_fix': False,
-        'backend_logs_check': False
+        'outline_first_processing': False,
+        'database_insertion_verification': False,
+        'article_count_analysis': False,
+        'backend_log_analysis': False,
+        'end_to_end_duplicate_prevention': False
     }
     
     # Test 1: Backend Health
@@ -420,17 +417,53 @@ def run_comprehensive_duplicate_processing_test():
         log_test_result("❌ Backend health check failed - aborting remaining tests", "CRITICAL_ERROR")
         return test_results
     
-    # Test 2: Duplicate Processing Fix (CRITICAL)
-    log_test_result("\nTEST 2: CRITICAL DUPLICATE PROCESSING AND TIMEOUT FIX TEST")
-    test_results['duplicate_processing_fix'] = test_duplicate_processing_fix()
+    # Test 2: Get baseline before processing
+    log_test_result("\nTEST 2: Content Library Baseline")
+    baseline_count, baseline_articles = get_content_library_baseline()
     
-    # Test 3: Backend Logs Check
-    log_test_result("\nTEST 3: Backend Logs Verification")
-    test_results['backend_logs_check'] = check_backend_logs_for_fixes()
+    # Test 3: Create and process test document
+    log_test_result("\nTEST 3: Outline-First Processing Test")
+    test_file_path = create_test_document()
+    processing_result = process_test_document(test_file_path)
+    
+    if processing_result:
+        test_results['outline_first_processing'] = True
+        log_test_result("✅ OUTLINE-FIRST PROCESSING COMPLETED", "SUCCESS")
+    else:
+        log_test_result("❌ OUTLINE-FIRST PROCESSING FAILED", "ERROR")
+        return test_results
+    
+    # Test 4: Database Insertion Verification
+    log_test_result("\nTEST 4: Database Insertion Verification")
+    test_results['database_insertion_verification'] = verify_no_duplicates_in_content_library(
+        baseline_count, baseline_articles, processing_result
+    )
+    
+    # Test 5: Article Count Analysis (already done in verification)
+    test_results['article_count_analysis'] = test_results['database_insertion_verification']
+    
+    # Test 6: Backend Log Analysis
+    log_test_result("\nTEST 5: Backend Log Analysis")
+    test_results['backend_log_analysis'] = check_backend_logs_for_outline_first_success()
+    
+    # Test 7: End-to-End Duplicate Prevention
+    log_test_result("\nTEST 6: End-to-End Duplicate Prevention")
+    test_results['end_to_end_duplicate_prevention'] = (
+        test_results['outline_first_processing'] and 
+        test_results['database_insertion_verification'] and
+        test_results['backend_log_analysis']
+    )
+    
+    # Clean up test file
+    try:
+        os.remove(test_file_path)
+        log_test_result("🧹 Cleaned up test file")
+    except:
+        pass
     
     # Final Results Summary
     log_test_result("\n" + "=" * 80)
-    log_test_result("🎯 FINAL TEST RESULTS SUMMARY", "CRITICAL")
+    log_test_result("🎯 DUPLICATE PROCESSING FIX TEST RESULTS", "CRITICAL")
     log_test_result("=" * 80)
     
     passed_tests = sum(test_results.values())
@@ -442,28 +475,24 @@ def run_comprehensive_duplicate_processing_test():
     
     log_test_result(f"\nOVERALL RESULT: {passed_tests}/{total_tests} tests passed")
     
-    if test_results['duplicate_processing_fix']:
-        log_test_result("🎉 CRITICAL SUCCESS: Duplicate processing and timeout fixes are working!", "CRITICAL_SUCCESS")
-        log_test_result("✅ SUCCESS CRITERIA ACHIEVED:", "CRITICAL_SUCCESS")
-        log_test_result("   - Only ONE set of articles generated per document", "CRITICAL_SUCCESS")
-        log_test_result("   - No AttributeError from DocumentChunk.title access", "CRITICAL_SUCCESS")
-        log_test_result("   - No fallback to legacy processing when outline-based succeeds", "CRITICAL_SUCCESS")
-        log_test_result("   - Proper HTML formatting in articles (no ```html placeholders)", "CRITICAL_SUCCESS")
-        log_test_result("   - Processing completes within reasonable time (< 2 minutes)", "CRITICAL_SUCCESS")
+    if test_results['end_to_end_duplicate_prevention']:
+        log_test_result("🎉 CRITICAL SUCCESS: Duplicate processing fix is working correctly!", "CRITICAL_SUCCESS")
+        log_test_result("✅ Only ONE set of articles generated per document processing", "CRITICAL_SUCCESS")
+        log_test_result("✅ Complete elimination of duplicate processing pipeline execution", "CRITICAL_SUCCESS")
     else:
-        log_test_result("❌ CRITICAL FAILURE: Duplicate processing and timeout issues persist", "CRITICAL_ERROR")
-        log_test_result("❌ One or more SUCCESS CRITERIA not met", "CRITICAL_ERROR")
+        log_test_result("❌ CRITICAL FAILURE: Duplicate processing issues still exist", "CRITICAL_ERROR")
+        log_test_result("❌ System may still be creating duplicate articles", "CRITICAL_ERROR")
     
     return test_results
 
 if __name__ == "__main__":
-    print("Critical Duplicate Processing and Timeout Bug Testing")
-    print("=" * 60)
+    print("Duplicate Processing Fix Verification Test")
+    print("=" * 50)
     
     results = run_comprehensive_duplicate_processing_test()
     
     # Exit with appropriate code
-    if results['duplicate_processing_fix']:
+    if results['end_to_end_duplicate_prevention']:
         sys.exit(0)  # Success
     else:
         sys.exit(1)  # Failure

@@ -13319,6 +13319,7 @@ async def get_job_status(job_id: str):
             "status": job["status"],
             "input_type": job.get("input_type"),
             "chunks_created": len(job.get("chunks", [])),
+            "articles_generated": job.get("total_articles_created", len(job.get("chunks", []))),
             "error_message": job.get("error_message"),
             "created_at": job.get("created_at"),
             "completed_at": job.get("completed_at")

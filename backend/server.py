@@ -443,9 +443,9 @@ IMPORTANT: Create as many outline items as needed for COMPREHENSIVE coverage. Do
             user_message=f"Analyze this document and create a comprehensive outline:\n\n{content[:50000]}..."  # Use substantial portion
         )
         
-        if outline_response and outline_response.get('response'):
+        if outline_response:
             try:
-                outline_data = json.loads(outline_response['response'])
+                outline_data = json.loads(outline_response)
                 total_articles = len(outline_data.get('comprehensive_outline', []))
                 print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_articles} articles planned")
                 return outline_data

@@ -501,7 +501,7 @@ Return only the complete HTML content for this article."""
                     article = {
                         "id": str(uuid.uuid4()),
                         "title": item.get('article_title', f'Article {i+1}'),
-                        "content": article_content['response'],
+                        "content": article_content,
                         "status": "published",
                         "article_type": item.get('article_type', 'informational'),
                         "source_document": metadata.get("original_filename", "Unknown"),

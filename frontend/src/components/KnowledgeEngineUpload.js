@@ -778,7 +778,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                             'bg-gray-300'
                           }`}>
                             {isCompleted && (
-                              <CheckCircle2 className="w-4 h-4 text-white m-1" />
+                              {getProcessIcon('CheckCircle2', 'w-4 h-4 text-white m-1')}
                             )}
                           </div>
                         </div>

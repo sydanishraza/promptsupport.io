@@ -565,36 +565,42 @@ Return only the complete HTML content for this article."""
             # Generate FAQ/Troubleshooting article if content is substantial
             content_length = len(content)
             if content_length > 2000:  # Only for substantial content
-                print(f"❓ Generating FAQ/Troubleshooting article for comprehensive coverage")
-                faq_article_chunk = await generate_faq_troubleshooting_article(content, metadata)
-                if faq_article_chunk:
-                    # Convert DocumentChunk to article format and save to database
-                    # Extract title from DocumentChunk content or metadata
-                    faq_title = getattr(faq_article_chunk, 'title', None) or \
-                                faq_article_chunk.metadata.get('title', 'FAQ and Troubleshooting')
-                    
-                    faq_article = {
-                        "id": str(uuid.uuid4()),
-                        "title": faq_title,
-                        "content": faq_article_chunk.content,
-                        "status": "published",
-                        "article_type": "faq-troubleshooting",
-                        "source_document": metadata.get("original_filename", "Unknown"),
-                        "tags": getattr(faq_article_chunk, 'tags', []) or [],
-                        "created_at": datetime.utcnow(),
-                        "metadata": {
-                            "outline_based": True,
-                            "enhancement_type": "faq_troubleshooting",
-                            "article_number": len(enhanced_articles) + 1,
-                            "total_articles": len(enhanced_articles) + 1,
-                            **metadata
+                try:
+                    print(f"❓ Generating FAQ/Troubleshooting article for comprehensive coverage")
+                    faq_article_chunk = await generate_faq_troubleshooting_article(content, metadata)
+                    if faq_article_chunk:
+                        # Convert DocumentChunk to article format and save to database
+                        # Extract title from DocumentChunk content or metadata
+                        faq_title = getattr(faq_article_chunk, 'title', None) or \
+                                    faq_article_chunk.metadata.get('title', 'FAQ and Troubleshooting')
+                        
+                        faq_article = {
+                            "id": str(uuid.uuid4()),
+                            "title": faq_title,
+                            "content": faq_article_chunk.content,
+                            "status": "published",
+                            "article_type": "faq-troubleshooting",
+                            "source_document": metadata.get("original_filename", "Unknown"),
+                            "tags": getattr(faq_article_chunk, 'tags', []) or [],
+                            "created_at": datetime.utcnow(),
+                            "metadata": {
+                                "outline_based": True,
+                                "enhancement_type": "faq_troubleshooting",
+                                "article_number": len(enhanced_articles) + 1,
+                                "total_articles": len(enhanced_articles) + 1,
+                                **metadata
+                            }
                         }
-                    }
-                    
-                    # Save FAQ article to database
-                    await db.content_library.insert_one(faq_article)
-                    enhanced_articles.append(faq_article)
-                    print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']}")
+                        
+                        # Save FAQ article to database
+                        await db.content_library.insert_one(faq_article)
+                        enhanced_articles.append(faq_article)
+                        print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']}")
+                    else:
+                        print(f"⚠️ FAQ generation returned None, skipping FAQ article")
+                except Exception as faq_error:
+                    print(f"⚠️ FAQ generation failed (non-critical): {faq_error}")
+                    # Continue without FAQ - don't let this trigger fallback processing
             
             print(f"✅ ENHANCED OUTLINE-BASED PROCESSING COMPLETE: {len(enhanced_articles)} total articles with full enhancements")
             return enhanced_articles

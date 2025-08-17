@@ -8998,16 +8998,19 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                     intelligent_limit = len(merged_sections)  # Process ALL hierarchical sections
                     print(f"🚀 HIERARCHICAL DYNAMIC LIMIT: {intelligent_limit} articles (all sections processed)")
                 else:
-                    # Fallback to multi-level overflow
-                    intelligent_limit = 12
+                    # Fallback to multi-level overflow - use estimated need
+                    intelligent_limit = ultra_large_analysis['estimated_articles_needed']
+                    print(f"🚀 FALLBACK DYNAMIC LIMIT: {intelligent_limit} articles (estimated need)")
                     
             elif ultra_large_analysis['strategy'] == 'multi_level_overflow':
                 print(f"📚 MULTI-LEVEL OVERFLOW: Will create multiple overflow articles")
-                intelligent_limit = 12  # Standard limit but with enhanced overflow handling
+                intelligent_limit = ultra_large_analysis['estimated_articles_needed']  # Use estimated need
+                print(f"🚀 OVERFLOW DYNAMIC LIMIT: {intelligent_limit} articles (estimated need)")
                 
             else:
-                # Standard processing with increased limit
-                intelligent_limit = 12
+                # Standard processing - use estimated need or minimum
+                intelligent_limit = max(ultra_large_analysis['estimated_articles_needed'], 12)
+                print(f"🚀 STANDARD DYNAMIC LIMIT: {intelligent_limit} articles (estimated or minimum 12)")
         else:
             # Standard intelligent limit determination
             limit_analysis = determine_intelligent_article_limit(content, len(merged_sections))

@@ -532,8 +532,10 @@ Return only the complete HTML content for this article."""
                         }
                     }
                     
+                    # CRITICAL FIX: Save article to database
+                    await db.content_library.insert_one(article)
                     articles.append(article)
-                    print(f"✅ Article created: {article['title']}")
+                    print(f"✅ Article created and saved: {article['title']}")
                 else:
                     print(f"⚠️ Failed to create article: {item.get('article_title', 'Untitled')}")
                     

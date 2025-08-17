@@ -547,9 +547,19 @@ Return only the complete HTML content for this article."""
         
         # ENHANCEMENT: Add missing features that were in the original pipeline
         if articles:
-            print(f"🔗 ADDING ENHANCEMENTS: Related links, cross-references, and FAQ generation")
+            print(f"🔗 ADDING COMPREHENSIVE ENHANCEMENTS: TOC, related links, cross-references, and FAQ generation")
             
-            # Add related links and cross-references
+            # Create introductory TOC article when multiple articles are generated
+            if len(articles) > 1:
+                print(f"📋 Creating introductory Table of Contents article for {len(articles)} articles")
+                intro_article = await create_introductory_toc_article(articles, metadata)
+                if intro_article:
+                    # Save introductory article to database
+                    await db.content_library.insert_one(intro_article)
+                    articles.insert(0, intro_article)  # Add as first article
+                    print(f"✅ Introductory TOC article created and saved: {intro_article['title']}")
+            
+            # Add related links and cross-references to all articles
             enhanced_articles = await add_related_links_to_articles(articles)
             
             # Generate FAQ/Troubleshooting article if content is substantial

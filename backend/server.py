@@ -8927,6 +8927,26 @@ def clean_html_wrappers(content: str) -> str:
     
     return content
 
+def clean_article_html_content(content: str) -> str:
+    """Clean HTML content to remove document structure and ensure proper article formatting"""
+    import re
+    
+    # First apply the existing HTML wrapper cleaning
+    content = clean_html_wrappers(content)
+    
+    # Additional cleaning specific to article content
+    # Remove any remaining document structure elements
+    content = re.sub(r'<meta[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<link[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Clean up excessive whitespace
+    content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
+    content = re.sub(r'^\s+|\s+$', '', content)
+    
+    return content
+
 def add_missing_images(content: str, images: list) -> str:
     """Add missing images at appropriate locations"""
     import re

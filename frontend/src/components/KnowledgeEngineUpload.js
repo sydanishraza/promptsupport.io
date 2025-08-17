@@ -483,7 +483,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                   className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
                 >
                   <div className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
+                    {getProcessIcon('CheckCircle2', 'w-4 h-4 mr-2 text-green-600')}
                     {files.length} file{files.length > 1 ? 's' : ''} selected
                   </div>
                   <div className="space-y-2 max-h-32 overflow-y-auto">

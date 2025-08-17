@@ -455,7 +455,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                   {Object.entries(supportedFormats).map(([category, data]) => (
                     <div key={category}>
                       <div className={`flex items-center mb-2 text-sm font-medium ${data.color}`}>
-                        <data.icon className="w-4 h-4 mr-2" />
+                        {getProcessIcon(data.icon, 'w-4 h-4 mr-2')}
                         {data.title}
                       </div>
                       <div className="flex flex-wrap gap-1.5">

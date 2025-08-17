@@ -75,10 +75,16 @@ import os
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/api/static", StaticFiles(directory=static_dir), name="static")
 
-# CORS middleware - DEFINITIVE FIX for all origin issues
+# CORS middleware - Enhanced configuration for preview environments
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=[
+        "*",  # Allow all origins for development
+        "https://docai-promptsupport.preview.emergentagent.com",
+        "https://*.preview.emergentagent.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
     allow_headers=["*"],  # Allow all headers

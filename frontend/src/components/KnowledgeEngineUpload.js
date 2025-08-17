@@ -635,7 +635,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               >
                 {processing ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {getProcessIcon('Loader2', 'w-5 h-5 animate-spin')}
                     <span>Processing...</span>
                   </>
                 ) : (

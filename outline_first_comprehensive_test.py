@@ -150,18 +150,25 @@ def test_outline_first_approach_for_format(content_text, format_name, expected_m
     try:
         log_test_result(f"🎯 Testing outline-first approach for {format_name.upper()} format...")
         
-        # Simulate document processing by sending text content
-        payload = {
-            'content': content_text,
-            'format': format_name,
-            'use_outline_first': True
-        }
+        # Create a temporary file with the content
+        temp_filename = f"test_content.{format_name}"
+        temp_filepath = f"/app/{temp_filename}"
         
-        # Start processing
-        start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
-                               json=payload, 
-                               timeout=300)  # 5 minute timeout
+        with open(temp_filepath, 'w', encoding='utf-8') as f:
+            f.write(content_text)
+        
+        # Upload the file using the actual upload endpoint
+        with open(temp_filepath, 'rb') as f:
+            files = {'file': (temp_filename, f, 'text/plain')}
+            metadata = json.dumps({'test_format': format_name})
+            data = {'metadata': metadata}
+            
+            # Start processing
+            start_time = time.time()
+            response = requests.post(f"{API_BASE}/content/upload", 
+                                   files=files, 
+                                   data=data,
+                                   timeout=300)  # 5 minute timeout
         
         if response.status_code != 200:
             log_test_result(f"❌ {format_name.upper()} processing failed: Status {response.status_code}", "ERROR")

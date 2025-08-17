@@ -196,11 +196,15 @@ def test_enhanced_outline_processing():
         # Use text processing endpoint
         payload = {
             "content": test_content,
-            "filename": "comprehensive_api_guide.txt"
+            "content_type": "text",
+            "metadata": {
+                "original_filename": "comprehensive_api_guide.txt",
+                "source": "enhanced_outline_test"
+            }
         }
         
         start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
+        response = requests.post(f"{API_BASE}/content/process", 
                                json=payload, 
                                timeout=600)  # 10 minute timeout
         

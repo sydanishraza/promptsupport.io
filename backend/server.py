@@ -440,11 +440,7 @@ IMPORTANT: Create as many outline items as needed for COMPREHENSIVE coverage. Do
         # Create comprehensive outline using LLM
         outline_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Analyze this document and create a comprehensive outline:\n\n{content[:50000]}...",  # Use substantial portion
-            response_format="json",
-            model_name="gpt-4o",
-            max_tokens=4000,
-            temperature=0.3
+            user_message=f"Analyze this document and create a comprehensive outline:\n\n{content[:50000]}..."  # Use substantial portion
         )
         
         if outline_response and outline_response.get('response'):

@@ -517,8 +517,12 @@ def test_end_to_end_workflow():
         start_time = time.time()
         
         response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": test_content, "filename": "workflow_test.txt"},
+            f"{API_BASE}/content/process",
+            json={
+                "content": test_content, 
+                "content_type": "text",
+                "metadata": {"original_filename": "workflow_test.txt"}
+            },
             timeout=120
         )
         

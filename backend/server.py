@@ -397,6 +397,149 @@ async def generate_enhanced_markdown_content(article_data: dict, template_data: 
     
     return '\n\n'.join(md_parts)
 
+async def generate_comprehensive_outline(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate a comprehensive outline first, then create articles based on that outline"""
+    try:
+        print(f"📋 GENERATING COMPREHENSIVE OUTLINE: Analyzing {len(content)} characters")
+        
+        system_message = """You are a technical documentation expert. Your task is to analyze the provided document and create a comprehensive outline that covers ALL aspects without missing any technical details.
+
+CRITICAL INSTRUCTIONS:
+1. Read the ENTIRE document thoroughly
+2. Identify ALL major sections, subsections, and topics
+3. Create a detailed hierarchical outline that covers 100% of the content
+4. Each outline item should be substantial enough to warrant its own article
+5. Ensure NO content is skipped or summarized away
+6. For technical documents, include ALL procedures, features, and details
+
+OUTPUT FORMAT:
+Return a JSON object with this structure:
+{
+  "document_title": "Main document title",
+  "total_topics": 15,
+  "comprehensive_outline": [
+    {
+      "article_title": "Introduction and Overview", 
+      "article_type": "overview",
+      "content_summary": "Brief description of what this article will cover",
+      "key_topics": ["topic1", "topic2", "topic3"],
+      "estimated_length": "medium"
+    },
+    {
+      "article_title": "Getting Started Guide",
+      "article_type": "how-to", 
+      "content_summary": "Step-by-step setup and initial configuration",
+      "key_topics": ["setup", "configuration", "first steps"],
+      "estimated_length": "long"
+    }
+  ]
+}
+
+IMPORTANT: Create as many outline items as needed for COMPREHENSIVE coverage. Do not limit yourself."""
+
+        # Create comprehensive outline using LLM
+        outline_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Analyze this document and create a comprehensive outline:\n\n{content[:50000]}...",  # Use substantial portion
+            response_format="json",
+            model_name="gpt-4o",
+            max_tokens=4000,
+            temperature=0.3
+        )
+        
+        if outline_response and outline_response.get('response'):
+            try:
+                outline_data = json.loads(outline_response['response'])
+                total_articles = len(outline_data.get('comprehensive_outline', []))
+                print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_articles} articles planned")
+                return outline_data
+            except json.JSONDecodeError as e:
+                print(f"⚠️ Outline JSON parsing error: {e}")
+                
+        print(f"⚠️ Falling back to section-based analysis")
+        return None
+        
+    except Exception as e:
+        print(f"❌ Error generating comprehensive outline: {e}")
+        return None
+
+async def create_articles_from_outline(content: str, outline: Dict[str, Any], metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create articles one by one based on the comprehensive outline"""
+    try:
+        articles = []
+        outline_items = outline.get('comprehensive_outline', [])
+        
+        print(f"🏗️ CREATING ARTICLES FROM OUTLINE: {len(outline_items)} articles planned")
+        
+        for i, item in enumerate(outline_items):
+            try:
+                print(f"📄 Creating article {i+1}/{len(outline_items)}: {item.get('article_title', 'Untitled')}")
+                
+                # Create targeted system message for this specific article
+                system_message = f"""You are a technical writer creating a comprehensive article based on a specific section of a larger document.
+
+ARTICLE REQUIREMENTS:
+- Title: {item.get('article_title', 'Untitled')}
+- Type: {item.get('article_type', 'informational')}
+- Content Focus: {item.get('content_summary', 'General content')}
+- Key Topics: {', '.join(item.get('key_topics', []))}
+
+CRITICAL INSTRUCTIONS:
+1. Extract ALL relevant content from the source document for this article
+2. Create a comprehensive, standalone article that covers the topic thoroughly
+3. Include ALL technical details, procedures, and specifications
+4. Use proper HTML formatting with headings, lists, and emphasis
+5. Ensure the article is complete and self-contained
+6. Do NOT reference other articles or create placeholder links
+
+Return only the complete HTML content for this article."""
+
+                # Extract relevant content for this specific article
+                article_content = await call_llm_with_fallback(
+                    system_message=system_message,
+                    user_message=f"Create a comprehensive article from this source document:\n\n{content}",
+                    response_format="html",
+                    model_name="gpt-4o",
+                    max_tokens=3000,
+                    temperature=0.2
+                )
+                
+                if article_content and article_content.get('response'):
+                    # Create article object
+                    article = {
+                        "id": str(uuid.uuid4()),
+                        "title": item.get('article_title', f'Article {i+1}'),
+                        "content": article_content['response'],
+                        "status": "published",
+                        "article_type": item.get('article_type', 'informational'),
+                        "source_document": metadata.get("original_filename", "Unknown"),
+                        "estimated_length": item.get('estimated_length', 'medium'),
+                        "key_topics": item.get('key_topics', []),
+                        "created_at": datetime.utcnow(),
+                        "metadata": {
+                            "outline_based": True,
+                            "article_number": i + 1,
+                            "total_articles": len(outline_items),
+                            **metadata
+                        }
+                    }
+                    
+                    articles.append(article)
+                    print(f"✅ Article created: {article['title']}")
+                else:
+                    print(f"⚠️ Failed to create article: {item.get('article_title', 'Untitled')}")
+                    
+            except Exception as e:
+                print(f"❌ Error creating article {i+1}: {e}")
+                continue
+        
+        print(f"🎉 OUTLINE-BASED ARTICLE CREATION COMPLETE: {len(articles)} articles created")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error in outline-based article creation: {e}")
+        return []
+
 
 # === END HELPER FUNCTIONS ===
 

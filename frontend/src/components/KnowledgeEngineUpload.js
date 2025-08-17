@@ -777,9 +777,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                             isActive ? 'bg-blue-500' : 
                             'bg-gray-300'
                           }`}>
-                            {isCompleted && (
-                              {getProcessIcon('CheckCircle2', 'w-4 h-4 text-white m-1')}
-                            )}
+                            {isCompleted && getProcessIcon('CheckCircle2', 'w-4 h-4 text-white m-1')}
                           </div>
                         </div>
                       );

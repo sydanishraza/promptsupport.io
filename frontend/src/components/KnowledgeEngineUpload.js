@@ -703,7 +703,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
                         animate={{ scale: 1 }}
                         className="w-16 h-16 bg-green-100 rounded-full inline-flex items-center justify-center"
                       >
-                        <CheckCircle2 className="w-8 h-8 text-green-600" />
+                        {getProcessIcon('CheckCircle2', 'w-8 h-8 text-green-600')}
                       </motion.div>
                       <div>
                         <h4 className="text-xl font-semibold text-gray-900 mb-2">Processing Complete!</h4>

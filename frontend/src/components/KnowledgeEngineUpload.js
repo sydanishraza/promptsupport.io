@@ -422,7 +422,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
             >
-              <X className="w-5 h-5" />
+              {getProcessIcon('X', 'w-5 h-5')}
             </button>
           </div>
         </div>

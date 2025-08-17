@@ -8992,10 +8992,11 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
                 if hierarchical_structure['total_articles'] > 0:
                     print(f"✅ HIERARCHICAL STRUCTURE: {hierarchical_structure['total_articles']} articles in {hierarchical_structure['categories_created']} categories")
                     
-                    # Process hierarchical articles first
+                    # Process hierarchical articles - use dynamic limit
                     all_hierarchical_sections = hierarchical_structure['hierarchical_articles'] + hierarchical_structure['detailed_articles']
                     merged_sections = all_hierarchical_sections
-                    intelligent_limit = min(len(merged_sections), 20)  # Allow up to 20 for hierarchical
+                    intelligent_limit = len(merged_sections)  # Process ALL hierarchical sections
+                    print(f"🚀 HIERARCHICAL DYNAMIC LIMIT: {intelligent_limit} articles (all sections processed)")
                 else:
                     # Fallback to multi-level overflow
                     intelligent_limit = 12

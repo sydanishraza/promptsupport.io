@@ -613,7 +613,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
               {urlInput && (
                 <div className="mt-3 text-xs text-purple-700 bg-purple-50 rounded-lg p-3 border border-purple-200">
                   <div className="flex items-center">
-                    <Globe className="w-3 h-3 mr-2" />
+                    {getProcessIcon('Globe', 'w-3 h-3 mr-2')}
                     <span>Ready to process: {new URL(urlInput).hostname}</span>
                   </div>
                 </div>

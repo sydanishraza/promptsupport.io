@@ -493,14 +493,10 @@ Return only the complete HTML content for this article."""
                 # Extract relevant content for this specific article
                 article_content = await call_llm_with_fallback(
                     system_message=system_message,
-                    user_message=f"Create a comprehensive article from this source document:\n\n{content}",
-                    response_format="html",
-                    model_name="gpt-4o",
-                    max_tokens=3000,
-                    temperature=0.2
+                    user_message=f"Create a comprehensive article from this source document:\n\n{content}"
                 )
                 
-                if article_content and article_content.get('response'):
+                if article_content:
                     # Create article object
                     article = {
                         "id": str(uuid.uuid4()),

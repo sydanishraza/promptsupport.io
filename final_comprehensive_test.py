@@ -102,8 +102,12 @@ def test_duplicate_processing_fix():
         
         start_time = time.time()
         response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": test_content, "filename": "duplicate_test.txt"},
+            f"{API_BASE}/content/process",
+            json={
+                "content": test_content, 
+                "content_type": "text",
+                "metadata": {"original_filename": "duplicate_test.txt"}
+            },
             timeout=180  # 3 minute timeout
         )
         

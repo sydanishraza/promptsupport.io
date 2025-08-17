@@ -581,7 +581,7 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
             >
               <div className="text-center mb-4">
                 <div className="w-12 h-12 bg-purple-100 rounded-xl inline-flex items-center justify-center mb-4">
-                  <Link2 className="w-6 h-6 text-purple-600" />
+                  {getProcessIcon('Link2', 'w-6 h-6 text-purple-600')}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Enter URL</h3>
                 <p className="text-sm text-gray-600 mb-4">Extract content from web pages</p>

@@ -31,41 +31,41 @@ const KnowledgeEngineUpload = ({ isOpen, onClose, onUploadComplete }) => {
   const [processModal, setProcessModal] = useState({ open: false, step: 0, data: null });
   const fileInputRef = useRef();
 
-  // Updated supported file formats with cleaner categorization
+  // Updated supported file formats with custom SVG icons
   const supportedFormats = {
     documents: {
       title: 'Documents',
-      icon: FileText,
+      icon: 'FileText',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200',
       formats: [
-        { ext: 'docx', label: 'Word', icon: FileText },
-        { ext: 'pdf', label: 'PDF', icon: FileText },
-        { ext: 'ppt', label: 'PowerPoint', icon: FileText },
-        { ext: 'pptx', label: 'PowerPoint', icon: FileText },
-        { ext: 'xls', label: 'Excel', icon: FileText },
-        { ext: 'xlsx', label: 'Excel', icon: FileText },
-        { ext: 'csv', label: 'CSV', icon: FileText },
-        { ext: 'xml', label: 'XML', icon: Code },
-        { ext: 'html', label: 'HTML', icon: Code },
-        { ext: 'md', label: 'Markdown', icon: FileText },
-        { ext: 'txt', label: 'Text', icon: File }
+        { ext: 'docx', label: 'Word', icon: 'FileText' },
+        { ext: 'pdf', label: 'PDF', icon: 'FileText' },
+        { ext: 'ppt', label: 'PowerPoint', icon: 'FileText' },
+        { ext: 'pptx', label: 'PowerPoint', icon: 'FileText' },
+        { ext: 'xls', label: 'Excel', icon: 'FileText' },
+        { ext: 'xlsx', label: 'Excel', icon: 'FileText' },
+        { ext: 'csv', label: 'CSV', icon: 'FileText' },
+        { ext: 'xml', label: 'XML', icon: 'Code' },
+        { ext: 'html', label: 'HTML', icon: 'Code' },
+        { ext: 'md', label: 'Markdown', icon: 'FileText' },
+        { ext: 'txt', label: 'Text', icon: 'File' }
       ]
     },
     media: {
       title: 'Audio & Video',
-      icon: Video,
+      icon: 'Video',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-200',
       formats: [
-        { ext: 'mp3', label: 'MP3', icon: FileAudio },
-        { ext: 'wav', label: 'WAV', icon: FileAudio },
-        { ext: 'm4a', label: 'M4A', icon: FileAudio },
-        { ext: 'mp4', label: 'MP4', icon: FileVideo },
-        { ext: 'mov', label: 'MOV', icon: FileVideo },
-        { ext: 'webm', label: 'WebM', icon: FileVideo }
+        { ext: 'mp3', label: 'MP3', icon: 'FileAudio' },
+        { ext: 'wav', label: 'WAV', icon: 'FileAudio' },
+        { ext: 'm4a', label: 'M4A', icon: 'FileAudio' },
+        { ext: 'mp4', label: 'MP4', icon: 'FileVideo' },
+        { ext: 'mov', label: 'MOV', icon: 'FileVideo' },
+        { ext: 'webm', label: 'WebM', icon: 'FileVideo' }
       ]
     }
   };

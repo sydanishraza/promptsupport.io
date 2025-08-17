@@ -8980,8 +8980,10 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
             # Handle ultra-large documents with specialized strategies
             if ultra_large_analysis['strategy'] == 'document_splitting':
                 print(f"📋 DOCUMENT SPLITTING RECOMMENDED: Document too large for single processing")
-                # For now, proceed with maximum intelligent processing but log the recommendation
-                intelligent_limit = 15  # Increased limit for splitting scenarios
+                # Use the actual estimated articles needed instead of hard limit
+                intelligent_limit = ultra_large_analysis['estimated_articles_needed']
+                print(f"🚀 USING DYNAMIC LIMIT: {intelligent_limit} articles (estimated need: {ultra_large_analysis['estimated_articles_needed']})")
+                
                 
             elif ultra_large_analysis['strategy'] == 'hierarchical_articles':
                 print(f"🏗️ HIERARCHICAL PROCESSING: Creating hierarchical article structure")

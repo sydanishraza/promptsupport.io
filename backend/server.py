@@ -504,7 +504,12 @@ CRITICAL INSTRUCTIONS:
 5. Ensure the article is complete and self-contained
 6. Do NOT reference other articles or create placeholder links
 
-Return only the complete HTML content for this article."""
+CRITICAL OUTPUT FORMAT:
+- Return ONLY article content HTML (headings, paragraphs, lists, etc.)
+- Do NOT include document structure tags: <!DOCTYPE>, <html>, <head>, <body>
+- Do NOT wrap content in ```html code blocks
+- Start directly with content (e.g., <h2>Introduction</h2><p>Content...</p>)
+- Use semantic HTML: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>"""
 
                 # Extract relevant content for this specific article
                 article_content = await call_llm_with_fallback(

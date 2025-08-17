@@ -7374,7 +7374,33 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
             print("⚠️ No text content extracted from PDF")
             return []
         
-        # Process with template including images
+        # NEW APPROACH: Use outline-first comprehensive article generation for PDF
+        print(f"🎯 Using NEW outline-first article generation for PDF content")
+        
+        # First, try the outline-first approach for comprehensive coverage
+        outline = await generate_comprehensive_outline(full_text, {
+            "source": "pdf",
+            "original_filename": template_data.get("filename", "document.pdf"),
+            "images": len(all_images)
+        })
+        
+        if outline:
+            # Use outline-based article creation for comprehensive coverage
+            outline_articles = await create_articles_from_outline(full_text, outline, {
+                "source": "pdf",
+                "original_filename": template_data.get("filename", "document.pdf"),
+                "images": all_images,
+                "template_data": template_data,
+                "training_session": training_session
+            })
+            if outline_articles:
+                print(f"✅ PDF OUTLINE-BASED SUCCESS: Created {len(outline_articles)} comprehensive articles")
+                return outline_articles
+            else:
+                print("⚠️ PDF outline-based creation failed, falling back to legacy approach")
+        
+        # FALLBACK: Legacy template-based processing
+        print(f"🔄 Falling back to legacy PDF processing")
         articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
         
         print(f"✅ PDF processing generated {len(articles)} articles")

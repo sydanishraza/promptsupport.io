@@ -184,6 +184,12 @@ def test_outline_first_approach_for_format(content_text, format_name, expected_m
         
         log_test_result(f"✅ {format_name.upper()} processing started, Job ID: {job_id}")
         
+        # Clean up temp file
+        try:
+            os.remove(temp_filepath)
+        except:
+            pass
+        
         # Monitor processing
         processing_start = time.time()
         max_wait_time = 300  # 5 minutes max

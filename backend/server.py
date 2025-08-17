@@ -8944,8 +8944,15 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
     try:
         print(f"🚀 ANTI-DUPLICATE CHUNKING: Processing {len(content)} characters of content")
         
-        # ANTI-DUPLICATE ENHANCEMENT: Intelligent content analysis to prevent similar articles
-        content_sections = await analyze_content_for_unique_sections(content)
+        # CRITICAL FIX: Detect ultra-large documents for conservative merging
+        ultra_large_analysis = detect_ultra_large_document(content, {"source": metadata.get("source", "unknown")})
+        is_ultra_large = ultra_large_analysis.get('is_ultra_large', False)
+        
+        if is_ultra_large:
+            print(f"🏢 ULTRA-LARGE CONTENT DETECTED: Will use conservative merging to preserve comprehensive coverage")
+        
+        # ANTI-DUPLICATE ENHANCEMENT: Intelligent content analysis with ultra-large handling
+        content_sections = await analyze_content_for_unique_sections(content, is_ultra_large)
         
         # DIVERSE ARTICLE TYPES: Ensure we create different types of articles
         target_article_types = ['overview', 'concept', 'how-to', 'use-case', 'faq-troubleshooting']

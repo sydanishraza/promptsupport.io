@@ -518,11 +518,14 @@ CRITICAL OUTPUT FORMAT:
                 )
                 
                 if article_content:
+                    # CRITICAL FIX: Clean HTML content to remove document structure
+                    cleaned_content = clean_article_html_content(article_content)
+                    
                     # Create article object
                     article = {
                         "id": str(uuid.uuid4()),
                         "title": item.get('article_title', f'Article {i+1}'),
-                        "content": article_content,
+                        "content": cleaned_content,
                         "status": "published",
                         "article_type": item.get('article_type', 'informational'),
                         "source_document": metadata.get("original_filename", "Unknown"),

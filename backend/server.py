@@ -7464,7 +7464,7 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
                 "template_data": template_data,
                 "training_session": training_session
             })
-            if outline_articles:
+            if outline_articles and len(outline_articles) > 0:
                 print(f"✅ PDF OUTLINE-BASED SUCCESS: Created {len(outline_articles)} comprehensive articles")
                 return outline_articles
             else:

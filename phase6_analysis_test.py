@@ -23,7 +23,7 @@ def connect_to_database():
         db = client.promptsupport_db
         
         # Test connection
-        db.admin.command('ping')
+        client.admin.command('ping')
         log_test_result("✅ Database connection successful", "SUCCESS")
         return db
         

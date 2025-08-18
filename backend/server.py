@@ -2210,7 +2210,7 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             # UNIFIED APPROACH: Keep content together as one comprehensive article
             print(f"📄 UNIFIED PROCESSING: Creating single comprehensive article")
             
-            unified_article = await enhanced_generate_unified_article(content, metadata, content_analysis)
+            unified_article = await enhanced_generate_unified_article(content, metadata, analysis)
             if unified_article:
                 await db.content_library.insert_one(unified_article)
                 generated_articles.append(unified_article)

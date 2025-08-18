@@ -83,8 +83,8 @@ def test_clean_pipeline_text_processing():
         
         start_time = time.time()
         response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": test_content, "filename": "clean_pipeline_test.txt"},
+            f"{API_BASE}/content/process",
+            json={"content": test_content, "content_type": "text", "filename": "clean_pipeline_test.txt"},
             timeout=300
         )
         

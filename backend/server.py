@@ -1086,7 +1086,7 @@ async def generate_unified_article(content: str, metadata: Dict[str, Any], conte
         
         print(f"📝 Input content: {len(content)} characters for unified article")
         
-        system_message = f"""You are a technical writer creating a comprehensive, unified article that keeps related content together.
+        system_message = f"""You are a technical writer creating a comprehensive, unified article that preserves all rich formatting and content structure.
 
 CONTENT TYPE: {primary_type}
 KEEP UNIFIED BECAUSE: {content_analysis.get('structuring_decision', {}).get('reasoning', 'Content should stay together')}
@@ -1094,26 +1094,41 @@ KEEP UNIFIED BECAUSE: {content_analysis.get('structuring_decision', {}).get('rea
 CRITICAL REQUIREMENTS:
 1. Create ONE comprehensive article that covers all aspects
 2. Maintain logical flow and context throughout
-3. Keep code blocks with their explanations
-4. Use proper section headings (h2, h3) for organization within the article
-5. Ensure step-by-step procedures flow naturally
-6. Include ALL technical details and examples
+3. PRESERVE ALL rich formatting elements:
+   - Lists: Use proper <ul>, <ol>, <li> tags
+   - Code blocks: Use <pre><code> with proper indentation and spacing
+   - Callouts/Notes: Use <div class="note">, <div class="tip">, <div class="warning">
+   - Tables: Preserve <table>, <tr>, <td>, <th> structure
+   - Emphasis: Use <strong>, <em>, <b>, <i> appropriately
+4. Keep code examples WITH their explanations in context
+5. Use semantic headings (h2 for major sections, h3 for subsections)
+6. Include ALL technical details, examples, and procedures
+7. NEVER remove or skip code blocks, lists, or formatting elements
+
+RICH FORMATTING GUIDELINES:
+- For code examples: <pre><code class="language-TYPE">actual code here</code></pre>
+- For lists: Proper <ul>/<ol> with <li> items
+- For notes/tips: <div class="note"><strong>Note:</strong> content</div>
+- For warnings: <div class="warning"><strong>Warning:</strong> content</div>
+- For procedures: Use numbered lists <ol> for step-by-step content
+- For file paths/commands: <code>inline code</code>
 
 ARTICLE STRUCTURE:
-- Start with overview/introduction
-- Follow with main content in logical order
+- Start with overview/introduction (h2)
+- Follow with main content in logical order (h2, h3)
 - Keep related sections together
-- Include all code examples in context
+- Include all code examples in context with proper formatting
 - End with summary or next steps if applicable
 
 OUTPUT FORMAT:
-Return ONLY the article content without any markdown formatting:
-- Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em)
+Return ONLY the article content with rich HTML formatting:
+- Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em, code, pre)
 - Use h2 for major sections, h3 for subsections
-- Keep code blocks properly formatted with <pre><code> tags
+- Keep code blocks properly formatted with <pre><code> tags and preserve spacing
+- Include proper list structures and callouts
 - Maintain context and flow throughout
 - Do NOT include document wrapper tags (html, head, body)
-- Do NOT use markdown code blocks (```html)"""
+- Do NOT use markdown formatting - use proper HTML elements"""
 
         print(f"🤖 CALLING LLM for unified article generation...")
         

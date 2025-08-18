@@ -10635,8 +10635,19 @@ def clean_html_wrappers(content: str) -> str:
     return content
 
 def clean_article_html_content(content: str) -> str:
-    """Clean HTML content to remove document structure while preserving rich formatting"""
+    """Clean HTML content to remove document structure while preserving rich formatting - WYSIWYG OPTIMIZED"""
     import re
+    
+    # CRITICAL FIX: Remove any full-article code block wrapping that breaks WYSIWYG editors
+    # This is the main issue preventing WYSIWYG editor compatibility
+    if content.strip().startswith('<pre><code class="language-html">') and content.strip().endswith('</code></pre>'):
+        print(f"🚨 CRITICAL FIX: Removing WYSIWYG-breaking code block wrapper")
+        content = content.strip()
+        content = content.replace('<pre><code class="language-html">', '', 1)
+        content = content.rsplit('</code></pre>', 1)[0]
+    
+    # Remove any other variations of full-article wrapping
+    content = re.sub(r'^<pre><code[^>]*>(.*)</code></pre>$', r'\1', content, flags=re.DOTALL)
     
     # First apply the existing HTML wrapper cleaning
     content = clean_html_wrappers(content)
@@ -10650,7 +10661,7 @@ def clean_article_html_content(content: str) -> str:
     
     # PRESERVE rich formatting elements - DO NOT remove:
     # - Lists (ul, ol, li)
-    # - Code blocks (pre, code)
+    # - Code blocks (pre, code) - but only legitimate ones, not wrappers
     # - Emphasis (strong, em, b, i)
     # - Callouts and notes (div with classes)
     # - Tables (table, tr, td, th)

@@ -1312,10 +1312,18 @@ async def enhanced_fallback_analysis(content: str, metadata: Dict[str, Any]) -> 
             granularity = "deep" 
             article_estimate = 7
         
-        # Processing strategy
+        # Processing strategy - TUTORIAL PRIORITY FIX
         if content_type == "tutorial" and has_steps:
             approach = "unified"
             section_strategy = "maintain_flow"
+            # Override granularity for tutorials to keep them unified
+            granularity = "shallow"  # Force shallow for unified processing
+            article_estimate = 2  # Overview + main content for tutorials
+        elif content_type == "tutorial":
+            approach = "unified" 
+            section_strategy = "maintain_flow"
+            granularity = "shallow"
+            article_estimate = 2
         elif granularity == "shallow":
             approach = "shallow_split"
             section_strategy = "logical_breaks"

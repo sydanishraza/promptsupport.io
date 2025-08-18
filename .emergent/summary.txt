@@ -1,61 +1,60 @@
 <analysis>
-The AI engineer's work on the PromptSupport application involved significant bug fixes and feature enhancements, primarily focusing on the Knowledge Engine and Content Library. Key challenges addressed included resolving phantom links in LLM-generated articles, fixing PDF image extraction, and improving content segmentation. The approach was iterative, using  for validation. Recent efforts also concentrated on enhancing the Knowledge Engine's article generation logic, transitioning from a rigid 6-article limit to an intelligent, adaptive system. This involved introducing document complexity analysis, dynamic article limits, smart consolidation, and overflow handling to ensure comprehensive content coverage for diverse document sizes, including preliminary work on ultra-large documents.
+The previous AI engineer successfully brought the PromptSupport application from an MVP state to a more robust, AI-native platform. The work trajectory chronicles an iterative process of bug fixing and feature enhancement. Initially, efforts focused on resolving critical issues like phantom links in LLM-generated articles and addressing a rigid 6-article generation limit by implementing dynamic limits and basic overflow handling.
+
+Subsequent iterations systematically tackled persistent hard-coded limits across various processing paths in the backend, leading to truly content-driven, unlimited article generation. Frontend display issues, specifically a Lucide React constructor error, were debugged and resolved to ensure the generated articles were visible. A significant challenge was ensuring consistent behavior across different document types (DOCX, PDF, text), necessitating the unification of processing pipelines to a new outline-first approach. This outline-first strategy was then enhanced to reintegrate previously lost features like related links, FAQs, and TOC generation.
+
+Finally, the engineer addressed issues of duplicate article generation, HTML formatting inconsistencies, and server timeouts by rigorously cleaning up redundant processing logic and refining LLM prompts. The most recent task involves refining the content splitting/merging logic to prevent over-fragmentation of tutorials and restore rich HTML styling, which is currently under investigation. The process demonstrates a strong commitment to addressing user feedback and iteratively improving the system's core capabilities.
 </analysis>
 
 <product_requirements>
-The PromptSupport application is an AI-native platform for support documentation, featuring a Knowledge Engine that converts DOCX, PDF, HTML, and URLs into editable HTML articles. Core objectives include robust content extraction, intelligent chunking for context-aware sections, and LLM-driven content revision compatible with WYSIWYG editors. The system requires structured articles with Related Links and an advanced Content Library for comprehensive article and asset management (selection, bulk deletion, renaming, publishing/draft, merge, enhanced UI/UX). So far, the Knowledge Engine successfully processes DOCX and PDF, generating multi-article chunks with LLM integration. The Content Library supports robust management, UI/UX improvements, and stable backend APIs for asset management, including bulk actions and an unlimited asset limit.
+The PromptSupport application is an AI-native platform designed to convert various document formats (DOCX, PDF, HTML, URLs) into editable HTML articles. The primary goals are robust content extraction, intelligent chunking for context-aware sections, and LLM-driven content revision compatible with WYSIWYG editors. The system requires structured articles with Related Links and an advanced Content Library for comprehensive article and asset management, including selection, bulk actions, renaming, publishing/drafting, and merging, along with enhanced UI/UX.
+
+**Implementation Done So Far:**
+The Knowledge Engine now successfully processes DOCX, PDF, and text, generating multi-article chunks with LLM integration using an outline-first approach. It features dynamic article generation based on content complexity (no artificial limits), intelligent content splitting/merging (though still being refined for consistency), and includes enhancements like introductory TOC articles, related links, and intelligent FAQ generation. The Content Library supports robust asset management, UI/UX improvements, and stable backend APIs for file uploads, bulk actions, and an unlimited asset limit. The application aims for comprehensive content coverage, ensuring no information is missed or fragmented.
 </product_requirements>
 
 <key_technical_concepts>
 - **Frontend**: React.js, TailwindCSS.
 - **Backend**: FastAPI, MongoDB.
 - **Content Parsing**: , , , , , .
-- **LLM Integration**: OpenAI (GPT-4o) for content generation, revision, intelligent chunking.
-- **Processing**: Multi-tiered chunking, JSON sanitization, HTML preprocessing, asynchronous operations.
+- **LLM Integration**: OpenAI (GPT-4o) for content generation, revision, intelligent chunking, and outline generation.
+- **Processing**: Multi-tiered chunking, JSON sanitization, HTML preprocessing, asynchronous operations, outline-first article generation.
 </key_technical_concepts>
 
 <code_architecture>
-The application uses a  (React) and  (FastAPI) architecture.
+The application utilizes a  (React) and  (FastAPI) architecture.
 
 
 
 - ****:
     - **Importance**: The core backend logic handling LLM interactions, document parsing, article generation, and database operations.
     - **Changes**:
-        - **Knowledge Engine Enhancements**: Increased  (1200 to 8000), implemented  for robust PDF processing (replacing ), and improved DOCX handling.
+        - **Knowledge Engine Enhancements**: Increased  (1200 to 8000), implemented  for robust PDF/DOCX processing.
         - **LLM Prompting**: Updated templates for titles, technical elements, introductory articles with TOCs, and enhanced related links. Added anti-duplicate article generation and diverse article type distribution.
-        - **Content Segmentation**: Optimized chunking using  to ensure 4-6 functional stage articles.
-        - **Asset Management**: Added  and  endpoints, removed asset count limits.
-        - **Phantom Links Fix (Extensive)**: Initially generated phantom internal links () in TOCs and related links were replaced with actual Content Library article URLs (). Multiple incorrect  and  functions were removed or refactored. Aggressive  was added to all relevant LLM system messages, and a  function (later ) was implemented and applied to all LLM-generated content post-processing (including , , , and ). Hardcoded phantom TOC content was removed from .
-        - **Intelligent Article Limit Handling**: Introduced dynamic article limits (4-12 articles, initially 4-6 fixed limit was identified) based on . Added functions for , , and  to prevent content loss for larger documents. This involved modifying the main article generation loop to respect dynamic limits and handle remaining content.
-        - **Ultra-Large Document Handling**: Started implementing  to manage documents exceeding even the 12-article limit, updating the main processing and overflow handling logic.
+        - **Content Segmentation**: Optimized chunking using  (later deprecated for outline-first).
+        - **Asset Management**: Added  and  endpoints.
+        - **Phantom Links Fix**: Implemented  and  in LLM system messages.
+        - **Intelligent Article Limit Handling**: Introduced dynamic article limits (4-12 initially, later removed all hard limits for content-driven generation), , , . Ultra-large document handling (, , , ) was a major focus.
+        - **Outline-First Approach**: Introduced  and . Integrated this as the primary processing for all document types (DOCX, PDF, text).
+        - **Feature Re-integration**: Re-added calls to , , , , and  into the outline-first pipeline.
+        - **Duplicate Processing Fix**: Disabled legacy database insertion points (, ) and ensured outline-first path returns immediately.
+        - **HTML Formatting Fix**: Modified LLM prompts to avoid full HTML document generation and removed aggressive HTML cleaning.
+        - **Content Consistency Fix**: Unified DOCX () and PDF () processing to use the  approach instead of separate, limited pipelines (, ).
+        - **Empty Content Fix**: Ensured articles are saved to the database after generation in .
+        - **CORS Fix**: Modified  configuration.
+        - **Logic Cleanup**: Major refactoring to simplify processing logic to a single, clean pipeline eliminating redundant code.
+- ****: Removed  to fix double-mounting.
+- ****: Enhanced with state for selection, bulk actions, renaming, and publishing/merging articles.
+- ****: Added selection checkboxes, an action menu, and  functionality.
+- ****: Fixed toolbar menu persistence, optimized hooks, and resolved editor flickering.
+- ****: Implemented state for upload, selection, renaming, and deletion. Fixed PUT/DELETE bugs.
 - ****:
-    - **Importance**: The primary entry point for the React frontend application.
-    - **Changes**:  was removed to address double-mounting issues.
-- ****:
-    - **Importance**: Manages the display and interaction with articles and assets within the Content Library.
-    - **Changes**: Enhanced with state for selection, bulk actions, renaming, and publishing/merging articles. Integrated  and fixed  modal  prop.
-- ****:
-    - **Importance**: Component for rendering articles in a table format.
-    - **Changes**: Added selection checkboxes, an action menu, and  functionality. Styling adjustments were made for compactness and responsiveness.
-- ****:
-    - **Importance**: The WYSIWYG editor for creating and modifying articles.
-    - **Changes**: Fixed toolbar menu persistence, optimized  and . Resolved a critical Rendered more hooks error by correctly placing  hooks. Addressed mouse text selection and editor flickering issues.
-- ****:
-    - **Importance**: Manages document assets with advanced features like upload, selection, deletion, and renaming.
-    - **Changes**: Implemented state for upload, selected asset, selection mode, renaming, and deletion. Fixed various bugs related to backend interactions (PUT for rename, DELETE for single/bulk deletion), upload refetching, and UI issues.
-- ****:
-    - **Importance**: Handles the upload process for source documents to the Knowledge Engine.
-    - **Changes**: Integrated with  for modal animations, improving user experience.
-- ****:
-    - **Importance**: Contains global CSS styles for the application.
-    - **Changes**: Added comprehensive styling for  sections to ensure correct display within articles.
-- ****:
-    - **Importance**: A utility script for cleaning up the content library.
-    - **Changes**: Modified to run without requiring user confirmation, suitable for automated cleanups.
-- ****:
-    - **Importance**: Serves as a log for problem statements, test data, and communication regarding debugging and fixes.
-    - **Changes**: Continuously updated to track debug findings, test results, and fix confirmations throughout the development process.
+    - **Importance**: Handles document uploads and displays processing progress.
+    - **Changes**: Integrated with . **Crucially, fixed a persistent Lucide React constructor error** by replacing all Lucide React JSX components with custom SVG icons and removing related imports. Also updated supported formats to use custom icons.
+- ****: Added styling for  sections.
+- ****: Modified to run without user confirmation for automation.
+- ****: Continuously updated to track debugging, test results, and fixes.
+
 </code_architecture>
 
 <pending_tasks>
@@ -64,25 +63,11 @@ The application uses a  (React) and  (FastAPI) architecture.
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was engaged in two primary tasks:
-1.  **Fixing Phantom Links**: The most recent confirmed fix was the complete elimination of phantom links (broken internal links) in LLM-generated articles. This was achieved through a multi-pronged approach:
-    *   Correcting link generation in TOC and related link functions (ensuring  points to actual  URLs instead of ).
-    *   Removing old, incorrect functions that generated phantom links.
-    *   Implementing aggressive post-processing validation () applied to all LLM-generated content.
-    *   Adding explicit  to all relevant LLM system messages, guiding the LLM to avoid generating unverified internal links.
-    *   The backend testing confirmed 0 phantom links remaining, declaring the fix PRODUCTION READY.
+Immediately prior to this summary, the AI engineer was engaged in fixing issues related to content styling and intelligent splitting/merging for generated articles. The user reported that for documents like the Google Maps API DOCX, the system was over-splitting content into fragmented, empty, or poorly formatted articles (e.g., missing styling elements like lists and callouts, spacing issues in code blocks, and empty code blocks). The user explicitly requested that for procedural documents (tutorials, how-to guides), the content should be kept unified in a single article (e.g., one step-by-step guide and one FAQ), while for larger product guides, splitting into chapters makes sense.
 
-2.  **Enhancing Intelligent Article Generation Limits**: Following the phantom link fix, the user inquired about the Knowledge Engine's article limit. The engineer determined the previous system had a hard 6-article limit, risking content loss for larger documents. The engineer then successfully implemented Intelligent Completeness Handling by:
-    *   Introducing dynamic article limits (ranging from 4 to 12) based on .
-    *   Implementing  to merge less critical content.
-    *   Adding  to preserve remaining content.
-    *   Including  for tracking completeness.
-    *   The backend testing confirmed this system is successfully implemented, ensuring no more content loss due to artificial limits.
-
-The very latest interaction, the user asked: What if the document is large and even 12 articles are insuffiecient to cover all aspects?
-The AI engineer has just started addressing this by implementing enhancements for **ultra-large documents**, specifically by introducing  and updating the main processing and overflow handling logic in . The last action was updating the completeness verification for these ultra-large documents.
+The previous engineer had just identified that the  function in  might be too basic and potentially removing rich styling. The current task is to investigate this function and consolidate all past improvements related to content processing and styling to ensure consistent, high-quality output that aligns with the user's guidelines for splitting vs. merging articles based on content type and flow.
 </current_work>
 
 <optional_next_step>
-Complete the implementation of enhanced multi-level overflow and update completeness verification for ultra-large documents.
+Investigate  to restore and consolidate rich HTML styling, and refine content splitting logic in .
 </optional_next_step>

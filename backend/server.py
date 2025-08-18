@@ -1836,7 +1836,9 @@ Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em)."""
         )
         
         if overview_response:
-            overview_content = await enhanced_format_preservation(overview_response)
+            # CRITICAL FIX: Apply WYSIWYG cleaning before format preservation
+            cleaned_overview = clean_article_html_content(overview_response)
+            overview_content = await enhanced_format_preservation(cleaned_overview)
         else:
             # Emergency fallback with some actual content
             overview_content = f"<h2>{doc_title} - Overview</h2>\n<p>This comprehensive guide provides detailed information about {doc_title.lower()}.</p>\n<p>The content includes step-by-step instructions, technical details, and practical examples.</p>"

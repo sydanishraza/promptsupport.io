@@ -1612,7 +1612,13 @@ Return ONLY the article content with rich HTML formatting:
         # Generate enhanced unified article with content validation
         article_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Create a comprehensive unified article from this content. Use enhanced HTML formatting and include ALL information with proper structure:\n\n{content[:25000]}"
+            user_message=f"""Create a comprehensive unified article from this content. 
+
+CRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly for WYSIWYG editors.
+
+Use enhanced HTML formatting and include ALL information with proper structure:
+
+{content[:25000]}"""
         )
         
         print(f"📥 Enhanced LLM Response received: {len(article_response) if article_response else 0} characters")

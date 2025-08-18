@@ -1090,6 +1090,286 @@ IMPORTANT: Prioritize keeping tutorials, procedures, and content with rich forma
             "structuring_decision": {"should_split": False, "reasoning": "Error in analysis, defaulting to unified for safety"}
         }
 
+async def enhanced_multi_dimensional_analysis(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """PHASE 6: Advanced multi-dimensional content classification and granularity analysis"""
+    try:
+        print(f"🧠 PHASE 6: MULTI-DIMENSIONAL CONTENT ANALYSIS STARTED")
+        print(f"📊 Analyzing {len(content)} characters with advanced classification")
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 300:
+            print(f"⚠️ Insufficient content for multi-dimensional analysis ({len(content)} chars)")
+            return {
+                "content_classification": {
+                    "content_type": "simple_guide",
+                    "audience": "general",
+                    "format_signals": ["text_heavy"],
+                    "complexity_level": "basic"
+                },
+                "granularity_decision": {
+                    "level": "shallow",
+                    "article_count_estimate": 2,
+                    "reasoning": "Insufficient content for complex analysis"
+                },
+                "processing_strategy": {
+                    "approach": "unified",
+                    "section_strategy": "maintain_flow"
+                }
+            }
+        
+        # Advanced LLM analysis system message
+        system_message = """You are an advanced content classification expert. Perform comprehensive multi-dimensional analysis to determine optimal content processing strategy.
+
+PHASE 6 MULTI-DIMENSIONAL CLASSIFICATION:
+
+1. CONTENT TYPE DETECTION:
+   - tutorial: Step-by-step instructions, sequential procedures
+   - reference: API docs, lookup materials, specifications  
+   - conceptual: Explanatory content, overviews, concepts
+   - compliance: Policies, regulations, audit materials
+   - release_notes: Updates, changelogs, version information
+   - mixed: Combination of multiple types
+
+2. AUDIENCE IDENTIFICATION:
+   - developer: Technical implementation, code-heavy content
+   - end_user: User guides, how-to instructions
+   - admin: Administrative procedures, configuration guides  
+   - business: Strategy, planning, business processes
+
+3. FORMAT SIGNALS ANALYSIS:
+   - code_heavy: Significant code blocks and technical examples
+   - table_heavy: Extensive tabular data and structured information
+   - diagram_heavy: References to images, charts, visual elements
+   - narrative: Text-heavy explanatory content
+   - list_heavy: Extensive bullet points and enumerated items
+
+4. COMPLEXITY EVALUATION:
+   - basic: Simple, straightforward content (<3000 chars)
+   - intermediate: Moderate complexity with some technical elements (3000-10000 chars)
+   - advanced: Complex, comprehensive documentation (>10000 chars)
+
+5. GRANULARITY RECOMMENDATIONS:
+   - shallow: 2-3 articles (simple guides, short procedures)
+   - moderate: 4-6 articles (feature guides, medium documentation)  
+   - deep: 7+ articles (comprehensive manuals, API documentation)
+
+6. PROCESSING STRATEGY:
+   - unified: Keep content together (tutorials, step-by-step procedures)
+   - shallow_split: Minimal division (overview + main content + FAQ)
+   - moderate_split: Logical sections (overview + 3-5 chapters + FAQ)
+   - deep_split: Comprehensive division (overview + many chapters + FAQ)
+
+OUTPUT FORMAT - Return valid JSON:
+{
+  "content_classification": {
+    "content_type": "tutorial|reference|conceptual|compliance|release_notes|mixed",
+    "audience": "developer|end_user|admin|business",
+    "format_signals": ["code_heavy", "table_heavy", "diagram_heavy", "narrative", "list_heavy"],
+    "complexity_level": "basic|intermediate|advanced",
+    "dependencies": {
+      "has_sequential_steps": true,
+      "sections_interdependent": true,
+      "code_context_critical": true
+    }
+  },
+  "granularity_decision": {
+    "level": "shallow|moderate|deep", 
+    "article_count_estimate": 3,
+    "reasoning": "Detailed explanation for granularity choice",
+    "content_length_factor": "short|medium|large",
+    "section_complexity_factor": "simple|moderate|complex"
+  },
+  "processing_strategy": {
+    "approach": "unified|shallow_split|moderate_split|deep_split",
+    "section_strategy": "maintain_flow|logical_breaks|module_based|topic_based",
+    "formatting_priority": "preserve_code_context|maintain_list_structure|keep_callouts|preserve_tables",
+    "recommended_structure": {
+      "articles": [
+        {
+          "type": "overview|main_content|chapter|faq",
+          "title_pattern": "Complete Guide|Chapter X|FAQ", 
+          "content_focus": "description of what this article covers"
+        }
+      ]
+    }
+  }
+}
+
+CRITICAL DECISION RULES:
+- Tutorials with sequential dependencies → unified approach
+- API documentation with independent endpoints → deep split
+- Mixed content with multiple audiences → moderate split with clear sections
+- Code-heavy content → preserve context and flow
+- Complex product manuals → deep split with hierarchical structure"""
+
+        print(f"🤖 CALLING ADVANCED LLM for multi-dimensional analysis...")
+        
+        # Enhanced content analysis with comprehensive prompting
+        analysis_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"""Perform comprehensive multi-dimensional analysis on this content:
+
+METADATA CONTEXT:
+- Filename: {metadata.get('original_filename', 'Unknown')}
+- File type: {metadata.get('file_extension', 'unknown')}
+- Content length: {len(content)} characters
+
+CONTENT TO ANALYZE:
+{content[:20000]}
+
+Analyze this content and provide complete multi-dimensional classification, granularity recommendations, and processing strategy as specified in the JSON format."""
+        )
+        
+        print(f"📥 Advanced Analysis LLM Response: {len(analysis_response) if analysis_response else 0} characters")
+        
+        if analysis_response and len(analysis_response.strip()) > 50:
+            try:
+                # Enhanced JSON parsing with validation
+                cleaned_response = analysis_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                
+                analysis_data = json.loads(cleaned_response.strip())
+                
+                # Validate required fields
+                required_fields = ['content_classification', 'granularity_decision', 'processing_strategy']
+                if all(field in analysis_data for field in required_fields):
+                    print(f"✅ ADVANCED ANALYSIS SUCCESS: {analysis_data['content_classification']['content_type']} | {analysis_data['granularity_decision']['level']} | {analysis_data['processing_strategy']['approach']}")
+                    return analysis_data
+                else:
+                    print(f"⚠️ INCOMPLETE ANALYSIS RESPONSE: Missing required fields")
+                    
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON parsing error in advanced analysis: {e}")
+                print(f"Raw response: {analysis_response[:500]}...")
+        
+        # FALLBACK: Enhanced basic analysis
+        print(f"🔄 USING ENHANCED FALLBACK ANALYSIS")
+        return await enhanced_fallback_analysis(content, metadata)
+        
+    except Exception as e:
+        print(f"❌ Error in multi-dimensional analysis: {e}")
+        import traceback
+        traceback.print_exc()
+        return await enhanced_fallback_analysis(content, metadata)
+
+async def enhanced_fallback_analysis(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Enhanced fallback analysis with pattern detection"""
+    try:
+        print(f"🔄 ENHANCED FALLBACK ANALYSIS: Pattern-based classification")
+        
+        # Enhanced pattern detection
+        word_count = len(content.split())
+        char_count = len(content)
+        
+        # Content type detection
+        has_steps = bool(re.search(r'(step\s+\d+|^\d+\.|first|second|third|then|next|finally)', content.lower()))
+        has_code = bool(re.search(r'(<code>|<pre>|```|\bfunction\b|\bclass\b|\bdef\b|console\.log|\bimport\b)', content))
+        has_api_refs = bool(re.search(r'(endpoint|api|GET|POST|PUT|DELETE|/api/)', content, re.IGNORECASE))
+        has_tables = bool(re.search(r'(<table>|<tr>|<td>|\|.*\|)', content))
+        has_lists = bool(re.search(r'(<ul>|<ol>|<li>|\*\s|\-\s|^\d+\.)', content))
+        
+        # Determine content type
+        if has_steps and has_code:
+            content_type = "tutorial"
+        elif has_api_refs:
+            content_type = "reference"
+        elif has_steps:
+            content_type = "tutorial"
+        else:
+            content_type = "conceptual"
+        
+        # Determine audience
+        if has_code or has_api_refs:
+            audience = "developer"
+        else:
+            audience = "end_user"
+            
+        # Format signals
+        format_signals = []
+        if has_code:
+            format_signals.append("code_heavy")
+        if has_tables:
+            format_signals.append("table_heavy")
+        if has_lists:
+            format_signals.append("list_heavy")
+        if not any([has_code, has_tables, has_lists]):
+            format_signals.append("narrative")
+        
+        # Complexity and granularity
+        if char_count < 3000:
+            complexity = "basic"
+            granularity = "shallow"
+            article_estimate = 2
+        elif char_count < 10000:
+            complexity = "intermediate"  
+            granularity = "moderate"
+            article_estimate = 4
+        else:
+            complexity = "advanced"
+            granularity = "deep" 
+            article_estimate = 7
+        
+        # Processing strategy
+        if content_type == "tutorial" and has_steps:
+            approach = "unified"
+            section_strategy = "maintain_flow"
+        elif granularity == "shallow":
+            approach = "shallow_split"
+            section_strategy = "logical_breaks"
+        elif granularity == "moderate":
+            approach = "moderate_split" 
+            section_strategy = "logical_breaks"
+        else:
+            approach = "deep_split"
+            section_strategy = "topic_based"
+        
+        return {
+            "content_classification": {
+                "content_type": content_type,
+                "audience": audience,
+                "format_signals": format_signals,
+                "complexity_level": complexity,
+                "dependencies": {
+                    "has_sequential_steps": has_steps,
+                    "sections_interdependent": content_type == "tutorial",
+                    "code_context_critical": has_code and has_steps
+                }
+            },
+            "granularity_decision": {
+                "level": granularity,
+                "article_count_estimate": article_estimate,
+                "reasoning": f"Enhanced fallback: {content_type} content, {complexity} complexity, {word_count} words",
+                "content_length_factor": "short" if char_count < 5000 else "medium" if char_count < 15000 else "large",
+                "section_complexity_factor": "simple" if not has_code else "moderate" if word_count < 5000 else "complex"
+            },
+            "processing_strategy": {
+                "approach": approach,
+                "section_strategy": section_strategy,
+                "formatting_priority": "preserve_code_context" if has_code else "maintain_list_structure" if has_lists else "keep_callouts",
+                "recommended_structure": {
+                    "articles": [
+                        {
+                            "type": "main_content" if approach == "unified" else "overview",
+                            "title_pattern": "Complete Guide" if approach == "unified" else "Overview",
+                            "content_focus": f"{content_type} content with {complexity} complexity"
+                        }
+                    ]
+                }
+            }
+        }
+        
+    except Exception as e:
+        print(f"❌ Fallback analysis error: {e}")
+        # Ultimate fallback
+        return {
+            "content_classification": {"content_type": "mixed", "audience": "general", "format_signals": ["narrative"], "complexity_level": "basic"},
+            "granularity_decision": {"level": "shallow", "article_count_estimate": 2, "reasoning": "Error fallback"},
+            "processing_strategy": {"approach": "unified", "section_strategy": "maintain_flow"}
+        }
+
 async def generate_unified_article(content: str, metadata: Dict[str, Any], content_analysis: Dict[str, Any]) -> Dict[str, Any]:
     """Generate a single comprehensive article when content should stay unified"""
     try:

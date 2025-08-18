@@ -565,7 +565,7 @@ def test_content_classification_accuracy():
             
             # Process content
             response = requests.post(
-                f"{API_BASE}/content/process-text",
+                f"{API_BASE}/content/process",
                 json={
                     "content": test_case['content'],
                     "filename": f"{test_case['name'].replace(' ', '_')}.txt"

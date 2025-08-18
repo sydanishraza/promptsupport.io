@@ -404,8 +404,8 @@ def test_database_integration():
         # Process content
         start_time = time.time()
         response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": test_content, "filename": "database_integration_test.txt"},
+            f"{API_BASE}/content/process",
+            json={"content": test_content, "content_type": "text", "filename": "database_integration_test.txt"},
             timeout=180
         )
         

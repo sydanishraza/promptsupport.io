@@ -452,11 +452,7 @@ Create as many topics as needed for comprehensive coverage. Do not limit yoursel
         # Generate outline using LLM
         outline_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Analyze this content and create a comprehensive topic-specific outline:\n\n{content[:25000]}",
-            response_format="json",
-            model_name="gpt-4o",
-            max_tokens=3000,
-            temperature=0.2
+            user_message=f"Analyze this content and create a comprehensive topic-specific outline:\n\n{content[:25000]}"
         )
         
         if outline_response and outline_response.get('response'):

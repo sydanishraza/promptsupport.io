@@ -1485,6 +1485,185 @@ Return ONLY the article content with rich HTML formatting:
         traceback.print_exc()
         return None
 
+async def enhanced_generate_unified_article(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """PHASE 6: Enhanced unified article generation with adaptive analysis"""
+    try:
+        print(f"📄 ENHANCED UNIFIED ARTICLE GENERATION")
+        
+        # Extract analysis data
+        content_classification = analysis.get('content_classification', {})
+        content_type = content_classification.get('content_type', 'guide')
+        audience = content_classification.get('audience', 'general')
+        complexity = content_classification.get('complexity_level', 'intermediate')
+        
+        # Determine article title based on content
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 100:
+            print(f"❌ ENHANCED UNIFIED ARTICLE ERROR: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content: {len(content)} characters | Type: {content_type} | Audience: {audience}")
+        
+        system_message = f"""You are an expert technical writer creating a comprehensive, unified article with enhanced formatting and structure.
+
+CONTENT ANALYSIS:
+- Content Type: {content_type}
+- Target Audience: {audience}  
+- Complexity Level: {complexity}
+- Processing Approach: Unified (keep all content together)
+
+CRITICAL REQUIREMENTS:
+1. Create ONE comprehensive article that covers all aspects thoroughly
+2. Maintain logical flow and context throughout the entire document
+3. PRESERVE AND ENHANCE all formatting elements:
+   - Lists: Use proper <ul>, <ol>, <li> tags with clear hierarchy
+   - Code blocks: Use <pre><code class="language-TYPE"> with proper syntax highlighting
+   - Callouts/Notes: Use <div class="callout note/tip/warning/important">
+   - Tables: Preserve <table>, <tr>, <td>, <th> structure with proper styling
+   - Emphasis: Use <strong>, <em>, <b>, <i> appropriately
+4. Keep code examples WITH their explanations in context
+5. Use semantic headings (h2 for major sections, h3 for subsections, h4 for details)
+6. Include ALL technical details, examples, and procedures
+7. NEVER remove or skip code blocks, lists, or formatting elements
+
+ENHANCED FORMATTING GUIDELINES:
+- Code examples: <pre><code class="language-javascript/python/html/css">code here</code></pre>
+- Lists: Proper <ul>/<ol> with <li> items, nested when appropriate
+- Notes: <div class="callout note"><strong>Note:</strong> content</div>
+- Tips: <div class="callout tip"><strong>Tip:</strong> content</div>
+- Warnings: <div class="callout warning"><strong>Warning:</strong> content</div>
+- Important: <div class="callout important"><strong>Important:</strong> content</div>
+- Procedures: Use numbered lists <ol> for step-by-step content
+- File paths/commands: <code>inline code</code>
+- Tables: <table class="content-table"> with proper headers
+
+ARTICLE STRUCTURE:
+- Start with comprehensive overview/introduction (h2)
+- Follow with main content in logical order (h2, h3, h4)
+- Keep related sections together for better flow
+- Include all code examples in context with proper formatting
+- Add practical examples and use cases
+- End with summary, next steps, or additional resources if applicable
+
+OUTPUT FORMAT:
+Return ONLY the article content with rich HTML formatting:
+- Use HTML semantic structure (h2, h3, h4, p, ul, ol, li, strong, em, code, pre)
+- Use h2 for major sections, h3 for subsections, h4 for specific details
+- Keep code blocks properly formatted with language-specific highlighting
+- Include proper list structures and enhanced callouts
+- Maintain context and flow throughout
+- Do NOT include document wrapper tags (html, head, body)
+- Do NOT use markdown formatting - use proper HTML elements only"""
+
+        print(f"🤖 CALLING ENHANCED LLM for unified article generation...")
+        
+        # Generate enhanced unified article with content validation
+        article_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Create a comprehensive unified article from this content. Use enhanced HTML formatting and include ALL information with proper structure:\n\n{content[:25000]}"
+        )
+        
+        print(f"📥 Enhanced LLM Response received: {len(article_response) if article_response else 0} characters")
+        
+        if not article_response or len(article_response.strip()) < 50:
+            print(f"❌ ENHANCED UNIFIED ARTICLE ERROR: Empty or insufficient LLM response")
+            return None
+        
+        # Apply enhanced format preservation
+        cleaned_content = await enhanced_format_preservation(article_response)
+        
+        print(f"🧹 Enhanced content after processing: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 50:
+            print(f"❌ ENHANCED UNIFIED ARTICLE ERROR: Content lost during processing")
+            # Fallback: use original response
+            cleaned_content = article_response
+        
+        # Create enhanced article object
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": f"{doc_title} - Complete Guide",
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": "enhanced_unified_guide",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["complete-guide", content_type, "unified", "enhanced", audience],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "enhanced_unified_article": True,
+                "content_type": content_type,
+                "target_audience": audience,
+                "complexity_level": complexity,
+                "processing_approach": "enhanced_unified",
+                "content_length": len(cleaned_content),
+                "original_content_length": len(content),
+                "phase": "6_enhanced",
+                **metadata
+            }
+        }
+        
+        print(f"✅ ENHANCED UNIFIED ARTICLE GENERATED: '{article['title']}' ({len(cleaned_content)} chars)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Error generating enhanced unified article: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def enhanced_format_preservation(content: str) -> str:
+    """PHASE 6: Enhanced formatting preservation with contextual processing"""
+    try:
+        # Apply existing rich formatting preservation
+        content = clean_article_html_content(content)
+        
+        # Additional Phase 6 enhancements
+        
+        # 1. Enhanced code block processing with language detection
+        def enhance_code_block(match):
+            code_content = match.group(1)
+            
+            # Detect language patterns
+            if re.search(r'(function|const|let|var|\{|\})', code_content):
+                return f'<pre><code class="language-javascript">{code_content}</code></pre>'
+            elif re.search(r'(<html>|<div>|<script>|DOCTYPE)', code_content):
+                return f'<pre><code class="language-html">{code_content}</code></pre>'
+            elif re.search(r'(def |import |class |print\()', code_content):
+                return f'<pre><code class="language-python">{code_content}</code></pre>'
+            elif re.search(r'(\$|curl |GET |POST )', code_content):
+                return f'<pre><code class="language-bash">{code_content}</code></pre>'
+            else:
+                return f'<pre><code>{code_content}</code></pre>'
+        
+        # Apply enhanced code block processing
+        content = re.sub(r'<pre><code[^>]*>(.*?)</code></pre>', enhance_code_block, content, flags=re.DOTALL)
+        
+        # 2. Enhanced callout standardization
+        callout_patterns = {
+            r'(note|NOTE):\s*([^<\n]+)': r'<div class="callout note"><strong>Note:</strong> \2</div>',
+            r'(tip|TIP):\s*([^<\n]+)': r'<div class="callout tip"><strong>Tip:</strong> \2</div>',
+            r'(warning|WARNING):\s*([^<\n]+)': r'<div class="callout warning"><strong>Warning:</strong> \2</div>',
+            r'(important|IMPORTANT):\s*([^<\n]+)': r'<div class="callout important"><strong>Important:</strong> \2</div>'
+        }
+        
+        for pattern, replacement in callout_patterns.items():
+            content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
+        
+        # 3. Enhanced list formatting
+        content = re.sub(r'<li>\s*([^<]+)\s*</li>', r'<li>\1</li>', content)
+        
+        # 4. Preserve table formatting
+        content = re.sub(r'<table[^>]*>', '<table class="content-table">', content)
+        
+        return content
+        
+    except Exception as e:
+        print(f"❌ Error in enhanced format preservation: {e}")
+        return content
+
 async def intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """INTELLIGENT PIPELINE: Analyze content first, then decide whether to split or keep unified"""
     try:

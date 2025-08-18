@@ -9493,10 +9493,20 @@ def clean_html_wrappers(content: str) -> str:
     content = re.sub(r'<body[^>]*>', '', content, flags=re.IGNORECASE)
     content = re.sub(r'</body>', '', content, flags=re.IGNORECASE)
     
-    # CRITICAL FIX: Remove code blocks that contain HTML titles
-    content = re.sub(r'```html\s*.*?```', '', content, flags=re.IGNORECASE | re.DOTALL)
-    content = re.sub(r'```javascript\s*.*?```', '', content, flags=re.IGNORECASE | re.DOTALL)
-    content = re.sub(r'```\s*.*?```', '', content, flags=re.IGNORECASE | re.DOTALL)
+    # ENHANCED FIX: Convert markdown code blocks to proper HTML <pre><code> tags instead of removing them
+    # This preserves code content while ensuring proper HTML formatting
+    
+    # Convert markdown code blocks with language specifiers to HTML
+    content = re.sub(r'```html\s*(.*?)```', r'<pre><code class="language-html">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```javascript\s*(.*?)```', r'<pre><code class="language-javascript">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```css\s*(.*?)```', r'<pre><code class="language-css">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```json\s*(.*?)```', r'<pre><code class="language-json">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Convert generic markdown code blocks to HTML
+    content = re.sub(r'```\s*(.*?)```', r'<pre><code>\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Clean up any empty code blocks that might have been created
+    content = re.sub(r'<pre><code[^>]*>\s*</code></pre>', '', content, flags=re.IGNORECASE)
     
     # CRITICAL FIX: Remove duplicate h1 tags that repeat the title
     h1_matches = re.findall(r'<h1[^>]*>(.*?)</h1>', content, flags=re.IGNORECASE | re.DOTALL)

@@ -3019,8 +3019,9 @@ backend:
 
 ## test_plan:
   current_focus:
-    - "EDITOR FLICKER FIX - WYSIWYG Editor Immediate Interactivity Testing - COMPLETED SUCCESSFULLY"
-  stuck_tasks: []
+    - "CRITICAL WYSIWYG EDITOR COMPATIBILITY FIX TESTING"
+  stuck_tasks: 
+    - "CRITICAL WYSIWYG EDITOR COMPATIBILITY FIX TESTING"
   test_all: false
   test_priority: "critical_first"
 

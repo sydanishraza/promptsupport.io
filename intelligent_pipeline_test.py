@@ -579,10 +579,11 @@ def test_unified_article_generation():
         
         data = {
             'content': tutorial_content,
-            'filename': 'tutorial_test.txt'
+            'content_type': 'text',
+            'metadata': {'original_filename': 'tutorial_test.txt'}
         }
         
-        response = requests.post(f"{API_BASE}/content/process-text", json=data, timeout=300)
+        response = requests.post(f"{API_BASE}/content/process", json=data, timeout=300)
         
         if response.status_code != 200:
             log_test_result(f"❌ Tutorial processing failed: Status {response.status_code}", "ERROR")

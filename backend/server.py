@@ -958,17 +958,35 @@ async def analyze_content_type_and_flow(content: str, metadata: Dict[str, Any]) 
         
         print(f"📝 Analyzing {len(content)} characters for content type and flow")
         
-        system_message = """You are a content analysis expert. Analyze the provided content to determine the optimal article structure.
+        system_message = """You are a content analysis expert. Analyze the provided content to determine the optimal article structure while preserving rich formatting.
 
 CRITICAL ANALYSIS REQUIREMENTS:
 1. Identify the CONTENT TYPE (tutorial, product guide, API reference, mixed content, etc.)
 2. Analyze CONTENT FLOW (sequential steps, independent chapters, reference sections)
 3. Determine if content should be UNIFIED or SPLIT based on user experience
-4. Consider code blocks, procedures, and context dependencies
+4. Consider code blocks, procedures, lists, callouts, and context dependencies
+5. Preserve rich formatting elements (lists, code blocks, tables, callouts)
 
-DECISION CRITERIA:
-- KEEP UNIFIED: Step-by-step procedures, tutorials, how-to guides, single workflows
-- SPLIT CONTENT: Product manuals with independent chapters, mixed content types, reference materials
+DECISION CRITERIA FOR SPLITTING:
+- KEEP UNIFIED: 
+  * Step-by-step tutorials with sequential dependencies
+  * How-to guides where steps build on each other
+  * Single workflows or procedures
+  * Content with extensive code examples that need context
+  * Short to medium documents (<10,000 characters)
+  
+- SPLIT CONTENT: 
+  * Large product manuals with truly independent chapters (>15,000 characters)
+  * Reference materials with separate topics
+  * Multi-topic documentation where each section stands alone
+  * Mixed content types (tutorial + reference + troubleshooting)
+
+FORMATTING PRESERVATION PRIORITY:
+- Tutorials and procedures should ALWAYS stay unified to preserve:
+  * Code block context and explanations
+  * Step-by-step flow and dependencies
+  * List formatting and callouts
+  * Technical formatting and examples
 
 OUTPUT FORMAT - Return valid JSON:
 {
@@ -977,19 +995,23 @@ OUTPUT FORMAT - Return valid JSON:
     "content_flow": "sequential|independent_chapters|mixed",
     "has_code_blocks": true,
     "has_step_by_step": true,
+    "has_rich_formatting": true,
     "sections_depend_on_each_other": true,
-    "complexity_level": "basic|intermediate|advanced"
+    "complexity_level": "basic|intermediate|advanced",
+    "estimated_length": "short|medium|large"
   },
   "structuring_decision": {
     "should_split": false,
-    "reasoning": "This is a step-by-step tutorial where sections depend on each other sequentially",
+    "reasoning": "This is a step-by-step tutorial where sections depend on each other sequentially and contain code blocks that need context",
     "recommended_structure": "unified_guide|chapter_based|topic_based",
+    "formatting_priority": "preserve_code_context|maintain_list_structure|keep_callouts",
     "recommended_articles": [
       {
         "article_type": "overview_and_guide",
         "title": "Complete Google Maps API Tutorial",
-        "description": "Comprehensive guide including setup, implementation, and customization",
-        "includes_sections": ["introduction", "setup", "implementation", "customization"]
+        "description": "Comprehensive guide including setup, implementation, and customization with all code examples",
+        "includes_sections": ["introduction", "setup", "implementation", "customization"],
+        "preserve_formatting": true
       },
       {
         "article_type": "faq",
@@ -1000,7 +1022,7 @@ OUTPUT FORMAT - Return valid JSON:
   }
 }
 
-IMPORTANT: Recommend keeping tutorials and sequential procedures unified to maintain context and flow."""
+IMPORTANT: Prioritize keeping tutorials, procedures, and content with rich formatting unified to maintain context, code examples, and formatting integrity."""
 
         print(f"🤖 CALLING LLM for content analysis...")
         

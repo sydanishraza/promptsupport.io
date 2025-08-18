@@ -361,11 +361,15 @@ def test_rich_formatting_preservation():
         # Use text processing endpoint
         payload = {
             "content": rich_content,
-            "filename": "Google_Maps_API_Tutorial_Rich_Formatting_Test.txt"
+            "content_type": "text",
+            "metadata": {
+                "original_filename": "Google_Maps_API_Tutorial_Rich_Formatting_Test.txt",
+                "source": "rich_formatting_test"
+            }
         }
         
         start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
+        response = requests.post(f"{API_BASE}/content/process", 
                                json=payload, 
                                timeout=300)  # 5 minute timeout
         

@@ -455,14 +455,15 @@ Create as many topics as needed for comprehensive coverage. Do not limit yoursel
             user_message=f"Analyze this content and create a comprehensive topic-specific outline:\n\n{content[:25000]}"
         )
         
-        if outline_response and outline_response.get('response'):
+        if outline_response:
             try:
-                outline_data = json.loads(outline_response['response'])
+                outline_data = json.loads(outline_response)
                 total_topics = len(outline_data.get('comprehensive_outline', []))
                 print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_topics} topics planned")
                 return outline_data
             except json.JSONDecodeError as e:
                 print(f"⚠️ Outline JSON parsing error: {e}")
+                print(f"Raw response: {outline_response[:500]}...")
                 
         print("⚠️ Outline generation failed")
         return None

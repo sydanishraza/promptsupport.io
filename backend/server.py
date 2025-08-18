@@ -2197,9 +2197,9 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
         print(f"📄 Content: {len(content)} characters from {metadata.get('original_filename', 'Unknown')}")
         
         # STEP 1: Analyze content type and flow to determine structure
-        content_analysis = await analyze_content_type_and_flow(content, metadata)
-        should_split = content_analysis.get('structuring_decision', {}).get('should_split', True)
-        reasoning = content_analysis.get('structuring_decision', {}).get('reasoning', 'Default analysis')
+        analysis = await analyze_content_type_and_flow(content, metadata)
+        should_split = analysis.get('structuring_decision', {}).get('should_split', True)
+        reasoning = analysis.get('structuring_decision', {}).get('reasoning', 'Default analysis')
         
         print(f"🎯 STRUCTURING DECISION: {'SPLIT' if should_split else 'KEEP UNIFIED'}")
         print(f"💡 Reasoning: {reasoning}")

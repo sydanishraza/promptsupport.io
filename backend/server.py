@@ -9551,22 +9551,50 @@ def clean_html_wrappers(content: str) -> str:
     return content
 
 def clean_article_html_content(content: str) -> str:
-    """Clean HTML content to remove document structure and ensure proper article formatting"""
+    """Clean HTML content to remove document structure while preserving rich formatting"""
     import re
     
     # First apply the existing HTML wrapper cleaning
     content = clean_html_wrappers(content)
     
     # Additional cleaning specific to article content
-    # Remove any remaining document structure elements
+    # Remove only document structure elements, preserve content elements
     content = re.sub(r'<meta[^>]*>', '', content, flags=re.IGNORECASE)
     content = re.sub(r'<link[^>]*>', '', content, flags=re.IGNORECASE)
     content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
     content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.IGNORECASE | re.DOTALL)
     
-    # Clean up excessive whitespace
+    # PRESERVE rich formatting elements - DO NOT remove:
+    # - Lists (ul, ol, li)
+    # - Code blocks (pre, code)
+    # - Emphasis (strong, em, b, i)
+    # - Callouts and notes (div with classes)
+    # - Tables (table, tr, td, th)
+    # - Blockquotes
+    # - Definition lists (dl, dt, dd)
+    
+    # Clean up excessive whitespace but preserve code block formatting
     content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
     content = re.sub(r'^\s+|\s+$', '', content)
+    
+    # Preserve spacing in code blocks - don't collapse whitespace inside <pre> tags
+    def preserve_pre_spacing(match):
+        return match.group(0)  # Return unchanged
+    
+    # Apply whitespace normalization only outside of <pre> tags
+    parts = re.split(r'(<pre[^>]*>.*?</pre>)', content, flags=re.IGNORECASE | re.DOTALL)
+    cleaned_parts = []
+    
+    for i, part in enumerate(parts):
+        if i % 2 == 0:  # Not inside <pre> tags
+            # Normal whitespace cleaning for non-code content
+            part = re.sub(r'[ \t]+', ' ', part)  # Normalize spaces but preserve line breaks
+        else:  # Inside <pre> tags
+            # Preserve all whitespace in code blocks
+            pass
+        cleaned_parts.append(part)
+    
+    content = ''.join(cleaned_parts)
     
     return content
 

@@ -1881,7 +1881,9 @@ Use HTML semantic structure and preserve all formatting elements."""
         )
         
         if main_response:
-            main_content = await enhanced_format_preservation(main_response)
+            # CRITICAL FIX: Apply WYSIWYG cleaning before format preservation
+            cleaned_main = clean_article_html_content(main_response)
+            main_content = await enhanced_format_preservation(cleaned_main)
         else:
             # Emergency fallback - at least include some actual content
             content_preview = content[:2000] if len(content) > 2000 else content

@@ -640,10 +640,11 @@ def test_split_article_generation():
         
         data = {
             'content': product_guide_content,
-            'filename': 'product_guide_test.txt'
+            'content_type': 'text',
+            'metadata': {'original_filename': 'product_guide_test.txt'}
         }
         
-        response = requests.post(f"{API_BASE}/content/process-text", json=data, timeout=300)
+        response = requests.post(f"{API_BASE}/content/process", json=data, timeout=300)
         
         if response.status_code != 200:
             log_test_result(f"❌ Product guide processing failed: Status {response.status_code}", "ERROR")

@@ -9593,8 +9593,8 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         outline = await generate_comprehensive_outline(content, metadata)
         
         if outline:
-            # Use outline-based article creation for comprehensive coverage
-            outline_articles = await create_articles_from_outline(content, outline, metadata)
+            # Use clean content processing pipeline for comprehensive coverage
+            outline_articles = await clean_content_processing_pipeline(content, metadata)
             if outline_articles and len(outline_articles) > 0:
                 print(f"✅ OUTLINE-BASED SUCCESS: Created {len(outline_articles)} comprehensive articles")
                 print(f"🚫 SKIPPING LEGACY PROCESSING: Outline-first approach successful, returning immediately")

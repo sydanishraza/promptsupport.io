@@ -7807,8 +7807,8 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
         })
         
         if outline:
-            # Use outline-based article creation for comprehensive coverage
-            outline_articles = await create_articles_from_outline(full_text, outline, {
+            # Use clean content processing pipeline for comprehensive coverage
+            outline_articles = await clean_content_processing_pipeline(full_text, {
                 "source": "pdf",
                 "original_filename": template_data.get("filename", "document.pdf"),
                 "images": all_images,

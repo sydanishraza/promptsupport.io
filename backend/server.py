@@ -1875,6 +1875,8 @@ REQUIREMENTS:
 5. Include practical examples and technical details
 6. Do NOT create placeholder content - use the actual document content
 
+CRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly for WYSIWYG editors.
+
 Use HTML semantic structure and preserve all formatting elements."""
 
         main_response = await call_llm_with_fallback(

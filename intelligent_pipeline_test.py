@@ -476,14 +476,15 @@ def test_content_analysis_intelligence(content_type, expected_structure):
         # Create test content
         test_content = create_test_content(content_type)
         
-        # Upload content as text
+        # Process content using the correct API endpoint
         data = {
             'content': test_content,
-            'filename': f'test_{content_type}.txt'
+            'content_type': 'text',
+            'metadata': {'original_filename': f'test_{content_type}.txt'}
         }
         
         start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", json=data, timeout=300)
+        response = requests.post(f"{API_BASE}/content/process", json=data, timeout=300)
         
         if response.status_code != 200:
             log_test_result(f"❌ Content processing failed: Status {response.status_code}", "ERROR")

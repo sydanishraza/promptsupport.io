@@ -398,77 +398,77 @@ async def generate_enhanced_markdown_content(article_data: dict, template_data: 
     return '\n\n'.join(md_parts)
 
 async def generate_comprehensive_outline(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate a comprehensive outline first, then create articles based on that outline"""
+    """Step 2: Generate a comprehensive topic-specific outline after content analysis"""
     try:
-        print(f"📋 GENERATING COMPREHENSIVE OUTLINE: Analyzing {len(content)} characters")
+        print(f"📋 STEP 2: GENERATING COMPREHENSIVE OUTLINE from {len(content)} characters")
         
-        system_message = """You are a technical documentation expert. Your task is to analyze the provided document and create a comprehensive outline that covers ALL aspects without missing any technical details.
+        system_message = """You are a technical documentation expert. Analyze the provided content and create a comprehensive, topic-specific outline.
 
 CRITICAL INSTRUCTIONS:
-1. Read the ENTIRE document thoroughly
-2. Identify ALL major sections, subsections, and topics
-3. Create a detailed hierarchical outline that covers 100% of the content
-4. Each outline item should be substantial enough to warrant its own article
-5. Ensure NO content is skipped or summarized away
-6. For technical documents, include ALL procedures, features, and details
+1. Read and analyze the ENTIRE content thoroughly
+2. Identify ALL major topics, subtopics, and important details
+3. Create a logical, hierarchical structure that covers 100% of the content
+4. Each outline item should be substantial enough for a detailed article
+5. Ensure NO content is missed or summarized away
+6. Group related topics together logically
 
-OUTPUT FORMAT - RETURN ONLY VALID JSON:
-You must return ONLY a valid JSON object with this exact structure (no additional text, no explanations):
-
+OUTPUT FORMAT - Return valid JSON:
 {
-  "document_title": "Main document title",
-  "total_topics": 15,
+  "document_analysis": {
+    "title": "Main document title/subject",
+    "type": "user guide|technical manual|API documentation|tutorial|etc",
+    "complexity": "basic|intermediate|advanced",
+    "estimated_reading_time": 15
+  },
   "comprehensive_outline": [
     {
-      "article_title": "Introduction and Overview", 
-      "article_type": "overview",
-      "content_summary": "Brief description of what this article will cover",
-      "key_topics": ["topic1", "topic2", "topic3"],
-      "estimated_length": "medium"
+      "topic_title": "Introduction and Overview",
+      "topic_type": "overview",
+      "content_focus": "What this covers and why it matters",
+      "key_points": ["point1", "point2", "point3"],
+      "estimated_length": "medium",
+      "priority": "high"
     },
     {
-      "article_title": "Getting Started Guide",
-      "article_type": "how-to", 
-      "content_summary": "Step-by-step setup and initial configuration",
-      "key_topics": ["setup", "configuration", "first steps"],
-      "estimated_length": "long"
+      "topic_title": "Getting Started Guide", 
+      "topic_type": "how-to",
+      "content_focus": "Step-by-step setup and configuration",
+      "key_points": ["installation", "setup", "first steps"],
+      "estimated_length": "long",
+      "priority": "high"
     }
-  ]
+  ],
+  "outline_summary": {
+    "total_topics": 8,
+    "overview_topics": 1,
+    "how_to_topics": 3,
+    "reference_topics": 2,
+    "concept_topics": 2
+  }
 }
 
-IMPORTANT: 
-- Return ONLY the JSON object, no other text
-- Create as many outline items as needed for COMPREHENSIVE coverage
-- Do not limit yourself to any specific number of articles"""
+Create as many topics as needed for comprehensive coverage. Do not limit yourself."""
 
-        # Create comprehensive outline using LLM
+        # Generate outline using LLM
         outline_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Analyze this document and create a comprehensive outline:\n\n{content[:50000]}..."  # Use substantial portion
+            user_message=f"Analyze this content and create a comprehensive topic-specific outline:\n\n{content[:25000]}",
+            response_format="json",
+            model_name="gpt-4o",
+            max_tokens=3000,
+            temperature=0.2
         )
         
-        if outline_response:
+        if outline_response and outline_response.get('response'):
             try:
-                # Clean the response to ensure it's valid JSON
-                cleaned_response = outline_response.strip()
-                
-                # Remove any markdown code block markers if present
-                if cleaned_response.startswith('```json'):
-                    cleaned_response = cleaned_response[7:]
-                if cleaned_response.endswith('```'):
-                    cleaned_response = cleaned_response[:-3]
-                
-                cleaned_response = cleaned_response.strip()
-                
-                outline_data = json.loads(cleaned_response)
-                total_articles = len(outline_data.get('comprehensive_outline', []))
-                print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_articles} articles planned")
+                outline_data = json.loads(outline_response['response'])
+                total_topics = len(outline_data.get('comprehensive_outline', []))
+                print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_topics} topics planned")
                 return outline_data
             except json.JSONDecodeError as e:
                 print(f"⚠️ Outline JSON parsing error: {e}")
-                print(f"⚠️ Raw response (first 200 chars): {outline_response[:200]}")
                 
-        print(f"⚠️ Falling back to section-based analysis")
+        print("⚠️ Outline generation failed")
         return None
         
     except Exception as e:

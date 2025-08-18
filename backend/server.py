@@ -1806,6 +1806,256 @@ async def generate_enhanced_topic_article(content: str, topic: Dict[str, Any], m
     # Use existing topic article generation for now
     return await generate_topic_article(content, topic, metadata, sequence, total_topics)
 
+async def adaptive_granularity_processor(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """PHASE 6: Adaptive granularity processing engine"""
+    try:
+        granularity_level = analysis['granularity_decision']['level']
+        processing_approach = analysis['processing_strategy']['approach']
+        
+        print(f"🎯 ADAPTIVE GRANULARITY PROCESSOR: {granularity_level} | {processing_approach}")
+        
+        generated_articles = []
+        
+        if processing_approach == "unified":
+            # Use existing unified approach but with enhanced analysis
+            print(f"📄 UNIFIED PROCESSING: Single comprehensive article")
+            unified_article = await enhanced_generate_unified_article(content, metadata, analysis)
+            if unified_article:
+                generated_articles.append(unified_article)
+                
+        elif processing_approach == "shallow_split":
+            print(f"📖 SHALLOW SPLIT PROCESSING: 2-3 articles")
+            articles = await create_shallow_split_articles(content, metadata, analysis)
+            generated_articles.extend(articles)
+            
+        elif processing_approach == "moderate_split":
+            print(f"📚 MODERATE SPLIT PROCESSING: 4-6 articles")
+            articles = await create_moderate_split_articles(content, metadata, analysis)
+            generated_articles.extend(articles)
+            
+        elif processing_approach == "deep_split":
+            print(f"📊 DEEP SPLIT PROCESSING: 7+ articles")
+            articles = await create_deep_split_articles(content, metadata, analysis)
+            generated_articles.extend(articles)
+        
+        # Always create FAQ for substantial content
+        if len(content) > 2000:
+            faq_article = await create_enhanced_faq_article(content, generated_articles, metadata, analysis)
+            if faq_article:
+                generated_articles.append(faq_article)
+        
+        # Add cross-references and related links
+        if len(generated_articles) > 1:
+            enhanced_articles = await add_enhanced_cross_references(generated_articles, analysis)
+            generated_articles = enhanced_articles
+        
+        print(f"✅ ADAPTIVE PROCESSING COMPLETE: {len(generated_articles)} articles generated")
+        return generated_articles
+        
+    except Exception as e:
+        print(f"❌ Error in adaptive granularity processor: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def create_shallow_split_articles(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create 2-3 articles with shallow splitting"""
+    try:
+        print(f"📖 CREATING SHALLOW SPLIT ARTICLES")
+        
+        articles = []
+        content_type = analysis['content_classification']['content_type']
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        # 1. Overview Article
+        overview_system = f"""Create a comprehensive overview article that introduces the main topic and provides navigation.
+
+CONTENT TYPE: {content_type}
+APPROACH: Shallow split (2-3 articles total)
+
+Create an overview that:
+1. Introduces the main topic
+2. Explains what readers will learn
+3. Provides a clear roadmap of content
+4. Includes key highlights and benefits
+
+Use proper HTML formatting with h2/h3 headings, lists, and rich formatting."""
+
+        overview_response = await call_llm_with_fallback(
+            system_message=overview_system,
+            user_message=f"Create an overview article from this content:\n\n{content[:10000]}"
+        )
+        
+        if overview_response:
+            overview_article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Overview",
+                "content": await enhanced_format_preservation(overview_response),
+                "status": "published",
+                "article_type": "overview",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["overview", content_type, "shallow_split"],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "granularity_level": "shallow",
+                    "processing_approach": "shallow_split",
+                    "article_sequence": 1,
+                    "content_type": content_type,
+                    **metadata
+                }
+            }
+            articles.append(overview_article)
+        
+        # 2. Main Content Article
+        main_system = f"""Create the main comprehensive content article with all details, examples, and procedures.
+
+CONTENT TYPE: {content_type}
+APPROACH: Shallow split - this is the primary content article
+
+Include:
+1. All main content and procedures
+2. Code examples with proper formatting
+3. Step-by-step instructions if applicable
+4. Technical details and examples
+5. Rich formatting (lists, code blocks, callouts)
+
+Use proper HTML formatting and preserve all technical content."""
+
+        main_response = await call_llm_with_fallback(
+            system_message=main_system,
+            user_message=f"Create the main content article from this content:\n\n{content[:20000]}"
+        )
+        
+        if main_response:
+            main_article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Complete Guide",
+                "content": await enhanced_format_preservation(main_response),
+                "status": "published",
+                "article_type": "main_content",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["main_content", content_type, "shallow_split"],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "granularity_level": "shallow",
+                    "processing_approach": "shallow_split",
+                    "article_sequence": 2,
+                    "content_type": content_type,
+                    **metadata
+                }
+            }
+            articles.append(main_article)
+        
+        print(f"✅ SHALLOW SPLIT: Created {len(articles)} articles")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error creating shallow split articles: {e}")
+        return []
+
+async def create_moderate_split_articles(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create 4-6 articles with moderate splitting"""
+    try:
+        print(f"📚 CREATING MODERATE SPLIT ARTICLES")
+        
+        articles = []
+        content_type = analysis['content_classification']['content_type']
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        # Generate content outline for moderate split
+        outline_system = f"""Create a moderate split outline for this content (4-6 main sections).
+
+CONTENT TYPE: {content_type}
+APPROACH: Moderate split (4-6 articles)
+
+Analyze the content and create 4-6 logical sections that:
+1. Can stand alone but connect logically
+2. Have balanced content distribution
+3. Maintain context for technical elements
+4. Provide comprehensive coverage
+
+Return JSON format:
+{{
+  "sections": [
+    {{
+      "title": "Section Title",
+      "description": "What this section covers",
+      "content_focus": "Key topics and elements"
+    }}
+  ]
+}}"""
+
+        outline_response = await call_llm_with_fallback(
+            system_message=outline_system,
+            user_message=f"Create moderate split outline for:\n\n{content[:15000]}"
+        )
+        
+        if outline_response:
+            try:
+                outline_data = json.loads(outline_response.strip())
+                sections = outline_data.get('sections', [])
+                
+                # Create overview article
+                overview_article = await create_overview_article_with_sections(content, sections, metadata, analysis)
+                if overview_article:
+                    articles.append(overview_article)
+                
+                # Create articles for each section
+                for i, section in enumerate(sections[:6]):  # Limit to 6 sections
+                    section_article = await create_section_article(content, section, metadata, analysis, i + 2)
+                    if section_article:
+                        articles.append(section_article)
+                        
+            except json.JSONDecodeError:
+                # Fallback to simple splitting
+                print(f"⚠️ Outline parsing failed, using simple moderate split")
+                articles = await create_simple_moderate_split(content, metadata, analysis)
+        
+        print(f"✅ MODERATE SPLIT: Created {len(articles)} articles")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error creating moderate split articles: {e}")
+        return []
+
+async def create_deep_split_articles(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create 7+ articles with deep splitting"""
+    try:
+        print(f"📊 CREATING DEEP SPLIT ARTICLES")
+        
+        # Use existing outline-first approach for deep splitting
+        outline_data = await generate_comprehensive_outline(content, metadata)
+        if not outline_data:
+            print(f"❌ Could not generate outline for deep split")
+            return []
+        
+        articles = []
+        outline_topics = outline_data.get('comprehensive_outline', [])
+        content_type = analysis['content_classification']['content_type']
+        
+        print(f"📋 DEEP SPLIT: Processing {len(outline_topics)} topics")
+        
+        # Create overview article
+        overview_article = await create_enhanced_overview_article(outline_topics, metadata, analysis)
+        if overview_article:
+            articles.append(overview_article)
+        
+        # Create article for each topic
+        for i, topic in enumerate(outline_topics):
+            article = await generate_enhanced_topic_article(content, topic, metadata, analysis, i + 2, len(outline_topics))
+            if article:
+                articles.append(article)
+                print(f"💾 DEEP SPLIT ARTICLE {i+2}/{len(outline_topics)+1}: {article['title']}")
+        
+        print(f"✅ DEEP SPLIT: Created {len(articles)} articles")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error creating deep split articles: {e}")
+        return []
+
 async def intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """INTELLIGENT PIPELINE: Analyze content first, then decide whether to split or keep unified"""
     try:

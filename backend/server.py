@@ -936,7 +936,7 @@ async def add_cross_references_and_related_links(articles: List[Dict[str, Any]])
         return articles
 
 async def analyze_content_type_and_flow(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
-    """Analyze content to determine if it should be split or kept unified"""
+    """PHASE 6: Multi-dimensional content analysis with adaptive granularity"""
     try:
         print(f"🔍 ANALYZING CONTENT TYPE AND FLOW for intelligent structuring")
         

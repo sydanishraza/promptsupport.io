@@ -743,10 +743,11 @@ def test_backward_compatibility():
         
         data = {
             'content': simple_content,
-            'filename': 'backward_compatibility_test.txt'
+            'content_type': 'text',
+            'metadata': {'original_filename': 'backward_compatibility_test.txt'}
         }
         
-        response = requests.post(f"{API_BASE}/content/process-text", json=data, timeout=120)
+        response = requests.post(f"{API_BASE}/content/process", json=data, timeout=120)
         
         if response.status_code != 200:
             log_test_result(f"❌ Backward compatibility test failed: Status {response.status_code}", "ERROR")

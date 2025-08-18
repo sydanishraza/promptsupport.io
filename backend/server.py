@@ -5702,8 +5702,8 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
             })
             
             if outline:
-                # Use outline-based article creation for comprehensive coverage
-                outline_articles = await create_articles_from_outline(enhanced_content, outline, {
+                # Use clean content processing pipeline for comprehensive coverage
+                outline_articles = await clean_content_processing_pipeline(enhanced_content, {
                     "source": "docx",
                     "original_filename": template_data.get("filename", "document.docx"),
                     "images": contextual_images,

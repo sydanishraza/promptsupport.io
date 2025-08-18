@@ -5691,34 +5691,15 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
                     if table.get("data"):
                         enhanced_content += f"<p>Table {i}: Contains {len(table['data'])} rows of data.</p>\n"
             
-            # NEW APPROACH: Use outline-first comprehensive article generation for DOCX
-            print(f"🎯 Using NEW outline-first article generation for DOCX content")
-            
-            # First, try the outline-first approach for comprehensive coverage
-            outline = await generate_comprehensive_outline(enhanced_content, {
+            # CLEAN APPROACH: Use the new clean content processing pipeline
+            print(f"🎯 Using CLEAN CONTENT PROCESSING PIPELINE for DOCX content")
+            articles = await clean_content_processing_pipeline(enhanced_content, {
                 "source": "docx",
                 "original_filename": template_data.get("filename", "document.docx"),
-                "images": len(contextual_images)
+                "images": contextual_images,
+                "template_data": template_data,
+                "training_session": training_session
             })
-            
-            if outline:
-                # Use clean content processing pipeline for comprehensive coverage
-                outline_articles = await clean_content_processing_pipeline(enhanced_content, {
-                    "source": "docx",
-                    "original_filename": template_data.get("filename", "document.docx"),
-                    "images": contextual_images,
-                    "template_data": template_data,
-                    "training_session": training_session
-                })
-                if outline_articles and len(outline_articles) > 0:
-                    print(f"✅ DOCX OUTLINE-BASED SUCCESS: Created {len(outline_articles)} comprehensive articles")
-                    return outline_articles
-                else:
-                    print("⚠️ DOCX outline-based creation failed, falling back to legacy approach")
-            
-            # FALLBACK: Legacy comprehensive PDF-style article generation for DOCX files
-            print(f"🔄 Falling back to legacy DOCX processing")
-            articles = await create_comprehensive_articles_from_docx_content(enhanced_content, contextual_images, template_data, training_session)
             
             print(f"📊 Comprehensive processing result: {len(articles)} articles generated")
             

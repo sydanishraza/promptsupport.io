@@ -1623,48 +1623,68 @@ Return ONLY the article content with rich HTML formatting:
         return None
 
 async def enhanced_format_preservation(content: str) -> str:
-    """PHASE 6: Enhanced formatting preservation with contextual processing"""
+    """PHASE 6: Enhanced formatting preservation optimized for WYSIWYG editor"""
     try:
-        # Apply existing rich formatting preservation
+        # Apply basic HTML cleaning first
         content = clean_article_html_content(content)
         
-        # Additional Phase 6 enhancements
+        # WYSIWYG EDITOR OPTIMIZATION
         
-        # 1. Enhanced code block processing with language detection
-        def enhance_code_block(match):
-            code_content = match.group(1)
+        # 1. Convert markdown-style code blocks to proper HTML for editor
+        # Only use <pre><code> for actual code samples, not for display content
+        def process_code_block(match):
+            lang = match.group(1) if match.group(1) else ""
+            code_content = match.group(2).strip()
             
-            # Detect language patterns
-            if re.search(r'(function|const|let|var|\{|\})', code_content):
-                return f'<pre><code class="language-javascript">{code_content}</code></pre>'
-            elif re.search(r'(<html>|<div>|<script>|DOCTYPE)', code_content):
-                return f'<pre><code class="language-html">{code_content}</code></pre>'
-            elif re.search(r'(def |import |class |print\()', code_content):
-                return f'<pre><code class="language-python">{code_content}</code></pre>'
-            elif re.search(r'(\$|curl |GET |POST )', code_content):
-                return f'<pre><code class="language-bash">{code_content}</code></pre>'
+            # Check if this is actual code content vs display content
+            if lang and lang.lower() in ['javascript', 'js', 'python', 'css', 'json', 'bash', 'sh']:
+                return f'<pre><code class="language-{lang.lower()}">{code_content}</code></pre>'
+            elif lang and lang.lower() == 'html':
+                # For HTML examples, preserve as code but escape properly
+                escaped_code = code_content.replace('<', '&lt;').replace('>', '&gt;')
+                return f'<pre><code class="language-html">{escaped_code}</code></pre>'
             else:
-                return f'<pre><code>{code_content}</code></pre>'
+                # For display/example content, use regular formatting
+                return f'<div class="code-example"><pre><code>{code_content}</code></pre></div>'
         
-        # Apply enhanced code block processing
-        content = re.sub(r'<pre><code[^>]*>(.*?)</code></pre>', enhance_code_block, content, flags=re.DOTALL)
+        # Process language-specific code blocks first
+        content = re.sub(r'```(\w+)?\s*(.*?)```', process_code_block, content, flags=re.DOTALL)
         
-        # 2. Enhanced callout standardization
+        # 2. Enhanced callout processing for WYSIWYG editor
         callout_patterns = {
-            r'(note|NOTE):\s*([^<\n]+)': r'<div class="callout note"><strong>Note:</strong> \2</div>',
-            r'(tip|TIP):\s*([^<\n]+)': r'<div class="callout tip"><strong>Tip:</strong> \2</div>',
-            r'(warning|WARNING):\s*([^<\n]+)': r'<div class="callout warning"><strong>Warning:</strong> \2</div>',
-            r'(important|IMPORTANT):\s*([^<\n]+)': r'<div class="callout important"><strong>Important:</strong> \2</div>'
+            r'(?:^|\n)(note|NOTE):\s*([^\n]+(?:\n(?!(?:tip|warning|important|TIP|WARNING|IMPORTANT):)[^\n]+)*)': 
+                r'<div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">\2</div></div>',
+            r'(?:^|\n)(tip|TIP):\s*([^\n]+(?:\n(?!(?:note|warning|important|NOTE|WARNING|IMPORTANT):)[^\n]+)*)': 
+                r'<div class="callout callout-tip"><div class="callout-title">💡 Tip</div><div class="callout-content">\2</div></div>',
+            r'(?:^|\n)(warning|WARNING):\s*([^\n]+(?:\n(?!(?:note|tip|important|NOTE|TIP|IMPORTANT):)[^\n]+)*)': 
+                r'<div class="callout callout-warning"><div class="callout-title">⚠️ Warning</div><div class="callout-content">\2</div></div>',
+            r'(?:^|\n)(important|IMPORTANT):\s*([^\n]+(?:\n(?!(?:note|tip|warning|NOTE|TIP|WARNING):)[^\n]+)*)': 
+                r'<div class="callout callout-important"><div class="callout-title">❗ Important</div><div class="callout-content">\2</div></div>'
         }
         
         for pattern, replacement in callout_patterns.items():
-            content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
+            content = re.sub(pattern, replacement, content, flags=re.IGNORECASE | re.MULTILINE)
         
-        # 3. Enhanced list formatting
-        content = re.sub(r'<li>\s*([^<]+)\s*</li>', r'<li>\1</li>', content)
+        # 3. Optimize table formatting for editor
+        content = re.sub(r'<table[^>]*>', '<table class="doc-table">', content)
         
-        # 4. Preserve table formatting
-        content = re.sub(r'<table[^>]*>', '<table class="content-table">', content)
+        # 4. Enhance list formatting 
+        content = re.sub(r'<ul[^>]*>', '<ul class="doc-list">', content)
+        content = re.sub(r'<ol[^>]*>', '<ol class="doc-list doc-list-ordered">', content)
+        
+        # 5. Clean inline code formatting
+        content = re.sub(r'<code>([^<]+)</code>', r'<code class="inline-code">\1</code>', content)
+        
+        # 6. Improve heading hierarchy
+        content = re.sub(r'<h1([^>]*)>', r'<h1 class="doc-heading doc-h1"\1>', content)
+        content = re.sub(r'<h2([^>]*)>', r'<h2 class="doc-heading doc-h2"\1>', content)
+        content = re.sub(r'<h3([^>]*)>', r'<h3 class="doc-heading doc-h3"\1>', content)
+        
+        # 7. Enhance blockquotes
+        content = re.sub(r'<blockquote[^>]*>', '<blockquote class="doc-blockquote">', content)
+        
+        # 8. Clean up excessive whitespace while preserving structure
+        content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
         
         return content
         

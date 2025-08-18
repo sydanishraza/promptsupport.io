@@ -1526,7 +1526,7 @@ async def enhanced_generate_unified_article(content: str, metadata: Dict[str, An
         
         print(f"📝 Input content: {len(content)} characters | Type: {content_type} | Audience: {audience}")
         
-        system_message = f"""You are an expert technical writer creating a comprehensive, unified article with enhanced formatting and structure.
+        system_message = f"""You are an expert technical writer creating comprehensive content optimized for WYSIWYG editors.
 
 CONTENT ANALYSIS:
 - Content Type: {content_type}
@@ -1534,30 +1534,60 @@ CONTENT ANALYSIS:
 - Complexity Level: {complexity}
 - Processing Approach: Unified (keep all content together)
 
-CRITICAL REQUIREMENTS:
-1. Create ONE comprehensive article that covers all aspects thoroughly
-2. Maintain logical flow and context throughout the entire document
-3. PRESERVE AND ENHANCE all formatting elements:
-   - Lists: Use proper <ul>, <ol>, <li> tags with clear hierarchy
-   - Code blocks: Use <pre><code class="language-TYPE"> with proper syntax highlighting
-   - Callouts/Notes: Use <div class="callout note/tip/warning/important">
-   - Tables: Preserve <table>, <tr>, <td>, <th> structure with proper styling
-   - Emphasis: Use <strong>, <em>, <b>, <i> appropriately
-4. Keep code examples WITH their explanations in context
-5. Use semantic headings (h2 for major sections, h3 for subsections, h4 for details)
-6. Include ALL technical details, examples, and procedures
-7. NEVER remove or skip code blocks, lists, or formatting elements
+CRITICAL WYSIWYG EDITOR REQUIREMENTS:
+1. Generate clean, semantic HTML that editors can render and edit
+2. DO NOT wrap the entire article in <pre><code> tags
+3. Use proper HTML elements that map to editor toolbar features
+4. Only use <pre><code> for actual code samples, not for content display
+
+SEMANTIC HTML STRUCTURE REQUIRED:
+- h2, h3, h4 for section headings (NO h1 - editor will add page title)
+- p for paragraphs with proper spacing
+- ul/ol/li for lists with clear hierarchy
+- table/tr/td/th for tabular data
+- blockquote for quotes and citations
+- code for inline code references
+- pre + code ONLY for actual code samples with language classes
+- figure/figcaption for images and media
+- a for links with proper href attributes
 
 ENHANCED FORMATTING GUIDELINES:
-- Code examples: <pre><code class="language-javascript/python/html/css">code here</code></pre>
-- Lists: Proper <ul>/<ol> with <li> items, nested when appropriate
-- Notes: <div class="callout note"><strong>Note:</strong> content</div>
-- Tips: <div class="callout tip"><strong>Tip:</strong> content</div>
-- Warnings: <div class="callout warning"><strong>Warning:</strong> content</div>
-- Important: <div class="callout important"><strong>Important:</strong> content</div>
-- Procedures: Use numbered lists <ol> for step-by-step content
-- File paths/commands: <code>inline code</code>
-- Tables: <table class="content-table"> with proper headers
+- Use semantic class names (doc-heading, doc-list, doc-table, callout, etc.)
+- For code examples: <pre><code class="language-javascript">actual code here</code></pre>
+- For callouts: <div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">content</div></div>
+- For emphasis: <strong>, <em>, not <b>, <i>
+- For inline code: <code class="inline-code">filename.js</code>
+- For lists: <ul class="doc-list"> and <ol class="doc-list doc-list-ordered">
+- For tables: <table class="doc-table"> with semantic structure
+- NO inline styles - use semantic classes only
+
+COMPREHENSIVE CONTENT STRUCTURE:
+1. Overview section (h2) - introduce the topic and scope
+2. Main content sections with proper hierarchy (h2, h3, h4)
+3. Include ALL technical details, procedures, and examples
+4. Code samples in proper <pre><code> blocks with language classes
+5. Step-by-step procedures in ordered lists with clear instructions
+6. Rich formatting (callouts, tables, emphasis) where appropriate
+7. Conclusion or summary section when relevant
+
+AVOID:
+- Wrapping entire content in code blocks
+- Using <pre><code> for display content or examples
+- Inline styles or legacy HTML attributes  
+- Document wrapper tags (html, head, body)
+- Multiple h1 tags (editor handles page title)
+- Empty or placeholder content
+
+OUTPUT FORMAT:
+Return ONLY the article content as clean, editor-ready HTML:
+- Start with h2 for main sections
+- Use semantic HTML elements throughout
+- Include ALL code examples with proper language classes
+- Maintain context and technical accuracy
+- Ensure content is comprehensive and detailed
+- Preserve all original technical information
+
+Create a complete, unified guide that covers all aspects with rich, editor-compatible formatting.
 
 ARTICLE STRUCTURE:
 - Start with comprehensive overview/introduction (h2)

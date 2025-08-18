@@ -5895,9 +5895,9 @@ async def process_docx_with_template(file_path: str, template_data: dict, traini
                     if table.get("data"):
                         enhanced_content += f"<p>Table {i}: Contains {len(table['data'])} rows of data.</p>\n"
             
-            # CLEAN APPROACH: Use the new clean content processing pipeline
-            print(f"🎯 Using CLEAN CONTENT PROCESSING PIPELINE for DOCX content")
-            articles = await clean_content_processing_pipeline(enhanced_content, {
+            # INTELLIGENT APPROACH: Use the intelligent content processing pipeline
+            print(f"🧠 Using INTELLIGENT CONTENT PROCESSING PIPELINE for DOCX content")
+            articles = await intelligent_content_processing_pipeline(enhanced_content, {
                 "source": "docx",
                 "original_filename": template_data.get("filename", "document.docx"),
                 "images": contextual_images,

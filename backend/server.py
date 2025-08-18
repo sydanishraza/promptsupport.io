@@ -1396,49 +1396,61 @@ async def generate_unified_article(content: str, metadata: Dict[str, Any], conte
         
         print(f"📝 Input content: {len(content)} characters for unified article")
         
-        system_message = f"""You are a technical writer creating a comprehensive, unified article that preserves all rich formatting and content structure.
+        system_message = f"""You are a technical writer creating comprehensive content optimized for WYSIWYG editors.
 
 CONTENT TYPE: {primary_type}
-KEEP UNIFIED BECAUSE: {content_analysis.get('structuring_decision', {}).get('reasoning', 'Content should stay together')}
+APPROACH: Enhanced unified article for WYSIWYG editor
 
-CRITICAL REQUIREMENTS:
-1. Create ONE comprehensive article that covers all aspects
-2. Maintain logical flow and context throughout
-3. PRESERVE ALL rich formatting elements:
-   - Lists: Use proper <ul>, <ol>, <li> tags
-   - Code blocks: Use <pre><code> with proper indentation and spacing
-   - Callouts/Notes: Use <div class="note">, <div class="tip">, <div class="warning">
-   - Tables: Preserve <table>, <tr>, <td>, <th> structure
-   - Emphasis: Use <strong>, <em>, <b>, <i> appropriately
-4. Keep code examples WITH their explanations in context
-5. Use semantic headings (h2 for major sections, h3 for subsections)
-6. Include ALL technical details, examples, and procedures
-7. NEVER remove or skip code blocks, lists, or formatting elements
+CRITICAL WYSIWYG EDITOR REQUIREMENTS:
+1. Generate clean, semantic HTML that editors can render and edit
+2. DO NOT wrap the entire article in <pre><code> tags
+3. Use proper HTML elements that map to editor toolbar features
+4. Only use <pre><code> for actual code samples, not for content display
 
-RICH FORMATTING GUIDELINES:
-- For code examples: <pre><code class="language-TYPE">actual code here</code></pre>
-- For lists: Proper <ul>/<ol> with <li> items
-- For notes/tips: <div class="note"><strong>Note:</strong> content</div>
-- For warnings: <div class="warning"><strong>Warning:</strong> content</div>
-- For procedures: Use numbered lists <ol> for step-by-step content
-- For file paths/commands: <code>inline code</code>
+SEMANTIC HTML STRUCTURE REQUIRED:
+- h2, h3 for section headings (NO h1 - editor will add page title)
+- p for paragraphs
+- ul/ol/li for lists
+- table/tr/td/th for tabular data
+- blockquote for quotes
+- code for inline code references
+- pre + code ONLY for actual code samples with language="xxx"
+- figure/figcaption for images and media
+- a for links with proper href attributes
 
-ARTICLE STRUCTURE:
-- Start with overview/introduction (h2)
-- Follow with main content in logical order (h2, h3)
-- Keep related sections together
-- Include all code examples in context with proper formatting
-- End with summary or next steps if applicable
+FORMATTING GUIDELINES:
+- Use semantic class names (doc-heading, doc-list, doc-table, etc.)
+- For code examples: <pre><code class="language-javascript">actual code here</code></pre>
+- For callouts: <div class="callout callout-note">content</div>
+- For emphasis: <strong>, <em>, not <b>, <i>
+- For inline code: <code class="inline-code">filename.js</code>
+- NO inline styles - use semantic classes only
+
+CONTENT STRUCTURE:
+1. Overview section (h2)
+2. Main content sections with proper hierarchy (h2, h3)
+3. Include ALL technical details, procedures, and examples
+4. Code samples in proper <pre><code> blocks with language classes
+5. Step-by-step procedures in ordered lists
+6. Rich formatting (callouts, tables, emphasis) where appropriate
+
+AVOID:
+- Wrapping entire content in code blocks
+- Using <pre><code> for display content
+- Inline styles
+- Legacy HTML attributes
+- Document wrapper tags (html, head, body)
+- Multiple h1 tags
 
 OUTPUT FORMAT:
-Return ONLY the article content with rich HTML formatting:
-- Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em, code, pre)
-- Use h2 for major sections, h3 for subsections
-- Keep code blocks properly formatted with <pre><code> tags and preserve spacing
-- Include proper list structures and callouts
-- Maintain context and flow throughout
-- Do NOT include document wrapper tags (html, head, body)
-- Do NOT use markdown formatting - use proper HTML elements"""
+Return ONLY the article content as clean, editor-ready HTML:
+- Start with h2 for main sections
+- Use semantic HTML elements throughout
+- Include code examples with proper language classes
+- Maintain context and technical accuracy
+- Ensure content is comprehensive and detailed
+
+Create a complete, unified guide that covers all aspects with rich formatting."""
 
         print(f"🤖 CALLING LLM for unified article generation...")
         

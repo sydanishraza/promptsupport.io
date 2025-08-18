@@ -17,37 +17,367 @@ code {
     monospace;
 }
 
-/* Enhanced WYSIWYG Content Styles for proper HTML rendering */
-.wysiwyg-content {
-  /* Typography */
+/* =================================================================
+   TECHNICAL DOCUMENTATION CSS BASELINE
+   Optimized for WYSIWYG editors and technical content
+   ================================================================= */
+
+/* TYPOGRAPHY SCALE & VERTICAL RHYTHM */
+.doc-content, .wysiwyg-content {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.7;
   color: #374151;
+  font-size: 16px;
+  max-width: none;
 }
 
-.wysiwyg-content h1,
-.wysiwyg-content h2,
-.wysiwyg-content h3,
-.wysiwyg-content h4,
-.wysiwyg-content h5,
-.wysiwyg-content h6 {
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  font-weight: 600;
-  line-height: 1.25;
-  color: #111827;
-}
-
-.wysiwyg-content h1 {
+/* HEADING HIERARCHY */
+.doc-content h1, .wysiwyg-content h1,
+.doc-heading.doc-h1 {
   font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 3rem 0 1.5rem 0;
+  color: #111827;
   border-bottom: 3px solid #e5e7eb;
+  padding-bottom: 0.75rem;
+}
+
+.doc-content h2, .wysiwyg-content h2,
+.doc-heading.doc-h2 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 2.5rem 0 1rem 0;
+  color: #111827;
+  border-bottom: 2px solid #f3f4f6;
   padding-bottom: 0.5rem;
 }
 
-.wysiwyg-content h2 {
-  font-size: 1.875rem;
-  border-bottom: 2px solid #f3f4f6;
-  padding-bottom: 0.25rem;
+.doc-content h3, .wysiwyg-content h3,
+.doc-heading.doc-h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 2rem 0 0.75rem 0;
+  color: #374151;
 }
+
+.doc-content h4, .wysiwyg-content h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem 0;
+  color: #374151;
+}
+
+/* PARAGRAPHS & TEXT */
+.doc-content p, .wysiwyg-content p {
+  margin: 1rem 0;
+  line-height: 1.7;
+}
+
+.doc-content strong, .wysiwyg-content strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.doc-content em, .wysiwyg-content em {
+  font-style: italic;
+  color: #4b5563;
+}
+
+/* LISTS */
+.doc-content ul, .wysiwyg-content ul,
+.doc-list {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.doc-content ol, .wysiwyg-content ol,
+.doc-list.doc-list-ordered {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.doc-content li, .wysiwyg-content li {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.doc-content ul li, .wysiwyg-content ul li {
+  list-style-type: disc;
+}
+
+.doc-content ol li, .wysiwyg-content ol li {
+  list-style-type: decimal;
+}
+
+/* INLINE CODE */
+.doc-content code, .wysiwyg-content code,
+.inline-code {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.875rem;
+  background-color: #f3f4f6;
+  color: #dc2626;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  border: 1px solid #e5e7eb;
+}
+
+/* CODE BLOCKS */
+.doc-content pre, .wysiwyg-content pre {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.doc-content pre code, .wysiwyg-content pre code {
+  display: block;
+  padding: 1rem;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #374151;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+/* Language-specific code highlighting */
+.doc-content pre code.language-javascript,
+.doc-content pre code.language-js {
+  background-color: #fef3c7;
+  border-left: 4px solid #f59e0b;
+}
+
+.doc-content pre code.language-html {
+  background-color: #fecaca;
+  border-left: 4px solid #ef4444;
+}
+
+.doc-content pre code.language-css {
+  background-color: #ddd6fe;
+  border-left: 4px solid #8b5cf6;
+}
+
+.doc-content pre code.language-python {
+  background-color: #dbeafe;
+  border-left: 4px solid #3b82f6;
+}
+
+.doc-content pre code.language-bash,
+.doc-content pre code.language-shell {
+  background-color: #f3f4f6;
+  border-left: 4px solid #6b7280;
+}
+
+/* CODE EXAMPLES (for display content) */
+.code-example {
+  margin: 1.5rem 0;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background-color: #f9fafb;
+}
+
+.code-example pre {
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+/* CALLOUTS & ALERTS */
+.callout {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+}
+
+.callout-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.callout-content {
+  margin: 0;
+}
+
+.callout-note, .callout.note {
+  background-color: #eff6ff;
+  border-left-color: #3b82f6;
+  color: #1e40af;
+}
+
+.callout-tip, .callout.tip {
+  background-color: #f0fdf4;
+  border-left-color: #22c55e;
+  color: #15803d;
+}
+
+.callout-warning, .callout.warning {
+  background-color: #fffbeb;
+  border-left-color: #f59e0b;
+  color: #92400e;
+}
+
+.callout-important, .callout.important {
+  background-color: #fef2f2;
+  border-left-color: #ef4444;
+  color: #dc2626;
+}
+
+/* TABLES */
+.doc-content table, .wysiwyg-content table,
+.doc-table {
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.doc-content th, .wysiwyg-content th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+  color: #374151;
+}
+
+.doc-content td, .wysiwyg-content td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+
+.doc-content tbody tr:nth-child(even), .wysiwyg-content tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.doc-content tbody tr:hover, .wysiwyg-content tbody tr:hover {
+  background-color: #f3f4f6;
+}
+
+/* BLOCKQUOTES */
+.doc-content blockquote, .wysiwyg-content blockquote,
+.doc-blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid #d1d5db;
+  background-color: #f9fafb;
+  font-style: italic;
+  color: #4b5563;
+}
+
+.doc-content blockquote p, .wysiwyg-content blockquote p {
+  margin: 0.5rem 0;
+}
+
+/* LINKS */
+.doc-content a, .wysiwyg-content a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-color: #93c5fd;
+  text-underline-offset: 2px;
+  transition: all 0.2s ease;
+}
+
+.doc-content a:hover, .wysiwyg-content a:hover {
+  color: #1d4ed8;
+  text-decoration-color: #2563eb;
+}
+
+.doc-content a:visited, .wysiwyg-content a:visited {
+  color: #7c3aed;
+}
+
+/* IMAGES & FIGURES */
+.doc-content img, .wysiwyg-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  margin: 1rem 0;
+}
+
+.doc-content figure, .wysiwyg-content figure {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.doc-content figcaption, .wysiwyg-content figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* HORIZONTAL RULES */
+.doc-content hr, .wysiwyg-content hr {
+  margin: 2rem 0;
+  border: none;
+  border-top: 2px solid #e5e7eb;
+}
+
+/* SPACING TOKENS */
+.doc-content > *:first-child, .wysiwyg-content > *:first-child {
+  margin-top: 0;
+}
+
+.doc-content > *:last-child, .wysiwyg-content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  .doc-content, .wysiwyg-content {
+    font-size: 14px;
+  }
+  
+  .doc-content h1, .wysiwyg-content h1 {
+    font-size: 1.875rem;
+  }
+  
+  .doc-content h2, .wysiwyg-content h2 {
+    font-size: 1.5rem;
+  }
+  
+  .doc-content h3, .wysiwyg-content h3 {
+    font-size: 1.25rem;
+  }
+  
+  .doc-content table, .wysiwyg-content table {
+    font-size: 0.875rem;
+  }
+}
+
+/* PRINT STYLES */
+@media print {
+  .doc-content, .wysiwyg-content {
+    color: #000;
+    background: #fff;
+  }
+  
+  .doc-content a, .wysiwyg-content a {
+    color: #000;
+    text-decoration: none;
+  }
+  
+  .callout {
+    border: 1px solid #000;
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
+/* Legacy styles for compatibility */
 
 .wysiwyg-content h3 {
   font-size: 1.5rem;

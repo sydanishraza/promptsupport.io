@@ -630,6 +630,13 @@ async def generate_topic_article(content: str, topic: Dict[str, Any], metadata: 
         topic_title = topic.get('topic_title', f'Topic {topic_number}')
         print(f"📄 STEP 3.{topic_number}: GENERATING ARTICLE '{topic_title}'")
         
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 100:
+            print(f"❌ TOPIC ARTICLE ERROR: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content for topic: {len(content)} characters")
+        
         system_message = f"""You are a technical writer creating a comprehensive article for a specific topic from a larger document.
 
 TOPIC SPECIFICATIONS:
@@ -648,50 +655,66 @@ CONTENT REQUIREMENTS:
 6. Do NOT create placeholder links or references to other articles
 
 OUTPUT FORMAT:
-- Return ONLY clean article HTML content (h2, h3, p, ul, ol, li, strong, em)
+Return ONLY clean HTML content without any markdown formatting:
 - Start directly with the main heading: <h2>{topic_title}</h2>
+- Use h2 for main sections, h3 for subsections
+- Use semantic HTML: p, ul, ol, li, strong, em, pre, code
 - Do NOT include document structure tags (html, head, body)
-- Do NOT wrap in code blocks or ```html
-- Use semantic HTML throughout"""
+- Do NOT wrap in markdown code blocks (```html)
+- Do NOT use markdown formatting (##, **, etc.)"""
 
-        # Generate article content
+        print(f"🤖 CALLING LLM for topic article generation...")
+        
+        # Generate article content with validation
         article_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Create a comprehensive article for this topic from the source content:\n\n{content}"
+            user_message=f"Create a comprehensive article for this topic from the source content. Use HTML formatting:\n\n{content[:20000]}"
         )
         
-        if article_response:
-            # Clean the HTML content
-            cleaned_content = clean_article_html_content(article_response)
-            
-            # Create article object
-            article = {
-                "id": str(uuid.uuid4()),
-                "title": topic_title,
-                "content": cleaned_content,
-                "status": "published",
-                "article_type": topic.get('topic_type', 'informational'),
-                "source_document": metadata.get("original_filename", "Unknown"),
-                "tags": topic.get('key_points', []),
-                "priority": topic.get('priority', 'medium'),
-                "created_at": datetime.utcnow(),
-                "metadata": {
-                    "outline_based": True,
-                    "topic_number": topic_number,
-                    "total_topics": total_topics,
-                    "estimated_length": topic.get('estimated_length', 'medium'),
-                    **metadata
-                }
-            }
-            
-            print(f"✅ ARTICLE GENERATED: '{topic_title}' ({len(cleaned_content)} chars)")
-            return article
-        else:
-            print(f"⚠️ Failed to generate article for topic: {topic_title}")
+        print(f"📥 Topic LLM Response received: {len(article_response) if article_response else 0} characters")
+        
+        if not article_response or len(article_response.strip()) < 50:
+            print(f"❌ TOPIC ARTICLE ERROR: Empty or insufficient LLM response ({len(article_response) if article_response else 0} chars)")
             return None
-            
+        
+        # Clean the HTML content with validation
+        cleaned_content = clean_article_html_content(article_response)
+        
+        print(f"🧹 Topic content after cleaning: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 50:
+            print(f"❌ TOPIC ARTICLE ERROR: Content lost during cleaning (original: {len(article_response)}, cleaned: {len(cleaned_content)})")
+            # Fallback: use original response if cleaning removed everything
+            cleaned_content = article_response
+        
+        # Create article object
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": topic_title,
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": topic.get('topic_type', 'informational'),
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": topic.get('key_points', []),
+            "priority": topic.get('priority', 'medium'),
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "outline_based": True,
+                "topic_number": topic_number,
+                "total_topics": total_topics,
+                "estimated_length": topic.get('estimated_length', 'medium'),
+                "content_length": len(cleaned_content),
+                **metadata
+            }
+        }
+        
+        print(f"✅ ARTICLE GENERATED: '{topic_title}' ({len(cleaned_content)} chars)")
+        return article
+        
     except Exception as e:
         print(f"❌ Error generating article for topic '{topic.get('topic_title', 'Unknown')}': {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 async def create_overview_article(all_articles: List[Dict[str, Any]], outline_data: Dict[str, Any], metadata: Dict[str, Any]) -> Dict[str, Any]:

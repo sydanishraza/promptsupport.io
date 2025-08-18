@@ -1457,7 +1457,7 @@ Create a complete, unified guide that covers all aspects with rich formatting.""
         # Generate unified article with content validation
         article_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Create a comprehensive unified article from this content. Use HTML formatting and include ALL information:\n\n{content[:25000]}"
+            user_message="Create a comprehensive unified article from this content.\n\nCRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly.\n\nUse HTML formatting and include ALL information:\n\n" + content[:25000]
         )
         
         print(f"📥 LLM Response received: {len(article_response) if article_response else 0} characters")

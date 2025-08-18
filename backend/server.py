@@ -619,6 +619,349 @@ CRITICAL OUTPUT FORMAT:
         print(f"❌ Error in outline-based article creation: {e}")
         return []
 
+async def generate_topic_article(content: str, topic: Dict[str, Any], metadata: Dict[str, Any], topic_number: int, total_topics: int) -> Dict[str, Any]:
+    """Step 3: Generate a single comprehensive article for a specific topic"""
+    try:
+        topic_title = topic.get('topic_title', f'Topic {topic_number}')
+        print(f"📄 STEP 3.{topic_number}: GENERATING ARTICLE '{topic_title}'")
+        
+        system_message = f"""You are a technical writer creating a comprehensive article for a specific topic from a larger document.
+
+TOPIC SPECIFICATIONS:
+- Title: {topic_title}
+- Type: {topic.get('topic_type', 'informational')}
+- Focus: {topic.get('content_focus', 'General information')}
+- Key Points: {', '.join(topic.get('key_points', []))}
+- Priority: {topic.get('priority', 'medium')}
+
+CONTENT REQUIREMENTS:
+1. Extract ALL relevant information from the source content for this topic
+2. Create a comprehensive, standalone article
+3. Include ALL technical details, procedures, and specifications
+4. Use proper HTML structure with semantic elements
+5. Make the article complete and self-contained
+6. Do NOT create placeholder links or references to other articles
+
+OUTPUT FORMAT:
+- Return ONLY clean article HTML content (h2, h3, p, ul, ol, li, strong, em)
+- Start directly with the main heading: <h2>{topic_title}</h2>
+- Do NOT include document structure tags (html, head, body)
+- Do NOT wrap in code blocks or ```html
+- Use semantic HTML throughout"""
+
+        # Generate article content
+        article_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Create a comprehensive article for this topic from the source content:\n\n{content}",
+            response_format="html",
+            model_name="gpt-4o",
+            max_tokens=2500,
+            temperature=0.1
+        )
+        
+        if article_response and article_response.get('response'):
+            # Clean the HTML content
+            cleaned_content = clean_article_html_content(article_response['response'])
+            
+            # Create article object
+            article = {
+                "id": str(uuid.uuid4()),
+                "title": topic_title,
+                "content": cleaned_content,
+                "status": "published",
+                "article_type": topic.get('topic_type', 'informational'),
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": topic.get('key_points', []),
+                "priority": topic.get('priority', 'medium'),
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "outline_based": True,
+                    "topic_number": topic_number,
+                    "total_topics": total_topics,
+                    "estimated_length": topic.get('estimated_length', 'medium'),
+                    **metadata
+                }
+            }
+            
+            print(f"✅ ARTICLE GENERATED: '{topic_title}' ({len(cleaned_content)} chars)")
+            return article
+        else:
+            print(f"⚠️ Failed to generate article for topic: {topic_title}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error generating article for topic '{topic.get('topic_title', 'Unknown')}': {e}")
+        return None
+
+async def create_overview_article(all_articles: List[Dict[str, Any]], outline_data: Dict[str, Any], metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Step 4: Create comprehensive overview article with mini-TOC"""
+    try:
+        print(f"📊 STEP 4: CREATING OVERVIEW ARTICLE with mini-TOC for {len(all_articles)} articles")
+        
+        doc_analysis = outline_data.get('document_analysis', {})
+        doc_title = doc_analysis.get('title', 'Documentation')
+        doc_type = doc_analysis.get('type', 'guide')
+        
+        # Create mini table of contents
+        toc_html = "<h3>📋 Table of Contents</h3>\n<ul class='toc-list'>\n"
+        for i, article in enumerate(all_articles, 1):
+            article_title = article['title']
+            article_type = article.get('article_type', 'informational')
+            toc_html += f'<li><strong>{i}. <a href="/content-library/article/{article["id"]}" target="_blank">{article_title}</a></strong> <em>({article_type})</em></li>\n'
+        toc_html += "</ul>\n"
+        
+        # Create overview content
+        overview_content = f"""<h2>📖 {doc_title} - Complete Guide</h2>
+
+<div class="overview-summary">
+<h3>🎯 Overview</h3>
+<p>This comprehensive {doc_type} covers all aspects of <strong>{doc_title}</strong> with detailed explanations, step-by-step instructions, and practical examples. The content is organized into <strong>{len(all_articles)} focused articles</strong> for easy navigation and reference.</p>
+
+<h3>📚 What You'll Learn</h3>
+<ul>
+<li>Complete understanding of all {doc_title} features and functionality</li>
+<li>Step-by-step procedures and best practices</li>
+<li>Troubleshooting and frequently asked questions</li>
+<li>Practical examples and real-world applications</li>
+</ul>
+</div>
+
+{toc_html}
+
+<div class="navigation-help">
+<h3>🧭 How to Use This Guide</h3>
+<p>Each article in this guide is designed to be comprehensive and self-contained. You can:</p>
+<ul>
+<li><strong>Follow sequentially</strong> - Read articles in order for complete coverage</li>
+<li><strong>Jump to specific topics</strong> - Use the table of contents to find what you need</li>
+<li><strong>Reference as needed</strong> - Each article provides complete information on its topic</li>
+</ul>
+</div>"""
+        
+        # Create overview article
+        overview_article = {
+            "id": str(uuid.uuid4()),
+            "title": f"{doc_title} - Complete Overview",
+            "content": overview_content,
+            "status": "published",
+            "article_type": "overview",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["overview", "table-of-contents", "navigation"],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "outline_based": True,
+                "is_overview": True,
+                "total_linked_articles": len(all_articles),
+                **metadata
+            }
+        }
+        
+        print(f"✅ OVERVIEW ARTICLE CREATED with mini-TOC linking to {len(all_articles)} articles")
+        return overview_article
+        
+    except Exception as e:
+        print(f"❌ Error creating overview article: {e}")
+        return None
+
+async def create_faq_article(content: str, all_articles: List[Dict[str, Any]], metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Step 5: Create comprehensive FAQ article"""
+    try:
+        print(f"❓ STEP 5: CREATING FAQ ARTICLE based on content analysis")
+        
+        system_message = """You are creating a comprehensive FAQ article based on the source content and related articles.
+
+REQUIREMENTS:
+1. Analyze the content to identify potential questions users might have
+2. Create practical, useful questions and detailed answers
+3. Focus on troubleshooting, common issues, and clarifications
+4. Group questions logically by topic/category
+5. Provide complete, actionable answers
+
+OUTPUT FORMAT:
+Return clean HTML with this structure:
+<h2>❓ Frequently Asked Questions</h2>
+<div class="faq-section">
+<h3>🚀 Getting Started</h3>
+<div class="faq-item">
+<h4>Q: How do I [specific question]?</h4>
+<p><strong>A:</strong> [Detailed answer with steps if applicable]</p>
+</div>
+</div>
+
+Create 8-15 practical questions covering different aspects of the content."""
+
+        # Generate FAQ content
+        faq_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Create a comprehensive FAQ based on this content:\n\n{content[:15000]}",
+            response_format="html",
+            model_name="gpt-4o",
+            max_tokens=2000,
+            temperature=0.2
+        )
+        
+        if faq_response and faq_response.get('response'):
+            cleaned_content = clean_article_html_content(faq_response['response'])
+            
+            faq_article = {
+                "id": str(uuid.uuid4()),
+                "title": "Frequently Asked Questions & Troubleshooting",
+                "content": cleaned_content,
+                "status": "published",
+                "article_type": "faq",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["faq", "troubleshooting", "questions", "help"],
+                "priority": "medium",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "outline_based": True,
+                    "is_faq": True,
+                    "related_articles_count": len(all_articles),
+                    **metadata
+                }
+            }
+            
+            print(f"✅ FAQ ARTICLE CREATED with comprehensive Q&A")
+            return faq_article
+        else:
+            print(f"⚠️ FAQ generation failed")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error creating FAQ article: {e}")
+        return None
+
+async def add_cross_references_and_related_links(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Step 6: Add cross-references and related links to all articles"""
+    try:
+        print(f"🔗 STEP 6: ADDING CROSS-REFERENCES AND RELATED LINKS to {len(articles)} articles")
+        
+        enhanced_articles = []
+        
+        for i, article in enumerate(articles):
+            # Find related articles (excluding overview and FAQ)
+            related_articles = []
+            current_tags = set(article.get('tags', []))
+            current_type = article.get('article_type', '')
+            
+            for other_article in articles:
+                if other_article['id'] == article['id']:
+                    continue
+                    
+                other_tags = set(other_article.get('tags', []))
+                other_type = other_article.get('article_type', '')
+                
+                # Calculate relevance based on shared tags and complementary types
+                shared_tags = len(current_tags.intersection(other_tags))
+                
+                if shared_tags > 0 or (current_type == 'overview' and other_type != 'overview') or (other_type == 'faq'):
+                    related_articles.append({
+                        'title': other_article['title'],
+                        'id': other_article['id'],
+                        'type': other_type,
+                        'relevance': shared_tags
+                    })
+            
+            # Sort by relevance and limit to top 5
+            related_articles.sort(key=lambda x: x['relevance'], reverse=True)
+            related_articles = related_articles[:5]
+            
+            # Add related links section if we have related articles
+            if related_articles:
+                related_links_html = '\n<hr>\n<div class="related-links">\n<h3>🔗 Related Articles</h3>\n<ul>\n'
+                
+                for related in related_articles:
+                    icon = {'overview': '📖', 'how-to': '🛠️', 'faq': '❓', 'reference': '📚'}.get(related['type'], '📄')
+                    related_links_html += f'<li>{icon} <a href="/content-library/article/{related["id"]}" target="_blank"><strong>{related["title"]}</strong></a> <em>({related["type"]})</em></li>\n'
+                
+                related_links_html += '</ul>\n</div>'
+                
+                # Add to article content if not already present
+                if 'related-links' not in article['content']:
+                    article['content'] += related_links_html
+                    print(f"✅ Added {len(related_articles)} related links to: {article['title'][:50]}...")
+            
+            enhanced_articles.append(article)
+        
+        print(f"✅ CROSS-REFERENCES COMPLETE: Enhanced {len(enhanced_articles)} articles with related links")
+        return enhanced_articles
+        
+    except Exception as e:
+        print(f"❌ Error adding cross-references: {e}")
+        return articles
+
+async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """CLEAN PIPELINE: Complete content processing from extraction to final articles"""
+    try:
+        print(f"🚀 CLEAN CONTENT PROCESSING PIPELINE STARTED")
+        print(f"📄 Content: {len(content)} characters from {metadata.get('original_filename', 'Unknown')}")
+        
+        # STEP 1: Content Analysis (already done - content is provided)
+        print(f"✅ STEP 1: CONTENT EXTRACTED ({len(content)} characters)")
+        
+        # STEP 2: Generate comprehensive outline
+        outline_data = await generate_comprehensive_outline(content, metadata)
+        if not outline_data:
+            print(f"❌ PIPELINE FAILED: Could not generate outline")
+            return []
+        
+        # STEP 3: Generate articles for each topic one at a time
+        outline_topics = outline_data.get('comprehensive_outline', [])
+        print(f"📋 STEP 3: PROCESSING {len(outline_topics)} TOPICS individually")
+        
+        generated_articles = []
+        for i, topic in enumerate(outline_topics, 1):
+            article = await generate_topic_article(content, topic, metadata, i, len(outline_topics))
+            if article:
+                # Save to database immediately
+                await db.content_library.insert_one(article)
+                generated_articles.append(article)
+                print(f"💾 SAVED ARTICLE {i}/{len(outline_topics)}: {article['title']}")
+            else:
+                print(f"⚠️ SKIPPED ARTICLE {i}/{len(outline_topics)}: Generation failed")
+        
+        if not generated_articles:
+            print(f"❌ PIPELINE FAILED: No articles generated")
+            return []
+        
+        # STEP 4: Create overview article with mini-TOC
+        overview_article = await create_overview_article(generated_articles, outline_data, metadata)
+        if overview_article:
+            await db.content_library.insert_one(overview_article)
+            generated_articles.insert(0, overview_article)  # Add as first article
+            print(f"💾 SAVED OVERVIEW ARTICLE with mini-TOC")
+        
+        # STEP 5: Create FAQ article
+        if len(content) > 3000:  # Only for substantial content
+            faq_article = await create_faq_article(content, generated_articles, metadata)
+            if faq_article:
+                await db.content_library.insert_one(faq_article)
+                generated_articles.append(faq_article)
+                print(f"💾 SAVED FAQ ARTICLE")
+        
+        # STEP 6: Add cross-references and related links
+        enhanced_articles = await add_cross_references_and_related_links(generated_articles)
+        
+        # Update articles in database with cross-references
+        for article in enhanced_articles:
+            await db.content_library.update_one(
+                {"id": article["id"]},
+                {"$set": {"content": article["content"]}}
+            )
+        
+        print(f"🎉 CLEAN PIPELINE COMPLETE: Generated {len(enhanced_articles)} comprehensive articles")
+        print(f"   📊 Overview: 1 article")
+        print(f"   📄 Topic Articles: {len(outline_topics)} articles") 
+        print(f"   ❓ FAQ: {1 if len(content) > 3000 else 0} article")
+        print(f"   🔗 All articles enhanced with cross-references")
+        
+        return enhanced_articles
+        
+    except Exception as e:
+        print(f"❌ CLEAN PIPELINE ERROR: {e}")
+        return []
+
 
 # === END HELPER FUNCTIONS ===
 

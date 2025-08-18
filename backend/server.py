@@ -1161,6 +1161,11 @@ async def intelligent_content_processing_pipeline(content: str, metadata: Dict[s
         print(f"❌ INTELLIGENT PIPELINE ERROR: {e}")
         return []
 
+async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """LEGACY WRAPPER: Redirects to intelligent content processing pipeline for backward compatibility"""
+    print(f"🔄 LEGACY WRAPPER: Redirecting to intelligent content processing pipeline")
+    return await intelligent_content_processing_pipeline(content, metadata)
+
 # Legacy function name for backward compatibility
 async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Legacy wrapper - redirects to intelligent_content_processing_pipeline"""

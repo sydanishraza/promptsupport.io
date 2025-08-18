@@ -457,7 +457,15 @@ Create as many topics as needed for comprehensive coverage. Do not limit yoursel
         
         if outline_response:
             try:
-                outline_data = json.loads(outline_response)
+                # Clean the response - remove code block markers if present
+                cleaned_response = outline_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]  # Remove ```json
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]  # Remove ```
+                cleaned_response = cleaned_response.strip()
+                
+                outline_data = json.loads(cleaned_response)
                 total_topics = len(outline_data.get('comprehensive_outline', []))
                 print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_topics} topics planned")
                 return outline_data

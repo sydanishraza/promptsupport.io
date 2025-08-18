@@ -888,76 +888,283 @@ async def add_cross_references_and_related_links(articles: List[Dict[str, Any]])
         print(f"❌ Error adding cross-references: {e}")
         return articles
 
-async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """CLEAN PIPELINE: Complete content processing from extraction to final articles"""
+async def analyze_content_type_and_flow(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Analyze content to determine if it should be split or kept unified"""
     try:
-        print(f"🚀 CLEAN CONTENT PROCESSING PIPELINE STARTED")
+        print(f"🔍 ANALYZING CONTENT TYPE AND FLOW for intelligent structuring")
+        
+        system_message = """You are a content analysis expert. Analyze the provided content to determine the optimal article structure.
+
+CRITICAL ANALYSIS REQUIREMENTS:
+1. Identify the CONTENT TYPE (tutorial, product guide, API reference, mixed content, etc.)
+2. Analyze CONTENT FLOW (sequential steps, independent chapters, reference sections)
+3. Determine if content should be UNIFIED or SPLIT based on user experience
+4. Consider code blocks, procedures, and context dependencies
+
+DECISION CRITERIA:
+- KEEP UNIFIED: Step-by-step procedures, tutorials, how-to guides, single workflows
+- SPLIT CONTENT: Product manuals with independent chapters, mixed content types, reference materials
+
+OUTPUT FORMAT - Return valid JSON:
+{
+  "content_analysis": {
+    "primary_type": "tutorial|product_guide|api_reference|mixed_content|reference_manual",
+    "content_flow": "sequential|independent_chapters|mixed",
+    "has_code_blocks": true,
+    "has_step_by_step": true,
+    "sections_depend_on_each_other": true,
+    "complexity_level": "basic|intermediate|advanced"
+  },
+  "structuring_decision": {
+    "should_split": false,
+    "reasoning": "This is a step-by-step tutorial where sections depend on each other sequentially",
+    "recommended_structure": "unified_guide|chapter_based|topic_based",
+    "recommended_articles": [
+      {
+        "article_type": "overview_and_guide",
+        "title": "Complete Google Maps API Tutorial",
+        "description": "Comprehensive guide including setup, implementation, and customization",
+        "includes_sections": ["introduction", "setup", "implementation", "customization"]
+      },
+      {
+        "article_type": "faq",
+        "title": "Google Maps API - FAQ and Troubleshooting", 
+        "description": "Common questions and solutions"
+      }
+    ]
+  }
+}
+
+IMPORTANT: Recommend keeping tutorials and sequential procedures unified to maintain context and flow."""
+
+        # Analyze content structure
+        analysis_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Analyze this content to determine optimal article structure:\n\n{content[:15000]}"
+        )
+        
+        if analysis_response:
+            try:
+                # Clean JSON response
+                cleaned_response = analysis_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                cleaned_response = cleaned_response.strip()
+                
+                analysis_data = json.loads(cleaned_response)
+                
+                content_type = analysis_data.get('content_analysis', {}).get('primary_type', 'mixed_content')
+                should_split = analysis_data.get('structuring_decision', {}).get('should_split', True)
+                
+                print(f"✅ CONTENT ANALYSIS COMPLETE:")
+                print(f"   📋 Type: {content_type}")
+                print(f"   🔀 Should split: {should_split}")
+                print(f"   💡 Reasoning: {analysis_data.get('structuring_decision', {}).get('reasoning', 'Default analysis')}")
+                
+                return analysis_data
+                
+            except json.JSONDecodeError as e:
+                print(f"⚠️ Content analysis JSON parsing error: {e}")
+                print(f"Raw response: {analysis_response[:500]}...")
+        
+        # Fallback analysis based on simple heuristics
+        print(f"⚠️ Using fallback content analysis")
+        word_count = len(content.split())
+        has_steps = any(keyword in content.lower() for keyword in ['step', 'procedure', 'tutorial', 'guide', 'how to'])
+        has_code = any(keyword in content for keyword in ['<code>', '```', 'function', 'var ', 'const ', '<script>'])
+        
+        # Simple heuristic: if it's short with steps and code, keep unified
+        should_split = not (word_count < 3000 and has_steps and has_code)
+        
+        return {
+            "content_analysis": {
+                "primary_type": "tutorial" if has_steps else "mixed_content",
+                "should_split": should_split,
+                "has_code_blocks": has_code,
+                "has_step_by_step": has_steps
+            },
+            "structuring_decision": {
+                "should_split": should_split,
+                "reasoning": "Fallback analysis based on content characteristics"
+            }
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in content analysis: {e}")
+        return {
+            "structuring_decision": {"should_split": True, "reasoning": "Error in analysis, defaulting to split"}
+        }
+
+async def generate_unified_article(content: str, metadata: Dict[str, Any], content_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate a single comprehensive article when content should stay unified"""
+    try:
+        print(f"📄 GENERATING UNIFIED ARTICLE (keeping content together)")
+        
+        analysis = content_analysis.get('content_analysis', {})
+        primary_type = analysis.get('primary_type', 'guide')
+        
+        # Determine article title based on content
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        system_message = f"""You are a technical writer creating a comprehensive, unified article that keeps related content together.
+
+CONTENT TYPE: {primary_type}
+KEEP UNIFIED BECAUSE: {content_analysis.get('structuring_decision', {}).get('reasoning', 'Content should stay together')}
+
+CRITICAL REQUIREMENTS:
+1. Create ONE comprehensive article that covers all aspects
+2. Maintain logical flow and context throughout
+3. Keep code blocks with their explanations
+4. Use proper section headings (h2, h3) for organization within the article
+5. Ensure step-by-step procedures flow naturally
+6. Include ALL technical details and examples
+
+ARTICLE STRUCTURE:
+- Start with overview/introduction
+- Follow with main content in logical order
+- Keep related sections together
+- Include all code examples in context
+- End with summary or next steps if applicable
+
+OUTPUT FORMAT:
+- Return clean HTML content with semantic structure
+- Use h2 for major sections, h3 for subsections
+- Keep code blocks properly formatted with <pre><code> tags
+- Maintain context and flow throughout
+- Do NOT split into separate articles"""
+
+        # Generate unified article
+        article_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Create a comprehensive unified article from this content:\n\n{content}"
+        )
+        
+        if article_response:
+            cleaned_content = clean_article_html_content(article_response)
+            
+            article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Complete Guide",
+                "content": cleaned_content,
+                "status": "published",
+                "article_type": "unified_guide",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["complete-guide", primary_type, "unified"],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "unified_article": True,
+                    "content_type": primary_type,
+                    "processing_approach": "unified",
+                    **metadata
+                }
+            }
+            
+            print(f"✅ UNIFIED ARTICLE GENERATED: '{article['title']}' ({len(cleaned_content)} chars)")
+            return article
+        else:
+            print(f"⚠️ Failed to generate unified article")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error generating unified article: {e}")
+        return None
+
+async def intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """INTELLIGENT PIPELINE: Analyze content first, then decide whether to split or keep unified"""
+    try:
+        print(f"🧠 INTELLIGENT CONTENT PROCESSING PIPELINE STARTED")
         print(f"📄 Content: {len(content)} characters from {metadata.get('original_filename', 'Unknown')}")
         
-        # STEP 1: Content Analysis (already done - content is provided)
-        print(f"✅ STEP 1: CONTENT EXTRACTED ({len(content)} characters)")
+        # STEP 1: Analyze content type and flow to determine structure
+        content_analysis = await analyze_content_type_and_flow(content, metadata)
+        should_split = content_analysis.get('structuring_decision', {}).get('should_split', True)
+        reasoning = content_analysis.get('structuring_decision', {}).get('reasoning', 'Default analysis')
         
-        # STEP 2: Generate comprehensive outline
-        outline_data = await generate_comprehensive_outline(content, metadata)
-        if not outline_data:
-            print(f"❌ PIPELINE FAILED: Could not generate outline")
-            return []
-        
-        # STEP 3: Generate articles for each topic one at a time
-        outline_topics = outline_data.get('comprehensive_outline', [])
-        print(f"📋 STEP 3: PROCESSING {len(outline_topics)} TOPICS individually")
+        print(f"🎯 STRUCTURING DECISION: {'SPLIT' if should_split else 'KEEP UNIFIED'}")
+        print(f"💡 Reasoning: {reasoning}")
         
         generated_articles = []
-        for i, topic in enumerate(outline_topics, 1):
-            article = await generate_topic_article(content, topic, metadata, i, len(outline_topics))
-            if article:
-                # Save to database immediately
-                await db.content_library.insert_one(article)
-                generated_articles.append(article)
-                print(f"💾 SAVED ARTICLE {i}/{len(outline_topics)}: {article['title']}")
-            else:
-                print(f"⚠️ SKIPPED ARTICLE {i}/{len(outline_topics)}: Generation failed")
         
-        if not generated_articles:
-            print(f"❌ PIPELINE FAILED: No articles generated")
-            return []
+        if not should_split:
+            # UNIFIED APPROACH: Keep content together as one comprehensive article
+            print(f"📄 UNIFIED PROCESSING: Creating single comprehensive article")
+            
+            unified_article = await generate_unified_article(content, metadata, content_analysis)
+            if unified_article:
+                await db.content_library.insert_one(unified_article)
+                generated_articles.append(unified_article)
+                print(f"💾 SAVED UNIFIED ARTICLE: {unified_article['title']}")
+            
+        else:
+            # SPLIT APPROACH: Use the original outline-first approach
+            print(f"🔀 SPLIT PROCESSING: Using outline-first approach for multiple articles")
+            
+            # Generate comprehensive outline
+            outline_data = await generate_comprehensive_outline(content, metadata)
+            if not outline_data:
+                print(f"❌ PIPELINE FAILED: Could not generate outline")
+                return []
+            
+            # Generate articles for each topic
+            outline_topics = outline_data.get('comprehensive_outline', [])
+            print(f"📋 PROCESSING {len(outline_topics)} TOPICS individually")
+            
+            for i, topic in enumerate(outline_topics, 1):
+                article = await generate_topic_article(content, topic, metadata, i, len(outline_topics))
+                if article:
+                    await db.content_library.insert_one(article)
+                    generated_articles.append(article)
+                    print(f"💾 SAVED ARTICLE {i}/{len(outline_topics)}: {article['title']}")
+            
+            # Create overview article with mini-TOC for split content
+            if generated_articles:
+                overview_article = await create_overview_article(generated_articles, outline_data, metadata)
+                if overview_article:
+                    await db.content_library.insert_one(overview_article)
+                    generated_articles.insert(0, overview_article)
+                    print(f"💾 SAVED OVERVIEW ARTICLE with mini-TOC")
         
-        # STEP 4: Create overview article with mini-TOC
-        overview_article = await create_overview_article(generated_articles, outline_data, metadata)
-        if overview_article:
-            await db.content_library.insert_one(overview_article)
-            generated_articles.insert(0, overview_article)  # Add as first article
-            print(f"💾 SAVED OVERVIEW ARTICLE with mini-TOC")
-        
-        # STEP 5: Create FAQ article
-        if len(content) > 3000:  # Only for substantial content
+        # ALWAYS: Create FAQ article for substantial content
+        if len(content) > 2000:
             faq_article = await create_faq_article(content, generated_articles, metadata)
             if faq_article:
                 await db.content_library.insert_one(faq_article)
                 generated_articles.append(faq_article)
                 print(f"💾 SAVED FAQ ARTICLE")
         
-        # STEP 6: Add cross-references and related links
-        enhanced_articles = await add_cross_references_and_related_links(generated_articles)
+        # ALWAYS: Add cross-references and related links
+        if len(generated_articles) > 1:
+            enhanced_articles = await add_cross_references_and_related_links(generated_articles)
+            
+            # Update articles in database with cross-references
+            for article in enhanced_articles:
+                await db.content_library.update_one(
+                    {"id": article["id"]},
+                    {"$set": {"content": article["content"]}}
+                )
+            
+            generated_articles = enhanced_articles
         
-        # Update articles in database with cross-references
-        for article in enhanced_articles:
-            await db.content_library.update_one(
-                {"id": article["id"]},
-                {"$set": {"content": article["content"]}}
-            )
-        
-        print(f"🎉 CLEAN PIPELINE COMPLETE: Generated {len(enhanced_articles)} comprehensive articles")
-        print(f"   📊 Overview: 1 article")
-        print(f"   📄 Topic Articles: {len(outline_topics)} articles") 
-        print(f"   ❓ FAQ: {1 if len(content) > 3000 else 0} article")
+        print(f"🎉 INTELLIGENT PIPELINE COMPLETE: Generated {len(generated_articles)} articles")
+        if should_split:
+            print(f"   📊 Split approach: Overview + {len(outline_topics)} topic articles + FAQ")
+        else:
+            print(f"   📄 Unified approach: 1 comprehensive guide + FAQ")
         print(f"   🔗 All articles enhanced with cross-references")
         
-        return enhanced_articles
+        return generated_articles
         
     except Exception as e:
-        print(f"❌ CLEAN PIPELINE ERROR: {e}")
+        print(f"❌ INTELLIGENT PIPELINE ERROR: {e}")
         return []
+
+# Legacy function name for backward compatibility
+async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Legacy wrapper - redirects to intelligent_content_processing_pipeline"""
+    return await intelligent_content_processing_pipeline(content, metadata)
 
 
 # === END HELPER FUNCTIONS ===

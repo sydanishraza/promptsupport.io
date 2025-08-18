@@ -19,7 +19,7 @@ import io
 import base64
 
 # Get backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://docai-promptsupport.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://prompt-support-app.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class EngineComparisonTest:

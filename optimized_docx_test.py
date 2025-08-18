@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://docai-promptsupport.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://prompt-support-app.preview.emergentagent.com') + '/api'
 
 def test_optimized_docx_processing_pipeline():
     """Test the OPTIMIZED DOCX processing pipeline for performance improvements"""

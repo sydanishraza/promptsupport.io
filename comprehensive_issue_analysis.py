@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://docai-promptsupport.preview.emergentagent.com"
+BACKEND_URL = "https://prompt-support-app.preview.emergentagent.com"
 
 def comprehensive_issue_analysis():
     """Comprehensive analysis of DOCX processing issues"""

@@ -20,7 +20,7 @@ from datetime import datetime
 import subprocess
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://1c7fe221-5f78-4e90-bb7b-b530162b68ad.preview.emergentagent.com"
+BACKEND_URL = "https://prompt-support-app.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test_result(message, status="INFO"):

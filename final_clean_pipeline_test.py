@@ -8,7 +8,7 @@ import requests
 import json
 import time
 
-BACKEND_URL = "https://1c7fe221-5f78-4e90-bb7b-b530162b68ad.preview.emergentagent.com"
+BACKEND_URL = "https://prompt-support-app.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def test_clean_pipeline():

@@ -226,16 +226,20 @@ def process_test_content():
         test_content = create_test_content_for_wysiwyg()
         log_test_result(f"📝 Created test content: {len(test_content)} characters")
         
-        # Process through text upload endpoint
-        log_test_result("📤 Uploading test content to Knowledge Engine...")
+        # Process through content processing endpoint
+        log_test_result("📤 Processing test content through Knowledge Engine...")
         
         payload = {
             'content': test_content,
-            'filename': 'Google_Maps_API_Tutorial.txt'
+            'content_type': 'text',
+            'metadata': {
+                'original_filename': 'Google_Maps_API_Tutorial.txt',
+                'source': 'wysiwyg_compatibility_test'
+            }
         }
         
         start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
+        response = requests.post(f"{API_BASE}/content/process", 
                                json=payload, 
                                timeout=300)  # 5 minute timeout
         

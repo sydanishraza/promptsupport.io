@@ -7777,34 +7777,15 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
             print("⚠️ No text content extracted from PDF")
             return []
         
-        # NEW APPROACH: Use outline-first comprehensive article generation for PDF
-        print(f"🎯 Using NEW outline-first article generation for PDF content")
-        
-        # First, try the outline-first approach for comprehensive coverage
-        outline = await generate_comprehensive_outline(full_text, {
+        # CLEAN APPROACH: Use the new clean content processing pipeline
+        print(f"🎯 Using CLEAN CONTENT PROCESSING PIPELINE for PDF content")
+        articles = await clean_content_processing_pipeline(full_text, {
             "source": "pdf",
             "original_filename": template_data.get("filename", "document.pdf"),
-            "images": len(all_images)
+            "images": all_images,
+            "template_data": template_data,
+            "training_session": training_session
         })
-        
-        if outline:
-            # Use clean content processing pipeline for comprehensive coverage
-            outline_articles = await clean_content_processing_pipeline(full_text, {
-                "source": "pdf",
-                "original_filename": template_data.get("filename", "document.pdf"),
-                "images": all_images,
-                "template_data": template_data,
-                "training_session": training_session
-            })
-            if outline_articles and len(outline_articles) > 0:
-                print(f"✅ PDF OUTLINE-BASED SUCCESS: Created {len(outline_articles)} comprehensive articles")
-                return outline_articles
-            else:
-                print("⚠️ PDF outline-based creation failed, falling back to legacy approach")
-        
-        # FALLBACK: Legacy template-based processing
-        print(f"🔄 Falling back to legacy PDF processing")
-        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
         
         print(f"✅ PDF processing generated {len(articles)} articles")
         

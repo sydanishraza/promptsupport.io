@@ -2057,9 +2057,69 @@ async def create_deep_split_articles(content: str, metadata: Dict[str, Any], ana
         return []
 
 async def intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """INTELLIGENT PIPELINE: Analyze content first, then decide whether to split or keep unified"""
+    """PHASE 6: ENHANCED INTELLIGENT PIPELINE with adaptive granularity processing"""
     try:
-        print(f"🧠 INTELLIGENT CONTENT PROCESSING PIPELINE STARTED")
+        print(f"🧠 PHASE 6: ENHANCED INTELLIGENT CONTENT PROCESSING PIPELINE STARTED")
+        print(f"📄 Content: {len(content)} characters from {metadata.get('original_filename', 'Unknown')}")
+        
+        # STEP 1: Enhanced multi-dimensional content analysis
+        print(f"🔍 STEP 1: Enhanced multi-dimensional content analysis")
+        analysis = await enhanced_multi_dimensional_analysis(content, metadata)
+        
+        # STEP 2: Adaptive granularity processing
+        print(f"🎯 STEP 2: Adaptive granularity processing")
+        generated_articles = await adaptive_granularity_processor(content, metadata, analysis)
+        
+        # STEP 3: Save all articles to database
+        print(f"💾 STEP 3: Saving {len(generated_articles)} articles to database")
+        for i, article in enumerate(generated_articles, 1):
+            try:
+                await db.content_library.insert_one(article)
+                print(f"💾 SAVED ARTICLE {i}/{len(generated_articles)}: {article['title']}")
+            except Exception as save_error:
+                print(f"⚠️ Error saving article {i}: {save_error}")
+        
+        # STEP 4: Update articles with cross-references if needed
+        if len(generated_articles) > 1:
+            print(f"🔗 STEP 4: Updating cross-references in database")
+            for article in generated_articles:
+                try:
+                    await db.content_library.update_one(
+                        {"id": article["id"]},
+                        {"$set": {"content": article["content"]}}
+                    )
+                except Exception as update_error:
+                    print(f"⚠️ Error updating cross-references for {article['title']}: {update_error}")
+        
+        # STEP 5: Final summary
+        processing_approach = analysis.get('processing_strategy', {}).get('approach', 'unknown')
+        granularity_level = analysis.get('granularity_decision', {}).get('level', 'unknown')
+        
+        print(f"🎉 PHASE 6 ENHANCED PIPELINE COMPLETE:")
+        print(f"   📊 Processing approach: {processing_approach}")
+        print(f"   🎯 Granularity level: {granularity_level}")
+        print(f"   📄 Generated articles: {len(generated_articles)}")
+        print(f"   🔗 Cross-references: {'Yes' if len(generated_articles) > 1 else 'No'}")
+        
+        return generated_articles
+        
+    except Exception as e:
+        print(f"❌ PHASE 6 ENHANCED PIPELINE ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # FALLBACK: Use original approach
+        print(f"🔄 FALLBACK: Using original intelligent pipeline approach")
+        try:
+            return await original_intelligent_content_processing_pipeline(content, metadata)
+        except Exception as fallback_error:
+            print(f"❌ FALLBACK ALSO FAILED: {fallback_error}")
+            return []
+
+async def original_intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """ORIGINAL INTELLIGENT PIPELINE: Fallback for when Phase 6 fails"""
+    try:
+        print(f"🔄 ORIGINAL INTELLIGENT CONTENT PROCESSING PIPELINE (FALLBACK)")
         print(f"📄 Content: {len(content)} characters from {metadata.get('original_filename', 'Unknown')}")
         
         # STEP 1: Analyze content type and flow to determine structure
@@ -2132,7 +2192,7 @@ async def intelligent_content_processing_pipeline(content: str, metadata: Dict[s
             
             generated_articles = enhanced_articles
         
-        print(f"🎉 INTELLIGENT PIPELINE COMPLETE: Generated {len(generated_articles)} articles")
+        print(f"🎉 ORIGINAL INTELLIGENT PIPELINE COMPLETE: Generated {len(generated_articles)} articles")
         if should_split:
             print(f"   📊 Split approach: Overview + {len(outline_topics)} topic articles + FAQ")
         else:
@@ -2142,7 +2202,7 @@ async def intelligent_content_processing_pipeline(content: str, metadata: Dict[s
         return generated_articles
         
     except Exception as e:
-        print(f"❌ INTELLIGENT PIPELINE ERROR: {e}")
+        print(f"❌ ORIGINAL INTELLIGENT PIPELINE ERROR: {e}")
         return []
 
 async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:

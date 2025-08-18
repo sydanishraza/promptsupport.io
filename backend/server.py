@@ -9741,18 +9741,18 @@ Original context: {metadata.get('original_filename', 'Document content')}
         return []
 
 async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """CLEAN: Process text content using the clean content processing pipeline"""
+    """INTELLIGENT: Process text content using the intelligent content processing pipeline"""
     try:
-        print(f"🚀 CLEAN TEXT PROCESSING: Processing {len(content)} characters of content")
+        print(f"🧠 INTELLIGENT TEXT PROCESSING: Processing {len(content)} characters of content")
         
-        # Use the clean content processing pipeline directly
-        articles = await clean_content_processing_pipeline(content, metadata)
+        # Use the intelligent content processing pipeline directly
+        articles = await intelligent_content_processing_pipeline(content, metadata)
         
-        print(f"✅ CLEAN TEXT PROCESSING COMPLETE: Generated {len(articles)} comprehensive articles")
+        print(f"✅ INTELLIGENT TEXT PROCESSING COMPLETE: Generated {len(articles)} articles")
         return articles
         
     except Exception as e:
-        print(f"❌ Error in clean text processing: {e}")
+        print(f"❌ Error in intelligent text processing: {e}")
         return []
 
 async def analyze_content_for_unique_sections(content: str, is_ultra_large: bool = False) -> list:

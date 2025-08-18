@@ -7981,9 +7981,9 @@ async def process_pdf_with_template(file_path: str, template_data: dict, trainin
             print("⚠️ No text content extracted from PDF")
             return []
         
-        # CLEAN APPROACH: Use the new clean content processing pipeline
-        print(f"🎯 Using CLEAN CONTENT PROCESSING PIPELINE for PDF content")
-        articles = await clean_content_processing_pipeline(full_text, {
+        # INTELLIGENT APPROACH: Use the intelligent content processing pipeline
+        print(f"🧠 Using INTELLIGENT CONTENT PROCESSING PIPELINE for PDF content")
+        articles = await intelligent_content_processing_pipeline(full_text, {
             "source": "pdf",
             "original_filename": template_data.get("filename", "document.pdf"),
             "images": all_images,

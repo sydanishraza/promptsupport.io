@@ -649,16 +649,12 @@ OUTPUT FORMAT:
         # Generate article content
         article_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Create a comprehensive article for this topic from the source content:\n\n{content}",
-            response_format="html",
-            model_name="gpt-4o",
-            max_tokens=2500,
-            temperature=0.1
+            user_message=f"Create a comprehensive article for this topic from the source content:\n\n{content}"
         )
         
-        if article_response and article_response.get('response'):
+        if article_response:
             # Clean the HTML content
-            cleaned_content = clean_article_html_content(article_response['response'])
+            cleaned_content = clean_article_html_content(article_response)
             
             # Create article object
             article = {

@@ -1664,6 +1664,148 @@ async def enhanced_format_preservation(content: str) -> str:
         print(f"❌ Error in enhanced format preservation: {e}")
         return content
 
+# Placeholder functions for Phase 6 features - to be implemented
+async def create_enhanced_faq_article(content: str, generated_articles: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Placeholder for enhanced FAQ article creation"""
+    # For now, use the existing FAQ creation logic
+    return await create_faq_article(content, generated_articles, metadata)
+
+async def add_enhanced_cross_references(generated_articles: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Placeholder for enhanced cross-reference addition"""
+    # For now, use the existing cross-reference logic
+    return await add_cross_references_and_related_links(generated_articles)
+
+async def create_overview_article_with_sections(content: str, sections: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Placeholder for overview article with sections"""
+    # Simple implementation for now
+    doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+    
+    overview_content = f"<h2>📖 {doc_title} - Overview</h2>\n"
+    overview_content += "<p>This guide covers the following sections:</p>\n<ul>\n"
+    
+    for section in sections:
+        overview_content += f"<li><strong>{section.get('title', 'Section')}</strong>: {section.get('description', 'Content section')}</li>\n"
+    
+    overview_content += "</ul>"
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": f"{doc_title} - Overview",
+        "content": overview_content,
+        "status": "published",
+        "article_type": "overview",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["overview", "moderate_split"],
+        "priority": "high",
+        "created_at": datetime.utcnow(),
+        "metadata": {
+            "granularity_level": "moderate",
+            "processing_approach": "moderate_split",
+            "article_sequence": 1,
+            **metadata
+        }
+    }
+
+async def create_section_article(content: str, section: Dict[str, Any], metadata: Dict[str, Any], analysis: Dict[str, Any], sequence: int) -> Dict[str, Any]:
+    """Placeholder for section article creation"""
+    # Simple implementation for now
+    section_title = section.get('title', f'Section {sequence}')
+    
+    section_content = f"<h2>{section_title}</h2>\n"
+    section_content += f"<p>{section.get('description', 'This section covers important information.')}</p>\n"
+    section_content += f"<p>Content focus: {section.get('content_focus', 'General content')}</p>"
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": section_title,
+        "content": section_content,
+        "status": "published",
+        "article_type": "section",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["section", "moderate_split"],
+        "priority": "medium",
+        "created_at": datetime.utcnow(),
+        "metadata": {
+            "granularity_level": "moderate",
+            "processing_approach": "moderate_split",
+            "article_sequence": sequence,
+            **metadata
+        }
+    }
+
+async def create_simple_moderate_split(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Placeholder for simple moderate split"""
+    # Simple implementation - create 3 basic articles
+    articles = []
+    doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+    
+    # Overview article
+    overview = {
+        "id": str(uuid.uuid4()),
+        "title": f"{doc_title} - Overview",
+        "content": f"<h2>Overview</h2><p>This is an overview of {doc_title}.</p>",
+        "status": "published",
+        "article_type": "overview",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["overview", "moderate_split"],
+        "priority": "high",
+        "created_at": datetime.utcnow(),
+        "metadata": {"article_sequence": 1, **metadata}
+    }
+    articles.append(overview)
+    
+    # Main content article
+    main = {
+        "id": str(uuid.uuid4()),
+        "title": f"{doc_title} - Main Content",
+        "content": f"<h2>Main Content</h2><p>Main content from {doc_title}.</p>",
+        "status": "published",
+        "article_type": "main_content",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["main_content", "moderate_split"],
+        "priority": "high",
+        "created_at": datetime.utcnow(),
+        "metadata": {"article_sequence": 2, **metadata}
+    }
+    articles.append(main)
+    
+    return articles
+
+async def create_enhanced_overview_article(outline_topics: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Placeholder for enhanced overview article"""
+    doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+    
+    overview_content = f"<h2>📖 {doc_title} - Complete Overview</h2>\n"
+    overview_content += f"<p>This comprehensive guide covers {len(outline_topics)} main topics:</p>\n<ul>\n"
+    
+    for topic in outline_topics:
+        overview_content += f"<li><strong>{topic.get('topic_title', 'Topic')}</strong></li>\n"
+    
+    overview_content += "</ul>"
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": f"{doc_title} - Complete Overview",
+        "content": overview_content,
+        "status": "published",
+        "article_type": "enhanced_overview",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["overview", "deep_split", "enhanced"],
+        "priority": "high",
+        "created_at": datetime.utcnow(),
+        "metadata": {
+            "granularity_level": "deep",
+            "processing_approach": "deep_split",
+            "article_sequence": 1,
+            **metadata
+        }
+    }
+
+async def generate_enhanced_topic_article(content: str, topic: Dict[str, Any], metadata: Dict[str, Any], analysis: Dict[str, Any], sequence: int, total_topics: int) -> Dict[str, Any]:
+    """Placeholder for enhanced topic article generation"""
+    # Use existing topic article generation for now
+    return await generate_topic_article(content, topic, metadata, sequence, total_topics)
+
 async def intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """INTELLIGENT PIPELINE: Analyze content first, then decide whether to split or keep unified"""
     try:

@@ -940,6 +940,24 @@ async def analyze_content_type_and_flow(content: str, metadata: Dict[str, Any]) 
     try:
         print(f"🔍 ANALYZING CONTENT TYPE AND FLOW for intelligent structuring")
         
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 500:
+            print(f"⚠️ Content analysis: Insufficient content ({len(content)} chars), defaulting to unified")
+            return {
+                "content_analysis": {
+                    "primary_type": "guide",
+                    "should_split": False,
+                    "has_code_blocks": False,
+                    "has_step_by_step": True
+                },
+                "structuring_decision": {
+                    "should_split": False,
+                    "reasoning": "Insufficient content for analysis, keeping unified for better user experience"
+                }
+            }
+        
+        print(f"📝 Analyzing {len(content)} characters for content type and flow")
+        
         system_message = """You are a content analysis expert. Analyze the provided content to determine the optimal article structure.
 
 CRITICAL ANALYSIS REQUIREMENTS:
@@ -984,13 +1002,17 @@ OUTPUT FORMAT - Return valid JSON:
 
 IMPORTANT: Recommend keeping tutorials and sequential procedures unified to maintain context and flow."""
 
-        # Analyze content structure
+        print(f"🤖 CALLING LLM for content analysis...")
+        
+        # Analyze content structure with validation
         analysis_response = await call_llm_with_fallback(
             system_message=system_message,
             user_message=f"Analyze this content to determine optimal article structure:\n\n{content[:15000]}"
         )
         
-        if analysis_response:
+        print(f"📥 Content Analysis LLM Response: {len(analysis_response) if analysis_response else 0} characters")
+        
+        if analysis_response and len(analysis_response.strip()) > 10:
             try:
                 # Clean JSON response
                 cleaned_response = analysis_response.strip()
@@ -1034,14 +1056,16 @@ IMPORTANT: Recommend keeping tutorials and sequential procedures unified to main
             },
             "structuring_decision": {
                 "should_split": should_split,
-                "reasoning": "Fallback analysis based on content characteristics"
+                "reasoning": f"Fallback analysis: {word_count} words, steps: {has_steps}, code: {has_code}"
             }
         }
         
     except Exception as e:
         print(f"❌ Error in content analysis: {e}")
+        import traceback
+        traceback.print_exc()
         return {
-            "structuring_decision": {"should_split": True, "reasoning": "Error in analysis, defaulting to split"}
+            "structuring_decision": {"should_split": False, "reasoning": "Error in analysis, defaulting to unified for safety"}
         }
 
 async def generate_unified_article(content: str, metadata: Dict[str, Any], content_analysis: Dict[str, Any]) -> Dict[str, Any]:

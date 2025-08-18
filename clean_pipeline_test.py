@@ -483,8 +483,8 @@ def test_processing_performance():
         start_time = time.time()
         
         response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": test_content, "filename": "performance_test.txt"},
+            f"{API_BASE}/content/process",
+            json={"content": test_content, "content_type": "text", "filename": "performance_test.txt"},
             timeout=240  # 4 minute timeout
         )
         

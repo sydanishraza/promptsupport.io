@@ -537,7 +537,7 @@ def run_phase6_database_analysis():
     
     # Connect to database
     db = connect_to_database()
-    if not db:
+    if db is None:
         log_test_result("❌ Database connection failed - aborting analysis", "CRITICAL_ERROR")
         return {}
     

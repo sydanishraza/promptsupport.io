@@ -320,7 +320,7 @@ def test_google_maps_tutorial_processing():
         
         start_time = time.time()
         response = requests.post(
-            f"{API_BASE}/content/process-text",
+            f"{API_BASE}/content/process",
             json={
                 "content": tutorial_content,
                 "filename": "Google_Maps_API_Tutorial.txt"

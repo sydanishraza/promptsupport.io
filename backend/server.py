@@ -1828,6 +1828,8 @@ REQUIREMENTS:
 4. Use proper HTML formatting with headings, lists, and structure
 5. Include actual details from the content, not just placeholders
 
+CRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly for WYSIWYG editors.
+
 Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em)."""
 
         overview_response = await call_llm_with_fallback(

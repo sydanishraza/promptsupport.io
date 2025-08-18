@@ -1008,6 +1008,13 @@ async def generate_unified_article(content: str, metadata: Dict[str, Any], conte
         # Determine article title based on content
         doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
         
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 100:
+            print(f"❌ UNIFIED ARTICLE ERROR: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content: {len(content)} characters for unified article")
+        
         system_message = f"""You are a technical writer creating a comprehensive, unified article that keeps related content together.
 
 CONTENT TYPE: {primary_type}
@@ -1029,47 +1036,65 @@ ARTICLE STRUCTURE:
 - End with summary or next steps if applicable
 
 OUTPUT FORMAT:
-- Return clean HTML content with semantic structure
+Return ONLY the article content without any markdown formatting:
+- Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em)
 - Use h2 for major sections, h3 for subsections
 - Keep code blocks properly formatted with <pre><code> tags
 - Maintain context and flow throughout
-- Do NOT split into separate articles"""
+- Do NOT include document wrapper tags (html, head, body)
+- Do NOT use markdown code blocks (```html)"""
 
-        # Generate unified article
+        print(f"🤖 CALLING LLM for unified article generation...")
+        
+        # Generate unified article with content validation
         article_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Create a comprehensive unified article from this content:\n\n{content}"
+            user_message=f"Create a comprehensive unified article from this content. Use HTML formatting and include ALL information:\n\n{content[:25000]}"
         )
         
-        if article_response:
-            cleaned_content = clean_article_html_content(article_response)
-            
-            article = {
-                "id": str(uuid.uuid4()),
-                "title": f"{doc_title} - Complete Guide",
-                "content": cleaned_content,
-                "status": "published",
-                "article_type": "unified_guide",
-                "source_document": metadata.get("original_filename", "Unknown"),
-                "tags": ["complete-guide", primary_type, "unified"],
-                "priority": "high",
-                "created_at": datetime.utcnow(),
-                "metadata": {
-                    "unified_article": True,
-                    "content_type": primary_type,
-                    "processing_approach": "unified",
-                    **metadata
-                }
-            }
-            
-            print(f"✅ UNIFIED ARTICLE GENERATED: '{article['title']}' ({len(cleaned_content)} chars)")
-            return article
-        else:
-            print(f"⚠️ Failed to generate unified article")
+        print(f"📥 LLM Response received: {len(article_response) if article_response else 0} characters")
+        
+        if not article_response or len(article_response.strip()) < 50:
+            print(f"❌ UNIFIED ARTICLE ERROR: Empty or insufficient LLM response ({len(article_response) if article_response else 0} chars)")
             return None
-            
+        
+        # Clean the HTML content with validation
+        cleaned_content = clean_article_html_content(article_response)
+        
+        print(f"🧹 Content after cleaning: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 50:
+            print(f"❌ UNIFIED ARTICLE ERROR: Content lost during cleaning (original: {len(article_response)}, cleaned: {len(cleaned_content)})")
+            # Fallback: use original response if cleaning removed everything
+            cleaned_content = article_response
+        
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": f"{doc_title} - Complete Guide",
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": "unified_guide",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["complete-guide", primary_type, "unified"],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "unified_article": True,
+                "content_type": primary_type,
+                "processing_approach": "unified",
+                "content_length": len(cleaned_content),
+                "original_content_length": len(content),
+                **metadata
+            }
+        }
+        
+        print(f"✅ UNIFIED ARTICLE GENERATED: '{article['title']}' ({len(cleaned_content)} chars)")
+        return article
+        
     except Exception as e:
         print(f"❌ Error generating unified article: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 async def intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:

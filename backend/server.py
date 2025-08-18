@@ -770,6 +770,13 @@ async def create_faq_article(content: str, all_articles: List[Dict[str, Any]], m
     try:
         print(f"❓ STEP 5: CREATING FAQ ARTICLE based on content analysis")
         
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 1000:
+            print(f"⚠️ Skipping FAQ creation: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content for FAQ: {len(content)} characters")
+        
         system_message = """You are creating a comprehensive FAQ article based on the source content and related articles.
 
 REQUIREMENTS:
@@ -780,53 +787,70 @@ REQUIREMENTS:
 5. Provide complete, actionable answers
 
 OUTPUT FORMAT:
-Return clean HTML with this structure:
-<h2>❓ Frequently Asked Questions</h2>
+Return clean HTML with this structure (NO markdown formatting):
+<h2>Frequently Asked Questions</h2>
 <div class="faq-section">
-<h3>🚀 Getting Started</h3>
+<h3>Getting Started</h3>
 <div class="faq-item">
 <h4>Q: How do I [specific question]?</h4>
 <p><strong>A:</strong> [Detailed answer with steps if applicable]</p>
 </div>
 </div>
 
-Create 8-15 practical questions covering different aspects of the content."""
+Create 8-15 practical questions covering different aspects of the content.
+Do NOT use markdown code blocks or backticks.
+Return ONLY the HTML content without any wrapper tags."""
 
-        # Generate FAQ content
+        print(f"🤖 CALLING LLM for FAQ generation...")
+        
+        # Generate FAQ content with validation
         faq_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Create a comprehensive FAQ based on this content:\n\n{content[:15000]}"
+            user_message=f"Create a comprehensive FAQ based on this content. Use HTML formatting and provide practical questions and answers:\n\n{content[:15000]}"
         )
         
-        if faq_response:
-            cleaned_content = clean_article_html_content(faq_response)
-            
-            faq_article = {
-                "id": str(uuid.uuid4()),
-                "title": "Frequently Asked Questions & Troubleshooting",
-                "content": cleaned_content,
-                "status": "published",
-                "article_type": "faq",
-                "source_document": metadata.get("original_filename", "Unknown"),
-                "tags": ["faq", "troubleshooting", "questions", "help"],
-                "priority": "medium",
-                "created_at": datetime.utcnow(),
-                "metadata": {
-                    "outline_based": True,
-                    "is_faq": True,
-                    "related_articles_count": len(all_articles),
-                    **metadata
-                }
-            }
-            
-            print(f"✅ FAQ ARTICLE CREATED with comprehensive Q&A")
-            return faq_article
-        else:
-            print(f"⚠️ FAQ generation failed")
+        print(f"📥 FAQ LLM Response received: {len(faq_response) if faq_response else 0} characters")
+        
+        if not faq_response or len(faq_response.strip()) < 100:
+            print(f"❌ FAQ ERROR: Empty or insufficient LLM response ({len(faq_response) if faq_response else 0} chars)")
             return None
-            
+        
+        # Clean content with validation
+        cleaned_content = clean_article_html_content(faq_response)
+        
+        print(f"🧹 FAQ content after cleaning: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 100:
+            print(f"❌ FAQ ERROR: Content lost during cleaning (original: {len(faq_response)}, cleaned: {len(cleaned_content)})")
+            # Fallback: use original response if cleaning removed everything
+            cleaned_content = faq_response
+        
+        faq_article = {
+            "id": str(uuid.uuid4()),
+            "title": "Frequently Asked Questions & Troubleshooting",
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": "faq",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["faq", "troubleshooting", "questions", "help"],
+            "priority": "medium",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "outline_based": True,
+                "is_faq": True,
+                "related_articles_count": len(all_articles),
+                "content_length": len(cleaned_content),
+                **metadata
+            }
+        }
+        
+        print(f"✅ FAQ ARTICLE CREATED with comprehensive Q&A ({len(cleaned_content)} chars)")
+        return faq_article
+        
     except Exception as e:
         print(f"❌ Error creating FAQ article: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 async def add_cross_references_and_related_links(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

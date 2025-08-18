@@ -787,15 +787,11 @@ Create 8-15 practical questions covering different aspects of the content."""
         # Generate FAQ content
         faq_response = await call_llm_with_fallback(
             system_message=system_message,
-            user_message=f"Create a comprehensive FAQ based on this content:\n\n{content[:15000]}",
-            response_format="html",
-            model_name="gpt-4o",
-            max_tokens=2000,
-            temperature=0.2
+            user_message=f"Create a comprehensive FAQ based on this content:\n\n{content[:15000]}"
         )
         
-        if faq_response and faq_response.get('response'):
-            cleaned_content = clean_article_html_content(faq_response['response'])
+        if faq_response:
+            cleaned_content = clean_article_html_content(faq_response)
             
             faq_article = {
                 "id": str(uuid.uuid4()),

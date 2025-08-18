@@ -305,35 +305,35 @@ def run_comprehensive_empty_content_bug_test():
     log_test_result("🚀 STARTING COMPREHENSIVE EMPTY CONTENT BUG FIX VERIFICATION", "CRITICAL")
     log_test_result("=" * 80)
     
-    # Define test files as specified in review request
+    # Define test files as specified in review request (using actual file names that exist)
     test_files = [
         {
-            'name': 'Google Map JavaScript API Tutorial.docx',
-            'path': '/app/Google Map JavaScript API Tutorial.docx',
+            'name': 'Google_Map_JavaScript_API_Tutorial.docx',
+            'path': '/app/Google_Map_JavaScript_API_Tutorial.docx',
             'type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'expected': 'unified - should generate 1 unified guide + 1 FAQ (both with substantial content)'
         },
         {
-            'name': 'Customer Summary Screen User Guide 1.3.docx',
-            'path': '/app/Customer Summary Screen User Guide 1.3.docx',
+            'name': 'Customer_Summary_Screen_User_Guide_1.3.docx',
+            'path': '/app/Customer_Summary_Screen_User_Guide_1.3.docx',
             'type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'expected': 'split - large document should generate multiple articles with content'
         },
         {
-            'name': 'Promotions Configuration and Management-v5.docx',
-            'path': '/app/Promotions Configuration and Management-v5.docx',
+            'name': 'Promotions_Configuration_and_Management-v5-20220201_173002.docx',
+            'path': '/app/Promotions_Configuration_and_Management-v5-20220201_173002.docx',
             'type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'expected': 'split - medium document should generate multiple articles'
         },
         {
-            'name': 'Whisk Studio Integration Guide.pdf',
-            'path': '/app/Whisk Studio Integration Guide.pdf',
+            'name': 'Whisk_Studio_Integration_Guide.pdf',
+            'path': '/app/Whisk_Studio_Integration_Guide.pdf',
             'type': 'application/pdf',
             'expected': 'split - PDF processing should generate multiple articles'
         },
         {
-            'name': 'Filtering Recipes using Custom Labels - Whisk Docs.pdf',
-            'path': '/app/Filtering Recipes using Custom Labels - Whisk Docs.pdf',
+            'name': 'test_pdf.pdf',
+            'path': '/app/test_pdf.pdf',
             'type': 'application/pdf',
             'expected': 'unified or split - smaller PDF should generate articles with content'
         }

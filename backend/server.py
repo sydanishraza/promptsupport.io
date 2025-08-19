@@ -1940,33 +1940,101 @@ Source content to base article on:
         return f"<h2>Error</h2><p>Could not generate content: {e}</p>"
 
 async def apply_quality_fixes(content: str) -> str:
-    """Apply quality fixes to eliminate common issues"""
+    """Apply comprehensive quality fixes to eliminate common issues"""
     try:
-        # Fix 1: Remove text duplication in list items
-        content = re.sub(r'(\b\w+(?:\s+\w+)*)\.\1\.', r'\1.', content)  # Remove "Text.Text." patterns
+        from bs4 import BeautifulSoup
         
-        # Fix 2: Clean up empty or broken elements
+        # Fix 1: Advanced text deduplication using BeautifulSoup for precise HTML handling
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Fix duplicated content in list items
+        for li in soup.find_all('li'):
+            text = li.get_text()
+            # Remove sentence-level duplication (e.g., "Text.Text." patterns)
+            sentences = re.split(r'(?<=[.!?])\s*', text)
+            unique_sentences = []
+            seen = set()
+            for sentence in sentences:
+                clean_sentence = sentence.strip()
+                if clean_sentence and clean_sentence not in seen:
+                    seen.add(clean_sentence)
+                    unique_sentences.append(clean_sentence)
+            
+            if len(unique_sentences) > 0:
+                li.string = ' '.join(unique_sentences)
+        
+        # Fix duplicated content in paragraphs
+        for p in soup.find_all('p'):
+            text = p.get_text()
+            sentences = re.split(r'(?<=[.!?])\s*', text)
+            unique_sentences = []
+            seen = set()
+            for sentence in sentences:
+                clean_sentence = sentence.strip()
+                if clean_sentence and clean_sentence not in seen:
+                    seen.add(clean_sentence)
+                    unique_sentences.append(clean_sentence)
+            
+            if len(unique_sentences) > 0:
+                # Preserve any inner HTML tags by replacing just the text content
+                if p.string:
+                    p.string = ' '.join(unique_sentences)
+        
+        content = str(soup)
+        
+        # Fix 2: Clean up broken elements and malformed HTML
         content = re.sub(r'<li>\s*</li>', '', content)  # Remove empty list items
         content = re.sub(r'<p>\s*</p>', '', content)    # Remove empty paragraphs
         
-        # Fix 3: Fix broken code references (like "click " instead of "click Button")
-        content = re.sub(r'click\s+\.', 'click the button.', content)
-        content = re.sub(r'click\s+\n', 'click the option.\n', content)
+        # Fix 3: Fix broken UI references (common in generated content)
+        content = re.sub(r'click\s+\.\s*', 'click the button. ', content, flags=re.IGNORECASE)
+        content = re.sub(r'click\s+to\s+\.\s*', 'click the option. ', content, flags=re.IGNORECASE)
+        content = re.sub(r'navigate to\s+\.\s*', 'navigate to the section. ', content, flags=re.IGNORECASE)
         
-        # Fix 4: Ensure proper list structure
-        content = re.sub(r'</ol>\s*<ol', '</ol>\n<ol', content)  # Separate multiple lists
+        # Fix 4: Consolidate fragmented ordered lists
+        content = re.sub(r'</ol>\s*<ol[^>]*>', '</ol>\n<ol class="doc-list doc-list-ordered">', content)
         
-        # Fix 5: Fix broken image references
-        content = re.sub(r'<img[^>]*src="figure\d+\.png"[^>]*>', '<figure><div class="placeholder-image">Image placeholder - Figure content</div></figure>', content)
+        # Fix 5: Fix broken image references to placeholder content
+        content = re.sub(r'<img[^>]*src="figure\d+\.png"[^>]*>', 
+                        '<div class="image-placeholder"><p><em>Image placeholder - Visual content referenced in original document</em></p></div>', 
+                        content)
+        content = re.sub(r'<img[^>]*src="[^"]*\.(png|jpg|jpeg|gif)"[^>]*>', 
+                        '<div class="image-placeholder"><p><em>Image content from original document</em></p></div>', 
+                        content)
         
-        # Fix 6: Apply proper CSS classes
-        content = re.sub(r'<ol[^>]*>', '<ol class="doc-list doc-list-ordered">', content)
-        content = re.sub(r'<ul[^>]*>', '<ul class="doc-list">', content)
+        # Fix 6: Apply proper CSS classes consistently
+        content = re.sub(r'<ol(?![^>]*class=)', '<ol class="doc-list doc-list-ordered"', content)
+        content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list"', content)
         
-        return content
+        # Fix 7: Clean up excessive whitespace while preserving code blocks
+        # Split by code blocks to preserve their internal formatting
+        parts = re.split(r'(<pre[^>]*>.*?</pre>)', content, flags=re.DOTALL | re.IGNORECASE)
+        cleaned_parts = []
+        
+        for i, part in enumerate(parts):
+            if i % 2 == 0:  # Not a code block
+                # Clean up whitespace
+                part = re.sub(r'\n\s*\n\s*\n', '\n\n', part)
+                part = re.sub(r'[ \t]+', ' ', part)
+            else:  # Code block - preserve formatting
+                pass
+            cleaned_parts.append(part)
+        
+        content = ''.join(cleaned_parts)
+        
+        # Fix 8: Remove HTML document structure if accidentally included
+        content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+        
+        return content.strip()
         
     except Exception as e:
         print(f"❌ Error applying quality fixes: {e}")
+        # Fallback to basic regex fixes if BeautifulSoup fails
+        content = re.sub(r'(\b\w+(?:\s+\w+)*)\.\1\.', r'\1.', content)
+        content = re.sub(r'<li>\s*</li>', '', content)
+        content = re.sub(r'<p>\s*</p>', '', content)
         return content
 
 async def add_enhanced_cross_references(generated_articles: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:

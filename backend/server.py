@@ -1892,13 +1892,15 @@ CODE BLOCK REQUIREMENTS:
 - Include full HTML structure when showing HTML examples
 - Never leave code blocks empty
 
-CONTENT STRUCTURE WITH ANCHOR IDS:
-1. Mini-TOC with working links
+MANDATORY CONTENT STRUCTURE WITH ANCHOR IDS:
+1. **ALWAYS START WITH MINI-TOC**: <div class="mini-toc"><h3>📋 Contents</h3><ul><li><a href="#introduction">Introduction</a></li><li><a href="#setup">Setup & Prerequisites</a></li><li><a href="#implementation">Implementation</a></li><li><a href="#advanced">Advanced Features</a></li><li><a href="#troubleshooting">Troubleshooting</a></li></ul></div>
 2. Introduction section: <h2 id="introduction">Introduction</h2>
 3. Setup section: <h2 id="setup">Setup & Prerequisites</h2>
 4. Implementation sections: <h2 id="implementation">Step-by-Step Implementation</h2>
 5. Advanced features: <h2 id="advanced">Advanced Features</h2>
 6. Troubleshooting: <h2 id="troubleshooting">Troubleshooting</h2>
+
+CRITICAL: Every article MUST start with a mini-TOC that includes ALL section headings with matching anchor IDs.
 
 QUALITY REQUIREMENTS:
 - NO text duplication or repetition

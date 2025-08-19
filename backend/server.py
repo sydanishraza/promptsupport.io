@@ -2354,31 +2354,88 @@ Use HTML semantic structure and preserve all formatting elements."""
         return []
 
 async def create_enhanced_overview_article(outline_topics: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """Placeholder for enhanced overview article"""
-    doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+    """Create enhanced overview article - only if no Introduction article exists"""
     
-    overview_content = f"<h2>📖 {doc_title} - Complete Overview</h2>\n"
-    overview_content += f"<p>This comprehensive guide covers {len(outline_topics)} main topics:</p>\n<ul>\n"
+    # Check if there's already an Introduction/Overview topic to avoid duplication
+    has_intro = any(
+        topic.get('topic_title', '').lower() in ['introduction', 'overview', 'getting started']
+        for topic in outline_topics
+    )
     
-    for topic in outline_topics:
-        overview_content += f"<li><strong>{topic.get('topic_title', 'Topic')}</strong></li>\n"
+    if has_intro:
+        print(f"🚫 SKIPPING overview creation - Introduction article already exists")
+        return None
     
-    overview_content += "</ul>"
+    doc_title = clean_document_title(metadata.get('original_filename', 'Guide'))
+    
+    # Create comprehensive overview with mini-TOC and enhanced content
+    toc_items = []
+    for i, topic in enumerate(outline_topics[:8]):  # Show first 8 topics in TOC
+        topic_id = topic.get('topic_title', f'topic-{i}').lower().replace(' ', '-').replace('&', 'and')
+        toc_items.append(f'<li><a href="#section-{topic_id}">{topic.get("topic_title", f"Topic {i+1}")}</a></li>')
+    
+    mini_toc = f"""<div class="mini-toc">
+<h3>📋 Contents</h3>
+<ul>
+{chr(10).join(toc_items)}
+</ul>
+</div>"""
+    
+    # Create sections for each topic with enhanced content
+    sections_content = []
+    for i, topic in enumerate(outline_topics):
+        topic_title = topic.get('topic_title', f'Section {i+1}')
+        topic_focus = topic.get('content_focus', 'Key information and procedures')
+        topic_id = topic_title.lower().replace(' ', '-').replace('&', 'and')
+        
+        section_html = f"""<h2 id="section-{topic_id}">{topic_title}</h2>
+<p><strong>Focus:</strong> {topic_focus}</p>"""
+        
+        # Add key points if available
+        key_points = topic.get('key_points', [])
+        if key_points:
+            section_html += "\n<h3>Key Topics Covered:</h3>\n<ul>\n"
+            for point in key_points[:5]:  # Limit to 5 key points
+                section_html += f"<li>{point}</li>\n"
+            section_html += "</ul>"
+        
+        sections_content.append(section_html)
+    
+    overview_content = f"""{mini_toc}
+
+<h2 id="introduction">About This Guide</h2>
+<div class="callout callout-info">
+<div class="callout-title">ℹ️ Overview</div>
+<div class="callout-content">This comprehensive guide covers all aspects of <strong>{doc_title}</strong> with detailed explanations, step-by-step instructions, and practical examples.</div>
+</div>
+
+<p>The content is organized into <strong>{len(outline_topics)} focused sections</strong> for easy navigation and reference. Each section provides complete information on its topic with practical examples and technical details.</p>
+
+<h2 id="structure">Guide Structure</h2>
+
+{chr(10).join(sections_content)}
+
+<div class="callout callout-tip">
+<div class="callout-title">💡 Navigation Tip</div>
+<div class="callout-content">Use the table of contents above to jump directly to any section, or read sequentially for complete coverage.</div>
+</div>"""
     
     return {
         "id": str(uuid.uuid4()),
-        "title": f"{doc_title} - Complete Overview",
+        "title": f"{doc_title} - Complete Guide Overview",
         "content": overview_content,
         "status": "published",
         "article_type": "enhanced_overview",
         "source_document": metadata.get("original_filename", "Unknown"),
-        "tags": ["overview", "deep_split", "enhanced"],
+        "tags": ["overview", "deep_split", "enhanced", "navigation"],
         "priority": "high",
         "created_at": datetime.utcnow(),
         "metadata": {
             "granularity_level": "deep",
             "processing_approach": "deep_split",
             "article_sequence": 1,
+            "has_mini_toc": True,
+            "sections_count": len(outline_topics),
             **metadata
         }
     }

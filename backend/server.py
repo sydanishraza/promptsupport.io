@@ -3232,7 +3232,7 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                         prev_id = prev_article.get('id')
                         prev_title = prev_article.get('title', 'Previous Article')
                         prev_stage = prev_article.get('metadata', {}).get('stage_type', 'guide')
-                        procedural_nav.append(f'<li>⬅️ <strong>Previous:</strong> <a href="/content-library/article/{prev_id}" target="_blank">{prev_title}</a> <em>({prev_stage})</em></li>')
+                        procedural_nav.append(f'<li>⬅️ <strong>Previous:</strong> <a href="/content-library/article/{prev_id}" target="_blank">{prev_title}</a></li>')
                     
                     # Next article link  
                     if idx < len(created_articles) - 1:

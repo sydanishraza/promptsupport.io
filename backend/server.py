@@ -1867,6 +1867,25 @@ async def apply_quality_fixes(content: str) -> str:
         
         print(f"🔧 APPLYING ENHANCED QUALITY FIXES to content: {len(content)} chars")
         
+        # Fix 0: CRITICAL HTML WRAPPER CLEANING - Remove markdown code blocks and document structure
+        # ENHANCED FIX 1: Complete HTML wrapper cleaning
+        # Remove ```html markdown code block wrappers
+        if content.strip().startswith('```html'):
+            print(f"🚨 CRITICAL FIX: Removing markdown HTML code block wrapper")
+            content = content.strip()
+            content = re.sub(r'^```html\s*', '', content)
+            content = re.sub(r'\s*```$', '', content)
+        
+        # Remove any other markdown code block variations
+        content = re.sub(r'^```[a-zA-Z]*\s*', '', content.strip())
+        content = re.sub(r'\s*```$', '', content)
+        
+        # Remove HTML document structure elements
+        content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE) 
+        content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+        
         # Fix 1: ENHANCED text deduplication using multiple approaches
         
         # APPROACH 1: Fix immediate word/phrase duplications (most common pattern)

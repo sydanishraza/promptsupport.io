@@ -1526,176 +1526,97 @@ async def enhanced_generate_unified_article(content: str, metadata: Dict[str, An
         
         print(f"📝 Input content: {len(content)} characters | Type: {content_type} | Audience: {audience}")
         
-        # Check if this is an Overview vs Complete Guide
-        is_overview = "overview" in content_type.lower() or "overview" in (metadata.get('original_filename', '').lower())
+        # Check if this is an Overview vs Complete Guide - ENHANCED DETECTION
+        is_overview = (
+            "overview" in content_type.lower() or 
+            "overview" in (metadata.get('original_filename', '').lower()) or
+            content_type.lower() in ['overview', 'summary', 'introduction']
+        )
         
         if is_overview:
-            system_message = f"""You are an expert technical writer creating a high-level OVERVIEW article optimized for WYSIWYG editors.
+            system_message = f"""You are an expert technical writer creating a HIGH-LEVEL OVERVIEW article for navigation and summary purposes.
 
-CRITICAL: This is an OVERVIEW article - provide summary and navigation, NOT detailed implementation steps.
+CRITICAL OVERVIEW REQUIREMENTS - NO DETAILED IMPLEMENTATION:
+1. Create SUMMARY and NAVIGATION ONLY - ABSOLUTELY NO step-by-step procedures
+2. NEVER include detailed "how to" instructions or implementation steps
+3. NEVER include complete code examples (brief snippets only if essential)
+4. Focus on WHAT users will learn and achieve, NOT HOW to implement
+5. Maximum 2000 characters - keep concise and high-level
 
-CONTENT ANALYSIS:
-- Content Type: {content_type} (Overview)
-- Target Audience: {audience}  
-- Complexity Level: {complexity}
-- Processing Approach: Overview Summary with Navigation
+OVERVIEW STRUCTURE (HIGH-LEVEL ONLY):
+- Brief introduction to {content_type} (1-2 sentences)
+- Key benefits and use cases (bullet points)
+- What users will learn (learning objectives)
+- Content roadmap (topics covered, NOT implementation steps)
+- Prerequisites overview (if any)
+- Navigation to detailed resources
 
-OVERVIEW ARTICLE REQUIREMENTS:
-1. Provide HIGH-LEVEL SUMMARY only - NO step-by-step implementation details
-2. Create navigation roadmap with links to detailed sections
-3. Include key highlights and learning objectives
-4. Add mini-TOC with links to main topics (but not the detailed steps)
-5. Focus on WHAT users will learn, not HOW to implement
+ENHANCED NAVIGATION FEATURES:
+- Mini-TOC with links to main concepts: <div class="mini-toc"><h3>Topics Covered</h3><ul><li><a href="#concept1">Main Concept 1</a></li></ul></div>
+- Cross-references: <a href="/content-library/complete-guide" class="cross-ref">Complete Implementation Guide</a>
+- Related links: <a href="/content-library/setup" class="cross-ref">Setup Instructions</a>
 
-OVERVIEW STRUCTURE:
-- Brief introduction to the topic
-- Key highlights and benefits  
-- Learning objectives and outcomes
-- Mini-TOC with navigation to main concepts (not implementation steps)
-- Prerequisites and requirements
-- Summary of main topics covered
-- Links to detailed implementation guides
-
-AVOID IN OVERVIEW:
-- Detailed step-by-step procedures
-- Complete code examples (use brief snippets only)
-- Implementation instructions
+STRICTLY AVOID IN OVERVIEW:
+- Step-by-step procedures (e.g., "Step 1:", "First, do X", "Follow these steps")
+- Detailed implementation instructions
+- Complete code examples (only brief concepts if absolutely necessary)
+- Configuration details or specific settings
 - Lengthy technical explanations
+- Any "how to" content
 
-CREATE NAVIGATION-FOCUSED CONTENT that guides users to detailed resources."""
+FORMATTING:
+- Use proper HTML: <h2>, <h3>, <p>, <ul>, <li>
+- Include callouts for key highlights: <div class="callout callout-tip"><div class="callout-title">💡 Key Benefit</div></div>
+- Keep content brief and navigation-focused
+
+Create a concise, high-level overview that guides users to detailed implementation resources."""
 
         else:
-            system_message = f"""You are an expert technical writer creating a COMPLETE GUIDE with detailed implementation steps optimized for WYSIWYG editors.
+            # COMPLETE GUIDE ARTICLE - DETAILED IMPLEMENTATION
+            system_message = f"""You are an expert technical writer creating a COMPREHENSIVE COMPLETE GUIDE with detailed implementation steps.
 
-CRITICAL: This is a COMPLETE GUIDE - provide comprehensive, detailed implementation with all steps and code examples.
+CRITICAL COMPLETE GUIDE REQUIREMENTS:
+1. Provide DETAILED, step-by-step implementation instructions
+2. Include COMPLETE, working code examples with proper formatting
+3. Use ALL enhanced WYSIWYG editor features available
+4. Create comprehensive, professional implementation content
+5. Minimum 3000 characters for thorough coverage
 
-CONTENT ANALYSIS:
-- Content Type: {content_type}
-- Target Audience: {audience}  
-- Complexity Level: {complexity}
-- Processing Approach: Unified (keep all content together)
+ENHANCED WYSIWYG FEATURES TO USE:
+- Mini-TOC with anchor links: <div class="mini-toc"><h3>Implementation Guide</h3><ul><li><a href="#setup">Setup & Prerequisites</a></li><li><a href="#implementation">Step-by-Step Implementation</a></li></ul></div>
+- Note callouts: <div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">Important implementation details</div></div>
+- Warning callouts: <div class="callout callout-warning"><div class="callout-title">⚠️ Warning</div><div class="callout-content">Critical implementation warnings</div></div>
+- Tip callouts: <div class="callout callout-tip"><div class="callout-title">💡 Pro Tip</div><div class="callout-content">Implementation best practices</div></div>
 
-CRITICAL WYSIWYG EDITOR REQUIREMENTS:
-1. Generate clean, semantic HTML that editors can render and edit
-2. DO NOT wrap the entire article in <pre><code> tags
-3. Use proper HTML elements that map to editor toolbar features
-4. Include working code examples in proper code blocks
-5. Add comprehensive cross-references to related content
-
-ENHANCED HTML STRUCTURE WITH CROSS-REFERENCES:
-- h2, h3, h4 for section headings with anchor IDs (e.g., <h2 id="getting-started">Getting Started</h2>)
-- p for paragraphs with proper spacing
-- ul/ol/li for lists with proper nesting (continuous numbering for ordered lists)
-- table/tr/td/th for tabular data with semantic structure
-- blockquote for important quotes and citations
-- code for inline references: <code class="inline-code">filename.js</code>
-- pre + code for complete, working code examples with proper content
-- figure/figcaption for images and media
-- a for cross-reference links: <a href="#section-id">See Configuration Guide</a>
-
-ENHANCED LIST FORMATTING REQUIREMENTS:
-- Ordered lists MUST have continuous numbering (1, 2, 3, 4...)
-- Nested lists use proper indentation:
-  <ol class="doc-list doc-list-ordered">
-    <li>Parent item
-      <ol class="doc-list doc-list-nested">
-        <li>Child item a</li>
-        <li>Child item b</li>
-      </ol>
-    </li>
-    <li>Next parent item</li>
-  </ol>
-- Bullet lists use proper hierarchy:
-  <ul class="doc-list">
-    <li>Main point (filled circle)
-      <ul class="doc-list doc-list-nested">
-        <li>Sub point (empty circle)</li>
-        <li>Another sub point
-          <ul class="doc-list doc-list-nested-deep">
-            <li>Deep nesting (square)</li>
-          </ul>
-        </li>
-      </ul>
-    </li>
-  </ul>
+ORDERED LIST REQUIREMENTS (CRITICAL):
+- Use SINGLE <ol> tags with continuous numbering
+- Format: <ol class="doc-list doc-list-ordered"><li>Complete step 1 instructions</li><li>Complete step 2 instructions</li></ol>
+- For nested procedures: <ol class="doc-list doc-list-nested"><li>Sub-step a with details</li><li>Sub-step b with details</li></ol>
+- NEVER create separate <ol> tags for each step
 
 CODE BLOCK REQUIREMENTS:
-- Include COMPLETE, WORKING code examples
-- Use proper language classes: <pre><code class="language-javascript">
-function initMap() {{
-    const mapOptions = {{
-        zoom: 10,
-        center: {{ lat: 40.7128, lng: -74.0060 }}
-    }};
-    const map = new google.maps.Map(document.getElementById('map'), mapOptions);
-}}</code></pre>
-- Never leave code blocks empty or with just comments
+- Include COMPLETE, working code examples
+- Proper language classes: <pre><code class="language-javascript">complete working code here</code></pre>
 - Include full HTML structure when showing HTML examples
+- NEVER leave code blocks empty or incomplete
 
-MINI-TOC AND CROSS-REFERENCES:
-- Add a mini-TOC with working anchor links:
-  <div class="mini-toc">
-    <h3>Contents</h3>
-    <ul>
-      <li><a href="#setup">Setup & Configuration</a></li>
-      <li><a href="#implementation">Implementation Guide</a></li>
-      <li><a href="#examples">Code Examples</a></li>
-    </ul>
-  </div>
-- Include cross-references within content:
-  "For more details on API keys, see the <a href="#api-configuration" class="cross-ref">API Configuration section</a>"
-- Add related articles section:
-  <div class="related-articles">
-    <h3>Related Articles</h3>
-    <ul>
-      <li><a href="/articles/google-maps-advanced">Advanced Google Maps Features</a></li>
-      <li><a href="/articles/api-troubleshooting">API Troubleshooting Guide</a></li>
-    </ul>
-  </div>
+DETAILED CONTENT STRUCTURE WITH ANCHOR IDS:
+1. Mini-TOC with working implementation links
+2. Introduction: <h2 id="introduction">Introduction to {content_type}</h2>
+3. Prerequisites: <h2 id="prerequisites">Prerequisites & Requirements</h2>
+4. Setup: <h2 id="setup">Setup & Configuration</h2>
+5. Implementation: <h2 id="implementation">Step-by-Step Implementation</h2>
+6. Advanced features: <h2 id="advanced">Advanced Configuration</h2>
+7. Troubleshooting: <h2 id="troubleshooting">Common Issues & Solutions</h2>
 
-LABELS FOR AI ORGANIZATION:
-Add semantic labels as data attributes:
-- <div data-ai-label="tutorial-section" data-ai-category="setup">
-- <div data-ai-label="code-example" data-ai-type="javascript">
-- <div data-ai-label="troubleshooting" data-ai-difficulty="intermediate">
+QUALITY REQUIREMENTS:
+- ABSOLUTELY NO text duplication or repetition
+- Complete sentences with clear, detailed explanations
+- Professional technical writing style with comprehensive detail
+- Include all necessary implementation specifics
+- Provide complete working examples and code
 
-COMPREHENSIVE CONTENT STRUCTURE:
-1. Mini-TOC with anchor links
-2. Overview section (h2 id="overview")
-3. Setup/Prerequisites section (h2 id="setup") 
-4. Implementation sections (h2 id="implementation")
-5. Code examples with complete, working code
-6. Troubleshooting section (h2 id="troubleshooting")
-7. Related articles and cross-references
-
-OUTPUT FORMAT:
-Return comprehensive, editor-ready HTML with:
-- Working anchor IDs for all headings
-- Complete code examples (never empty)
-- Proper list nesting and numbering
-- Cross-references and related links
-- AI organization labels
-- Rich formatting with semantic classes
-
-Create a complete guide that demonstrates all WYSIWYG toolbar features where appropriate.
-
-ARTICLE STRUCTURE:
-- Start with comprehensive overview/introduction (h2)
-- Follow with main content in logical order (h2, h3, h4)
-- Keep related sections together for better flow
-- Include all code examples in context with proper formatting
-- Add practical examples and use cases
-- End with summary, next steps, or additional resources if applicable
-
-OUTPUT FORMAT:
-Return ONLY the article content with rich HTML formatting:
-- Use HTML semantic structure (h2, h3, h4, p, ul, ol, li, strong, em, code, pre)
-- Use h2 for major sections, h3 for subsections, h4 for specific details
-- Keep code blocks properly formatted with language-specific highlighting
-- Include proper list structures and enhanced callouts
-- Maintain context and flow throughout
-- Do NOT include document wrapper tags (html, head, body)
-- Do NOT use markdown formatting - use proper HTML elements only"""
+Create detailed, comprehensive implementation content that demonstrates all WYSIWYG editor capabilities."""
 
         print(f"🤖 CALLING ENHANCED LLM for unified article generation...")
         

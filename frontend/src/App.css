@@ -377,17 +377,19 @@ code {
   }
 }
 
-/* ENHANCED LIST FORMATTING */
+/* ENHANCED HIERARCHICAL LIST FORMATTING */
 .doc-list.doc-list-ordered {
   counter-reset: list-counter;
   list-style: none;
   padding-left: 1.5rem;
+  margin: 1rem 0;
 }
 
 .doc-list.doc-list-ordered > li {
   counter-increment: list-counter;
   position: relative;
   margin: 0.5rem 0;
+  line-height: 1.6;
 }
 
 .doc-list.doc-list-ordered > li::before {
@@ -396,26 +398,77 @@ code {
   left: -1.5rem;
   font-weight: 600;
   color: #374151;
+  top: 0;
 }
 
+/* Hierarchical Ordered Lists - Level 1: 1, 2, 3... */
+.doc-list.doc-list-ordered.doc-list-level-1 {
+  counter-reset: list-counter;
+  list-style-type: decimal;
+}
+
+/* Hierarchical Ordered Lists - Level 2: a, b, c... */
+.doc-list.doc-list-nested.doc-list-lower-alpha {
+  counter-reset: alpha-counter;
+  list-style-type: lower-alpha;
+  margin: 0.5rem 0 0.5rem 2rem;
+  padding-left: 1rem;
+}
+
+.doc-list.doc-list-nested.doc-list-lower-alpha > li {
+  list-style-type: lower-alpha;
+  margin: 0.25rem 0;
+  padding-left: 0.25rem;
+}
+
+/* Hierarchical Ordered Lists - Level 3: i, ii, iii... */
+.doc-list.doc-list-nested.doc-list-lower-roman {
+  counter-reset: roman-counter;
+  list-style-type: lower-roman;
+  margin: 0.5rem 0 0.5rem 2rem;
+  padding-left: 1rem;
+}
+
+.doc-list.doc-list-nested.doc-list-lower-roman > li {
+  list-style-type: lower-roman;
+  margin: 0.25rem 0;
+  padding-left: 0.25rem;
+}
+
+/* General nested list styling */
 .doc-list.doc-list-nested {
   margin-top: 0.5rem;
   margin-left: 1rem;
 }
 
 .doc-list.doc-list-nested > li {
-  list-style-type: lower-alpha;
+  margin: 0.25rem 0;
+  line-height: 1.5;
+}
+
+/* Unordered List Hierarchy - Level 1: disc bullets */
+.doc-list.doc-list-unordered > li {
+  list-style-type: disc;
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+/* Unordered List Hierarchy - Level 2: circle bullets */
+.doc-list.doc-list-nested.doc-list-circle > li {
+  list-style-type: circle;
   margin: 0.25rem 0;
 }
 
-.doc-list.doc-list-nested-deep > li {
+/* Unordered List Hierarchy - Level 3: square bullets */
+.doc-list.doc-list-nested.doc-list-square > li {
   list-style-type: square;
   margin: 0.25rem 0;
 }
 
-/* Bullet list hierarchy */
+/* Fallback bullet list hierarchy */
 .doc-list > li {
   list-style-type: disc;
+  margin: 0.5rem 0;
 }
 
 .doc-list .doc-list-nested > li {

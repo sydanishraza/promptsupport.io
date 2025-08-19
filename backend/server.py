@@ -2029,9 +2029,24 @@ async def apply_quality_fixes(content: str) -> str:
         content = re.sub(r'<ol(?![^>]*class=)', '<ol class="doc-list doc-list-ordered"', content)
         content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list"', content)
         
-        # Fix 5: Ensure content starts with h2 (not h1 or title)
+        # Fix 5: ENHANCED HEADING HIERARCHY - Ensure no H1 tags in content (title field handles H1)
+        # Convert ALL H1 tags to H2 since title field provides the H1
         content = re.sub(r'<h1([^>]*)>', r'<h2\1>', content)
         content = re.sub(r'</h1>', '</h2>', content)
+        
+        # Fix 5b: Remove duplicate title text that appears in content
+        # Extract title from metadata for comparison
+        doc_title = clean_document_title(metadata.get('original_filename', 'Guide')) if 'metadata' in locals() else 'Guide'
+        
+        # Remove sentences that duplicate the title
+        title_words = set(doc_title.lower().split())
+        if len(title_words) > 1:  # Only if title has multiple words
+            # Pattern to match opening paragraphs that repeat the title
+            title_pattern = '|'.join(re.escape(word) for word in title_words if len(word) > 3)
+            if title_pattern:
+                # Remove paragraphs that are just title repetition
+                content = re.sub(rf'<p[^>]*>\s*(?:(?:{title_pattern})\s*[-–—:]\s*)*(?:{title_pattern})?\s*</p>', 
+                                '', content, flags=re.IGNORECASE)
         
         # Fix 6: Clean up excessive whitespace while preserving code blocks
         parts = re.split(r'(<pre[^>]*>.*?</pre>)', content, flags=re.DOTALL | re.IGNORECASE)

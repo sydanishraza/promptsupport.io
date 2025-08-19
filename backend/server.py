@@ -2204,7 +2204,7 @@ async def create_overview_article_with_sections(content: str, sections: List[Dic
     )
     
     if has_intro:
-        log_test_result("🚫 SKIPPING overview creation - Introduction section already exists in sections")
+        print("🚫 SKIPPING overview creation - Introduction section already exists in sections")
         return None
     
     doc_title = clean_document_title(metadata.get('original_filename', 'Guide'))

@@ -363,14 +363,15 @@ def process_test_content_and_analyze():
         # Process content through Knowledge Engine
         log_test_result("📤 Processing content through Knowledge Engine...")
         
-        # Use the paste text endpoint
+        # Use the content process endpoint
         payload = {
             "content": test_content,
-            "content_type": "text"
+            "content_type": "text",
+            "metadata": {"test_type": "regression_validation"}
         }
         
         start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
+        response = requests.post(f"{API_BASE}/content/process", 
                                json=payload, 
                                timeout=300)  # 5 minute timeout
         

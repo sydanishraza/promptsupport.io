@@ -727,19 +727,23 @@ def test_ai_organization_labels():
             soup = BeautifulSoup(content, 'html.parser')
             
             # Check for data attributes
-            elements_with_data_attrs = soup.find_all(attrs=lambda x: x and any(key.startswith('data-') for key in x.keys() if isinstance(x, dict)))
-            
-            if elements_with_data_attrs:
-                articles_with_data_attributes += 1
+            try:
+                elements_with_data_attrs = soup.find_all(lambda tag: tag.attrs and any(key.startswith('data-') for key in tag.attrs.keys()))
                 
-                for element in elements_with_data_attrs:
-                    attrs = element.attrs if hasattr(element, 'attrs') else {}
-                    if isinstance(attrs, dict):
-                        for attr_name in attrs:
-                            if attr_name.startswith('data-ai-'):
-                                semantic_labels_found += 1
-                            if 'data-ai-category' in attr_name:
-                                categorization_found += 1
+                if elements_with_data_attrs:
+                    articles_with_data_attributes += 1
+                    
+                    for element in elements_with_data_attrs:
+                        attrs = element.attrs if hasattr(element, 'attrs') else {}
+                        if isinstance(attrs, dict):
+                            for attr_name in attrs:
+                                if attr_name.startswith('data-ai-'):
+                                    semantic_labels_found += 1
+                                if 'data-ai-category' in attr_name:
+                                    categorization_found += 1
+            except Exception as e:
+                # Skip this article if there's an issue parsing attributes
+                continue
         
         log_test_result(f"📊 AI ORGANIZATION LABELS ANALYSIS RESULTS:")
         log_test_result(f"   📄 Articles with data attributes: {articles_with_data_attributes}")

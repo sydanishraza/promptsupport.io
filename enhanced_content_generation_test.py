@@ -370,18 +370,21 @@ def process_sample_content():
         sample_content = create_sample_content()
         log_test_result(f"📝 Sample content created: {len(sample_content)} characters")
         
-        # Process content through /api/process-content endpoint
-        log_test_result("📤 Sending content to /api/process-content...")
+        # Process content through /api/content/process endpoint
+        log_test_result("📤 Sending content to /api/content/process...")
         
         payload = {
             "content": sample_content,
-            "filename": "advanced_javascript_guide.md",
-            "content_type": "text/markdown"
+            "content_type": "text",
+            "metadata": {
+                "filename": "advanced_javascript_guide.md",
+                "original_filename": "advanced_javascript_guide.md"
+            }
         }
         
         start_time = time.time()
         response = requests.post(
-            f"{API_BASE}/process-content", 
+            f"{API_BASE}/content/process", 
             json=payload,
             headers={"Content-Type": "application/json"},
             timeout=300  # 5 minute timeout

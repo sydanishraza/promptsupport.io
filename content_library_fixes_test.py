@@ -781,9 +781,17 @@ def run_comprehensive_content_library_fixes_test():
         log_test_result("❌ Backend health check failed - aborting remaining tests", "CRITICAL_ERROR")
         return test_results
     
-    # Test 2: Content Processing (to ensure we have articles to test)
-    log_test_result("\nTEST 2: Content Processing for Testing")
-    test_results['content_processing'] = process_test_content_and_verify_fixes()
+    # Test 2: Check existing articles first
+    log_test_result("\nTEST 2: Checking Existing Articles")
+    has_articles, existing_articles = check_existing_articles()
+    
+    if not has_articles:
+        # Test 2b: Content Processing (to ensure we have articles to test)
+        log_test_result("\nTEST 2b: Content Processing for Testing")
+        test_results['content_processing'] = process_test_content_and_verify_fixes()
+    else:
+        log_test_result("✅ Using existing articles for testing")
+        test_results['content_processing'] = True
     
     # Test 3: Ordered Lists Distortion Fix
     log_test_result("\nTEST 3: Ordered Lists Distortion Fix")

@@ -1867,24 +1867,39 @@ async def apply_quality_fixes(content: str) -> str:
         
         print(f"🔧 APPLYING ENHANCED QUALITY FIXES to content: {len(content)} chars")
         
-        # Fix 0: CRITICAL HTML WRAPPER CLEANING - Remove markdown code blocks and document structure
-        # ENHANCED FIX 1: Complete HTML wrapper cleaning
-        # Remove ```html markdown code block wrappers
+        # Fix 0: CRITICAL HTML WRAPPER CLEANING - Remove markdown code blocks and document structure  
+        # COMPREHENSIVE WRAPPER REMOVAL - Multiple Detection Methods
+        
+        # Method 1: Remove ```html markdown code block wrappers (most common)
         if content.strip().startswith('```html'):
-            print(f"🚨 CRITICAL FIX: Removing markdown HTML code block wrapper")
+            print(f"🚨 CRITICAL FIX: Removing markdown HTML code block wrapper (Method 1)")
             content = content.strip()
             content = re.sub(r'^```html\s*', '', content)
             content = re.sub(r'\s*```$', '', content)
         
-        # Remove any other markdown code block variations
-        content = re.sub(r'^```[a-zA-Z]*\s*', '', content.strip())
-        content = re.sub(r'\s*```$', '', content)
+        # Method 2: Remove ANY markdown code block variations 
+        if content.strip().startswith('```'):
+            print(f"🚨 CRITICAL FIX: Removing markdown code block wrapper (Method 2)")
+            content = re.sub(r'^```[a-zA-Z]*\s*', '', content.strip())
+            content = re.sub(r'\s*```$', '', content)
         
-        # Remove HTML document structure elements
+        # Method 3: Remove embedded markdown blocks within content
+        content = re.sub(r'```html\s*<!DOCTYPE[^`]*```', '', content, flags=re.DOTALL | re.IGNORECASE)
+        content = re.sub(r'```[a-zA-Z]*\s*<!DOCTYPE[^`]*```', '', content, flags=re.DOTALL | re.IGNORECASE)
+        
+        # Method 4: Remove HTML document structure elements (comprehensive)
         content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
         content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
         content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE) 
         content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<meta[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<title[^>]*>.*?</title>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Method 5: Clean up any remaining wrapper artifacts
+        content = re.sub(r'^[`\s]*', '', content)  # Remove leading backticks and spaces
+        content = re.sub(r'[`\s]*$', '', content)  # Remove trailing backticks and spaces
+        
+        print(f"✅ Comprehensive HTML wrapper cleaning completed")
         
         # Fix 1: ENHANCED text deduplication using multiple approaches
         

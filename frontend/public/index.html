@@ -24,6 +24,95 @@
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
+        
+        <!-- Copy Code Functionality -->
+        <script>
+            // Enhanced Copy Code Function for Code Blocks
+            function copyCode(button) {
+                const codeBlock = button.closest('.code-block-container').querySelector('code');
+                const text = codeBlock.textContent;
+                
+                // Use modern Clipboard API if available, fallback to older method
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showCopySuccess(button);
+                    }).catch(err => {
+                        console.error('Copy failed:', err);
+                        fallbackCopy(text, button);
+                    });
+                } else {
+                    fallbackCopy(text, button);
+                }
+            }
+            
+            function fallbackCopy(text, button) {
+                // Create a temporary textarea element
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    showCopySuccess(button);
+                } catch (err) {
+                    console.error('Fallback copy failed:', err);
+                    button.textContent = '❌ Failed';
+                    setTimeout(() => {
+                        button.innerHTML = '📋 Copy';
+                    }, 2000);
+                } finally {
+                    document.body.removeChild(textArea);
+                }
+            }
+            
+            function showCopySuccess(button) {
+                const originalText = button.innerHTML;
+                button.innerHTML = '✅ Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }
+            
+            // Auto-generate copy buttons for existing code blocks without them
+            document.addEventListener('DOMContentLoaded', function() {
+                // Find code blocks that don't have copy functionality
+                const codeBlocks = document.querySelectorAll('pre code:not(.code-block-container code)');
+                codeBlocks.forEach(codeElement => {
+                    const preElement = codeElement.parentElement;
+                    if (preElement && preElement.tagName === 'PRE' && !preElement.closest('.code-block-container')) {
+                        // Wrap existing code blocks with copy functionality
+                        const container = document.createElement('div');
+                        container.className = 'code-block-container';
+                        
+                        const language = codeElement.className.match(/language-(\w+)/);
+                        const langName = language ? language[1] : 'code';
+                        if (language) {
+                            container.classList.add(`language-${langName}`);
+                        }
+                        
+                        const header = document.createElement('div');
+                        header.className = 'code-header';
+                        header.innerHTML = `
+                            <span class="code-language">${langName}</span>
+                            <button class="copy-code-btn" onclick="copyCode(this)">📋 Copy</button>
+                        `;
+                        
+                        preElement.parentElement.insertBefore(container, preElement);
+                        container.appendChild(header);
+                        container.appendChild(preElement);
+                    }
+                });
+            });
+        </script>
+        
         <script>
             !(function (t, e) {
                 var o, n, p, r;

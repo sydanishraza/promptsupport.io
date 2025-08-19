@@ -168,10 +168,14 @@ For more advanced features, refer to the official Google Maps JavaScript API doc
 
         log_test_result("📤 Processing content with Introduction section...")
         
-        # Process the content through the Knowledge Engine
+        # Use the correct API endpoint
         response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": test_content},
+            f"{API_BASE}/content/process",
+            json={
+                "content": test_content,
+                "content_type": "text",
+                "metadata": {"test_type": "introduction_section_test", "original_filename": "google_maps_tutorial_with_intro.md"}
+            },
             timeout=300
         )
         
@@ -213,8 +217,8 @@ For more advanced features, refer to the official Google Maps JavaScript API doc
                         log_test_result(f"✅ Processing completed in {processing_time:.1f} seconds", "SUCCESS")
                         
                         # Extract metrics
-                        articles_generated = status_data.get('articles_generated', 0)
-                        log_test_result(f"📄 Articles generated: {articles_generated}")
+                        chunks_created = status_data.get('chunks_created', 0)
+                        log_test_result(f"📄 Chunks created: {chunks_created}")
                         
                         return True
                         

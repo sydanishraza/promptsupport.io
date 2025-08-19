@@ -2245,12 +2245,12 @@ async def adaptive_granularity_processor(content: str, metadata: Dict[str, Any],
             # Generate high-quality content with proper formatting
             article_content = await create_high_quality_article_content(content, "complete_guide", metadata)
             
-            # Create the complete article object
-            doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
+            # Create the complete article object with proper title structure
+            doc_title = clean_document_title(metadata.get('original_filename', 'Guide'))
             
             unified_article = {
                 "id": str(uuid.uuid4()),
-                "title": f"{doc_title} - Complete Guide",
+                "title": f"{doc_title}",  # FIXED: Remove redundant "Complete Guide" suffix 
                 "content": article_content,
                 "status": "published",
                 "article_type": "complete_guide",
@@ -2268,27 +2268,7 @@ async def adaptive_granularity_processor(content: str, metadata: Dict[str, Any],
             }
             generated_articles.append(unified_article)
             
-            # Also create a high-level overview article
-            overview_content = await create_high_quality_article_content(content, "overview", metadata)
-            overview_article = {
-                "id": str(uuid.uuid4()),
-                "title": f"{doc_title} - Overview",
-                "content": overview_content,
-                "status": "published", 
-                "article_type": "overview",
-                "source_document": metadata.get("original_filename", "Unknown"),
-                "tags": ["overview", "summary", analysis.get('content_classification', {}).get('content_type', 'guide')],
-                "priority": "high",
-                "created_at": datetime.utcnow(),
-                "metadata": {
-                    "overview_article": True,
-                    "processing_approach": "unified_overview",
-                    "granularity_level": analysis.get('granularity_decision', {}).get('level', 'shallow'),
-                    "content_type": analysis.get('content_classification', {}).get('content_type', 'guide'),
-                    **metadata
-                }
-            }
-            generated_articles.append(overview_article)
+            # FIXED: Do NOT create redundant overview for unified processing - complete guide is self-contained
                 
         elif processing_approach == "shallow_split":
             print(f"📖 SHALLOW SPLIT PROCESSING: 2-3 articles")

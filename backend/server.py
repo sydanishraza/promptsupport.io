@@ -1963,6 +1963,127 @@ def clean_document_title(filename: str) -> str:
         
     return title.strip()
 
+async def ensure_enhanced_features(content: str, article_type: str, doc_title: str) -> str:
+    """Ensure all enhanced features are present in the content"""
+    try:
+        print(f"🔥 ENSURING ENHANCED FEATURES for {article_type}")
+        
+        # 1. ENSURE MINI-TOC IS PRESENT AT THE START
+        if 'mini-toc' not in content.lower():
+            print(f"📋 Adding missing mini-TOC for {article_type}")
+            
+            if "overview" in article_type.lower():
+                # Overview mini-TOC
+                mini_toc = """<div class="mini-toc">
+<h3>📋 Contents</h3>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#highlights">Key Highlights</a></li>
+<li><a href="#topics">Topics Covered</a></li>
+<li><a href="#prerequisites">Prerequisites</a></li>
+</ul>
+</div>
+
+"""
+            else:
+                # Complete guide mini-TOC
+                mini_toc = """<div class="mini-toc">
+<h3>📋 Contents</h3>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#setup">Setup & Prerequisites</a></li>
+<li><a href="#implementation">Implementation</a></li>
+<li><a href="#advanced">Advanced Features</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</div>
+
+"""
+            
+            # Add mini-TOC at the beginning after any existing h2 titles
+            if '<h2' in content:
+                content = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{mini_toc}', content, count=1)
+            else:
+                content = mini_toc + content
+        
+        # 2. ENSURE ENHANCED CODE BLOCKS ARE PROPERLY FORMATTED
+        # Find basic code blocks and enhance them
+        def enhance_code_block(match):
+            code_element = match.group(0)
+            
+            # Check if already enhanced
+            if 'code-block-container' in code_element:
+                return code_element
+            
+            # Extract language and code content
+            language_match = re.search(r'class=["\']language-(\w+)["\']', code_element)
+            language = language_match.group(1) if language_match else 'code'
+            
+            # Extract the actual code content
+            code_content_match = re.search(r'<code[^>]*>(.*?)</code>', code_element, re.DOTALL)
+            code_content = code_content_match.group(1) if code_content_match else 'code example'
+            
+            # Create enhanced code block
+            enhanced_block = f'''<div class="code-block-container language-{language}">
+<div class="code-header">
+<span class="code-language">{language}</span>
+<button class="copy-code-btn" onclick="copyCode(this)">📋 Copy</button>
+</div>
+<pre><code class="language-{language}">{code_content}</code></pre>
+</div>'''
+            
+            return enhanced_block
+        
+        # Apply to all code blocks
+        content = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_code_block, content, flags=re.DOTALL)
+        
+        # 3. ENSURE CALLOUTS ARE PRESENT - Add strategic callouts if missing
+        if 'callout' not in content.lower():
+            print(f"💡 Adding strategic callouts for enhanced formatting")
+            
+            # Add a tip callout near the end
+            tip_callout = '''
+<div class="callout callout-tip">
+<div class="callout-title">💡 Pro Tip</div>
+<div class="callout-content">For best results, follow the steps in order and refer to the troubleshooting section if you encounter any issues.</div>
+</div>'''
+            
+            # Insert before any troubleshooting section or at the end
+            if 'troubleshooting' in content.lower():
+                content = re.sub(r'(<h[2-6][^>]*[^>]*troubleshooting[^<]*</h[2-6]>)', rf'{tip_callout}\n\1', content, flags=re.IGNORECASE)
+            else:
+                content = content + tip_callout
+        
+        # 4. ENSURE PROPER LIST CLASSES ARE APPLIED
+        content = re.sub(r'<ol(?![^>]*class=)', '<ol class="doc-list doc-list-ordered"', content)
+        content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list doc-list-unordered"', content)
+        
+        # 5. ENSURE CONTEXTUAL CROSS-REFERENCES ARE PRESENT
+        if '#' not in content or 'cross-ref' not in content:
+            print(f"🔗 Adding contextual cross-references")
+            
+            # Add "See also" reference at strategic points
+            see_also = '''<p class="see-also"><strong>See also:</strong> <a href="#troubleshooting" class="cross-ref">Troubleshooting section</a> for common issues.</p>'''
+            
+            # Insert in the middle of long content
+            paragraphs = content.split('</p>')
+            if len(paragraphs) > 3:
+                mid_point = len(paragraphs) // 2
+                paragraphs[mid_point] = paragraphs[mid_point] + see_also
+                content = '</p>'.join(paragraphs)
+        
+        # 6. ENSURE PROPER HEADING HIERARCHY WITH ANCHOR IDS
+        content = re.sub(r'<h2([^>]*)>([^<]*)</h2>', 
+                        lambda m: f'<h2{m.group(1)} id="{m.group(2).lower().replace(" ", "-").replace("&", "and")}">{m.group(2)}</h2>', 
+                        content)
+        
+        print(f"✅ Enhanced features ensured for {article_type}")
+        return content
+        
+    except Exception as e:
+        print(f"❌ Error ensuring enhanced features: {e}")
+        return content
+
 async def apply_quality_fixes(content: str) -> str:
     """Apply comprehensive quality fixes using proper BeautifulSoup text processing"""
     try:

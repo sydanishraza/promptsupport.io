@@ -141,12 +141,12 @@ def detailed_text_deduplication_analysis():
             
             # Specific duplication patterns mentioned in review
             duplication_patterns = {
-                'sentence_level': r'([^.!?]+[.!?])\s*\1',  # "Text.Text." patterns
-                'word_level': r'\b(\w+)\s+\1\b',  # "Word Word" patterns  
-                'phrase_level': r'(\b\w+(?:\s+\w+){2,5}\b).*?\1',  # "Complete phrase complete phrase"
-                'character_repetition': r'\b(\w)\s+\1(?:\s+\1)*\b',  # "l l l" patterns
+                'sentence_level': r'([^.!?]{10,}[.!?])\s*\1',  # "Text.Text." patterns (min 10 chars)
+                'word_level': r'\b(\w{3,})\s+\1\b',  # "Word Word" patterns (min 3 chars)
+                'phrase_level': r'(\b\w+(?:\s+\w+){2,5}\b)\s+\1',  # "Complete phrase complete phrase"
                 'coordinate_duplication': r'(\{[^}]+\})\s*\1',  # Coordinate duplications
-                'immediate_repetition': r'(\w+)\1+'  # Immediate character repetitions
+                'list_item_duplication': r'([^.]{20,}\.)\s*\1',  # List item duplications (min 20 chars)
+                'technical_duplication': r'(\b(?:function|const|var|let)\s+\w+[^;]{10,};?)\s*\1'  # Technical content duplication
             }
             
             article_duplications = {}

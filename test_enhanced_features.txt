@@ -1,0 +1,25 @@
+# Test Enhanced Features
+
+This is a test document to verify enhanced features are working.
+
+## Setup Instructions
+
+Follow these steps:
+
+1. Install the software
+2. Configure the settings
+3. Test the installation
+
+## Code Example
+
+Here is a simple example:
+
+```javascript
+function hello() {
+    console.log("Hello World");
+}
+```
+
+## Troubleshooting
+
+Common issues and solutions.

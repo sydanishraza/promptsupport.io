@@ -2025,9 +2025,37 @@ async def apply_quality_fixes(content: str) -> str:
         content = re.sub(r'navigate to\s+\.\s*', 'navigate to the section. ', content, flags=re.IGNORECASE)
         content = re.sub(r'Go to the\s+\.\s*', 'Go to the console. ', content, flags=re.IGNORECASE)
         
-        # Fix 4: Apply proper CSS classes
-        content = re.sub(r'<ol(?![^>]*class=)', '<ol class="doc-list doc-list-ordered"', content)
-        content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list"', content)
+        # Fix 4: ENHANCED LIST FORMATTING with hierarchical support
+        # Apply proper CSS classes for ordered lists with hierarchical numbering
+        content = re.sub(r'<ol(?![^>]*class=)(?![^>]*style=)', '<ol class="doc-list doc-list-ordered"', content)
+        
+        # Handle nested ordered lists with different numbering styles
+        # First level: 1, 2, 3... (default)
+        # Second level: a, b, c... (lower-alpha) 
+        # Third level: i, ii, iii... (lower-roman)
+        nested_ol_count = 0
+        def replace_nested_ol(match):
+            nonlocal nested_ol_count
+            nested_ol_count += 1
+            if nested_ol_count % 3 == 1:
+                return '<ol class="doc-list doc-list-nested doc-list-lower-alpha"'
+            elif nested_ol_count % 3 == 2:
+                return '<ol class="doc-list doc-list-nested doc-list-lower-roman"'
+            else:
+                return '<ol class="doc-list doc-list-nested"'
+        
+        # Apply nested styles to ordered lists within list items
+        content = re.sub(r'<li[^>]*>([^<]*)<ol(?![^>]*class=)', 
+                        lambda m: m.group(0).replace('<ol', f'<ol class="doc-list doc-list-nested"'), 
+                        content)
+        
+        # Apply proper CSS classes for unordered lists with alternating styles
+        content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list doc-list-unordered"', content)
+        
+        # Handle nested unordered lists with different bullet styles
+        content = re.sub(r'<li[^>]*>([^<]*)<ul(?![^>]*class=)', 
+                        lambda m: m.group(0).replace('<ul', '<ul class="doc-list doc-list-nested doc-list-circle"'), 
+                        content)
         
         # Fix 5: ENHANCED HEADING HIERARCHY - Ensure no H1 tags in content (title field handles H1)
         # Convert ALL H1 tags to H2 since title field provides the H1

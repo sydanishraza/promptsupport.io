@@ -1835,9 +1835,141 @@ async def enhanced_format_preservation(content: str) -> str:
 
 # Placeholder functions for Phase 6 features - to be implemented
 async def create_enhanced_faq_article(content: str, generated_articles: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """Placeholder for enhanced FAQ article creation"""
-    # For now, use the existing FAQ creation logic
-    return await create_faq_article(content, generated_articles, metadata)
+    """Create enhanced FAQ article with proper standardization and cross-references"""
+    try:
+        print(f"📋 CREATING ENHANCED FAQ ARTICLE")
+        
+        # Extract subject from filename or content type
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
+        content_type = analysis.get('content_classification', {}).get('content_type', 'Tutorial')
+        
+        # Create standardized title with subject
+        subject = doc_title if doc_title != 'Guide' else content_type.title()
+        faq_title = f"Frequently Asked Questions & Troubleshooting – {subject}"
+        
+        # Enhanced FAQ system message with cross-references and standardization
+        system_message = f"""You are an expert technical writer creating a comprehensive FAQ & Troubleshooting article.
+
+SUBJECT: {subject}
+CONTENT TYPE: {content_type}
+
+STANDARDIZED FAQ REQUIREMENTS:
+1. Title MUST include subject: "Frequently Asked Questions & Troubleshooting – {subject}"
+2. Include comprehensive cross-references to related articles and sections
+3. Add "Related Links" block at the end with organized links
+4. Use proper FAQ structure with categories
+5. Include troubleshooting sections with solutions
+
+FAQ STRUCTURE WITH CROSS-REFERENCES:
+- Introduction to the FAQ (brief overview)
+- FAQ Categories:
+  - Getting Started & Setup
+  - Implementation & Configuration  
+  - Common Issues & Troubleshooting
+  - Advanced Topics & Best Practices
+- Each answer should include cross-references where relevant:
+  "For detailed setup instructions, see the <a href="#setup-guide" class="cross-ref">Setup Guide section</a>"
+- Related Links block at the end
+
+ENHANCED FORMATTING:
+- Use <h2> for FAQ categories
+- Use <h3> for individual questions  
+- Include cross-reference links: <a href="#section" class="cross-ref">Link Text</a>
+- Add mini-TOC for FAQ categories
+- Use callouts for important warnings/tips
+
+REQUIRED SECTIONS:
+1. Mini-TOC of FAQ categories
+2. Getting Started FAQs (5-7 questions)
+3. Implementation FAQs (5-7 questions)  
+4. Troubleshooting FAQs (5-7 questions)
+5. Advanced Topics FAQs (3-5 questions)
+6. Related Links block with organized categories
+
+CROSS-REFERENCE INTEGRATION:
+- Link to setup sections: "See our <a href="#setup" class="cross-ref">Setup Guide</a>"
+- Link to implementation details: "Refer to the <a href="#implementation" class="cross-ref">Implementation section</a>"
+- Link to troubleshooting: "Check our <a href="#troubleshooting" class="cross-ref">Troubleshooting Guide</a>"
+
+RELATED LINKS STRUCTURE:
+<div class="related-articles">
+  <h3>🔗 Related Links</h3>
+  <div class="links-grid">
+    <div class="links-category">
+      <h4>Setup & Configuration</h4>
+      <ul>
+        <li><a href="/articles/setup-guide">Complete Setup Guide</a></li>
+        <li><a href="/articles/configuration">Configuration Options</a></li>
+      </ul>
+    </div>
+    <div class="links-category">
+      <h4>Advanced Topics</h4>
+      <ul>
+        <li><a href="/articles/advanced-features">Advanced Features</a></li>
+        <li><a href="/articles/best-practices">Best Practices</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+Create comprehensive, cross-referenced FAQ content with proper standardization."""
+
+        faq_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Create a comprehensive FAQ & Troubleshooting article for {subject}. Include cross-references and related links.\n\nContent to base FAQs on:\n\n{content[:15000]}"
+        )
+        
+        if faq_response:
+            faq_content = await enhanced_format_preservation(faq_response)
+        else:
+            # Fallback content with proper structure
+            faq_content = f"""<h2>Frequently Asked Questions & Troubleshooting – {subject}</h2>
+            
+<div class="mini-toc">
+<h3>FAQ Categories</h3>
+<ul>
+<li><a href="#getting-started">Getting Started</a></li>
+<li><a href="#implementation">Implementation</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</div>
+
+<h2 id="getting-started">Getting Started</h2>
+<h3>How do I get started with {subject}?</h3>
+<p>For detailed setup instructions, see our <a href="#setup" class="cross-ref">Setup Guide</a>.</p>
+
+<div class="related-articles">
+<h3>🔗 Related Links</h3>
+<ul>
+<li><a href="/articles/setup-guide">Complete Setup Guide</a></li>
+<li><a href="/articles/troubleshooting">Troubleshooting Guide</a></li>
+</ul>
+</div>"""
+        
+        return {
+            "id": str(uuid.uuid4()),
+            "title": faq_title,
+            "content": faq_content,
+            "status": "published",
+            "article_type": "faq",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["faq", "troubleshooting", subject.lower().replace(' ', '-'), "cross-referenced"],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "enhanced_faq": True,
+                "subject": subject,
+                "content_type": content_type,
+                "cross_references": True,
+                "related_links": True,
+                **metadata
+            }
+        }
+        
+    except Exception as e:
+        print(f"❌ Error creating enhanced FAQ article: {e}")
+        # Fallback to basic FAQ creation
+        return await create_faq_article(content, generated_articles, metadata)
 
 async def add_enhanced_cross_references(generated_articles: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Placeholder for enhanced cross-reference addition"""

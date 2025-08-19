@@ -798,6 +798,37 @@ code {
   font-weight: 600;
 }
 
+/* CONTEXTUAL CROSS-REFERENCES */
+.cross-ref {
+  color: #3b82f6 !important;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  background: rgba(59, 130, 246, 0.1);
+  transition: all 0.2s ease;
+}
+
+.cross-ref:hover {
+  background: rgba(59, 130, 246, 0.2);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.see-also {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 0.5rem;
+  border-left: 4px solid #0ea5e9;
+}
+
+.see-also strong {
+  color: #0c4a6e;
+  font-weight: 600;
+}
+
 /* WYSIWYG EDITOR SCROLLING FIX */
 .wysiwyg-editor {
   overflow-y: auto !important;

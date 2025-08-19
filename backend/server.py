@@ -1860,6 +1860,51 @@ Source content to base article on:
         print(f"❌ Error creating high-quality article content: {e}")
         return f"<h2>Error</h2><p>Could not generate content: {e}</p>"
 
+def clean_document_title(filename: str) -> str:
+    """Clean source document titles from clutter and technical suffixes"""
+    if not filename:
+        return "Guide"
+    
+    # Remove file extensions
+    title = filename.replace('.docx', '').replace('.pdf', '').replace('.doc', '').replace('.txt', '')
+    
+    # Replace underscores and hyphens with spaces
+    title = title.replace('_', ' ').replace('-', ' ')
+    
+    # Remove common technical suffixes and prefixes
+    suffixes_to_remove = [
+        'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9',
+        'version 1', 'version 2', 'version 3', 'version 4', 'version 5',
+        'ver 1', 'ver 2', 'ver 3', 'ver 4', 'ver 5',
+        'draft', 'final', 'final version', 'complete', 'full',
+        'doc', 'document', 'documentation', 'guide book', 'manual doc',
+        'user manual', 'admin guide', 'technical spec', 'specification',
+        '2024', '2023', '2025', 'updated', 'latest', 'new',
+        'FINAL', 'DRAFT', 'COMPLETE', 'FULL'
+    ]
+    
+    # Convert to lowercase for comparison but preserve original case for title
+    title_lower = title.lower().strip()
+    
+    for suffix in suffixes_to_remove:
+        if title_lower.endswith(suffix.lower()):
+            # Remove the suffix, preserving case
+            title = title[:len(title)-len(suffix)].strip()
+            title_lower = title.lower()
+        if title_lower.startswith(suffix.lower()):
+            # Remove prefix
+            title = title[len(suffix):].strip()
+            title_lower = title.lower()
+    
+    # Clean up multiple spaces and capitalize properly
+    title = ' '.join(word.capitalize() for word in title.split() if word.strip())
+    
+    # If title becomes empty or too short, provide fallback
+    if not title or len(title.strip()) < 3:
+        return "Guide"
+        
+    return title.strip()
+
 async def apply_quality_fixes(content: str) -> str:
     """Apply comprehensive quality fixes using proper BeautifulSoup text processing"""
     try:

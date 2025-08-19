@@ -1526,7 +1526,7 @@ async def enhanced_generate_unified_article(content: str, metadata: Dict[str, An
         
         print(f"📝 Input content: {len(content)} characters | Type: {content_type} | Audience: {audience}")
         
-        system_message = f"""You are an expert technical writer creating comprehensive content optimized for WYSIWYG editors.
+        system_message = f"""You are an expert technical writer creating comprehensive content optimized for WYSIWYG editors with enhanced formatting and cross-references.
 
 CONTENT ANALYSIS:
 - Content Type: {content_type}
@@ -1538,56 +1538,105 @@ CRITICAL WYSIWYG EDITOR REQUIREMENTS:
 1. Generate clean, semantic HTML that editors can render and edit
 2. DO NOT wrap the entire article in <pre><code> tags
 3. Use proper HTML elements that map to editor toolbar features
-4. Only use <pre><code> for actual code samples, not for content display
+4. Include working code examples in proper code blocks
+5. Add comprehensive cross-references to related content
 
-SEMANTIC HTML STRUCTURE REQUIRED:
-- h2, h3, h4 for section headings (NO h1 - editor will add page title)
+ENHANCED HTML STRUCTURE WITH CROSS-REFERENCES:
+- h2, h3, h4 for section headings with anchor IDs (e.g., <h2 id="getting-started">Getting Started</h2>)
 - p for paragraphs with proper spacing
-- ul/ol/li for lists with clear hierarchy
-- table/tr/td/th for tabular data
-- blockquote for quotes and citations
-- code for inline code references
-- pre + code ONLY for actual code samples with language classes
+- ul/ol/li for lists with proper nesting (continuous numbering for ordered lists)
+- table/tr/td/th for tabular data with semantic structure
+- blockquote for important quotes and citations
+- code for inline references: <code class="inline-code">filename.js</code>
+- pre + code for complete, working code examples with proper content
 - figure/figcaption for images and media
-- a for links with proper href attributes
+- a for cross-reference links: <a href="#section-id">See Configuration Guide</a>
 
-ENHANCED FORMATTING GUIDELINES:
-- Use semantic class names (doc-heading, doc-list, doc-table, callout, etc.)
-- For code examples: <pre><code class="language-javascript">actual code here</code></pre>
-- For callouts: <div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">content</div></div>
-- For emphasis: <strong>, <em>, not <b>, <i>
-- For inline code: <code class="inline-code">filename.js</code>
-- For lists: <ul class="doc-list"> and <ol class="doc-list doc-list-ordered">
-- For tables: <table class="doc-table"> with semantic structure
-- NO inline styles - use semantic classes only
+ENHANCED LIST FORMATTING REQUIREMENTS:
+- Ordered lists MUST have continuous numbering (1, 2, 3, 4...)
+- Nested lists use proper indentation:
+  <ol class="doc-list doc-list-ordered">
+    <li>Parent item
+      <ol class="doc-list doc-list-nested">
+        <li>Child item a</li>
+        <li>Child item b</li>
+      </ol>
+    </li>
+    <li>Next parent item</li>
+  </ol>
+- Bullet lists use proper hierarchy:
+  <ul class="doc-list">
+    <li>Main point (filled circle)
+      <ul class="doc-list doc-list-nested">
+        <li>Sub point (empty circle)</li>
+        <li>Another sub point
+          <ul class="doc-list doc-list-nested-deep">
+            <li>Deep nesting (square)</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
+
+CODE BLOCK REQUIREMENTS:
+- Include COMPLETE, WORKING code examples
+- Use proper language classes: <pre><code class="language-javascript">
+function initMap() {{
+    const mapOptions = {{
+        zoom: 10,
+        center: {{ lat: 40.7128, lng: -74.0060 }}
+    }};
+    const map = new google.maps.Map(document.getElementById('map'), mapOptions);
+}}</code></pre>
+- Never leave code blocks empty or with just comments
+- Include full HTML structure when showing HTML examples
+
+MINI-TOC AND CROSS-REFERENCES:
+- Add a mini-TOC with working anchor links:
+  <div class="mini-toc">
+    <h3>Contents</h3>
+    <ul>
+      <li><a href="#setup">Setup & Configuration</a></li>
+      <li><a href="#implementation">Implementation Guide</a></li>
+      <li><a href="#examples">Code Examples</a></li>
+    </ul>
+  </div>
+- Include cross-references within content:
+  "For more details on API keys, see the <a href="#api-configuration" class="cross-ref">API Configuration section</a>"
+- Add related articles section:
+  <div class="related-articles">
+    <h3>Related Articles</h3>
+    <ul>
+      <li><a href="/articles/google-maps-advanced">Advanced Google Maps Features</a></li>
+      <li><a href="/articles/api-troubleshooting">API Troubleshooting Guide</a></li>
+    </ul>
+  </div>
+
+LABELS FOR AI ORGANIZATION:
+Add semantic labels as data attributes:
+- <div data-ai-label="tutorial-section" data-ai-category="setup">
+- <div data-ai-label="code-example" data-ai-type="javascript">
+- <div data-ai-label="troubleshooting" data-ai-difficulty="intermediate">
 
 COMPREHENSIVE CONTENT STRUCTURE:
-1. Overview section (h2) - introduce the topic and scope
-2. Main content sections with proper hierarchy (h2, h3, h4)
-3. Include ALL technical details, procedures, and examples
-4. Code samples in proper <pre><code> blocks with language classes
-5. Step-by-step procedures in ordered lists with clear instructions
-6. Rich formatting (callouts, tables, emphasis) where appropriate
-7. Conclusion or summary section when relevant
-
-AVOID:
-- Wrapping entire content in code blocks
-- Using <pre><code> for display content or examples
-- Inline styles or legacy HTML attributes  
-- Document wrapper tags (html, head, body)
-- Multiple h1 tags (editor handles page title)
-- Empty or placeholder content
+1. Mini-TOC with anchor links
+2. Overview section (h2 id="overview")
+3. Setup/Prerequisites section (h2 id="setup") 
+4. Implementation sections (h2 id="implementation")
+5. Code examples with complete, working code
+6. Troubleshooting section (h2 id="troubleshooting")
+7. Related articles and cross-references
 
 OUTPUT FORMAT:
-Return ONLY the article content as clean, editor-ready HTML:
-- Start with h2 for main sections
-- Use semantic HTML elements throughout
-- Include ALL code examples with proper language classes
-- Maintain context and technical accuracy
-- Ensure content is comprehensive and detailed
-- Preserve all original technical information
+Return comprehensive, editor-ready HTML with:
+- Working anchor IDs for all headings
+- Complete code examples (never empty)
+- Proper list nesting and numbering
+- Cross-references and related links
+- AI organization labels
+- Rich formatting with semantic classes
 
-Create a complete, unified guide that covers all aspects with rich, editor-compatible formatting.
+Create a complete guide that demonstrates all WYSIWYG toolbar features where appropriate.
 
 ARTICLE STRUCTURE:
 - Start with comprehensive overview/introduction (h2)

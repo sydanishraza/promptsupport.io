@@ -877,17 +877,27 @@ Return ONLY the HTML content without any wrapper tags."""
         return None
 
 async def add_cross_references_and_related_links(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Step 6: Add cross-references and related links to all articles"""
+    """Enhanced cross-references system that includes ALL related articles with organized categories"""
     try:
-        print(f"🔗 STEP 6: ADDING CROSS-REFERENCES AND RELATED LINKS to {len(articles)} articles")
+        print(f"🔗 ENHANCED CROSS-REFERENCES: Adding comprehensive related links to {len(articles)} articles")
         
         enhanced_articles = []
         
         for i, article in enumerate(articles):
-            # Find related articles (excluding overview and FAQ)
-            related_articles = []
+            # ENHANCED: Find ALL related articles and organize by type
             current_tags = set(article.get('tags', []))
             current_type = article.get('article_type', '')
+            current_title_lower = article['title'].lower()
+            
+            # Organize related articles by category 
+            related_by_category = {
+                'main_guides': [],
+                'overviews': [],
+                'faqs': [],
+                'references': [],
+                'how_tos': [],
+                'other': []
+            }
             
             for other_article in articles:
                 if other_article['id'] == article['id']:
@@ -895,36 +905,95 @@ async def add_cross_references_and_related_links(articles: List[Dict[str, Any]])
                     
                 other_tags = set(other_article.get('tags', []))
                 other_type = other_article.get('article_type', '')
+                other_title = other_article['title']
                 
-                # Calculate relevance based on shared tags and complementary types
+                # Calculate relevance using multiple factors
                 shared_tags = len(current_tags.intersection(other_tags))
+                title_similarity = len(set(current_title_lower.split()) & set(other_title.lower().split())) > 0
                 
-                if shared_tags > 0 or (current_type == 'overview' and other_type != 'overview') or (other_type == 'faq'):
-                    related_articles.append({
-                        'title': other_article['title'],
+                # Include article if it's related in any way (more inclusive approach)
+                is_related = (
+                    shared_tags > 0 or  # Shared tags
+                    title_similarity or  # Similar titles
+                    (current_type == 'overview') or  # Overview links to everything
+                    (other_type in ['faq', 'overview']) or  # Always include FAQ and overview
+                    (current_type == 'faq' and other_type != 'faq')  # FAQ links to all content
+                )
+                
+                if is_related:
+                    related_info = {
+                        'title': other_title,
                         'id': other_article['id'],
                         'type': other_type,
-                        'relevance': shared_tags
-                    })
+                        'relevance': shared_tags + (2 if title_similarity else 0)
+                    }
+                    
+                    # Categorize by article type for better organization
+                    if other_type in ['complete_guide', 'main_content']:
+                        related_by_category['main_guides'].append(related_info)
+                    elif other_type == 'overview':
+                        related_by_category['overviews'].append(related_info)
+                    elif other_type in ['faq', 'faq-troubleshooting']:
+                        related_by_category['faqs'].append(related_info)
+                    elif other_type == 'reference':
+                        related_by_category['references'].append(related_info)
+                    elif other_type in ['how-to', 'tutorial']:
+                        related_by_category['how_tos'].append(related_info)
+                    else:
+                        related_by_category['other'].append(related_info)
             
-            # Sort by relevance and limit to top 5
-            related_articles.sort(key=lambda x: x['relevance'], reverse=True)
-            related_articles = related_articles[:5]
+            # Build comprehensive related links section with categories
+            total_related = sum(len(articles) for articles in related_by_category.values())
             
-            # Add related links section if we have related articles
-            if related_articles:
-                related_links_html = '\n<hr>\n<div class="related-links">\n<h3>🔗 Related Articles</h3>\n<ul>\n'
+            if total_related > 0:
+                related_links_html = '\n<hr>\n<div class="related-links">\n<h3>🔗 Related Articles</h3>\n'
                 
-                for related in related_articles:
-                    icon = {'overview': '📖', 'how-to': '🛠️', 'faq': '❓', 'reference': '📚'}.get(related['type'], '📄')
-                    related_links_html += f'<li>{icon} <a href="/content-library/article/{related["id"]}" target="_blank"><strong>{related["title"]}</strong></a></li>\n'
+                # Show all categories that have articles
+                categories_with_content = []
                 
-                related_links_html += '</ul>\n</div>'
+                if related_by_category['main_guides']:
+                    related_by_category['main_guides'].sort(key=lambda x: x['relevance'], reverse=True)
+                    categories_with_content.append(('📚 Complete Guides', related_by_category['main_guides']))
+                    
+                if related_by_category['overviews']:
+                    related_by_category['overviews'].sort(key=lambda x: x['relevance'], reverse=True)
+                    categories_with_content.append(('📖 Overviews', related_by_category['overviews']))
+                
+                if related_by_category['how_tos']:
+                    related_by_category['how_tos'].sort(key=lambda x: x['relevance'], reverse=True)
+                    categories_with_content.append(('🛠️ How-To Guides', related_by_category['how_tos']))
+                
+                if related_by_category['references']:
+                    related_by_category['references'].sort(key=lambda x: x['relevance'], reverse=True)
+                    categories_with_content.append(('📋 References', related_by_category['references']))
+                
+                if related_by_category['faqs']:
+                    related_by_category['faqs'].sort(key=lambda x: x['relevance'], reverse=True)
+                    categories_with_content.append(('❓ FAQs & Troubleshooting', related_by_category['faqs']))
+                
+                if related_by_category['other']:
+                    related_by_category['other'].sort(key=lambda x: x['relevance'], reverse=True)
+                    categories_with_content.append(('📄 Additional Resources', related_by_category['other']))
+                
+                # Render categories (limit per category but show all categories)
+                for category_name, category_articles in categories_with_content:
+                    if category_articles:
+                        related_links_html += f'\n<div class="related-category">\n<h4>{category_name}</h4>\n<ul>\n'
+                        
+                        # Show up to 8 articles per category to keep it manageable but comprehensive
+                        for related in category_articles[:8]:
+                            icon = {'overview': '📖', 'complete_guide': '📚', 'faq': '❓', 'faq-troubleshooting': '❓', 
+                                   'how-to': '🛠️', 'tutorial': '🛠️', 'reference': '📋', 'main_content': '📚'}.get(related['type'], '📄')
+                            related_links_html += f'<li>{icon} <a href="/content-library/article/{related["id"]}" target="_blank"><strong>{related["title"]}</strong></a></li>\n'
+                        
+                        related_links_html += '</ul>\n</div>\n'
+                
+                related_links_html += '</div>'
                 
                 # Add to article content if not already present
                 if 'related-links' not in article['content']:
                     article['content'] += related_links_html
-                    print(f"✅ Added {len(related_articles)} related links to: {article['title'][:50]}...")
+                    print(f"✅ Added {total_related} related links across {len(categories_with_content)} categories to: {article['title'][:50]}...")
             
             enhanced_articles.append(article)
         

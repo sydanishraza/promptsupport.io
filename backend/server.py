@@ -965,7 +965,7 @@ async def add_cross_references_and_related_links(articles: List[Dict[str, Any]])
                 # Add to article content if not already present
                 if 'related-links' not in article['content']:
                     article['content'] += related_links_html
-                    print(f"✅ Added {total_related} related links across {len(categories_with_content)} categories to: {article['title'][:50]}...")
+                    print(f"✅ Added {len(all_related[:20])} related links to: {article['title'][:50]}...")
             
             enhanced_articles.append(article)
         

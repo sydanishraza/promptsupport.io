@@ -1141,52 +1141,8 @@ const PromptSupportEditor = ({
   };
 
   // Add CSS to document to ensure editor scrollability
-  useEffect(() => {
-    const styleId = 'editor-scrollability-fix';
-    let existingStyle = document.getElementById(styleId);
-    
-    if (!existingStyle) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.textContent = `
-        .wysiwyg-editor.editor-content {
-          overflow-y: auto !important;
-          overflow-x: hidden !important;
-          max-height: 500px !important;
-          min-height: 400px !important;
-          height: auto !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
-        .wysiwyg-editor.editor-content * {
-          max-width: 100% !important;
-        }
-        .wysiwyg-editor.editor-content:after {
-          content: '';
-          display: block;
-          height: 100px;
-          visibility: hidden;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    
-    return () => {
-      // Clean up on unmount
-      const style = document.getElementById(styleId);
-      if (style) {
-        document.head.removeChild(style);
-      }
-    };
-  }, []);
-
-  // Force scrollability after any content change
-  useEffect(() => {
-    if (editorRef.current) {
-      // Force scrollability using direct DOM manipulation
-      const editor = editorRef.current;
-      editor.style.cssText += '; overflow-y: auto !important; overflow-x: hidden !important; max-height: 500px !important; height: auto !important;';
-    }
-  }, [content]);
+  // REMOVED: Dynamic CSS injection that was causing scroll conflicts
+  // Now using proper CSS classes in App.css for scroll functionality
 
   /**
    * Fetch real assets from asset library

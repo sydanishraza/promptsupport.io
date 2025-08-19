@@ -2007,12 +2007,6 @@ async def apply_quality_fixes(content: str) -> str:
         
         content = ''.join(cleaned_parts)
         
-        # Fix 8: Final cleanup of HTML document structure
-        content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
-        
         print(f"✅ Quality fixes applied successfully: {len(content)} chars final")
         return content.strip()
         

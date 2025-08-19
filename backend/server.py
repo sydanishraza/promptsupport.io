@@ -2349,8 +2349,26 @@ async def adaptive_granularity_processor(content: str, metadata: Dict[str, Any],
         
         # Always create FAQ for substantial content
         if len(content) > 2000:
-            faq_article = await create_enhanced_faq_article(content, generated_articles, metadata, analysis)
-            if faq_article:
+            # Create FAQ article using the new high-quality content function
+            faq_content = await create_high_quality_article_content(content, "faq", metadata)
+            if faq_content:
+                # Create the article object
+                faq_article = {
+                    "id": str(uuid.uuid4()),
+                    "title": "Frequently Asked Questions & Troubleshooting",
+                    "content": faq_content,
+                    "status": "published",
+                    "article_type": "faq",
+                    "source_document": metadata.get("original_filename", "Unknown"),
+                    "tags": ["faq", "troubleshooting", "questions", "help"],
+                    "priority": "medium",
+                    "created_at": datetime.utcnow(),
+                    "metadata": {
+                        "high_quality": True,
+                        "content_length": len(faq_content),
+                        **metadata
+                    }
+                }
                 generated_articles.append(faq_article)
         
         # Add cross-references and related links

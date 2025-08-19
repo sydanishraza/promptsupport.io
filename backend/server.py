@@ -3240,7 +3240,7 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                         next_id = next_article.get('id')
                         next_title = next_article.get('title', 'Next Article')
                         next_stage = next_article.get('metadata', {}).get('stage_type', 'guide')
-                        procedural_nav.append(f'<li>➡️ <strong>Next:</strong> <a href="/content-library/article/{next_id}" target="_blank">{next_title}</a> <em>({next_stage})</em></li>')
+                        procedural_nav.append(f'<li>➡️ <strong>Next:</strong> <a href="/content-library/article/{next_id}" target="_blank">{next_title}</a></li>')
                     break
             
             # FIXED: Thematic Cross-References (Same Document/Topic) with real article links

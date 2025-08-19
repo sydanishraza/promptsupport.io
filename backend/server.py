@@ -2256,25 +2256,90 @@ async def adaptive_granularity_processor(content: str, metadata: Dict[str, Any],
             articles = await create_deep_split_articles(content, metadata, analysis)
             generated_articles.extend(articles)
         
-        # Always create FAQ for substantial content
+        # Always create FAQ for substantial content with proper standardization
         if len(content) > 2000:
-            # Create FAQ article using the new high-quality content function
-            faq_content = await create_high_quality_article_content(content, "faq", metadata)
-            if faq_content:
-                # Create the article object
+            print(f"📚 CREATING STANDARDIZED FAQ ARTICLE")
+            
+            # Extract subject from filename for standardized title
+            doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
+            subject = doc_title if doc_title != 'Guide' else analysis.get('content_classification', {}).get('content_type', 'Content')
+            faq_title = f"Frequently Asked Questions & Troubleshooting – {subject}"
+            
+            # Generate high-quality FAQ content with cross-references
+            faq_system_message = f"""You are an expert technical writer creating a comprehensive FAQ & Troubleshooting article.
+
+CRITICAL FAQ STANDARDIZATION REQUIREMENTS:
+1. Use proper HTML formatting (NO Markdown)
+2. Include comprehensive cross-references with clickable links
+3. Add organized "Related Links" block at the end
+4. Use proper FAQ structure with categories
+5. Include WYSIWYG editor features (callouts, mini-TOC)
+
+ENHANCED FAQ STRUCTURE:
+- Mini-TOC with anchor links to categories
+- FAQ Categories with proper HTML headings
+- Cross-references within answers: <a href="#section-id" class="cross-ref">Link text</a>
+- Related Links block with grid layout
+
+WYSIWYG FEATURES TO INCLUDE:
+- Mini-TOC: <div class="mini-toc"><h3>FAQ Categories</h3><ul><li><a href="#getting-started">Getting Started</a></li></ul></div>
+- Callouts: <div class="callout callout-tip"><div class="callout-title">💡 Tip</div><div class="callout-content">Helpful information</div></div>
+- Cross-references: <a href="#implementation" class="cross-ref">Implementation Guide</a>
+
+REQUIRED SECTIONS:
+1. Mini-TOC of FAQ categories
+2. Getting Started & Setup (5-7 questions)
+3. Implementation & Configuration (5-7 questions)
+4. Common Issues & Troubleshooting (5-7 questions)
+5. Advanced Topics & Best Practices (3-5 questions)
+6. Related Links block with organized categories
+
+RELATED LINKS STRUCTURE:
+<div class="related-articles">
+  <h3>🔗 Related Links</h3>
+  <div class="links-grid">
+    <div class="links-category">
+      <h4>Setup & Configuration</h4>
+      <ul>
+        <li><a href="/content-library/setup-guide">Setup Guide</a></li>
+        <li><a href="/content-library/configuration">Configuration Options</a></li>
+      </ul>
+    </div>
+    <div class="links-category">  
+      <h4>Implementation</h4>
+      <ul>
+        <li><a href="/content-library/complete-guide">Complete Implementation Guide</a></li>
+        <li><a href="/content-library/best-practices">Best Practices</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+Create comprehensive FAQ content with proper HTML formatting and cross-references."""
+
+            faq_response = await call_llm_with_fallback(
+                system_message=faq_system_message,
+                user_message=f"Create a comprehensive FAQ & Troubleshooting article for {subject}. Use proper HTML formatting and include cross-references.\n\nContent to base FAQs on:\n\n{content[:15000]}"
+            )
+            
+            if faq_response:
+                faq_content = await apply_quality_fixes(faq_response)
+                
                 faq_article = {
                     "id": str(uuid.uuid4()),
-                    "title": "Frequently Asked Questions & Troubleshooting",
+                    "title": faq_title,
                     "content": faq_content,
                     "status": "published",
                     "article_type": "faq",
                     "source_document": metadata.get("original_filename", "Unknown"),
-                    "tags": ["faq", "troubleshooting", "questions", "help"],
-                    "priority": "medium",
+                    "tags": ["faq", "troubleshooting", subject.lower().replace(' ', '-'), "standardized"],
+                    "priority": "high",
                     "created_at": datetime.utcnow(),
                     "metadata": {
-                        "high_quality": True,
-                        "content_length": len(faq_content),
+                        "standardized_faq": True,
+                        "subject": subject,
+                        "cross_references": True,
+                        "related_links": True,
                         **metadata
                     }
                 }

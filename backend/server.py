@@ -10756,6 +10756,91 @@ def clean_article_html_content(content: str) -> str:
     
     return content
 
+def fix_fragmented_ordered_lists(content: str) -> str:
+    """Fix fragmented ordered lists by consolidating them into continuous numbering"""
+    import re
+    from bs4 import BeautifulSoup
+    
+    try:
+        # Parse the HTML content
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find all ordered lists
+        ol_tags = soup.find_all('ol')
+        
+        if len(ol_tags) <= 1:
+            return content  # No fragmentation to fix
+        
+        # Group consecutive ordered lists
+        ol_groups = []
+        current_group = []
+        
+        for ol in ol_tags:
+            # Check if this ol is immediately after the previous one (allowing for whitespace)
+            if current_group:
+                prev_ol = current_group[-1]
+                # Get all siblings between previous and current
+                siblings_between = []
+                current = prev_ol.next_sibling
+                while current and current != ol:
+                    if hasattr(current, 'name') and current.name:  # It's a tag
+                        siblings_between.append(current)
+                    current = current.next_sibling
+                
+                # If there are significant elements between, start new group
+                significant_elements = [s for s in siblings_between if hasattr(s, 'name') and s.name in ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'div', 'section']]
+                
+                if significant_elements:
+                    # Start new group
+                    ol_groups.append(current_group)
+                    current_group = [ol]
+                else:
+                    # Continue current group
+                    current_group.append(ol)
+            else:
+                current_group = [ol]
+        
+        # Add the last group
+        if current_group:
+            ol_groups.append(current_group)
+        
+        # Process each group to consolidate numbering
+        for group in ol_groups:
+            if len(group) > 1:
+                # Consolidate the group
+                first_ol = group[0]
+                
+                # Collect all list items from the group
+                all_items = []
+                for ol in group:
+                    items = ol.find_all('li', recursive=False)
+                    all_items.extend(items)
+                
+                # Clear the first ol and add all items
+                first_ol.clear()
+                for item in all_items:
+                    # Clone the item to avoid moving issues
+                    new_item = soup.new_tag('li')
+                    new_item.string = item.get_text()
+                    # Preserve any nested content
+                    for child in item.children:
+                        if hasattr(child, 'name'):
+                            new_item.append(child.extract())
+                        else:
+                            new_item.append(str(child))
+                    first_ol.append(new_item)
+                
+                # Remove the other ols in the group
+                for ol in group[1:]:
+                    ol.decompose()
+        
+        return str(soup)
+        
+    except Exception as e:
+        print(f"⚠️ Error in fix_fragmented_ordered_lists: {e}")
+        # Return original content if there's an error
+        return content
+
 def add_missing_images(content: str, images: list) -> str:
     """Add missing images at appropriate locations"""
     import re

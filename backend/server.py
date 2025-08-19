@@ -1861,45 +1861,90 @@ Source content to base article on:
         return f"<h2>Error</h2><p>Could not generate content: {e}</p>"
 
 async def apply_quality_fixes(content: str) -> str:
-    """Apply comprehensive quality fixes to eliminate common issues"""
+    """Apply comprehensive quality fixes to eliminate ALL common issues"""
     try:
         from bs4 import BeautifulSoup
         
-        # Fix 1: Advanced text deduplication using BeautifulSoup for precise HTML handling
+        print(f"🔧 APPLYING ENHANCED QUALITY FIXES to content: {len(content)} chars")
+        
+        # Fix 1: ENHANCED text deduplication using multiple approaches
+        
+        # APPROACH 1: Fix immediate word/phrase duplications (most common pattern)
+        content = re.sub(r'(\b\w+(?:\s+\w+){0,5})\1+', r'\1', content, flags=re.IGNORECASE)
+        
+        # APPROACH 2: Fix sentence-level duplications  
+        content = re.sub(r'([.!?])\s*\1+', r'\1', content)
+        
+        # APPROACH 3: BeautifulSoup precision cleaning for HTML list items
         soup = BeautifulSoup(content, 'html.parser')
         
-        # Fix duplicated content in list items
+        # Enhanced list item deduplication
         for li in soup.find_all('li'):
-            text = li.get_text()
-            # Remove sentence-level duplication (e.g., "Text.Text." patterns)
-            sentences = re.split(r'(?<=[.!?])\s*', text)
-            unique_sentences = []
-            seen = set()
-            for sentence in sentences:
-                clean_sentence = sentence.strip()
-                if clean_sentence and clean_sentence not in seen:
-                    seen.add(clean_sentence)
-                    unique_sentences.append(clean_sentence)
+            original_text = li.get_text()
             
-            if len(unique_sentences) > 0:
-                li.string = ' '.join(unique_sentences)
+            # Split by common punctuation and deduplicate parts
+            parts = re.split(r'([.!?:;])', original_text)
+            cleaned_parts = []
+            seen_parts = set()
+            
+            for part in parts:
+                clean_part = part.strip()
+                if clean_part and clean_part not in seen_parts:
+                    seen_parts.add(clean_part)
+                    cleaned_parts.append(part)
+                elif clean_part in ['.', '!', '?', ':', ';']:  # Keep punctuation
+                    cleaned_parts.append(part)
+            
+            cleaned_text = ''.join(cleaned_parts).strip()
+            
+            # Additional deduplication for common patterns
+            # Fix "TextText" without spaces
+            cleaned_text = re.sub(r'(\b\w+)(\1+)', r'\1', cleaned_text, flags=re.IGNORECASE)
+            
+            # Fix "Text Text" repetitions
+            words = cleaned_text.split()
+            unique_words = []
+            i = 0
+            while i < len(words):
+                if i < len(words) - 1 and words[i].lower() == words[i + 1].lower():
+                    unique_words.append(words[i])
+                    i += 2  # Skip the duplicate
+                else:
+                    unique_words.append(words[i])
+                    i += 1
+            
+            final_text = ' '.join(unique_words)
+            
+            if final_text != original_text and final_text.strip():
+                print(f"🔧 Fixed list item duplication: '{original_text[:50]}...' → '{final_text[:50]}...'")
+                if li.string:
+                    li.string = final_text
+                else:
+                    li.clear()
+                    li.append(final_text)
         
-        # Fix duplicated content in paragraphs
+        # Enhanced paragraph deduplication
         for p in soup.find_all('p'):
-            text = p.get_text()
-            sentences = re.split(r'(?<=[.!?])\s*', text)
-            unique_sentences = []
-            seen = set()
-            for sentence in sentences:
-                clean_sentence = sentence.strip()
-                if clean_sentence and clean_sentence not in seen:
-                    seen.add(clean_sentence)
-                    unique_sentences.append(clean_sentence)
+            original_text = p.get_text()
             
-            if len(unique_sentences) > 0:
-                # Preserve any inner HTML tags by replacing just the text content
+            # Apply same deduplication logic for paragraphs
+            words = original_text.split()
+            unique_words = []
+            i = 0
+            while i < len(words):
+                if i < len(words) - 1 and words[i].lower() == words[i + 1].lower():
+                    unique_words.append(words[i])
+                    i += 2
+                else:
+                    unique_words.append(words[i])
+                    i += 1
+            
+            final_text = ' '.join(unique_words)
+            
+            if final_text != original_text and final_text.strip():
+                print(f"🔧 Fixed paragraph duplication: '{original_text[:50]}...' → '{final_text[:50]}...'")
                 if p.string:
-                    p.string = ' '.join(unique_sentences)
+                    p.string = final_text
         
         content = str(soup)
         
@@ -1907,15 +1952,16 @@ async def apply_quality_fixes(content: str) -> str:
         content = re.sub(r'<li>\s*</li>', '', content)  # Remove empty list items
         content = re.sub(r'<p>\s*</p>', '', content)    # Remove empty paragraphs
         
-        # Fix 3: Fix broken UI references (common in generated content)
+        # Fix 3: Enhanced broken UI references fixing
         content = re.sub(r'click\s+\.\s*', 'click the button. ', content, flags=re.IGNORECASE)
         content = re.sub(r'click\s+to\s+\.\s*', 'click the option. ', content, flags=re.IGNORECASE)
         content = re.sub(r'navigate to\s+\.\s*', 'navigate to the section. ', content, flags=re.IGNORECASE)
+        content = re.sub(r'Go to the\s+\.\s*', 'Go to the console. ', content, flags=re.IGNORECASE)
         
         # Fix 4: Consolidate fragmented ordered lists
         content = re.sub(r'</ol>\s*<ol[^>]*>', '</ol>\n<ol class="doc-list doc-list-ordered">', content)
         
-        # Fix 5: Fix broken image references to placeholder content
+        # Fix 5: Enhanced broken image references to placeholder content
         content = re.sub(r'<img[^>]*src="figure\d+\.png"[^>]*>', 
                         '<div class="image-placeholder"><p><em>Image placeholder - Visual content referenced in original document</em></p></div>', 
                         content)
@@ -1928,7 +1974,6 @@ async def apply_quality_fixes(content: str) -> str:
         content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list"', content)
         
         # Fix 7: Clean up excessive whitespace while preserving code blocks
-        # Split by code blocks to preserve their internal formatting
         parts = re.split(r'(<pre[^>]*>.*?</pre>)', content, flags=re.DOTALL | re.IGNORECASE)
         cleaned_parts = []
         
@@ -1943,20 +1988,29 @@ async def apply_quality_fixes(content: str) -> str:
         
         content = ''.join(cleaned_parts)
         
-        # Fix 8: Remove HTML document structure if accidentally included
+        # Fix 8: Final cleanup of HTML document structure
         content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
         content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE)
         content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
         
+        print(f"✅ Quality fixes applied successfully: {len(content)} chars final")
         return content.strip()
         
     except Exception as e:
         print(f"❌ Error applying quality fixes: {e}")
-        # Fallback to basic regex fixes if BeautifulSoup fails
-        content = re.sub(r'(\b\w+(?:\s+\w+)*)\.\1\.', r'\1.', content)
-        content = re.sub(r'<li>\s*</li>', '', content)
-        content = re.sub(r'<p>\s*</p>', '', content)
-        return content
+        import traceback
+        traceback.print_exc()
+        
+        # Enhanced fallback with better regex patterns
+        try:
+            # Basic deduplication patterns
+            content = re.sub(r'(\b\w+(?:\s+\w+){0,3})\1+', r'\1', content, flags=re.IGNORECASE)
+            content = re.sub(r'<li>\s*</li>', '', content)
+            content = re.sub(r'<p>\s*</p>', '', content)
+            return content
+        except:
+            return content
 
 async def add_enhanced_cross_references(generated_articles: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Placeholder for enhanced cross-reference addition"""

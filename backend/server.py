@@ -1765,9 +1765,12 @@ async def enhanced_format_preservation(content: str) -> str:
         # 3. Optimize table formatting for editor
         content = re.sub(r'<table[^>]*>', '<table class="doc-table">', content)
         
-        # 4. Enhance list formatting 
+        # 4. Enhance list formatting and fix fragmented ordered lists
         content = re.sub(r'<ul[^>]*>', '<ul class="doc-list">', content)
         content = re.sub(r'<ol[^>]*>', '<ol class="doc-list doc-list-ordered">', content)
+        
+        # CRITICAL FIX: Consolidate fragmented ordered lists into continuous numbering
+        content = fix_fragmented_ordered_lists(content)
         
         # 5. Clean inline code formatting
         content = re.sub(r'<code>([^<]+)</code>', r'<code class="inline-code">\1</code>', content)

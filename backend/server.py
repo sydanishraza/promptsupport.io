@@ -2347,31 +2347,11 @@ async def create_simple_moderate_split(content: str, metadata: Dict[str, Any], a
             }
             articles.append(overview)
         
-        # 2. Main content article with actual comprehensive content
-        main_system = f"""Create the main comprehensive content article for this {content_type}.
-
-REQUIREMENTS:
-1. Include ALL the main content, procedures, and details from the source
-2. Preserve code blocks, lists, tables, and technical formatting
-3. Maintain step-by-step procedures and context
-4. Use proper HTML formatting with rich elements
-5. Include practical examples and technical details
-6. Do NOT create placeholder content - use the actual document content
-
-CRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly for WYSIWYG editors.
-
-Use HTML semantic structure and preserve all formatting elements."""
-
-        main_response = await call_llm_with_fallback(
-            system_message=main_system,
-            user_message=f"Create a comprehensive main content article from this content. Include ALL details, code examples, and procedures:\n\n{content}"
-        )
+        # 2. Main content article using enhanced content generation
+        print(f"📚 Creating enhanced main content article using high-quality content generation")
+        main_content = await create_high_quality_article_content(content, "complete_guide", metadata)
         
-        if main_response:
-            # CRITICAL FIX: Apply WYSIWYG cleaning before format preservation
-            cleaned_main = clean_article_html_content(main_response)
-            main_content = await enhanced_format_preservation(cleaned_main)
-        else:
+        if not main_content or len(main_content.strip()) < 100:
             # Emergency fallback - at least include some actual content
             content_preview = content[:2000] if len(content) > 2000 else content
             main_content = f"<h2>{doc_title} - Complete Guide</h2>\n<div class=\"content-section\">{content_preview}</div>"

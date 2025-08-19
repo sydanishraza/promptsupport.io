@@ -10992,8 +10992,16 @@ def clean_article_html_content(content: str) -> str:
     """Clean HTML content to remove document structure while preserving rich formatting - WYSIWYG OPTIMIZED"""
     import re
     
-    # CRITICAL FIX: Remove any full-article code block wrapping that breaks WYSIWYG editors
-    # This is the main issue preventing WYSIWYG editor compatibility
+    # CRITICAL FIX 1: Remove markdown HTML code block wrappers that break WYSIWYG editors
+    if content.strip().startswith('```html'):
+        print(f"🚨 CRITICAL FIX: Removing markdown HTML code block wrapper")
+        content = content.strip()
+        # Remove opening ```html
+        content = re.sub(r'^```html\s*', '', content)
+        # Remove closing ```
+        content = re.sub(r'\s*```$', '', content)
+    
+    # CRITICAL FIX 2: Remove any full-article code block wrapping that breaks WYSIWYG editors
     if content.strip().startswith('<pre><code class="language-html">') and content.strip().endswith('</code></pre>'):
         print(f"🚨 CRITICAL FIX: Removing WYSIWYG-breaking code block wrapper")
         content = content.strip()
@@ -11002,6 +11010,12 @@ def clean_article_html_content(content: str) -> str:
     
     # Remove any other variations of full-article wrapping
     content = re.sub(r'^<pre><code[^>]*>(.*)</code></pre>$', r'\1', content, flags=re.DOTALL)
+    
+    # ENHANCED FIX 3: Remove HTML document structure elements
+    content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE) 
+    content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
     
     # First apply the existing HTML wrapper cleaning
     content = clean_html_wrappers(content)

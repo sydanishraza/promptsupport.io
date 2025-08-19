@@ -1874,11 +1874,12 @@ CRITICAL COMPLETE GUIDE REQUIREMENTS:
 3. Use enhanced WYSIWYG editor features
 4. Create comprehensive, professional content
 
-ENHANCED WYSIWYG FEATURES TO USE:
-- Mini-TOC with anchor links: <div class="mini-toc"><h3>Contents</h3><ul><li><a href="#setup">Setup</a></li></ul></div>
+ENHANCED WYSIWYG FEATURES TO USE (MANDATORY):
+- Mini-TOC with anchor links: <div class="mini-toc"><h3>📋 Contents</h3><ul><li><a href="#setup">Setup & Prerequisites</a></li><li><a href="#implementation">Implementation</a></li><li><a href="#troubleshooting">Troubleshooting</a></li></ul></div>
 - Callouts: <div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">Important information here</div></div>
 - Warning callouts: <div class="callout callout-warning"><div class="callout-title">⚠️ Warning</div><div class="callout-content">Warning text</div></div>
 - Tip callouts: <div class="callout callout-tip"><div class="callout-title">💡 Tip</div><div class="callout-content">Helpful tip</div></div>
+- Info callouts: <div class="callout callout-info"><div class="callout-title">ℹ️ Info</div><div class="callout-content">Additional information</div></div>
 
 ORDERED LIST REQUIREMENTS:
 - Use single <ol> tags with continuous numbering

@@ -917,7 +917,7 @@ async def add_cross_references_and_related_links(articles: List[Dict[str, Any]])
                 
                 for related in related_articles:
                     icon = {'overview': '📖', 'how-to': '🛠️', 'faq': '❓', 'reference': '📚'}.get(related['type'], '📄')
-                    related_links_html += f'<li>{icon} <a href="/content-library/article/{related["id"]}" target="_blank"><strong>{related["title"]}</strong></a> <em>({related["type"]})</em></li>\n'
+                    related_links_html += f'<li>{icon} <a href="/content-library/article/{related["id"]}" target="_blank"><strong>{related["title"]}</strong></a></li>\n'
                 
                 related_links_html += '</ul>\n</div>'
                 

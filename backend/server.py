@@ -3256,7 +3256,7 @@ async def add_related_links_to_articles(created_articles: list) -> list:
                 related_title = related_article.get('title', 'Related Article')
                 related_stage = related_article.get('metadata', {}).get('stage_type', 'general')
                 related_icon = get_article_type_icon(related_stage)
-                thematic_links.append(f'<li>{related_icon} <a href="/content-library/article/{related_id}" target="_blank">{related_title}</a> <em>({related_stage})</em></li>')
+                thematic_links.append(f'<li>{related_icon} <a href="/content-library/article/{related_id}" target="_blank">{related_title}</a></li>')
             
             # ENHANCEMENT 3: Content Library Cross-References (Topic Similarity)
             library_links = []

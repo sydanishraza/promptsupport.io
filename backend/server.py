@@ -2195,32 +2195,81 @@ async def add_enhanced_cross_references(generated_articles: List[Dict[str, Any]]
     return await add_cross_references_and_related_links(generated_articles)
 
 async def create_overview_article_with_sections(content: str, sections: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """Placeholder for overview article with sections"""
-    # Simple implementation for now
-    doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+    """Create overview article with sections - only if no Introduction section exists"""
     
-    overview_content = f"<h2>📖 {doc_title} - Overview</h2>\n"
-    overview_content += "<p>This guide covers the following sections:</p>\n<ul>\n"
+    # Check if there's already an Introduction section to avoid duplication
+    has_intro = any(
+        section.get('title', '').lower() in ['introduction', 'overview', 'getting started', 'intro'] 
+        for section in sections
+    )
     
-    for section in sections:
-        overview_content += f"<li><strong>{section.get('title', 'Section')}</strong>: {section.get('description', 'Content section')}</li>\n"
+    if has_intro:
+        log_test_result("🚫 SKIPPING overview creation - Introduction section already exists in sections")
+        return None
     
-    overview_content += "</ul>"
+    doc_title = clean_document_title(metadata.get('original_filename', 'Guide'))
+    
+    # Create mini-TOC for sections
+    toc_items = []
+    for i, section in enumerate(sections):
+        section_title = section.get('title', f'Section {i+1}')
+        section_id = section_title.lower().replace(' ', '-').replace('&', 'and')
+        toc_items.append(f'<li><a href="#section-{section_id}">{section_title}</a></li>')
+    
+    mini_toc = f"""<div class="mini-toc">
+<h3>📋 Guide Contents</h3>
+<ul>
+{chr(10).join(toc_items)}
+</ul>
+</div>"""
+    
+    overview_content = f"""{mini_toc}
+
+<h2 id="guide-overview">📖 {doc_title} - Guide Overview</h2>
+
+<div class="callout callout-info">
+<div class="callout-title">ℹ️ About This Guide</div>
+<div class="callout-content">This comprehensive guide covers all aspects of <strong>{doc_title}</strong> with detailed sections for easy navigation and reference.</div>
+</div>
+
+<p>The content is organized into <strong>{len(sections)} focused sections</strong>:</p>
+
+<div class="sections-overview">
+"""
+    
+    for i, section in enumerate(sections):
+        section_title = section.get('title', f'Section {i+1}')
+        section_desc = section.get('description', 'Content section with detailed information')
+        section_id = section_title.lower().replace(' ', '-').replace('&', 'and')
+        
+        overview_content += f"""
+<h3 id="section-{section_id}">{i+1}. {section_title}</h3>
+<p>{section_desc}</p>"""
+    
+    overview_content += """
+</div>
+
+<div class="callout callout-tip">
+<div class="callout-title">💡 Navigation Guide</div>
+<div class="callout-content">Use the table of contents above to jump directly to any section that interests you most.</div>
+</div>"""
     
     return {
         "id": str(uuid.uuid4()),
-        "title": f"{doc_title} - Overview",
+        "title": f"{doc_title} - Guide Overview",
         "content": overview_content,
         "status": "published",
         "article_type": "overview",
         "source_document": metadata.get("original_filename", "Unknown"),
-        "tags": ["overview", "moderate_split"],
+        "tags": ["overview", "moderate_split", "navigation"],
         "priority": "high",
         "created_at": datetime.utcnow(),
         "metadata": {
             "granularity_level": "moderate",
             "processing_approach": "moderate_split",
             "article_sequence": 1,
+            "has_mini_toc": True,
+            "sections_count": len(sections),
             **metadata
         }
     }

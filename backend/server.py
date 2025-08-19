@@ -1910,8 +1910,16 @@ QUALITY REQUIREMENTS:
 - Complete sentences and clear explanations
 - Professional technical writing style
 - Comprehensive coverage of all aspects
+- Include contextual cross-references within content using: <a href="#section-id" class="cross-ref">related topic</a>
+- Add "See also" references where relevant: <p class="see-also"><strong>See also:</strong> <a href="#troubleshooting" class="cross-ref">Troubleshooting section</a> for common issues.</p>
 
-Create detailed, professional content that demonstrates all WYSIWYG editor capabilities."""
+MANDATORY CROSS-REFERENCE INTEGRATION:
+- Add internal links to related sections within the same article
+- Reference other sections when explaining complex topics
+- Use contextual linking for better navigation
+- Include "See also" paragraphs at the end of major sections
+
+Create detailed, professional content with comprehensive internal linking and cross-references."""
 
         # Generate high-quality content
         response = await call_llm_with_fallback(

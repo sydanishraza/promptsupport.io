@@ -292,6 +292,38 @@ This comprehensive Google Maps JavaScript API tutorial covers everything from ba
 Remember to always test your implementation thoroughly and follow Google's usage policies and guidelines for the best user experience.
 """
 
+def check_existing_articles():
+    """Check if there are existing articles in Content Library to test"""
+    try:
+        log_test_result("🔍 Checking existing articles in Content Library...")
+        response = requests.get(f"{API_BASE}/content-library", timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            total_articles = data.get('total', 0)
+            articles = data.get('articles', [])
+            
+            log_test_result(f"📚 Found {total_articles} existing articles in Content Library")
+            
+            if total_articles > 0:
+                # Show sample of articles
+                for i, article in enumerate(articles[:3]):
+                    title = article.get('title', 'Untitled')[:50]
+                    article_type = article.get('article_type', 'unknown')
+                    log_test_result(f"   Article {i+1}: {title}... (Type: {article_type})")
+                
+                return True, articles
+            else:
+                log_test_result("📝 No existing articles found - will need to process content first")
+                return False, []
+        else:
+            log_test_result(f"❌ Failed to check Content Library: Status {response.status_code}", "ERROR")
+            return False, []
+            
+    except Exception as e:
+        log_test_result(f"❌ Error checking existing articles: {e}", "ERROR")
+        return False, []
+
 def process_test_content_and_verify_fixes():
     """Process Google Maps API Tutorial content and verify all systematic fixes"""
     try:

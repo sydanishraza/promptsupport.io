@@ -49,73 +49,68 @@ def generate_test_content_and_process():
         log_test_result("🎯 GENERATING FRESH CONTENT FOR QUALITY FIXES TESTING", "CRITICAL")
         
         # Create comprehensive test content that historically caused issues
-        test_content = """
-        Google Maps JavaScript API Tutorial - Complete Implementation Guide
-        
-        Introduction to Google Maps API
-        The Google Maps JavaScript API is a powerful tool for integrating interactive maps into web applications. This comprehensive guide covers everything you need to know about implementing Google Maps in your projects.
-        
-        Getting Started with Google Maps API
-        First, you need to obtain an API key from Google Cloud Console. Navigate to the Google Cloud Console and create a new project or select an existing one. Enable the Maps JavaScript API for your project.
-        
-        Setting Up Your Development Environment
-        Create a new HTML file and include the Google Maps JavaScript API script. The basic structure should include proper HTML5 doctype and meta tags for responsive design.
-        
-        Basic Map Implementation
-        Here's how to create a basic map:
-        
-        ```javascript
-        function initMap() {
-            const map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 4,
-                center: { lat: -25.344, lng: 131.036 },
-            });
-        }
-        ```
-        
-        Advanced Map Features
-        You can add markers, info windows, and custom styling to enhance your maps. Markers help identify specific locations on your map.
-        
-        Adding Markers to Your Map
-        Markers are used to identify locations on a map. You can customize markers with different icons and colors.
-        
-        ```javascript
-        const marker = new google.maps.Marker({
-            position: { lat: -25.344, lng: 131.036 },
-            map: map,
-            title: "Hello World!"
-        });
-        ```
-        
-        Customizing Map Styles
-        Google Maps allows extensive customization through styling options. You can change colors, hide elements, and create unique map themes.
-        
-        Handling Map Events
-        Maps support various events like click, zoom, and drag. Event listeners allow you to respond to user interactions.
-        
-        Best Practices and Performance
-        Optimize your maps for better performance by limiting the number of markers and using clustering for large datasets.
-        
-        Troubleshooting Common Issues
-        Common issues include API key problems, quota exceeded errors, and loading failures. Always check the browser console for error messages.
-        """
+        test_content = """Google Maps JavaScript API Tutorial - Complete Implementation Guide
+
+Introduction to Google Maps API
+The Google Maps JavaScript API is a powerful tool for integrating interactive maps into web applications. This comprehensive guide covers everything you need to know about implementing Google Maps in your projects.
+
+Getting Started with Google Maps API
+First, you need to obtain an API key from Google Cloud Console. Navigate to the Google Cloud Console and create a new project or select an existing one. Enable the Maps JavaScript API for your project.
+
+Setting Up Your Development Environment
+Create a new HTML file and include the Google Maps JavaScript API script. The basic structure should include proper HTML5 doctype and meta tags for responsive design.
+
+Basic Map Implementation
+Here's how to create a basic map:
+
+function initMap() {
+    const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 4,
+        center: { lat: -25.344, lng: 131.036 },
+    });
+}
+
+Advanced Map Features
+You can add markers, info windows, and custom styling to enhance your maps. Markers help identify specific locations on your map.
+
+Adding Markers to Your Map
+Markers are used to identify locations on a map. You can customize markers with different icons and colors.
+
+const marker = new google.maps.Marker({
+    position: { lat: -25.344, lng: 131.036 },
+    map: map,
+    title: "Hello World!"
+});
+
+Customizing Map Styles
+Google Maps allows extensive customization through styling options. You can change colors, hide elements, and create unique map themes.
+
+Handling Map Events
+Maps support various events like click, zoom, and drag. Event listeners allow you to respond to user interactions.
+
+Best Practices and Performance
+Optimize your maps for better performance by limiting the number of markers and using clustering for large datasets.
+
+Troubleshooting Common Issues
+Common issues include API key problems, quota exceeded errors, and loading failures. Always check the browser console for error messages."""
         
         log_test_result(f"📝 Created test content: {len(test_content)} characters")
         
-        # Process content through Knowledge Engine
-        log_test_result("📤 Processing content through Knowledge Engine...")
+        # Create a temporary text file
+        temp_file = "/tmp/google_maps_tutorial_test.txt"
+        with open(temp_file, 'w') as f:
+            f.write(test_content)
         
-        # Use text processing endpoint
-        payload = {
-            "content": test_content,
-            "filename": "google_maps_tutorial_test.txt"
-        }
+        log_test_result("📤 Processing content through Knowledge Engine file upload...")
         
-        start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
-                               json=payload, 
-                               timeout=300,
-                               headers={'Content-Type': 'application/json'})
+        # Use file upload endpoint
+        with open(temp_file, 'rb') as f:
+            files = {'file': ('google_maps_tutorial_test.txt', f, 'text/plain')}
+            
+            start_time = time.time()
+            response = requests.post(f"{API_BASE}/content/upload", 
+                                   files=files, 
+                                   timeout=300)
         
         if response.status_code != 200:
             log_test_result(f"❌ Content processing failed: Status {response.status_code}", "ERROR")
@@ -157,10 +152,13 @@ def generate_test_content_and_process():
                         articles_generated = status_data.get('articles_generated', 0)
                         log_test_result(f"📄 Articles Generated: {articles_generated}")
                         
+                        # Clean up temp file
+                        os.remove(temp_file)
                         return True, []
                         
                     elif status == 'failed':
                         log_test_result(f"❌ Processing failed: {status_data.get('error', 'Unknown error')}", "ERROR")
+                        os.remove(temp_file)
                         return False, []
                     
                     time.sleep(5)

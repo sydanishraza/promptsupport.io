@@ -2320,34 +2320,13 @@ async def create_simple_moderate_split(content: str, metadata: Dict[str, Any], a
         if has_intro:
             print("🚫 SKIPPING overview creation in simple moderate split - Introduction section already exists in content")
         
-        # 1. Overview article with actual overview content (only if no introduction exists)
-        overview_system = f"""Create a comprehensive overview article for this {content_type} content.
-
-REQUIREMENTS:
-1. Create a proper introduction that explains what the document covers
-2. Include key highlights and main topics
-3. Provide a clear roadmap of what readers will learn
-4. Use proper HTML formatting with headings, lists, and structure
-5. Include actual details from the content, not just placeholders
-
-CRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly for WYSIWYG editors.
-
-Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em)."""
-
-        # Only create overview article if no introduction section exists
-        if not has_intro:
-            overview_response = await call_llm_with_fallback(
-                system_message=overview_system,
-                user_message=f"Create a comprehensive overview article from this content:\n\n{content[:8000]}"
-            )
-            
-            if overview_response:
-                # CRITICAL FIX: Apply WYSIWYG cleaning before format preservation
-                cleaned_overview = clean_article_html_content(overview_response)
-                overview_content = await enhanced_format_preservation(cleaned_overview)
-            else:
-                # Emergency fallback with some actual content
-                overview_content = f"<h2>{doc_title} - Overview</h2>\n<p>This comprehensive guide provides detailed information about {doc_title.lower()}.</p>\n<p>The content includes step-by-step instructions, technical details, and practical examples.</p>"
+        # 1. Overview article using enhanced content generation
+        print(f"📖 Creating enhanced overview article using high-quality content generation")
+        overview_content = await create_high_quality_article_content(content, "overview", metadata)
+        
+        if not overview_content or len(overview_content.strip()) < 100:
+            # Emergency fallback with some actual content
+            overview_content = f"<h2>{doc_title} - Overview</h2>\n<p>This comprehensive guide provides detailed information about {doc_title.lower()}.</p>\n<p>The content includes step-by-step instructions, technical details, and practical examples.</p>"
             
             overview = {
                 "id": str(uuid.uuid4()),

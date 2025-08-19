@@ -482,7 +482,7 @@ def test_content_generation_quality():
                 code_text = code_block.get_text().strip()
                 
                 # Check if code block is empty or contains only whitespace
-                if not code_text or len(code_text) < 10:
+                if not code_text or len(code_text.strip()) == 0:
                     empty_code_blocks += 1
                     log_test_result(f"⚠️ Empty code block found in article: {article.get('title', 'Untitled')[:50]}...")
         

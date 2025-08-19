@@ -76,6 +76,9 @@ def process_test_content(content_text, content_name):
                                    data=data,
                                    timeout=300)  # 5 minute timeout
         
+        # Clean up temp file
+        os.remove(temp_filename)
+        
         if response.status_code != 200:
             log_test_result(f"❌ Processing failed: Status {response.status_code}", "ERROR")
             log_test_result(f"Response: {response.text[:500]}")

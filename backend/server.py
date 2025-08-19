@@ -2310,7 +2310,17 @@ async def create_simple_moderate_split(content: str, metadata: Dict[str, Any], a
         doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
         content_type = analysis['content_classification']['content_type']
         
-        # 1. Overview article with actual overview content
+        # Check if content already has introduction/overview sections to avoid duplication
+        has_intro = any(
+            keyword in content.lower() 
+            for keyword in ['## introduction', '## overview', '## getting started', '## intro', 
+                           '<h2>introduction', '<h2>overview', '<h2>getting started', '<h2>intro']
+        )
+        
+        if has_intro:
+            print("🚫 SKIPPING overview creation in simple moderate split - Introduction section already exists in content")
+        
+        # 1. Overview article with actual overview content (only if no introduction exists)
         overview_system = f"""Create a comprehensive overview article for this {content_type} content.
 
 REQUIREMENTS:

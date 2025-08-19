@@ -2334,37 +2334,39 @@ CRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTM
 
 Use HTML semantic structure (h2, h3, p, ul, ol, li, strong, em)."""
 
-        overview_response = await call_llm_with_fallback(
-            system_message=overview_system,
-            user_message=f"Create a comprehensive overview article from this content:\n\n{content[:8000]}"
-        )
-        
-        if overview_response:
-            # CRITICAL FIX: Apply WYSIWYG cleaning before format preservation
-            cleaned_overview = clean_article_html_content(overview_response)
-            overview_content = await enhanced_format_preservation(cleaned_overview)
-        else:
-            # Emergency fallback with some actual content
-            overview_content = f"<h2>{doc_title} - Overview</h2>\n<p>This comprehensive guide provides detailed information about {doc_title.lower()}.</p>\n<p>The content includes step-by-step instructions, technical details, and practical examples.</p>"
-        
-        overview = {
-            "id": str(uuid.uuid4()),
-            "title": f"{doc_title} - Overview",
-            "content": overview_content,
-            "status": "published",
-            "article_type": "overview",
-            "source_document": metadata.get("original_filename", "Unknown"),
-            "tags": ["overview", "moderate_split", content_type],
-            "priority": "high",
-            "created_at": datetime.utcnow(),
-            "metadata": {
-                "article_sequence": 1, 
-                "content_type": content_type,
-                "processing_approach": "simple_moderate_split",
-                **metadata
+        # Only create overview article if no introduction section exists
+        if not has_intro:
+            overview_response = await call_llm_with_fallback(
+                system_message=overview_system,
+                user_message=f"Create a comprehensive overview article from this content:\n\n{content[:8000]}"
+            )
+            
+            if overview_response:
+                # CRITICAL FIX: Apply WYSIWYG cleaning before format preservation
+                cleaned_overview = clean_article_html_content(overview_response)
+                overview_content = await enhanced_format_preservation(cleaned_overview)
+            else:
+                # Emergency fallback with some actual content
+                overview_content = f"<h2>{doc_title} - Overview</h2>\n<p>This comprehensive guide provides detailed information about {doc_title.lower()}.</p>\n<p>The content includes step-by-step instructions, technical details, and practical examples.</p>"
+            
+            overview = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Overview",
+                "content": overview_content,
+                "status": "published",
+                "article_type": "overview",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["overview", "moderate_split", content_type],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "article_sequence": 1, 
+                    "content_type": content_type,
+                    "processing_approach": "simple_moderate_split",
+                    **metadata
+                }
             }
-        }
-        articles.append(overview)
+            articles.append(overview)
         
         # 2. Main content article with actual comprehensive content
         main_system = f"""Create the main comprehensive content article for this {content_type}.

@@ -2190,11 +2190,56 @@ async def adaptive_granularity_processor(content: str, metadata: Dict[str, Any],
         generated_articles = []
         
         if processing_approach == "unified":
-            # Use existing unified approach but with enhanced analysis
+            # Use enhanced unified approach with high-quality content generation 
             print(f"📄 UNIFIED PROCESSING: Single comprehensive article")
-            unified_article = await enhanced_generate_unified_article(content, metadata, analysis)
-            if unified_article:
-                generated_articles.append(unified_article)
+            
+            # Generate high-quality content with proper formatting
+            article_content = await create_high_quality_article_content(content, "complete_guide", metadata)
+            
+            # Create the complete article object
+            doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
+            
+            unified_article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Complete Guide",
+                "content": article_content,
+                "status": "published",
+                "article_type": "complete_guide",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["complete_guide", "unified", analysis.get('content_classification', {}).get('content_type', 'guide')],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "unified_article": True,
+                    "processing_approach": "unified",
+                    "granularity_level": analysis.get('granularity_decision', {}).get('level', 'shallow'),
+                    "content_type": analysis.get('content_classification', {}).get('content_type', 'guide'),
+                    **metadata
+                }
+            }
+            generated_articles.append(unified_article)
+            
+            # Also create a high-level overview article
+            overview_content = await create_high_quality_article_content(content, "overview", metadata)
+            overview_article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Overview",
+                "content": overview_content,
+                "status": "published", 
+                "article_type": "overview",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["overview", "summary", analysis.get('content_classification', {}).get('content_type', 'guide')],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "overview_article": True,
+                    "processing_approach": "unified_overview",
+                    "granularity_level": analysis.get('granularity_decision', {}).get('level', 'shallow'),
+                    "content_type": analysis.get('content_classification', {}).get('content_type', 'guide'),
+                    **metadata
+                }
+            }
+            generated_articles.append(overview_article)
                 
         elif processing_approach == "shallow_split":
             print(f"📖 SHALLOW SPLIT PROCESSING: 2-3 articles")

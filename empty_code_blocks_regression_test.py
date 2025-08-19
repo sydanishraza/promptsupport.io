@@ -393,116 +393,129 @@ def test_faq_article_code_blocks():
         log_test_result("❓ TESTING FAQ ARTICLE CODE BLOCK PRESERVATION", "CRITICAL")
         
         # Create content that should generate FAQ with code examples
-        faq_content = """
-        Advanced JavaScript Development Guide
-        
-        This guide covers advanced JavaScript concepts and common development patterns.
-        
-        ## Async/Await Patterns
-        
-        Modern JavaScript uses async/await for handling asynchronous operations:
-        
-        ```javascript
-        async function fetchUserData(userId) {
-            try {
-                const response = await fetch(`/api/users/${userId}`);
-                const userData = await response.json();
-                return userData;
-            } catch (error) {
-                console.error('Error fetching user data:', error);
-                throw error;
-            }
-        }
-        ```
-        
-        ## Error Handling Best Practices
-        
-        Implement robust error handling in your applications:
-        
-        ```javascript
-        class APIError extends Error {
-            constructor(message, statusCode) {
-                super(message);
-                this.name = 'APIError';
-                this.statusCode = statusCode;
-            }
-        }
-        
-        function handleAPIError(error) {
-            if (error instanceof APIError) {
-                console.error(`API Error ${error.statusCode}: ${error.message}`);
-            } else {
-                console.error('Unexpected error:', error);
-            }
-        }
-        ```
-        
-        ## Module Patterns
-        
-        Use ES6 modules for better code organization:
-        
-        ```javascript
-        // utils.js
-        export const formatDate = (date) => {
-            return new Intl.DateTimeFormat('en-US').format(date);
+        faq_content = """Advanced JavaScript Development Guide
+
+This guide covers advanced JavaScript concepts and common development patterns.
+
+## Async/Await Patterns
+
+Modern JavaScript uses async/await for handling asynchronous operations:
+
+```javascript
+async function fetchUserData(userId) {
+    try {
+        const response = await fetch(`/api/users/${userId}`);
+        const userData = await response.json();
+        return userData;
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        throw error;
+    }
+}
+```
+
+## Error Handling Best Practices
+
+Implement robust error handling in your applications:
+
+```javascript
+class APIError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.name = 'APIError';
+        this.statusCode = statusCode;
+    }
+}
+
+function handleAPIError(error) {
+    if (error instanceof APIError) {
+        console.error(`API Error ${error.statusCode}: ${error.message}`);
+    } else {
+        console.error('Unexpected error:', error);
+    }
+}
+```
+
+## Module Patterns
+
+Use ES6 modules for better code organization:
+
+```javascript
+// utils.js
+export const formatDate = (date) => {
+    return new Intl.DateTimeFormat('en-US').format(date);
+};
+
+export const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
         };
-        
-        export const debounce = (func, wait) => {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        };
-        
-        // main.js
-        import { formatDate, debounce } from './utils.js';
-        ```
-        
-        ## Testing Patterns
-        
-        Write comprehensive tests for your JavaScript code:
-        
-        ```javascript
-        describe('User Service', () => {
-            test('should fetch user data successfully', async () => {
-                const mockUser = { id: 1, name: 'John Doe' };
-                fetch.mockResolvedValueOnce({
-                    ok: true,
-                    json: async () => mockUser,
-                });
-                
-                const result = await fetchUserData(1);
-                expect(result).toEqual(mockUser);
-            });
-            
-            test('should handle fetch errors', async () => {
-                fetch.mockRejectedValueOnce(new Error('Network error'));
-                
-                await expect(fetchUserData(1)).rejects.toThrow('Network error');
-            });
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
+
+// main.js
+import { formatDate, debounce } from './utils.js';
+```
+
+## Testing Patterns
+
+Write comprehensive tests for your JavaScript code:
+
+```javascript
+describe('User Service', () => {
+    test('should fetch user data successfully', async () => {
+        const mockUser = { id: 1, name: 'John Doe' };
+        fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockUser,
         });
-        ```
         
-        This guide provides comprehensive examples of modern JavaScript development patterns with proper error handling and testing.
-        """
+        const result = await fetchUserData(1);
+        expect(result).toEqual(mockUser);
+    });
+    
+    test('should handle fetch errors', async () => {
+        fetch.mockRejectedValueOnce(new Error('Network error'));
         
-        # Process the content
-        log_test_result("📤 Processing JavaScript guide content for FAQ generation...")
+        await expect(fetchUserData(1)).rejects.toThrow('Network error');
+    });
+});
+```
+
+This guide provides comprehensive examples of modern JavaScript development patterns with proper error handling and testing."""
         
-        response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": faq_content},
-            timeout=300
-        )
+        # Create a temporary text file with the content
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+            temp_file.write(faq_content)
+            temp_file_path = temp_file.name
         
-        if response.status_code != 200:
-            log_test_result(f"❌ Content processing failed: Status {response.status_code}", "ERROR")
-            return False
+        try:
+            # Process the content
+            log_test_result("📤 Uploading JavaScript guide content for FAQ generation...")
+            
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('javascript_guide.txt', f, 'text/plain')}
+                metadata = json.dumps({"source": "regression_test"})
+                
+                response = requests.post(
+                    f"{API_BASE}/content/upload",
+                    files=files,
+                    data={'metadata': metadata},
+                    timeout=300
+                )
+            
+            if response.status_code != 200:
+                log_test_result(f"❌ Content upload failed: Status {response.status_code}", "ERROR")
+                return False
+        finally:
+            # Clean up temp file
+            os.unlink(temp_file_path)
         
         process_data = response.json()
         job_id = process_data.get('job_id')

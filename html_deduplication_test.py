@@ -48,39 +48,39 @@ def generate_test_content_and_process():
         
         # Create comprehensive test content that would trigger both issues
         test_content = """
-        Google Cloud Platform Complete Guide
+        Advanced Cloud Computing Platform Guide
         
-        Getting Started with Google Cloud Platform
+        Getting Started with Advanced Cloud Computing
         
-        A Google Cloud Platform account is essential for cloud computing. A Google Cloud Platform account provides access to all services.
+        A cloud computing platform account is essential for modern development. A cloud computing platform account provides access to all services.
         
-        Step 1: Create Account
-        First, you need to obtain an API key from Google Cloud Console. First, you need to obtain an API key from Google Cloud Console.
+        Step 1: Create Your Account
+        First, you need to obtain an API key from the cloud console. First, you need to obtain an API key from the cloud console.
         
-        Step 2: Setup Configuration
+        Step 2: Configure Your Environment
         The configuration process involves multiple steps. The configuration process involves multiple steps.
         
         Code Example:
         ```javascript
-        function initializeGCP() {
-            console.log("Initializing GCP");
-            return gcp.initialize();
+        function initializeCloud() {
+            console.log("Initializing Cloud Platform");
+            return cloud.initialize();
         }
         ```
         
         FAQ Section
         
-        Q: How do I get started?
+        Q: How do I get started with the platform?
         A: Getting started is simple. Getting started is simple. You need to create an account first.
         
-        Q: What are the requirements?
+        Q: What are the system requirements?
         A: The requirements include a valid email address. The requirements include a valid email address.
         
-        Advanced Configuration
+        Advanced Configuration Options
         
         For advanced users, the system provides extensive customization options. For advanced users, the system provides extensive customization options.
         
-        List of Features:
+        List of Available Features:
         1. Cloud Storage - provides unlimited storage capacity
         2. Compute Engine - provides unlimited storage capacity  
         3. App Engine - provides scalable web applications

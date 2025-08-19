@@ -2645,30 +2645,15 @@ async def create_shallow_split_articles(content: str, metadata: Dict[str, Any], 
         content_type = analysis['content_classification']['content_type']
         doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
         
-        # 1. Overview Article
-        overview_system = f"""Create a comprehensive overview article that introduces the main topic and provides navigation.
-
-CONTENT TYPE: {content_type}
-APPROACH: Shallow split (2-3 articles total)
-
-Create an overview that:
-1. Introduces the main topic
-2. Explains what readers will learn
-3. Provides a clear roadmap of content
-4. Includes key highlights and benefits
-
-Use proper HTML formatting with h2/h3 headings, lists, and rich formatting."""
-
-        overview_response = await call_llm_with_fallback(
-            system_message=overview_system,
-            user_message=f"Create an overview article from this content:\n\n{content[:10000]}"
-        )
+        # 1. Overview Article using enhanced content generation
+        print(f"📖 Creating enhanced overview article for shallow split")
+        overview_content_html = await create_high_quality_article_content(content, "overview", metadata)
         
-        if overview_response:
+        if overview_content_html and len(overview_content_html.strip()) > 100:
             overview_article = {
                 "id": str(uuid.uuid4()),
                 "title": f"{doc_title} - Overview",
-                "content": await enhanced_format_preservation(overview_response),
+                "content": overview_content_html,
                 "status": "published",
                 "article_type": "overview",
                 "source_document": metadata.get("original_filename", "Unknown"),

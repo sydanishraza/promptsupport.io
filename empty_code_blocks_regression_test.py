@@ -102,148 +102,161 @@ def test_google_maps_api_tutorial_content():
         log_test_result("🗺️ TESTING GOOGLE MAPS API TUTORIAL CODE BLOCK PRESERVATION", "CRITICAL")
         
         # Create comprehensive Google Maps API tutorial content with code examples
-        google_maps_content = """
-        Google Maps JavaScript API Tutorial - Complete Implementation Guide
-        
-        This comprehensive tutorial covers everything you need to know about implementing Google Maps JavaScript API in your web applications.
-        
-        ## Getting Started with Google Maps API
-        
-        First, you need to obtain an API key from the Google Cloud Console and include the Maps JavaScript API in your HTML:
-        
-        ```html
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Google Maps Tutorial</title>
-            <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
-        </head>
-        <body>
-            <div id="map" style="height: 400px; width: 100%;"></div>
-        </body>
-        </html>
-        ```
-        
-        ## Basic Map Initialization
-        
-        Here's how to initialize a basic Google Map:
-        
-        ```javascript
-        function initMap() {
-            const map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 10,
-                center: { lat: 37.7749, lng: -122.4194 }, // San Francisco
-                mapTypeId: google.maps.MapTypeId.ROADMAP
-            });
-        }
-        ```
-        
-        ## Adding Markers to Your Map
-        
-        You can add markers to highlight specific locations:
-        
-        ```javascript
-        function addMarker(map, position, title) {
+        google_maps_content = """Google Maps JavaScript API Tutorial - Complete Implementation Guide
+
+This comprehensive tutorial covers everything you need to know about implementing Google Maps JavaScript API in your web applications.
+
+## Getting Started with Google Maps API
+
+First, you need to obtain an API key from the Google Cloud Console and include the Maps JavaScript API in your HTML:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Maps Tutorial</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+</head>
+<body>
+    <div id="map" style="height: 400px; width: 100%;"></div>
+</body>
+</html>
+```
+
+## Basic Map Initialization
+
+Here's how to initialize a basic Google Map:
+
+```javascript
+function initMap() {
+    const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 10,
+        center: { lat: 37.7749, lng: -122.4194 }, // San Francisco
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+}
+```
+
+## Adding Markers to Your Map
+
+You can add markers to highlight specific locations:
+
+```javascript
+function addMarker(map, position, title) {
+    const marker = new google.maps.Marker({
+        position: position,
+        map: map,
+        title: title,
+        animation: google.maps.Animation.DROP
+    });
+    
+    const infoWindow = new google.maps.InfoWindow({
+        content: `<h3>${title}</h3><p>Latitude: ${position.lat}</p><p>Longitude: ${position.lng}</p>`
+    });
+    
+    marker.addListener('click', function() {
+        infoWindow.open(map, marker);
+    });
+    
+    return marker;
+}
+```
+
+## Custom Map Styling
+
+Apply custom styling to your map:
+
+```javascript
+const customMapStyle = [
+    {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [{"color": "#e9e9e9"}, {"lightness": 17}]
+    },
+    {
+        "featureType": "landscape",
+        "elementType": "geometry",
+        "stylers": [{"color": "#f5f5f5"}, {"lightness": 20}]
+    }
+];
+
+const styledMap = new google.maps.StyledMapType(customMapStyle, {name: "Custom Style"});
+map.mapTypes.set('custom_style', styledMap);
+map.setMapTypeId('custom_style');
+```
+
+## Advanced Features: Geocoding
+
+Implement address-to-coordinates conversion:
+
+```javascript
+function geocodeAddress(geocoder, map, address) {
+    geocoder.geocode({'address': address}, function(results, status) {
+        if (status === 'OK') {
+            map.setCenter(results[0].geometry.location);
             const marker = new google.maps.Marker({
-                position: position,
                 map: map,
-                title: title,
-                animation: google.maps.Animation.DROP
+                position: results[0].geometry.location
             });
+        } else {
+            console.error('Geocoding failed: ' + status);
+        }
+    });
+}
+```
+
+## CSS Styling for Map Container
+
+```css
+#map {
+    height: 500px;
+    width: 100%;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.map-controls {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+    cursor: pointer;
+    margin-bottom: 22px;
+    text-align: center;
+}
+```
+
+This tutorial provides a complete foundation for implementing Google Maps in your web applications with proper code examples and styling."""
+        
+        # Create a temporary text file with the content
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+            temp_file.write(google_maps_content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Process the content through Knowledge Engine upload endpoint
+            log_test_result("📤 Uploading Google Maps API tutorial content...")
             
-            const infoWindow = new google.maps.InfoWindow({
-                content: `<h3>${title}</h3><p>Latitude: ${position.lat}</p><p>Longitude: ${position.lng}</p>`
-            });
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('google_maps_tutorial.txt', f, 'text/plain')}
+                metadata = json.dumps({"source": "regression_test"})
+                
+                response = requests.post(
+                    f"{API_BASE}/content/upload",
+                    files=files,
+                    data={'metadata': metadata},
+                    timeout=300
+                )
             
-            marker.addListener('click', function() {
-                infoWindow.open(map, marker);
-            });
-            
-            return marker;
-        }
-        ```
-        
-        ## Custom Map Styling
-        
-        Apply custom styling to your map:
-        
-        ```javascript
-        const customMapStyle = [
-            {
-                "featureType": "water",
-                "elementType": "geometry",
-                "stylers": [{"color": "#e9e9e9"}, {"lightness": 17}]
-            },
-            {
-                "featureType": "landscape",
-                "elementType": "geometry",
-                "stylers": [{"color": "#f5f5f5"}, {"lightness": 20}]
-            }
-        ];
-        
-        const styledMap = new google.maps.StyledMapType(customMapStyle, {name: "Custom Style"});
-        map.mapTypes.set('custom_style', styledMap);
-        map.setMapTypeId('custom_style');
-        ```
-        
-        ## Advanced Features: Geocoding
-        
-        Implement address-to-coordinates conversion:
-        
-        ```javascript
-        function geocodeAddress(geocoder, map, address) {
-            geocoder.geocode({'address': address}, function(results, status) {
-                if (status === 'OK') {
-                    map.setCenter(results[0].geometry.location);
-                    const marker = new google.maps.Marker({
-                        map: map,
-                        position: results[0].geometry.location
-                    });
-                } else {
-                    console.error('Geocoding failed: ' + status);
-                }
-            });
-        }
-        ```
-        
-        ## CSS Styling for Map Container
-        
-        ```css
-        #map {
-            height: 500px;
-            width: 100%;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        
-        .map-controls {
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            box-shadow: 0 2px 6px rgba(0,0,0,.3);
-            cursor: pointer;
-            margin-bottom: 22px;
-            text-align: center;
-        }
-        ```
-        
-        This tutorial provides a complete foundation for implementing Google Maps in your web applications with proper code examples and styling.
-        """
-        
-        # Process the content through Knowledge Engine
-        log_test_result("📤 Processing Google Maps API tutorial content...")
-        
-        response = requests.post(
-            f"{API_BASE}/content/process-text",
-            json={"content": google_maps_content},
-            timeout=300
-        )
-        
-        if response.status_code != 200:
-            log_test_result(f"❌ Content processing failed: Status {response.status_code}", "ERROR")
-            log_test_result(f"Response: {response.text[:500]}")
-            return False
+            if response.status_code != 200:
+                log_test_result(f"❌ Content upload failed: Status {response.status_code}", "ERROR")
+                log_test_result(f"Response: {response.text[:500]}")
+                return False
+        finally:
+            # Clean up temp file
+            os.unlink(temp_file_path)
         
         process_data = response.json()
         job_id = process_data.get('job_id')

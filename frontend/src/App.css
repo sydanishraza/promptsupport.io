@@ -500,6 +500,61 @@ code {
   font-weight: 500;
 }
 
+/* Enhanced Related Links Grid Layout */
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.links-category {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.links-category h4 {
+  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 600;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.25rem;
+}
+
+.links-category ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.links-category li {
+  margin: 0.25rem 0;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.links-category li:before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #6b7280;
+  font-weight: bold;
+}
+
+.links-category a {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.links-category a:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
 /* WYSIWYG EDITOR SCROLLING FIX */
 .wysiwyg-editor {
   overflow-y: auto !important;

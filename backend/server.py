@@ -1886,11 +1886,14 @@ ORDERED LIST REQUIREMENTS:
 - Format: <ol class="doc-list doc-list-ordered"><li>Step 1 content</li><li>Step 2 content</li></ol>
 - For nested lists: <ol class="doc-list doc-list-nested"><li>Sub-step a</li><li>Sub-step b</li></ol>
 
-CODE BLOCK REQUIREMENTS:
-- Complete, working code examples
+ENHANCED CODE BLOCK REQUIREMENTS:
+- Complete, working code examples with proper indentation
 - Proper language classes: <pre><code class="language-javascript">complete working code here</code></pre>
+- Add copy button wrapper: <div class="code-block-container"><div class="code-header"><span class="code-language">JavaScript</span><button class="copy-code-btn" onclick="copyCode(this)">📋 Copy</button></div><pre><code class="language-javascript">complete working code here</code></pre></div>
 - Include full HTML structure when showing HTML examples
 - Never leave code blocks empty
+- Use proper syntax highlighting classes: language-html, language-css, language-javascript, language-json, language-python
+- For file references: <code class="inline-code">filename.js</code>
 
 MANDATORY CONTENT STRUCTURE WITH ANCHOR IDS:
 1. **ALWAYS START WITH MINI-TOC**: <div class="mini-toc"><h3>📋 Contents</h3><ul><li><a href="#introduction">Introduction</a></li><li><a href="#setup">Setup & Prerequisites</a></li><li><a href="#implementation">Implementation</a></li><li><a href="#advanced">Advanced Features</a></li><li><a href="#troubleshooting">Troubleshooting</a></li></ul></div>

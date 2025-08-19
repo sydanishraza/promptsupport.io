@@ -59,16 +59,22 @@ def process_test_content(content_text, content_name):
     try:
         log_test_result(f"📤 Processing {content_name} content ({len(content_text)} characters)...")
         
-        # Use text processing endpoint
-        payload = {
-            "content": content_text,
-            "filename": f"{content_name}_test.txt"
-        }
+        # Create a temporary text file
+        temp_filename = f"/tmp/{content_name}_test.txt"
+        with open(temp_filename, 'w', encoding='utf-8') as f:
+            f.write(content_text)
         
+        # Use file upload endpoint
         start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
-                               json=payload, 
-                               timeout=300)  # 5 minute timeout
+        with open(temp_filename, 'rb') as f:
+            files = {'file': (f"{content_name}_test.txt", f, 'text/plain')}
+            metadata = json.dumps({"source": "real_code_path_test", "test_type": content_name})
+            data = {'metadata': metadata}
+            
+            response = requests.post(f"{API_BASE}/content/upload", 
+                                   files=files,
+                                   data=data,
+                                   timeout=300)  # 5 minute timeout
         
         if response.status_code != 200:
             log_test_result(f"❌ Processing failed: Status {response.status_code}", "ERROR")

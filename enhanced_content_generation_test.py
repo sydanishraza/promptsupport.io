@@ -794,7 +794,7 @@ def test_contextual_cross_references(articles):
                 log_test_result(f"✅ Found {len(internal_links)} internal article links", "SUCCESS")
             
             # Look for "See also" sections
-            see_also_sections = soup.find_all(text=re.compile(r'see also', re.IGNORECASE))
+            see_also_sections = soup.find_all(string=re.compile(r'see also', re.IGNORECASE))
             if see_also_sections:
                 cross_ref_features += 1
                 log_test_result(f"✅ Found 'See also' references", "SUCCESS")

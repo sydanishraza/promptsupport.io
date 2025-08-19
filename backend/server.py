@@ -1971,6 +1971,140 @@ Create comprehensive, cross-referenced FAQ content with proper standardization."
         # Fallback to basic FAQ creation
         return await create_faq_article(content, generated_articles, metadata)
 
+async def create_high_quality_article_content(content: str, article_type: str, metadata: Dict[str, Any]) -> str:
+    """Create high-quality article content with proper formatting and no duplication"""
+    try:
+        print(f"🎯 CREATING HIGH-QUALITY ARTICLE: {article_type}")
+        
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
+        
+        if "overview" in article_type.lower():
+            # OVERVIEW ARTICLE - HIGH-LEVEL SUMMARY ONLY
+            system_message = f"""You are an expert technical writer creating a high-level OVERVIEW article.
+
+CRITICAL OVERVIEW REQUIREMENTS:
+1. Create SUMMARY and NAVIGATION only - NO detailed implementation steps
+2. Provide roadmap with links to detailed sections
+3. Include key highlights and learning objectives
+4. Focus on WHAT users will learn, not HOW to implement
+
+ARTICLE STRUCTURE:
+- Brief introduction to {doc_title}
+- Key highlights and benefits (bullet points)
+- Learning objectives (what users will achieve)
+- Content roadmap (what topics are covered)
+- Prerequisites (if any)
+
+FORMATTING REQUIREMENTS:
+- Use proper HTML: <h2>, <h3>, <p>, <ul>, <li>
+- NO step-by-step procedures
+- NO detailed code examples
+- NO implementation instructions
+- Include mini-TOC with section links
+
+AVOID:
+- Detailed procedures or "how to" steps
+- Complete code examples (brief snippets only)
+- Implementation details
+- Lengthy technical explanations
+
+Create a navigation-focused overview that guides users to detailed resources."""
+
+        else:
+            # COMPLETE GUIDE ARTICLE - DETAILED IMPLEMENTATION
+            system_message = f"""You are an expert technical writer creating a comprehensive COMPLETE GUIDE with detailed implementation.
+
+CRITICAL COMPLETE GUIDE REQUIREMENTS:
+1. Provide detailed, step-by-step implementation instructions
+2. Include complete code examples with proper formatting
+3. Use enhanced WYSIWYG editor features
+4. Create comprehensive, professional content
+
+ENHANCED WYSIWYG FEATURES TO USE:
+- Mini-TOC with anchor links: <div class="mini-toc"><h3>Contents</h3><ul><li><a href="#setup">Setup</a></li></ul></div>
+- Callouts: <div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">Important information here</div></div>
+- Warning callouts: <div class="callout callout-warning"><div class="callout-title">⚠️ Warning</div><div class="callout-content">Warning text</div></div>
+- Tip callouts: <div class="callout callout-tip"><div class="callout-title">💡 Tip</div><div class="callout-content">Helpful tip</div></div>
+
+ORDERED LIST REQUIREMENTS:
+- Use single <ol> tags with continuous numbering
+- Format: <ol class="doc-list doc-list-ordered"><li>Step 1 content</li><li>Step 2 content</li></ol>
+- For nested lists: <ol class="doc-list doc-list-nested"><li>Sub-step a</li><li>Sub-step b</li></ol>
+
+CODE BLOCK REQUIREMENTS:
+- Complete, working code examples
+- Proper language classes: <pre><code class="language-javascript">complete working code here</code></pre>
+- Include full HTML structure when showing HTML examples
+- Never leave code blocks empty
+
+CONTENT STRUCTURE WITH ANCHOR IDS:
+1. Mini-TOC with working links
+2. Introduction section: <h2 id="introduction">Introduction</h2>
+3. Setup section: <h2 id="setup">Setup & Prerequisites</h2>
+4. Implementation sections: <h2 id="implementation">Step-by-Step Implementation</h2>
+5. Advanced features: <h2 id="advanced">Advanced Features</h2>
+6. Troubleshooting: <h2 id="troubleshooting">Troubleshooting</h2>
+
+QUALITY REQUIREMENTS:
+- NO text duplication or repetition
+- Complete sentences and clear explanations
+- Professional technical writing style
+- Comprehensive coverage of all aspects
+
+Create detailed, professional content that demonstrates all WYSIWYG editor capabilities."""
+
+        # Generate high-quality content
+        response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"""Create a high-quality {article_type} article for: {doc_title}
+
+CRITICAL: Ensure NO text duplication, complete code examples, and proper WYSIWYG formatting.
+
+Source content to base article on:
+{content[:20000]}"""
+        )
+        
+        if response:
+            # Apply enhanced formatting and quality fixes
+            clean_content = await apply_quality_fixes(response)
+            return clean_content
+        else:
+            return f"<h2>Error generating {article_type} content</h2><p>Please try again.</p>"
+            
+    except Exception as e:
+        print(f"❌ Error creating high-quality article content: {e}")
+        return f"<h2>Error</h2><p>Could not generate content: {e}</p>"
+
+async def apply_quality_fixes(content: str) -> str:
+    """Apply quality fixes to eliminate common issues"""
+    try:
+        # Fix 1: Remove text duplication in list items
+        content = re.sub(r'(\b\w+(?:\s+\w+)*)\.\1\.', r'\1.', content)  # Remove "Text.Text." patterns
+        
+        # Fix 2: Clean up empty or broken elements
+        content = re.sub(r'<li>\s*</li>', '', content)  # Remove empty list items
+        content = re.sub(r'<p>\s*</p>', '', content)    # Remove empty paragraphs
+        
+        # Fix 3: Fix broken code references (like "click " instead of "click Button")
+        content = re.sub(r'click\s+\.', 'click the button.', content)
+        content = re.sub(r'click\s+\n', 'click the option.\n', content)
+        
+        # Fix 4: Ensure proper list structure
+        content = re.sub(r'</ol>\s*<ol', '</ol>\n<ol', content)  # Separate multiple lists
+        
+        # Fix 5: Fix broken image references
+        content = re.sub(r'<img[^>]*src="figure\d+\.png"[^>]*>', '<figure><div class="placeholder-image">Image placeholder - Figure content</div></figure>', content)
+        
+        # Fix 6: Apply proper CSS classes
+        content = re.sub(r'<ol[^>]*>', '<ol class="doc-list doc-list-ordered">', content)
+        content = re.sub(r'<ul[^>]*>', '<ul class="doc-list">', content)
+        
+        return content
+        
+    except Exception as e:
+        print(f"❌ Error applying quality fixes: {e}")
+        return content
+
 async def add_enhanced_cross_references(generated_articles: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Placeholder for enhanced cross-reference addition"""
     # For now, use the existing cross-reference logic

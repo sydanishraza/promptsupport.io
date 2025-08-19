@@ -2275,28 +2275,77 @@ async def create_overview_article_with_sections(content: str, sections: List[Dic
     }
 
 async def create_section_article(content: str, section: Dict[str, Any], metadata: Dict[str, Any], analysis: Dict[str, Any], sequence: int) -> Dict[str, Any]:
-    """Placeholder for section article creation"""
-    # Simple implementation for now
+    """Create enhanced section article using high-quality content generation"""
     section_title = section.get('title', f'Section {sequence}')
+    section_description = section.get('description', 'This section covers important information.')
+    content_focus = section.get('content_focus', 'General content')
     
-    section_content = f"<h2>{section_title}</h2>\n"
-    section_content += f"<p>{section.get('description', 'This section covers important information.')}</p>\n"
-    section_content += f"<p>Content focus: {section.get('content_focus', 'General content')}</p>"
+    print(f"📝 Creating enhanced section article: {section_title}")
+    
+    # Create focused content for this section using enhanced generation
+    # Add section context to metadata for better content generation
+    section_metadata = {
+        **metadata,
+        'section_title': section_title,
+        'section_description': section_description,
+        'content_focus': content_focus,
+        'article_sequence': sequence
+    }
+    
+    # Generate enhanced content for this specific section
+    section_content = await create_high_quality_article_content(
+        content, 
+        "section_guide",  # Use section-specific content type
+        section_metadata
+    )
+    
+    # Fallback if enhanced generation fails
+    if not section_content or len(section_content.strip()) < 100:
+        # Create basic structured content with mini-TOC
+        section_content = f"""<div class="mini-toc">
+<h3>📋 Section Contents</h3>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#details">Key Details</a></li>
+<li><a href="#implementation">Implementation</a></li>
+</ul>
+</div>
+
+<h2 id="overview">{section_title}</h2>
+
+<div class="callout callout-info">
+<div class="callout-title">ℹ️ Section Overview</div>
+<div class="callout-content">{section_description}</div>
+</div>
+
+<h3 id="details">Key Details</h3>
+<p><strong>Content Focus:</strong> {content_focus}</p>
+
+<h3 id="implementation">Implementation</h3>
+<p>This section provides detailed information and practical guidance on {section_title.lower()}.</p>
+
+<div class="callout callout-tip">
+<div class="callout-title">💡 Tip</div>
+<div class="callout-content">Review related sections for comprehensive understanding of the complete process.</div>
+</div>"""
     
     return {
         "id": str(uuid.uuid4()),
         "title": section_title,
         "content": section_content,
         "status": "published",
-        "article_type": "section",
+        "article_type": "section_guide",
         "source_document": metadata.get("original_filename", "Unknown"),
-        "tags": ["section", "moderate_split"],
+        "tags": ["section_guide", "moderate_split", analysis.get('content_classification', {}).get('content_type', 'guide')],
         "priority": "medium",
         "created_at": datetime.utcnow(),
         "metadata": {
             "granularity_level": "moderate",
             "processing_approach": "moderate_split",
             "article_sequence": sequence,
+            "section_description": section_description,
+            "content_focus": content_focus,
+            "has_mini_toc": True,
             **metadata
         }
     }

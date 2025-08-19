@@ -10603,8 +10603,8 @@ def clean_html_wrappers(content: str) -> str:
     # Convert generic markdown code blocks to HTML
     content = re.sub(r'```\s*(.*?)```', r'<pre><code>\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
     
-    # Clean up any empty code blocks that might have been created
-    content = re.sub(r'<pre><code[^>]*>\s*</code></pre>', '', content, flags=re.IGNORECASE)
+    # FIXED: Only remove truly empty code blocks (no content at all), preserve formatted code
+    content = re.sub(r'<pre><code[^>]*></code></pre>', '', content, flags=re.IGNORECASE)
     
     # CRITICAL FIX: Remove duplicate h1 tags that repeat the title
     h1_matches = re.findall(r'<h1[^>]*>(.*?)</h1>', content, flags=re.IGNORECASE | re.DOTALL)

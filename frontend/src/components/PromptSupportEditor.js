@@ -3936,9 +3936,10 @@ const PromptSupportEditor = ({
                   onFocus={handleEditorFocus}
                   className="wysiwyg-content wysiwyg-editor h-full p-6 focus:outline-none"
                   style={{
-                    // ISSUE 3 FIX: Clean, full-space layout with proper scrolling
-                    minHeight: '400px',
-                    height: '100%',
+                    // SCROLLING FIX: Simplified height management for consistent scrolling
+                    minHeight: '500px',
+                    height: 'auto',
+                    maxHeight: 'calc(100vh - 180px)',
                     lineHeight: '1.7',
                     fontSize: '16px',
                     fontFamily: 'system-ui, -apple-system, sans-serif',

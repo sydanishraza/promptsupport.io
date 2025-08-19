@@ -2964,7 +2964,7 @@ async def create_introductory_toc_article(articles: list, metadata: dict) -> dic
             article_id = article.get('id', f'article-{i}')
             
             # Create proper links for navigation to actual Content Library articles
-            toc_items.append(f'<li><strong><a href="/content-library/article/{article_id}" target="_blank">{title}</a></strong> <em>({article_type})</em></li>')
+            toc_items.append(f'<li><strong><a href="/content-library/article/{article_id}" target="_blank">{title}</a></strong></li>')
             article_links.append({
                 'title': title,
                 'type': article_type,

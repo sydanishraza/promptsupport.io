@@ -2685,31 +2685,15 @@ Use proper HTML formatting with h2/h3 headings, lists, and rich formatting."""
             }
             articles.append(overview_article)
         
-        # 2. Main Content Article
-        main_system = f"""Create the main comprehensive content article with all details, examples, and procedures.
-
-CONTENT TYPE: {content_type}
-APPROACH: Shallow split - this is the primary content article
-
-Include:
-1. All main content and procedures
-2. Code examples with proper formatting
-3. Step-by-step instructions if applicable
-4. Technical details and examples
-5. Rich formatting (lists, code blocks, callouts)
-
-Use proper HTML formatting and preserve all technical content."""
-
-        main_response = await call_llm_with_fallback(
-            system_message=main_system,
-            user_message=f"Create the main content article from this content:\n\n{content[:20000]}"
-        )
+        # 2. Main Content Article using enhanced content generation
+        print(f"📚 Creating enhanced main content article for shallow split")
+        main_content_html = await create_high_quality_article_content(content, "complete_guide", metadata)
         
-        if main_response:
+        if main_content_html and len(main_content_html.strip()) > 100:
             main_article = {
                 "id": str(uuid.uuid4()),
                 "title": f"{doc_title} - Complete Guide",
-                "content": await enhanced_format_preservation(main_response),
+                "content": main_content_html,
                 "status": "published",
                 "article_type": "main_content",
                 "source_document": metadata.get("original_filename", "Unknown"),

@@ -2,7 +2,7 @@
 import requests
 import json
 
-response = requests.get("https://prompt-support-app.preview.emergentagent.com/api/content-library")
+response = requests.get("https://smartchunk.preview.emergentagent.com/api/content-library")
 data = response.json()
 
 for i, article in enumerate(data['articles']):

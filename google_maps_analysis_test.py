@@ -15,7 +15,7 @@ from collections import Counter
 import difflib
 
 # Get backend URL from environment
-BACKEND_URL = "https://prompt-support-app.preview.emergentagent.com/api"
+BACKEND_URL = "https://smartchunk.preview.emergentagent.com/api"
 
 class GoogleMapsArticleAnalyzer:
     def __init__(self):

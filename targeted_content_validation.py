@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 import re
 
 # Backend URL
-BACKEND_URL = "https://d5a10bd5-e4cd-4ea6-bdac-0b626acf09cb.preview.emergentagent.com"
+BACKEND_URL = "https://smartchunk.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def analyze_content_library_issues():

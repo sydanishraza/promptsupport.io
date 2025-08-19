@@ -8,7 +8,7 @@ import requests
 import json
 import time
 
-BACKEND_URL = "https://prompt-support-app.preview.emergentagent.com"
+BACKEND_URL = "https://smartchunk.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def test_clean_pipeline():

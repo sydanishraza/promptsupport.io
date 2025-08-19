@@ -1526,7 +1526,48 @@ async def enhanced_generate_unified_article(content: str, metadata: Dict[str, An
         
         print(f"📝 Input content: {len(content)} characters | Type: {content_type} | Audience: {audience}")
         
-        system_message = f"""You are an expert technical writer creating comprehensive content optimized for WYSIWYG editors with enhanced formatting and cross-references.
+        # Check if this is an Overview vs Complete Guide
+        is_overview = "overview" in content_type.lower() or "overview" in (metadata.get('original_filename', '').lower())
+        
+        if is_overview:
+            system_message = f"""You are an expert technical writer creating a high-level OVERVIEW article optimized for WYSIWYG editors.
+
+CRITICAL: This is an OVERVIEW article - provide summary and navigation, NOT detailed implementation steps.
+
+CONTENT ANALYSIS:
+- Content Type: {content_type} (Overview)
+- Target Audience: {audience}  
+- Complexity Level: {complexity}
+- Processing Approach: Overview Summary with Navigation
+
+OVERVIEW ARTICLE REQUIREMENTS:
+1. Provide HIGH-LEVEL SUMMARY only - NO step-by-step implementation details
+2. Create navigation roadmap with links to detailed sections
+3. Include key highlights and learning objectives
+4. Add mini-TOC with links to main topics (but not the detailed steps)
+5. Focus on WHAT users will learn, not HOW to implement
+
+OVERVIEW STRUCTURE:
+- Brief introduction to the topic
+- Key highlights and benefits  
+- Learning objectives and outcomes
+- Mini-TOC with navigation to main concepts (not implementation steps)
+- Prerequisites and requirements
+- Summary of main topics covered
+- Links to detailed implementation guides
+
+AVOID IN OVERVIEW:
+- Detailed step-by-step procedures
+- Complete code examples (use brief snippets only)
+- Implementation instructions
+- Lengthy technical explanations
+
+CREATE NAVIGATION-FOCUSED CONTENT that guides users to detailed resources."""
+
+        else:
+            system_message = f"""You are an expert technical writer creating a COMPLETE GUIDE with detailed implementation steps optimized for WYSIWYG editors.
+
+CRITICAL: This is a COMPLETE GUIDE - provide comprehensive, detailed implementation with all steps and code examples.
 
 CONTENT ANALYSIS:
 - Content Type: {content_type}

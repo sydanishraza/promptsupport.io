@@ -330,7 +330,18 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
-  // Phase 2 & 3: Close dropdowns when clicking outside
+  // TITLE FIELD FLICKER FIX: Debounced title change handler
+  const debouncedTitleChange = useCallback(
+    debounce((newTitle) => {
+      setTitle(newTitle);
+      setHasUnsavedChanges(true);
+    }, 100),
+    []
+  );
+
+  const handleTitleChange = useCallback((e) => {
+    debouncedTitleChange(e.target.value);
+  }, [debouncedTitleChange]);
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showColorPicker && !event.target.closest('[title="Text Color"]')) {

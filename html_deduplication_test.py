@@ -106,8 +106,8 @@ def generate_test_content_and_process():
             "content": test_content,
             "content_type": "text",
             "metadata": {
-                "filename": "html_deduplication_test.txt",
-                "source": "test_validation"
+                "filename": "html_deduplication_test_v2.txt",
+                "source": "test_validation_v2"
             }
         }
         

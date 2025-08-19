@@ -101,14 +101,18 @@ def generate_test_content_and_process():
         # Process content through Knowledge Engine
         log_test_result("📤 Processing content through Knowledge Engine...")
         
-        # Use text processing endpoint
+        # Use content processing endpoint
         payload = {
             "content": test_content,
-            "filename": "html_deduplication_test.txt"
+            "content_type": "text",
+            "metadata": {
+                "filename": "html_deduplication_test.txt",
+                "source": "test_validation"
+            }
         }
         
         start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/process-text", 
+        response = requests.post(f"{API_BASE}/content/process", 
                                json=payload, 
                                timeout=300)  # 5 minute timeout
         

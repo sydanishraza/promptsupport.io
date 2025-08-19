@@ -731,7 +731,7 @@ async def create_overview_article(all_articles: List[Dict[str, Any]], outline_da
         for i, article in enumerate(all_articles, 1):
             article_title = article['title']
             article_type = article.get('article_type', 'informational')
-            toc_html += f'<li><strong>{i}. <a href="/content-library/article/{article["id"]}" target="_blank">{article_title}</a></strong> <em>({article_type})</em></li>\n'
+            toc_html += f'<li><strong>{i}. <a href="/content-library/article/{article["id"]}" target="_blank">{article_title}</a></strong></li>\n'
         toc_html += "</ul>\n"
         
         # Create overview content

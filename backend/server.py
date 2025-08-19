@@ -1907,7 +1907,10 @@ Source content to base article on:
         if response:
             # Apply enhanced formatting and quality fixes
             clean_content = await apply_quality_fixes(response)
-            return clean_content
+            
+            # CRITICAL: Ensure enhanced features are present - add them if missing
+            enhanced_content = await ensure_enhanced_features(clean_content, article_type, doc_title)
+            return enhanced_content
         else:
             return f"<h2>Error generating {article_type} content</h2><p>Please try again.</p>"
             

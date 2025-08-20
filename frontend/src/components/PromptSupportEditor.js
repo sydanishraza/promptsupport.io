@@ -292,13 +292,18 @@ const PromptSupportEditor = ({
         element.style.backgroundColor = '#fefefe';
         element.style.minHeight = '400px';
         
+        // WYSIWYG FEATURES INITIALIZATION: Re-initialize interactive features after content load
+        setTimeout(() => {
+          initializeWYSIWYGFeatures(element);
+        }, 50);
+        
         // FOCUS FIX: Set focus without interfering with mouse interactions
         setTimeout(() => {
           if (element && element.isContentEditable) {
             element.focus();
             console.log('✅ Editor activated and focused');
           }
-        }, 10);
+        }, 100);
       }
     } else {
       editorRef.current = null;

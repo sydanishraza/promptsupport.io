@@ -25,7 +25,7 @@
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
         
-        <!-- Copy Code Functionality -->
+        <!-- WYSIWYG Template Reference JavaScript - Integrated Functionality -->
         <script>
             // Enhanced Copy Code Function for Code Blocks
             function copyCode(button) {
@@ -80,14 +80,46 @@
                     button.classList.remove('copied');
                 }, 2000);
             }
+
+            // WYSIWYG TEMPLATE REFERENCE JAVASCRIPT - INTEGRATED FROM EXTERNAL TEMPLATE
             
-            // Auto-generate copy buttons for existing code blocks without them
-            document.addEventListener('DOMContentLoaded', function() {
-                // Find code blocks that don't have copy functionality
+            // Code and Pre Divs: Enhanced Copy Button Functionality
+            document.addEventListener('DOMContentLoaded', () => {
+                // Add a "Copy" button to each <pre> block that doesn't already have one
+                document.querySelectorAll('.article-body pre').forEach((pre) => {
+                    // Skip if already has a copy button
+                    if (pre.querySelector('.copy-btn')) return;
+                    
+                    const code = pre.querySelector('code');
+                    if (code) {
+                        // Create the copy button
+                        const copyButton = document.createElement('button');
+                        copyButton.className = 'copy-btn';
+                        copyButton.textContent = 'Copy';
+
+                        // Add click event to copy the code
+                        copyButton.addEventListener('click', () => {
+                            const codeText = code.textContent;
+
+                            navigator.clipboard.writeText(codeText).then(() => {
+                                copyButton.textContent = 'Copied!';
+                                setTimeout(() => {
+                                    copyButton.textContent = 'Copy';
+                                }, 2000);
+                            }).catch((err) => {
+                                console.error('Failed to copy text:', err);
+                            });
+                        });
+
+                        pre.appendChild(copyButton);
+                    }
+                });
+                
+                // Also handle existing code blocks for backward compatibility
                 const codeBlocks = document.querySelectorAll('pre code:not(.code-block-container code)');
                 codeBlocks.forEach(codeElement => {
                     const preElement = codeElement.parentElement;
-                    if (preElement && preElement.tagName === 'PRE' && !preElement.closest('.code-block-container')) {
+                    if (preElement && preElement.tagName === 'PRE' && !preElement.closest('.code-block-container') && !preElement.querySelector('.copy-btn')) {
                         // Wrap existing code blocks with copy functionality
                         const container = document.createElement('div');
                         container.className = 'code-block-container';
@@ -109,6 +141,172 @@
                         container.appendChild(header);
                         container.appendChild(preElement);
                     }
+                });
+            });
+
+            // Expandable Sections: Toggle Functionality with jQuery and vanilla JS support
+            function initializeExpandables() {
+                // jQuery version if available
+                if (typeof jQuery !== 'undefined') {
+                    $(document).ready(function () {
+                        $('.expandable-header').off('click.expandable').on('click.expandable', function () {
+                            const content = $(this).next('.expandable-content');
+                            // Toggle content
+                            content.slideToggle(300);
+                            // Toggle icon rotation and active state
+                            $(this).toggleClass('expanded');
+                        });
+                    });
+                } else {
+                    // Vanilla JS version
+                    document.addEventListener('DOMContentLoaded', function() {
+                        document.querySelectorAll('.expandable-header').forEach(header => {
+                            header.addEventListener('click', function() {
+                                const content = this.nextElementSibling;
+                                if (content && content.classList.contains('expandable-content')) {
+                                    // Toggle content visibility
+                                    if (content.style.display === 'none' || content.style.display === '') {
+                                        content.style.display = 'block';
+                                        content.classList.add('show');
+                                    } else {
+                                        content.style.display = 'none';
+                                        content.classList.remove('show');
+                                    }
+                                    // Toggle expanded state
+                                    this.classList.toggle('expanded');
+                                }
+                            });
+                        });
+                    });
+                }
+            }
+
+            // Images: Fancybox Integration for Article Images (if Fancybox is available)
+            document.addEventListener("DOMContentLoaded", function () {
+                // Find all images inside article body
+                document.querySelectorAll(".article-body img").forEach(img => {
+                    // Ensure the image is not already wrapped in a link
+                    if (!img.closest("a")) {
+                        let link = document.createElement("a");
+                        link.href = img.src;
+                        link.setAttribute("data-fancybox", "gallery");
+                        link.setAttribute("class", "fancybox-link");
+                        img.parentNode.insertBefore(link, img);
+                        link.appendChild(img);
+                    }
+                });
+
+                // Initialize FancyBox if available
+                if (typeof Fancybox !== 'undefined') {
+                    Fancybox.bind("[data-fancybox='gallery']", {
+                        Toolbar: {
+                            display: ["zoom", "close"]
+                        },
+                        Thumbs: {
+                            autoStart: true
+                        }
+                    });
+                }
+            });
+
+            // Mini TOC: Generation and Sticky Functionality
+            function generateMiniTOC() {
+                const articleContent = document.querySelector(".article-body");
+                const miniTOCContainer = document.getElementById("mini-toc-container");
+                if (!articleContent || !miniTOCContainer) return;
+
+                // Clear existing content
+                miniTOCContainer.innerHTML = "";
+
+                const headings = Array.from(articleContent.querySelectorAll("h2, h3"));
+                if (headings.length === 0) return;
+
+                // Create TOC list
+                const tocList = document.createElement("ul");
+                
+                headings.forEach(heading => {
+                    const id = heading.id || heading.textContent.trim().replace(/\s+/g, "-").toLowerCase().replace(/[^a-z0-9-]/g, '');
+                    heading.id = id;
+
+                    const listItem = document.createElement("li");
+                    const isSub = heading.tagName.toLowerCase() === "h3";
+                    const link = document.createElement("a");
+                    link.href = `#${id}`;
+                    link.className = isSub ? 'otp-item indent' : 'otp-item';
+                    link.textContent = heading.textContent;
+                    
+                    listItem.appendChild(link);
+                    tocList.appendChild(listItem);
+                });
+                
+                miniTOCContainer.appendChild(tocList);
+
+                // Intersection Observer for highlighting current heading
+                function highlightCurrentHeading(entries) {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            document.querySelectorAll("#mini-toc-container a").forEach(link => {
+                                link.classList.remove("active");
+                            });
+
+                            const activeLink = document.querySelector(`#mini-toc-container a[href="#${entry.target.id}"]`);
+                            if (activeLink) {
+                                activeLink.classList.add("active");
+                            }
+                        }
+                    });
+                }
+
+                const observerOptions = {
+                    root: null,
+                    rootMargin: "-50% 0px -50% 0px",
+                    threshold: 0
+                };
+
+                const observer = new IntersectionObserver(highlightCurrentHeading, observerOptions);
+                headings.forEach(heading => observer.observe(heading));
+            }
+
+            function makeMiniTOCSticky() {
+                const miniTOC = document.querySelector(".mini-toc");
+                if (miniTOC) {
+                    miniTOC.style.position = "sticky";
+                    miniTOC.style.top = "20px"; // Adjust based on your header height
+                }
+            }
+
+            // Initialize all functionality
+            document.addEventListener("DOMContentLoaded", function () {
+                // Initialize expandables
+                initializeExpandables();
+                
+                // Initialize TOC
+                generateMiniTOC();
+                makeMiniTOCSticky();
+                
+                // Re-initialize when content changes (for dynamic content loading)
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                            // Check if article body content was added
+                            const hasArticleContent = Array.from(mutation.addedNodes).some(node => 
+                                node.nodeType === 1 && (node.classList.contains('article-body') || node.querySelector('.article-body'))
+                            );
+                            
+                            if (hasArticleContent) {
+                                setTimeout(() => {
+                                    initializeExpandables();
+                                    generateMiniTOC();
+                                    makeMiniTOCSticky();
+                                }, 100);
+                            }
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
                 });
             });
         </script>

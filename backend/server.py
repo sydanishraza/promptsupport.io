@@ -2132,55 +2132,43 @@ console.log(result);</code></pre>
         
         print(f"✅ Enhanced code blocks: {code_blocks_added} blocks with line-numbers class added")
         
-        # STEP 4: ENSURE WYSIWYG TEMPLATE EXPANDABLES FOR FAQS - CONDITIONAL IMPLEMENTATION
-        # Only add FAQ sections if content is substantial and doesn't already have expandables
+        # STEP 4: ENHANCE EXISTING FAQS WITH WYSIWYG EXPANDABLE FORMAT - NO TEMPLATE INJECTION
+        # Only convert existing FAQ content to expandable format, don't add generic FAQs
         expandable_faqs_added = False
         
-        if ('expandable' not in content.lower() and 
-            'faq' not in content.lower() and 
-            len(content_without_tags) > 1000):  # Only for substantial content
-            print(f"📖 Adding WYSIWYG expandable FAQ sections to substantial content")
-            # Create comprehensive expandable FAQ section with more questions
-            faq_section = '''
-<hr>
-<h2 id="h_faqs">❓ Frequently Asked Questions (FAQs)</h2>
-<div class="expandable">
-<div class="expandable-header"><span class="expandable-title">What are the main benefits of this solution?</span></div>
-<div class="expandable-content"><p>This solution provides enhanced functionality, better user experience, improved efficiency for your workflows, and comprehensive features that streamline your processes. It's designed to save time and reduce complexity.</p></div>
-</div>
-<div class="expandable">
-<div class="expandable-header"><span class="expandable-title">How do I get started with implementation?</span></div>
-<div class="expandable-content"><p>Begin by following the setup and prerequisites section above. Make sure you have all required components installed and configured before proceeding with the main implementation steps.</p></div>
-</div>
-<div class="expandable">
-<div class="expandable-header"><span class="expandable-title">What if I encounter issues during setup?</span></div>
-<div class="expandable-content"><p>Check the troubleshooting section for common problems and solutions. If you need additional help, refer to the related articles linked at the bottom of this guide.</p></div>
-</div>
-<div class="expandable">
-<div class="expandable-header"><span class="expandable-title">Are there any prerequisites or system requirements?</span></div>
-<div class="expandable-content"><p>Yes, make sure you have the necessary permissions, required software versions, and access credentials before starting. Review the prerequisites section for detailed requirements.</p></div>
-</div>
-<div class="expandable">
-<div class="expandable-header"><span class="expandable-title">Can I customize this for my specific needs?</span></div>
-<div class="expandable-content"><p>Absolutely! The solution is designed to be flexible and customizable. You can modify settings, configurations, and features to match your specific requirements and use cases.</p></div>
+        if ('faq' in content.lower() and 'expandable' not in content.lower()):
+            print(f"📖 Converting existing FAQ content to WYSIWYG expandable format")
+            
+            # Find existing FAQ sections and convert them to expandable format
+            # Look for Q: A: patterns or similar FAQ structures
+            faq_pattern = r'(Q:|Question:|FAQ:)\s*([^?]+\?)\s*(A:|Answer:)?\s*([^Q]+)'
+            faq_matches = re.findall(faq_pattern, content, re.IGNORECASE | re.MULTILINE)
+            
+            if faq_matches:
+                print(f"✅ Found {len(faq_matches)} existing FAQ items to convert")
+                
+                # Convert to expandable format
+                expandable_content = ""
+                for match in faq_matches:
+                    question = match[1].strip()
+                    answer = match[3].strip()
+                    
+                    expandable_content += f'''<div class="expandable">
+<div class="expandable-header"><span class="expandable-title">{question}</span></div>
+<div class="expandable-content"><p>{answer}</p></div>
 </div>
 '''
-            
-            # Insert before related topics or at the end
-            if 'related' in content.lower() and 'topics' in content.lower():
-                content = re.sub(r'(<h[2-6][^>]*[^>]*related[^<]*topics[^<]*</h[2-6]>)', rf'{faq_section}\n\1', content, flags=re.IGNORECASE)
-                expandable_faqs_added = True
-            else:
-                # Insert before closing div if it exists
-                if '</div>' in content and content.strip().endswith('</div>'):
-                    content = content.rstrip('</div>').rstrip() + faq_section + '\n</div>'
-                    expandable_faqs_added = True
-                else:
-                    content = content + faq_section
+                
+                # Replace the original FAQ section
+                content = re.sub(faq_pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+                
+                # Add the expandable FAQs
+                if '<h2' in content and 'faq' in content.lower():
+                    content = re.sub(r'(<h2[^>]*[^>]*faq[^<]*</h2>)', rf'\1\n{expandable_content}', content, flags=re.IGNORECASE)
                     expandable_faqs_added = True
         
-        if expandable_faqs_added:
-            print(f"✅ Added 5 comprehensive expandable FAQ sections")
+        # NO GENERIC FAQ INJECTION - Only enhance existing FAQ content
+        print(f"🚫 Skipping generic FAQ injection - only enhancing existing FAQ content")
         
         # STEP 5: ENSURE WYSIWYG TEMPLATE NOTES - MANDATORY IMPLEMENTATION  
         print(f"💡 Adding comprehensive WYSIWYG template callouts and notes")

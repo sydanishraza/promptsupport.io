@@ -2098,11 +2098,14 @@ console.log(result);</code></pre>
             else:
                 content = content + faq_section
         
-        # STEP 5: ENSURE WYSIWYG TEMPLATE NOTES
+        # STEP 5: ENSURE WYSIWYG TEMPLATE NOTES - MANDATORY IMPLEMENTATION  
+        print(f"💡 Adding comprehensive WYSIWYG template callouts and notes")
+        
+        # Add multiple types of callouts throughout the content
+        callouts_added = []
+        
+        # 1. Add strategic note after first section
         if '<div class="note">' not in content:
-            print(f"💡 Adding WYSIWYG template note")
-            
-            # Add a strategic note using template format
             note = '''<div class="note">💡 <strong>Note:</strong> Follow the steps in sequence for the best results. Always test in a development environment before implementing in production.</div>
 
 '''
@@ -2110,6 +2113,57 @@ console.log(result);</code></pre>
             # Insert after first major section
             if '<h2' in content:
                 content = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{note}', content, count=1)
+                callouts_added.append("note")
+        
+        # 2. Add tip callout in the middle of content
+        if 'tip' not in content.lower():
+            tip_callout = '''
+<div class="note">🎯 <strong>Pro Tip:</strong> For optimal performance, implement these features gradually and test each component before proceeding to the next step.</div>
+
+'''
+            
+            # Find middle section and add tip
+            h2_matches = list(re.finditer(r'<h2[^>]*>[^<]*</h2>', content))
+            if len(h2_matches) >= 2:
+                # Insert after second H2
+                pos = h2_matches[1].end()
+                content = content[:pos] + tip_callout + content[pos:]
+                callouts_added.append("tip")
+        
+        # 3. Add warning callout for important information
+        if 'warning' not in content.lower() and 'important' not in content.lower():
+            warning_callout = '''
+<div class="note">⚠️ <strong>Important:</strong> Make sure to backup your data before making any configuration changes. This ensures you can restore previous settings if needed.</div>
+
+'''
+            
+            # Insert before last section or before related topics
+            if 'related' in content.lower() and 'topic' in content.lower():
+                content = re.sub(r'(<h2[^>]*[^>]*related[^<]*</h2>)', rf'{warning_callout}\n\1', content, flags=re.IGNORECASE)
+                callouts_added.append("warning")
+            elif '<h2' in content:
+                # Insert before last H2 section
+                h2_matches = list(re.finditer(r'<h2[^>]*>[^<]*</h2>', content))
+                if len(h2_matches) >= 1:
+                    pos = h2_matches[-1].start()
+                    content = content[:pos] + warning_callout + content[pos:]
+                    callouts_added.append("warning")
+        
+        # 4. Add informational callout for getting started
+        if len(callouts_added) < 2:
+            info_callout = '''
+<div class="note">ℹ️ <strong>Getting Started:</strong> If you're new to this topic, we recommend reading through the entire guide first to understand the overall process before beginning implementation.</div>
+
+'''
+            
+            # Insert early in content
+            paragraphs = content.split('</p>')
+            if len(paragraphs) > 2:
+                paragraphs[1] = paragraphs[1] + '</p>' + info_callout
+                content = '</p>'.join(paragraphs)
+                callouts_added.append("info")
+        
+        print(f"✅ Added {len(callouts_added)} WYSIWYG callouts: {', '.join(callouts_added)}")
         
         # STEP 6: ENSURE WYSIWYG TEMPLATE RELATED LINKS SECTION
         if 'related-links' not in content.lower():

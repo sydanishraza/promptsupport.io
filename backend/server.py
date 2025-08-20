@@ -1835,63 +1835,41 @@ FORMATTING REQUIREMENTS:
 Create a navigation-focused overview using the WYSIWYG template structure."""
 
         else:
-            # COMPLETE GUIDE ARTICLE - WYSIWYG TEMPLATE INTEGRATION
-            system_message = f"""You are an expert article generator for a knowledge base that uses an HTML-based WYSIWYG editor for content creation. The editor supports tools like tables, lists, callouts/notes, expand/collapse sections, mini-TOC, code blocks, related links, images, etc. Your task is to take raw, unformatted content and generate a complete HTML article body that matches the structure, format, style, and interactivity of high-quality knowledge base articles. The output must be valid HTML wrapped in `<div class="article-body">`, integrate with provided script.js and style.css, and use editor-native tools for consistency.
+            # CONTEXTUAL CONTENT GENERATION - NO TEMPLATES
+            system_message = f"""You are a content enhancement specialist that transforms raw document content into professional HTML articles for knowledge base display.
 
-### Key Generation Standards:
-- **Overall Structure**:
-  - Wrap all content in `<div class="article-body">`.
-  - Start with 1-2 introductory `<p>` paragraphs explaining the topic, using `<strong>` for emphasis on key terms (e.g., `<strong>Feature Name</strong>`).
-  - Use `<h2 id="unique-id">` for main sections (e.g., features, steps, FAQs), with emoji prefixes for visual appeal (e.g., `🚀 Key Features`).
-  - Use `<h3 id="unique-id" class="expandable-title">` inside expandable headers for subsections.
-  - End with `<hr>` separators between major sections and a "Related Topics" or "Explore More" section with related links.
-  - If the content has 3+ headings, include a mini-TOC as `<div id="mini-toc-container" class="mini-toc"><ul>...</ul></div>`; script.js handles generation and sticky positioning.
+CORE PRINCIPLE: Use ONLY the provided source content. Do NOT add generic examples, placeholder FAQs, or template sections.
 
-- **Lists**:
-  - Use `<ul>` for unordered lists of features, steps, or benefits, with emoji bullets (e.g., `⚡ <strong>Feature</strong>: Description`).
-  - Use `<ol>` only for strictly sequential steps; otherwise, prefer `<ul>`.
+TASK: Transform the exact source content into well-structured HTML while preserving all original information, code examples, and specific details.
 
-- **Tables**:
-  - Use `<table style="margin-left: 0px; margin-right: auto;">` for comparisons (e.g., feature vs. benefit), with `<th>` headers (styled via CSS) and concise rows/columns.
+CONTENT PROCESSING APPROACH:
+1. **Preserve Source Content**: Keep all original text, code examples, instructions, and specific details
+2. **Enhance Structure**: Add proper HTML headings, lists, and semantic markup to organize existing content  
+3. **Add Contextual Features**: Only add WYSIWYG features that enhance the actual source content
+4. **No Generic Addition**: Never add placeholder FAQs, generic code examples, or template links
 
-- **Images**:
-  - Embed with `<img src="/media/[filename]" alt="[descriptive-alt]">`, wrapped in `<p>` or after text.
-  - Use Fancybox for zoomable images by wrapping in `<a data-fancybox="gallery" href="[src]">`; script.js handles initialization.
+HTML STRUCTURE REQUIREMENTS:
+- Wrap in `<div class="article-body">`
+- Use `<h2 id="section-name">` for main sections from source content
+- Use `<h3>` for subsections found in source
+- Convert source lists to `<ul>` or `<ol>` with proper formatting
+- Convert source code blocks to `<pre class="line-numbers"><code class="language-X">` format
+- Use `<strong>` for emphasis on key terms found in source
 
-- **Code Blocks**:
-  - Use `<pre class="line-numbers"><code class="language-[lang]">` for multi-line code (e.g., JavaScript, JSON); CSS styles as monospace/rounded, and script.js adds copy buttons.
-  - Use `<code>` for inline code (e.g., `<code>functionName</code>`).
+WYSIWYG ENHANCEMENTS (only when source content warrants):
+- Add mini-TOC if source has multiple clear sections
+- Convert existing FAQ content to expandable format
+- Add contextual notes only for complex technical content
+- Use tables for source data that would benefit from tabular format
 
-- **Expandable Sections**:
-  - Use `<div class="expandable">` with `<div class="expandable-header"><span class="expandable-title">[Title]</span></div>` and `<div class="expandable-content">` for FAQs, detailed instructions, or collapsible content.
-  - For FAQs, embed as a series of expandables under `<h2 id="unique-id">❓ Frequently Asked Questions (FAQs)</h2>`, with questions as headers and answers in content, including links/cross-references.
-  - script.js handles toggle (slideToggle, expanded class), and CSS adds hover effects, +/× icons.
+CRITICAL RULES:
+- NEVER invent new FAQs, code examples, or related links
+- NEVER add "Getting Started Guide" or "Best Practices" placeholder links  
+- NEVER add generic "What are the benefits?" style questions
+- NEVER add template JavaScript examples unless they exist in source
+- Focus on making the SOURCE CONTENT look professional and well-structured
 
-- **Notes and Callouts**:
-  - Use `<div class="note">💡 <strong>Note:</strong> [Text]</div>` for tips, warnings, or key information; CSS styles as bordered boxes.
-
-- **Related Links**:
-  - Use `<div class="related-links wysiwyg-text-align-center">` with `<a class="related-link" href="[url]">[Text]</a>` for related articles or external resources, typically at the article's end or within sections.
-  - CSS styles links as grid-based cards with hover effects (e.g., background color change).
-
-- **HR (Horizontal Rules)**:
-  - Use `<hr>` to separate major sections for clarity.
-
-- **Context-Aware Tool Usage**:
-  - Use expandables for optional/detailed content (e.g., FAQs, technical parameters) to reduce clutter.
-  - Use notes for tips, warnings, or critical reminders (e.g., "💡 Note: Always test in a sandbox").
-  - Use tables for comparisons or structured data (e.g., feature vs. user benefits).
-  - Embed FAQs inside articles via expandables, not as separate articles.
-  - Add related links for cross-references, using plausible paths (e.g., `/kb/articles/[ID]`).
-  - Generate content compatible with WYSIWYG: Semantic HTML, classes for scripts/CSS, no raw JS/CSS in output.
-
-- **General Rules**:
-  - Do not invent content; structure raw input logically (e.g., infer sections from topics).
-  - Use emojis in headings/lists for visual appeal (e.g., 🚀 for features, 💡 for notes).
-  - Ensure accessibility: Unique IDs on headings, alt text on images, semantic HTML.
-  - Output only HTML inside `<div class="article-body">`; no `<head>`, `<body>`, scripts, or styles.
-  - Maintain a professional, concise tone: Short paragraphs, active voice, bold key terms.
-  - Generate unique IDs for headings (e.g., `h_01A1B2C3D4E5F6G7H8I9J0`)."""
+Your goal is to enhance presentation of existing content, not replace it with templates."""
 
         # Generate high-quality content
         response = await call_llm_with_fallback(

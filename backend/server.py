@@ -1805,34 +1805,39 @@ async def create_high_quality_article_content(content: str, article_type: str, m
         doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
         
         if "overview" in article_type.lower():
-            # OVERVIEW ARTICLE - WYSIWYG TEMPLATE INTEGRATION
-            system_message = f"""You are an expert article generator for a knowledge base creating a high-level OVERVIEW article using WYSIWYG editor standards.
+            # OVERVIEW ARTICLE - SOURCE CONTENT SUMMARY  
+            system_message = f"""You are a content summarization specialist creating a high-level overview from source document content.
 
-CRITICAL OVERVIEW REQUIREMENTS:
-1. Create SUMMARY and NAVIGATION only - NO detailed implementation steps
-2. Provide roadmap with links to detailed sections  
-3. Include key highlights and learning objectives
-4. Focus on WHAT users will learn, not HOW to implement
+CORE PRINCIPLE: Create overview using ONLY information from the provided source content. Do NOT add generic sections or placeholder content.
 
-WYSIWYG TEMPLATE STRUCTURE FOR OVERVIEW:
-- Wrap all content in `<div class="article-body">`
-- Start with 1-2 introductory `<p>` paragraphs using `<strong>` for key terms
-- Use `<h2 id="unique-id">` for main sections with emoji prefixes (e.g., `📖 Overview`, `🎯 Key Features`)
-- Include mini-TOC: `<div id="mini-toc-container" class="mini-toc"><ul><li><a href="#overview">Overview</a></li><li><a href="#highlights">Key Highlights</a></li><li><a href="#topics">Topics Covered</a></li></ul></div>`
-- Use `<ul>` with emoji bullets for features/benefits (e.g., `⚡ <strong>Feature</strong>: Description`)
-- Add `<div class="note">💡 <strong>Note:</strong> [Navigation tip]</div>` for helpful guidance
-- End with `<div class="related-links wysiwyg-text-align-center">` for related articles
-- Use `<hr>` to separate major sections
+TASK: Extract and summarize the key topics, sections, and information from the source to create a navigation-focused overview.
 
-FORMATTING REQUIREMENTS:
-- NO step-by-step procedures or detailed code examples
-- NO implementation instructions
-- Brief snippets only for illustration
-- Focus on navigation and guidance
-- Generate unique IDs for headings (e.g., `h_01A1B2C3D4E5F6G7H8I9J0`)
-- Use emojis in headings for visual appeal (🚀, 💡, 📋, etc.)
+OVERVIEW APPROACH:
+1. **Source Analysis**: Identify main topics, sections, and key concepts from source content
+2. **Summarize Sections**: Create brief summaries of what each section covers based on source
+3. **Extract Key Points**: Highlight important features, concepts, or steps mentioned in source
+4. **Create Navigation**: Build roadmap based on actual source structure
 
-Create a navigation-focused overview using the WYSIWYG template structure."""
+HTML STRUCTURE:
+- Wrap in `<div class="article-body">`
+- Introductory paragraphs explaining what the source document covers
+- `<h2>` sections based on source content structure
+- Lists of key topics found in source material
+- Brief descriptions of what each source section contains
+
+CONTENT RESTRICTIONS:
+- NO generic "Key Features" unless features are explicitly mentioned in source
+- NO placeholder navigation tips unless guidance exists in source
+- NO generic benefits lists unless benefits are stated in source
+- NO template-style "What you'll learn" unless learning objectives exist in source
+
+WYSIWYG ENHANCEMENTS:
+- Add mini-TOC only if source has clear multiple sections
+- Use proper heading hierarchy based on source structure
+- Format source lists appropriately
+- Add contextual notes only if source contains important warnings/tips
+
+Focus on accurately representing what the source document contains, not what a generic overview should have."""
 
         else:
             # CONTEXTUAL CONTENT GENERATION - NO TEMPLATES

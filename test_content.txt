@@ -1,0 +1,28 @@
+Google Maps JavaScript API Integration Guide
+
+This comprehensive guide covers how to integrate Google Maps JavaScript API into your web application.
+
+## Getting Started
+
+First, you need to obtain an API key from Google Cloud Console.
+
+## Basic Implementation
+
+Here's how to create a basic map:
+
+```javascript
+function initMap() {
+    const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 4,
+        center: { lat: -25.344, lng: 131.036 },
+    });
+}
+```
+
+## Advanced Features
+
+You can add markers, info windows, and custom styling to enhance your maps.
+
+## Troubleshooting
+
+Common issues include API key problems and loading errors.

@@ -1971,8 +1971,9 @@ Source content to expand upon:
             
             # Add WYSIWYG enhancements without template contamination
             if len(content_text) >= 100:
+                enhanced_content = await add_wysiwyg_enhancements(clean_content, article_type)
                 print(f"✅ High-quality content with WYSIWYG features: {len(content_text)} chars")
-                return clean_content
+                return enhanced_content
             else:
                 print(f"⚠️ Content still insufficient: {len(content_text)} chars")
                 return clean_content

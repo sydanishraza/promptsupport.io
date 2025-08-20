@@ -526,29 +526,72 @@ CRITICAL OUTPUT FORMAT:
                     # CRITICAL FIX: Clean HTML content to remove document structure
                     cleaned_content = clean_article_html_content(article_content)
                     
-                    # Create article object
-                    article = {
-                        "id": str(uuid.uuid4()),
-                        "title": item.get('article_title', f'Article {i+1}'),
-                        "content": cleaned_content,
-                        "status": "published",
-                        "article_type": item.get('article_type', 'informational'),
-                        "source_document": metadata.get("original_filename", "Unknown"),
-                        "estimated_length": item.get('estimated_length', 'medium'),
-                        "key_topics": item.get('key_topics', []),
-                        "created_at": datetime.utcnow(),
-                        "metadata": {
-                            "outline_based": True,
-                            "article_number": i + 1,
-                            "total_articles": len(outline_items),
-                            **metadata
-                        }
-                    }
+                    # CONTENT VALIDATION: Ensure we have substantial content
+                    content_text = re.sub(r'<[^>]+>', '', cleaned_content).strip()
+                    if len(content_text) < 50:
+                        print(f"⚠️ Article content too short ({len(content_text)} chars), regenerating...")
+                        # Try to regenerate with enhanced prompt
+                        enhanced_system_message = f"""You are a technical writer creating a comprehensive article based on a specific section of a larger document.
+
+ARTICLE REQUIREMENTS:
+- Title: {item.get('article_title', 'Untitled')}
+- Type: {item.get('article_type', 'informational')}
+- Content Focus: {item.get('content_summary', 'General content')}
+- Key Topics: {', '.join(item.get('key_topics', []))}
+
+CRITICAL INSTRUCTIONS:
+1. Extract ALL relevant content from the source document for this article
+2. Create a comprehensive, standalone article that covers the topic thoroughly
+3. Include ALL technical details, procedures, and specifications
+4. Use proper HTML formatting with headings, lists, and emphasis
+5. Ensure the article is complete and self-contained
+6. MINIMUM 200 words of actual content
+
+CRITICAL OUTPUT FORMAT:
+- Return ONLY article content HTML (headings, paragraphs, lists, etc.)
+- Do NOT include document structure tags: <!DOCTYPE>, <html>, <head>, <body>
+- Do NOT wrap content in ```html code blocks
+- Start directly with content (e.g., <h2>Introduction</h2><p>Content...</p>)
+- Use semantic HTML: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>
+- ENSURE substantial content - at least 200 words"""
+
+                        article_content = await call_llm_with_fallback(
+                            system_message=enhanced_system_message,
+                            user_message=f"Create a comprehensive article from this source document:\n\n{content}"
+                        )
+                        if article_content:
+                            cleaned_content = clean_article_html_content(article_content)
+                            content_text = re.sub(r'<[^>]+>', '', cleaned_content).strip()
                     
-                    # CRITICAL FIX: Save article to database
-                    await db.content_library.insert_one(article)
-                    articles.append(article)
-                    print(f"✅ Article created and saved: {article['title']}")
+                    # Final validation before saving
+                    if len(content_text) >= 50:
+                        # Create article object
+                        article = {
+                            "id": str(uuid.uuid4()),
+                            "title": item.get('article_title', f'Article {i+1}'),
+                            "content": cleaned_content,
+                            "status": "published",
+                            "article_type": item.get('article_type', 'informational'),
+                            "source_document": metadata.get("original_filename", "Unknown"),
+                            "estimated_length": item.get('estimated_length', 'medium'),
+                            "key_topics": item.get('key_topics', []),
+                            "created_at": datetime.utcnow(),
+                            "metadata": {
+                                "outline_based": True,
+                                "article_number": i + 1,
+                                "total_articles": len(outline_items),
+                                "content_validated": True,
+                                "content_length": len(content_text),
+                                **metadata
+                            }
+                        }
+                        
+                        # CRITICAL FIX: Save article to database
+                        await db.content_library.insert_one(article)
+                        articles.append(article)
+                        print(f"✅ Article created and saved: {article['title']} ({len(content_text)} chars)")
+                    else:
+                        print(f"⚠️ Article still too short after regeneration, skipping: {item.get('article_title', 'Untitled')}")
                 else:
                     print(f"⚠️ Failed to create article: {item.get('article_title', 'Untitled')}")
                     

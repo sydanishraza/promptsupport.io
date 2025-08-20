@@ -1964,124 +1964,162 @@ def clean_document_title(filename: str) -> str:
     return title.strip()
 
 async def ensure_enhanced_features(content: str, article_type: str, doc_title: str) -> str:
-    """Ensure all enhanced features are present in the content"""
+    """Ensure WYSIWYG template enhanced features are present in the content"""
     try:
-        print(f"🔥 ENSURING ENHANCED FEATURES for {article_type}")
+        print(f"🔥 ENSURING WYSIWYG TEMPLATE FEATURES for {article_type}")
         
-        # 1. ENSURE MINI-TOC IS PRESENT AT THE START
-        if 'mini-toc' not in content.lower():
-            print(f"📋 Adding missing mini-TOC for {article_type}")
+        # STEP 1: Wrap content in article-body if not already wrapped
+        if '<div class="article-body">' not in content:
+            content = f'<div class="article-body">\n{content}\n</div>'
+        
+        # STEP 2: ENSURE MINI-TOC IS PRESENT AT THE START (WYSIWYG Template format)
+        if 'mini-toc-container' not in content.lower():
+            print(f"📋 Adding missing WYSIWYG mini-TOC for {article_type}")
             
             if "overview" in article_type.lower():
-                # Overview mini-TOC
-                mini_toc = """<div class="mini-toc">
-<h3>📋 Contents</h3>
+                # Overview mini-TOC using template structure
+                mini_toc = '''<div id="mini-toc-container" class="mini-toc">
 <ul>
-<li><a href="#overview">Overview</a></li>
-<li><a href="#highlights">Key Highlights</a></li>
-<li><a href="#topics">Topics Covered</a></li>
-<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#h_overview">📖 Overview</a></li>
+<li><a href="#h_highlights">🎯 Key Highlights</a></li>
+<li><a href="#h_topics">📋 Topics Covered</a></li>
+<li><a href="#h_related">🔗 Related Topics</a></li>
 </ul>
 </div>
 
-"""
+<hr>
+
+'''
             else:
-                # Complete guide mini-TOC
-                mini_toc = """<div class="mini-toc">
-<h3>📋 Contents</h3>
+                # Complete guide mini-TOC using template structure
+                mini_toc = '''<div id="mini-toc-container" class="mini-toc">
 <ul>
-<li><a href="#introduction">Introduction</a></li>
-<li><a href="#setup">Setup & Prerequisites</a></li>
-<li><a href="#implementation">Implementation</a></li>
-<li><a href="#advanced">Advanced Features</a></li>
-<li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#h_introduction">🚀 Introduction</a></li>
+<li><a href="#h_features">⚡ Key Features</a></li>
+<li><a href="#h_implementation">🛠️ Implementation</a></li>
+<li><a href="#h_faqs">❓ FAQs</a></li>
+<li><a href="#h_related">🔗 Related Topics</a></li>
 </ul>
 </div>
 
-"""
+<hr>
+
+'''
             
-            # Add mini-TOC at the beginning after any existing h2 titles
-            if '<h2' in content:
-                content = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{mini_toc}', content, count=1)
-            else:
-                content = mini_toc + content
+            # Add mini-TOC after introductory paragraphs
+            if '<p>' in content:
+                # Find the end of the first 1-2 paragraphs
+                paragraphs = content.split('</p>')
+                if len(paragraphs) >= 2:
+                    # Insert after second paragraph
+                    paragraphs[1] = paragraphs[1] + '</p>\n' + mini_toc
+                    content = '</p>'.join(paragraphs)
+                else:
+                    # Insert after first paragraph
+                    paragraphs[0] = paragraphs[0] + '</p>\n' + mini_toc
+                    content = '</p>'.join(paragraphs)
         
-        # 2. ENSURE ENHANCED CODE BLOCKS ARE PROPERLY FORMATTED
-        # Find basic code blocks and enhance them
-        def enhance_code_block(match):
+        # STEP 3: ENSURE WYSIWYG ENHANCED CODE BLOCKS
+        def enhance_code_block_wysiwyg(match):
             code_element = match.group(0)
             
-            # Check if already enhanced
-            if 'code-block-container' in code_element:
+            # Skip if already using line-numbers class (WYSIWYG template format)
+            if 'line-numbers' in code_element:
                 return code_element
             
             # Extract language and code content
             language_match = re.search(r'class=["\']language-(\w+)["\']', code_element)
-            language = language_match.group(1) if language_match else 'code'
+            language = language_match.group(1) if language_match else 'javascript'
             
             # Extract the actual code content
             code_content_match = re.search(r'<code[^>]*>(.*?)</code>', code_element, re.DOTALL)
-            code_content = code_content_match.group(1) if code_content_match else 'code example'
+            code_content = code_content_match.group(1) if code_content_match else 'console.log("Hello World");'
             
-            # Create enhanced code block
-            enhanced_block = f'''<div class="code-block-container language-{language}">
-<div class="code-header">
-<span class="code-language">{language}</span>
-<button class="copy-code-btn" onclick="copyCode(this)">📋 Copy</button>
-</div>
-<pre><code class="language-{language}">{code_content}</code></pre>
-</div>'''
+            # Create WYSIWYG template code block format
+            enhanced_block = f'<pre class="line-numbers"><code class="language-{language}">{code_content}</code></pre>'
             
             return enhanced_block
         
-        # Apply to all code blocks
-        content = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_code_block, content, flags=re.DOTALL)
+        # Apply WYSIWYG template code block format
+        content = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_code_block_wysiwyg, content, flags=re.DOTALL)
         
-        # 3. ENSURE CALLOUTS ARE PRESENT - Add strategic callouts if missing
-        if 'callout' not in content.lower():
-            print(f"💡 Adding strategic callouts for enhanced formatting")
+        # STEP 4: ENSURE WYSIWYG TEMPLATE EXPANDABLES FOR FAQS
+        if 'expandable' not in content.lower() and ('faq' in content.lower() or len(content) > 2000):
+            print(f"📖 Adding WYSIWYG expandable FAQs")
             
-            # Add a tip callout near the end
-            tip_callout = '''
-<div class="callout callout-tip">
-<div class="callout-title">💡 Pro Tip</div>
-<div class="callout-content">For best results, follow the steps in order and refer to the troubleshooting section if you encounter any issues.</div>
-</div>'''
+            # Add expandable FAQ section
+            faq_section = '''
+<hr>
+<h2 id="h_faqs">❓ Frequently Asked Questions (FAQs)</h2>
+<div class="expandable">
+<div class="expandable-header"><span class="expandable-title">What are the key benefits?</span></div>
+<div class="expandable-content"><p>This solution provides enhanced functionality, better user experience, and improved efficiency for your workflows.</p></div>
+</div>
+<div class="expandable">
+<div class="expandable-header"><span class="expandable-title">How do I get started?</span></div>
+<div class="expandable-content"><p>Follow the implementation steps above, starting with the setup and prerequisites section.</p></div>
+</div>
+<div class="expandable">
+<div class="expandable-header"><span class="expandable-title">Where can I get help?</span></div>
+<div class="expandable-content"><p>Check the troubleshooting section or refer to the related articles linked below.</p></div>
+</div>
+'''
             
-            # Insert before any troubleshooting section or at the end
-            if 'troubleshooting' in content.lower():
-                content = re.sub(r'(<h[2-6][^>]*[^>]*troubleshooting[^<]*</h[2-6]>)', rf'{tip_callout}\n\1', content, flags=re.IGNORECASE)
+            # Insert before related topics or at the end
+            if 'related' in content.lower() and 'topics' in content.lower():
+                content = re.sub(r'(<h[2-6][^>]*[^>]*related[^<]*topics[^<]*</h[2-6]>)', rf'{faq_section}\n\1', content, flags=re.IGNORECASE)
             else:
-                content = content + tip_callout
+                content = content + faq_section
         
-        # 4. ENSURE PROPER LIST CLASSES ARE APPLIED
-        content = re.sub(r'<ol(?![^>]*class=)', '<ol class="doc-list doc-list-ordered"', content)
-        content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list doc-list-unordered"', content)
-        
-        # 5. ENSURE CONTEXTUAL CROSS-REFERENCES ARE PRESENT
-        if '#' not in content or 'cross-ref' not in content:
-            print(f"🔗 Adding contextual cross-references")
+        # STEP 5: ENSURE WYSIWYG TEMPLATE NOTES
+        if '<div class="note">' not in content:
+            print(f"💡 Adding WYSIWYG template note")
             
-            # Add "See also" reference at strategic points
-            see_also = '''<p class="see-also"><strong>See also:</strong> <a href="#troubleshooting" class="cross-ref">Troubleshooting section</a> for common issues.</p>'''
+            # Add a strategic note using template format
+            note = '''<div class="note">💡 <strong>Note:</strong> Follow the steps in sequence for the best results. Always test in a development environment before implementing in production.</div>
+
+'''
             
-            # Insert in the middle of long content
-            paragraphs = content.split('</p>')
-            if len(paragraphs) > 3:
-                mid_point = len(paragraphs) // 2
-                paragraphs[mid_point] = paragraphs[mid_point] + see_also
-                content = '</p>'.join(paragraphs)
+            # Insert after first major section
+            if '<h2' in content:
+                content = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{note}', content, count=1)
         
-        # 6. ENSURE PROPER HEADING HIERARCHY WITH ANCHOR IDS
+        # STEP 6: ENSURE WYSIWYG TEMPLATE RELATED LINKS SECTION
+        if 'related-links' not in content.lower():
+            print(f"🔗 Adding WYSIWYG template related links")
+            
+            related_section = '''
+<hr>
+<h2 id="h_related">🔗 Related Topics</h2>
+<div class="related-links wysiwyg-text-align-center">
+<a class="related-link" href="/kb/articles/getting-started">Getting Started Guide</a>
+<a class="related-link" href="/kb/articles/best-practices">Best Practices</a>
+<a class="related-link" href="/kb/articles/troubleshooting">Troubleshooting Guide</a>
+<a class="related-link" href="/kb/articles/advanced-features">Advanced Features</a>
+</div>
+'''
+            
+            # Add at the end before closing div
+            if '</div>' in content:
+                content = content.replace('</div>', related_section + '\n</div>')
+        
+        # STEP 7: ENSURE PROPER WYSIWYG HEADING STRUCTURE WITH UNIQUE IDS
         content = re.sub(r'<h2([^>]*)>([^<]*)</h2>', 
-                        lambda m: f'<h2{m.group(1)} id="{m.group(2).lower().replace(" ", "-").replace("&", "and")}">{m.group(2)}</h2>', 
+                        lambda m: f'<h2{m.group(1)} id="h_{m.group(2).lower().replace(" ", "_").replace("🚀", "").replace("⚡", "").replace("🛠️", "").replace("❓", "").replace("🔗", "").strip()}">{m.group(2)}</h2>', 
                         content)
         
-        print(f"✅ Enhanced features ensured for {article_type}")
+        # STEP 8: ENSURE HR SEPARATORS
+        if '<hr>' not in content:
+            # Add HR separators between major sections
+            content = re.sub(r'(</h2>)', r'\1\n<hr>\n', content)
+        
+        print(f"✅ WYSIWYG template features ensured for {article_type}")
         return content
         
     except Exception as e:
-        print(f"❌ Error ensuring enhanced features: {e}")
+        print(f"❌ Error ensuring WYSIWYG template features: {e}")
+        import traceback
+        traceback.print_exc()
         return content
 
 async def apply_quality_fixes(content: str) -> str:

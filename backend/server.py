@@ -2293,16 +2293,31 @@ async def apply_quality_fixes(content: str) -> str:
             content = re.sub(r'```[^`]*<!DOCTYPE[^`]*```', '', content, flags=re.DOTALL | re.IGNORECASE)
             content = re.sub(r'```[^`]*<html[^`]*```', '', content, flags=re.DOTALL | re.IGNORECASE)
         
-        # Remove ALL HTML document structure elements
-        content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE) 
-        content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+        # FIXED: Remove ONLY document wrapper elements, preserve content
+        # Only remove full document wrappers, not content within them
+        if '<!DOCTYPE' in content and '<html' in content and '</html>' in content:
+            # Extract content from between body tags if present
+            body_match = re.search(r'<body[^>]*>(.*?)</body>', content, re.DOTALL | re.IGNORECASE)
+            if body_match:
+                content = body_match.group(1)
+                print(f"✅ Extracted content from <body> tags")
+            else:
+                # Just remove document structure tags
+                content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'<head[^>]*>.*?</head>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove only metadata elements, not content
         content = re.sub(r'<meta[^>]*>', '', content, flags=re.IGNORECASE)
         content = re.sub(r'<title[^>]*>.*?</title>', '', content, flags=re.IGNORECASE | re.DOTALL)
         content = re.sub(r'<link[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.IGNORECASE | re.DOTALL)
-        content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # PRESERVE content styles and scripts that contain actual content/data
+        # Only remove empty style/script blocks
+        content = re.sub(r'<style[^>]*>\s*</style>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<script[^>]*>\s*</script>', '', content, flags=re.IGNORECASE)
         
         # Clean up wrapper artifacts
         content = re.sub(r'^[`\s]*', '', content.strip())

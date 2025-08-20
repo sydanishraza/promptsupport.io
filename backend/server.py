@@ -630,28 +630,35 @@ CRITICAL OUTPUT FORMAT:
                         faq_title = getattr(faq_article_chunk, 'title', None) or \
                                     faq_article_chunk.metadata.get('title', 'FAQ and Troubleshooting')
                         
-                        faq_article = {
-                            "id": str(uuid.uuid4()),
-                            "title": faq_title,
-                            "content": faq_article_chunk.content,
-                            "status": "published",
-                            "article_type": "faq-troubleshooting",
-                            "source_document": metadata.get("original_filename", "Unknown"),
-                            "tags": getattr(faq_article_chunk, 'tags', []) or [],
-                            "created_at": datetime.utcnow(),
-                            "metadata": {
-                                "outline_based": True,
-                                "enhancement_type": "faq_troubleshooting",
-                                "article_number": len(enhanced_articles) + 1,
-                                "total_articles": len(enhanced_articles) + 1,
-                                **metadata
+                        # Validate FAQ content before saving
+                        faq_content_text = re.sub(r'<[^>]+>', '', faq_article_chunk.content).strip()
+                        if len(faq_content_text) >= 100:  # Ensure substantial FAQ content
+                            faq_article = {
+                                "id": str(uuid.uuid4()),
+                                "title": faq_title,
+                                "content": faq_article_chunk.content,
+                                "status": "published",
+                                "article_type": "faq-troubleshooting",
+                                "source_document": metadata.get("original_filename", "Unknown"),
+                                "tags": getattr(faq_article_chunk, 'tags', []) or [],
+                                "created_at": datetime.utcnow(),
+                                "metadata": {
+                                    "outline_based": True,
+                                    "enhancement_type": "faq_troubleshooting",
+                                    "article_number": len(enhanced_articles) + 1,
+                                    "total_articles": len(enhanced_articles) + 1,
+                                    "content_validated": True,
+                                    "content_length": len(faq_content_text),
+                                    **metadata
+                                }
                             }
-                        }
-                        
-                        # Save FAQ article to database
-                        await db.content_library.insert_one(faq_article)
-                        enhanced_articles.append(faq_article)
-                        print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']}")
+                            
+                            # Save FAQ article to database
+                            await db.content_library.insert_one(faq_article)
+                            enhanced_articles.append(faq_article)
+                            print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']} ({len(faq_content_text)} chars)")
+                        else:
+                            print(f"⚠️ FAQ content too short ({len(faq_content_text)} chars), skipping FAQ article")
                     else:
                         print(f"⚠️ FAQ generation returned None, skipping FAQ article")
                 except Exception as faq_error:

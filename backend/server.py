@@ -2249,24 +2249,9 @@ console.log(result);</code></pre>
         
         print(f"✅ Added {len(callouts_added)} WYSIWYG callouts: {', '.join(callouts_added)}")
         
-        # STEP 6: ENSURE WYSIWYG TEMPLATE RELATED LINKS SECTION
-        if 'related-links' not in content.lower():
-            print(f"🔗 Adding WYSIWYG template related links")
-            
-            related_section = '''
-<hr>
-<h2 id="h_related">🔗 Related Topics</h2>
-<div class="related-links wysiwyg-text-align-center">
-<a class="related-link" href="/kb/articles/getting-started">Getting Started Guide</a>
-<a class="related-link" href="/kb/articles/best-practices">Best Practices</a>
-<a class="related-link" href="/kb/articles/troubleshooting">Troubleshooting Guide</a>
-<a class="related-link" href="/kb/articles/advanced-features">Advanced Features</a>
-</div>
-'''
-            
-            # Add at the end before closing div
-            if '</div>' in content:
-                content = content.replace('</div>', related_section + '\n</div>')
+        # STEP 6: ENSURE WYSIWYG TEMPLATE RELATED LINKS SECTION - REMOVE TEMPLATE INJECTION
+        # NO LONGER ADD GENERIC TEMPLATE LINKS - Let the cross-reference system handle real related links
+        print(f"🔗 Skipping generic template related links - real cross-references will be added by the cross-reference system")
         
         # STEP 7: ENSURE PROPER WYSIWYG HEADING STRUCTURE WITH UNIQUE IDS
         content = re.sub(r'<h2([^>]*)>([^<]*)</h2>', 

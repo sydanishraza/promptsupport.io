@@ -2296,8 +2296,8 @@ async def apply_quality_fixes(content: str) -> str:
         content = re.sub(r'</h1>', '</h2>', content)
         
         # Fix 5b: Remove duplicate title text that appears in content
-        # Extract title from metadata for comparison
-        doc_title = clean_document_title(metadata.get('original_filename', 'Guide')) if 'metadata' in locals() else 'Guide'
+        # Use a generic title for comparison
+        doc_title = 'Guide'
         
         # Remove sentences that duplicate the title
         title_words = set(doc_title.lower().split())

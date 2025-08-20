@@ -1888,12 +1888,14 @@ Source content to base article on:
         )
         
         if response:
-            # Apply enhanced formatting and quality fixes
+            # Apply basic formatting and quality fixes only
             clean_content = await apply_quality_fixes(response)
             
-            # CRITICAL: Ensure enhanced features are present - add them if missing
-            enhanced_content = await ensure_enhanced_features(clean_content, article_type, doc_title)
-            return enhanced_content
+            # TEMPORARILY DISABLED: Template enhancement causing corruption
+            # enhanced_content = await ensure_enhanced_features(clean_content, article_type, doc_title)
+            
+            # Return clean content without template injection
+            return clean_content
         else:
             return f"<h2>Error generating {article_type} content</h2><p>Please try again.</p>"
             

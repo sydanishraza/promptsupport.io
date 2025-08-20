@@ -2132,12 +2132,14 @@ console.log(result);</code></pre>
         
         print(f"✅ Enhanced code blocks: {code_blocks_added} blocks with line-numbers class added")
         
-        # STEP 4: ENSURE WYSIWYG TEMPLATE EXPANDABLES FOR FAQS - MANDATORY IMPLEMENTATION
-        print(f"📖 Adding comprehensive WYSIWYG expandable FAQ sections")
-        
+        # STEP 4: ENSURE WYSIWYG TEMPLATE EXPANDABLES FOR FAQS - CONDITIONAL IMPLEMENTATION
+        # Only add FAQ sections if content is substantial and doesn't already have expandables
         expandable_faqs_added = False
         
-        if 'expandable' not in content.lower():
+        if ('expandable' not in content.lower() and 
+            'faq' not in content.lower() and 
+            len(content_without_tags) > 1000):  # Only for substantial content
+            print(f"📖 Adding WYSIWYG expandable FAQ sections to substantial content")
             # Create comprehensive expandable FAQ section with more questions
             faq_section = '''
 <hr>

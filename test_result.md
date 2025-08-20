@@ -237,6 +237,14 @@ backend:
     stuck_count: 0
     priority: "critical"
     needs_retesting: false
+
+  - task: "CRITICAL CONTENT CORRUPTION ANALYSIS - Content Library State Investigation"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "testing"

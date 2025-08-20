@@ -1981,8 +1981,11 @@ async def ensure_enhanced_features(content: str, article_type: str, doc_title: s
             print(f"✅ Wrapped content in article-body div")
         
         # STEP 2: ENSURE MINI-TOC IS PRESENT AT THE START (WYSIWYG Template format)
-        if 'mini-toc-container' not in content.lower():
-            print(f"📋 Adding missing WYSIWYG mini-TOC for {article_type}")
+        # Only add mini-TOC if content has multiple sections (real content)
+        h2_count = len(re.findall(r'<h2[^>]*>', content))
+        
+        if 'mini-toc-container' not in content.lower() and h2_count >= 2:
+            print(f"📋 Adding WYSIWYG mini-TOC for {article_type} with {h2_count} sections")
             
             if "overview" in article_type.lower():
                 # Overview mini-TOC using template structure

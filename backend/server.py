@@ -1947,214 +1947,98 @@ def clean_document_title(filename: str) -> str:
     return title.strip()
 
 async def ensure_enhanced_features(content: str, article_type: str, doc_title: str) -> str:
-    """Ensure WYSIWYG template enhanced features are present in the content"""
+    """Enhance existing content with WYSIWYG features - NO TEMPLATE INJECTION"""
     try:
-        print(f"🔥 ENSURING WYSIWYG TEMPLATE FEATURES for {article_type}")
+        print(f"🎯 SELECTIVE ENHANCEMENT for {article_type} - enhancing existing content only")
         
-        # STEP 1: Wrap content in article-body if not already wrapped
-        # CRITICAL: Only enhance if we have substantial real content
+        # Check content quality - skip if minimal content
         content_without_tags = re.sub(r'<[^>]+>', '', content).strip()
         
         if len(content_without_tags) < 100:
-            print(f"❌ CRITICAL: Content too short ({len(content_without_tags)} chars), skipping template enhancement to prevent placeholder replacement")
+            print(f"🚫 Content too short ({len(content_without_tags)} chars) - returning as-is")
             return content
         
+        # STEP 1: Article body wrapper (essential)
         if '<div class="article-body">' not in content:
             content = f'<div class="article-body">\n{content}\n</div>'
-            print(f"✅ Wrapped content in article-body div")
+            print(f"✅ Added article-body wrapper")
         
-        # STEP 2: ENSURE MINI-TOC IS PRESENT AT THE START (WYSIWYG Template format)
-        # Only add mini-TOC if content has multiple sections (real content)
-        h2_count = len(re.findall(r'<h2[^>]*>', content))
-        
-        if 'mini-toc-container' not in content.lower() and h2_count >= 2:
-            print(f"📋 Adding WYSIWYG mini-TOC for {article_type} with {h2_count} sections")
-            
-            if "overview" in article_type.lower():
-                # Overview mini-TOC using template structure
-                mini_toc = '''<div id="mini-toc-container" class="mini-toc">
-<ul>
-<li><a href="#h_overview">📖 Overview</a></li>
-<li><a href="#h_highlights">🎯 Key Highlights</a></li>
-<li><a href="#h_topics">📋 Topics Covered</a></li>
-<li><a href="#h_related">🔗 Related Topics</a></li>
-</ul>
-</div>
-
-<hr>
-
-'''
-            else:
-                # Complete guide mini-TOC using template structure
-                mini_toc = '''<div id="mini-toc-container" class="mini-toc">
-<ul>
-<li><a href="#h_introduction">🚀 Introduction</a></li>
-<li><a href="#h_features">⚡ Key Features</a></li>
-<li><a href="#h_implementation">🛠️ Implementation</a></li>
-<li><a href="#h_faqs">❓ FAQs</a></li>
-<li><a href="#h_related">🔗 Related Topics</a></li>
-</ul>
-</div>
-
-<hr>
-
-'''
-            
-            # Add mini-TOC after introductory paragraphs
-            if '<p>' in content:
-                # Find the end of the first 1-2 paragraphs
-                paragraphs = content.split('</p>')
-                if len(paragraphs) >= 2:
-                    # Insert after second paragraph
-                    paragraphs[1] = paragraphs[1] + '</p>\n' + mini_toc
-                    content = '</p>'.join(paragraphs)
-                else:
-                    # Insert after first paragraph
-                    paragraphs[0] = paragraphs[0] + '</p>\n' + mini_toc
-                    content = '</p>'.join(paragraphs)
-        
-        # STEP 3: ENSURE WYSIWYG ENHANCED CODE BLOCKS - MANDATORY IMPLEMENTATION
-        def enhance_code_block_wysiwyg(match):
+        # STEP 2: Enhance code blocks only (no injection)
+        def enhance_existing_code(match):
             code_element = match.group(0)
-            
-            # Skip if already using line-numbers class (WYSIWYG template format)
             if 'line-numbers' in code_element:
                 return code_element
             
-            # Extract language and code content
+            # Extract language and content
             language_match = re.search(r'class=["\']language-(\w+)["\']', code_element)
-            language = language_match.group(1) if language_match else 'javascript'
+            language = language_match.group(1) if language_match else 'text'
             
-            # Extract the actual code content
             code_content_match = re.search(r'<code[^>]*>(.*?)</code>', code_element, re.DOTALL)
-            code_content = code_content_match.group(1) if code_content_match else 'console.log("Hello World");'
+            code_content = code_content_match.group(1) if code_content_match else ''
             
-            # Create WYSIWYG template code block format with copy functionality
-            enhanced_block = f'<pre class="line-numbers"><code class="language-{language}">{code_content}</code></pre>'
+            return f'<pre class="line-numbers"><code class="language-{language}">{code_content}</code></pre>'
+        
+        # Only enhance existing code blocks
+        original_code_count = len(re.findall(r'<pre[^>]*><code', content))
+        content = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_existing_code, content, flags=re.DOTALL)
+        
+        if original_code_count > 0:
+            print(f"✅ Enhanced {original_code_count} existing code blocks with line-numbers class")
+        
+        # STEP 3: Convert existing FAQ patterns to expandable (no generic addition)
+        faq_pattern = r'(Q:|Question:|FAQ:)\s*([^?]+\?)\s*(A:|Answer:)?\s*([^Q\n]+)'
+        faq_matches = re.findall(faq_pattern, content, re.IGNORECASE | re.MULTILINE)
+        
+        if faq_matches and 'expandable' not in content:
+            print(f"📖 Converting {len(faq_matches)} existing FAQ items to expandable format")
             
-            return enhanced_block
-        
-        # Apply WYSIWYG template code block format to ALL code blocks
-        content = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_code_block_wysiwyg, content, flags=re.DOTALL)
-        
-        # ENHANCE EXISTING CODE BLOCKS - NO GENERIC INJECTION
-        code_blocks_added = 0
-        
-        # Only enhance existing code, don't inject generic examples
-        print(f"📝 SELECTIVE: Enhancing existing code blocks only (no generic injection)")
-        
-        # Convert any remaining basic code blocks to enhanced format
-        basic_code_pattern = r'<pre(?![^>]*class="line-numbers")([^>]*)><code([^>]*)>(.*?)</code></pre>'
-        
-        def enhance_basic_code(match):
-            pre_attrs = match.group(1)
-            code_attrs = match.group(2)
-            code_content = match.group(3)
-            
-            # Extract language if present, default to javascript
-            language_match = re.search(r'class=["\'].*?language-(\w+).*?["\']', code_attrs)
-            language = language_match.group(1) if language_match else 'javascript'
-            
-            return f'<pre class="line-numbers"{pre_attrs}><code class="language-{language}"{code_attrs}>{code_content}</code></pre>'
-        
-        enhanced_content = re.sub(basic_code_pattern, enhance_basic_code, content, flags=re.DOTALL)
-        if enhanced_content != content:
-            content = enhanced_content
-            code_blocks_added += len(re.findall(basic_code_pattern, content, re.DOTALL))
-        
-        print(f"✅ Enhanced code blocks: {code_blocks_added} blocks with line-numbers class added")
-        
-        # STEP 4: ENHANCE EXISTING FAQS WITH WYSIWYG EXPANDABLE FORMAT - NO TEMPLATE INJECTION
-        # Only convert existing FAQ content to expandable format, don't add generic FAQs
-        expandable_faqs_added = False
-        
-        if ('faq' in content.lower() and 'expandable' not in content.lower()):
-            print(f"📖 Converting existing FAQ content to WYSIWYG expandable format")
-            
-            # Find existing FAQ sections and convert them to expandable format
-            # Look for Q: A: patterns or similar FAQ structures
-            faq_pattern = r'(Q:|Question:|FAQ:)\s*([^?]+\?)\s*(A:|Answer:)?\s*([^Q]+)'
-            faq_matches = re.findall(faq_pattern, content, re.IGNORECASE | re.MULTILINE)
-            
-            if faq_matches:
-                print(f"✅ Found {len(faq_matches)} existing FAQ items to convert")
+            expandable_content = ""
+            for match in faq_matches:
+                question = match[1].strip()
+                answer = match[3].strip()
                 
-                # Convert to expandable format
-                expandable_content = ""
-                for match in faq_matches:
-                    question = match[1].strip()
-                    answer = match[3].strip()
-                    
-                    expandable_content += f'''<div class="expandable">
+                expandable_content += f'''<div class="expandable">
 <div class="expandable-header"><span class="expandable-title">{question}</span></div>
 <div class="expandable-content"><p>{answer}</p></div>
 </div>
 '''
-                
-                # Replace the original FAQ section
-                content = re.sub(faq_pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
-                
-                # Add the expandable FAQs
-                if '<h2' in content and 'faq' in content.lower():
-                    content = re.sub(r'(<h2[^>]*[^>]*faq[^<]*</h2>)', rf'\1\n{expandable_content}', content, flags=re.IGNORECASE)
-                    expandable_faqs_added = True
-        
-        # NO GENERIC FAQ INJECTION - Only enhance existing FAQ content
-        print(f"🚫 Skipping generic FAQ injection - only enhancing existing FAQ content")
-        
-        # STEP 5: SELECTIVE WYSIWYG TEMPLATE NOTES - ONLY WHEN BENEFICIAL  
-        print(f"💡 Adding selective WYSIWYG callouts only when beneficial")
-        
-        # Only add callouts for substantial technical content, and only 1-2 strategic ones
-        callouts_added = []
-        
-        # Only add a single strategic note if content is technical and lacks callouts
-        if ('<div class="note">' not in content and 
-            ('api' in content.lower() or 'tutorial' in content.lower() or 'guide' in content.lower()) and
-            len(content_without_tags) > 1500):
             
-            # Add one contextual note based on content type
-            if 'api' in content.lower():
-                note = '''<div class="note">💡 <strong>Note:</strong> Always test API calls in a development environment before implementing in production.</div>
+            # Replace FAQ pattern with expandable format
+            content = re.sub(faq_pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+            
+            if '<h2' in content and 'faq' in content.lower():
+                content = re.sub(r'(<h2[^>]*[^>]*faq[^<]*</h2>)', rf'\1\n{expandable_content}', content, flags=re.IGNORECASE)
+        
+        # STEP 4: Add single contextual note only if highly technical content
+        if ('<div class="note">' not in content and 
+            ('api' in content.lower() and 'key' in content.lower()) or
+            ('tutorial' in content.lower() and ('code' in content.lower() or 'example' in content.lower()))):
+            
+            # Add one highly contextual note
+            if 'api' in content.lower() and 'key' in content.lower():
+                note = '''<div class="note">🔑 <strong>API Key:</strong> Ensure your API key is properly configured and has the necessary permissions.</div>
 
 '''
             elif 'tutorial' in content.lower():
-                note = '''<div class="note">🎯 <strong>Tip:</strong> Follow the steps in sequence for the best results.</div>
-
-'''
-            else:
-                note = '''<div class="note">ℹ️ <strong>Info:</strong> This guide provides comprehensive instructions for implementation.</div>
+                note = '''<div class="note">📚 <strong>Tutorial:</strong> Follow each step carefully for successful implementation.</div>
 
 '''
             
-            # Insert after first major section
+            # Insert after first H2 section
             if '<h2' in content:
                 content = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{note}', content, count=1)
-                callouts_added.append("contextual_note")
+                print(f"✅ Added 1 contextual note based on content type")
         
-        print(f"✅ Added {len(callouts_added)} selective WYSIWYG callouts (no generic injection)")
-        
-        # STEP 6: ENSURE WYSIWYG TEMPLATE RELATED LINKS SECTION - REMOVE TEMPLATE INJECTION
-        # NO LONGER ADD GENERIC TEMPLATE LINKS - Let the cross-reference system handle real related links
-        print(f"🔗 Skipping generic template related links - real cross-references will be added by the cross-reference system")
-        
-        # STEP 7: ENSURE PROPER WYSIWYG HEADING STRUCTURE WITH UNIQUE IDS
+        # STEP 5: Add proper heading IDs for navigation
         content = re.sub(r'<h2([^>]*)>([^<]*)</h2>', 
-                        lambda m: f'<h2{m.group(1)} id="h_{m.group(2).lower().replace(" ", "_").replace("🚀", "").replace("⚡", "").replace("🛠️", "").replace("❓", "").replace("🔗", "").strip()}">{m.group(2)}</h2>', 
+                        lambda m: f'<h2{m.group(1)} id="{m.group(2).lower().replace(" ", "-").replace("#", "").replace(":", "").strip()}">{m.group(2)}</h2>', 
                         content)
         
-        # STEP 8: ENSURE HR SEPARATORS
-        if '<hr>' not in content:
-            # Add HR separators between major sections
-            content = re.sub(r'(</h2>)', r'\1\n<hr>\n', content)
-        
-        print(f"✅ WYSIWYG template features ensured for {article_type}")
+        print(f"✅ Selective enhancement complete - enhanced existing content without template injection")
         return content
         
     except Exception as e:
-        print(f"❌ Error ensuring WYSIWYG template features: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Error in selective enhancement: {e}")
         return content
 
 async def apply_quality_fixes(content: str) -> str:

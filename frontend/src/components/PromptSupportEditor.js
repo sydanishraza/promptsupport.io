@@ -429,6 +429,13 @@ const PromptSupportEditor = ({
       // Set initial content, clean and simple
       const initialContent = article.content || '<p>Start writing your content...</p>';
       setContent(initialContent);
+      
+      // Initialize WYSIWYG features after content is set
+      setTimeout(() => {
+        if (editorRef.current) {
+          initializeWYSIWYGFeatures(editorRef.current);
+        }
+      }, 200);
     }
   }, [article]);
 

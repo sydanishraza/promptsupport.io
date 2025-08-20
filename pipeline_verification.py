@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://smartchunk.preview.emergentagent.com"
+BACKEND_URL = "https://article-genius-1.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_result(message, status="INFO"):

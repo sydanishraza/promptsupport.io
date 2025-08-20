@@ -8,7 +8,7 @@ import requests
 import json
 import re
 
-BACKEND_URL = "https://smartchunk.preview.emergentagent.com/api"
+BACKEND_URL = "https://article-genius-1.preview.emergentagent.com/api"
 
 def analyze_media_extraction_results():
     """Analyze the current state of media extraction in Content Library"""

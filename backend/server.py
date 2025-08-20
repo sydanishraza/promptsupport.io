@@ -80,8 +80,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "*",  # Allow all origins for development
-        "https://22c64acd-5965-4f32-bb15-b795b8db8eab.preview.emergentagent.com",
-        "https://smartchunk.preview.emergentagent.com", 
+        "https://article-genius-1.preview.emergentagent.com",
+        "https://article-genius-1.preview.emergentagent.com", 
         "http://localhost:3000",
         "http://127.0.0.1:3000"
     ],

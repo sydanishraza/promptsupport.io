@@ -14,7 +14,7 @@ from datetime import datetime
 import re
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://22c64acd-5965-4f32-bb15-b795b8db8eab.preview.emergentagent.com"
+BACKEND_URL = "https://article-genius-1.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test_result(message, status="INFO"):

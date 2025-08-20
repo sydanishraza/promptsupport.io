@@ -29,7 +29,7 @@ from datetime import datetime
 import glob
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://smartchunk.preview.emergentagent.com"
+BACKEND_URL = "https://article-genius-1.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_investigation(message, level="INFO"):

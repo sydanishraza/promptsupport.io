@@ -10,7 +10,7 @@ import time
 import os
 
 # Configuration
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://smartchunk.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://article-genius-1.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 def test_backend_completeness_functions():

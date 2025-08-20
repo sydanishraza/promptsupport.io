@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv('/app/frontend/.env')
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smartchunk.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://article-genius-1.preview.emergentagent.com') + '/api'
 
 try:
     print("🔍 Checking content library...")

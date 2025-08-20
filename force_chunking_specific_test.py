@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smartchunk.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://article-genius-1.preview.emergentagent.com') + '/api'
 
 def create_large_test_content():
     """Create content that's definitely over 3,000 characters"""

@@ -7,7 +7,7 @@ import requests
 import json
 import time
 
-BACKEND_URL = "https://22c64acd-5965-4f32-bb15-b795b8db8eab.preview.emergentagent.com"
+BACKEND_URL = "https://article-genius-1.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def test_content_processing():

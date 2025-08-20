@@ -1805,36 +1805,34 @@ async def create_high_quality_article_content(content: str, article_type: str, m
         doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
         
         if "overview" in article_type.lower():
-            # OVERVIEW ARTICLE - HIGH-LEVEL SUMMARY ONLY
-            system_message = f"""You are an expert technical writer creating a high-level OVERVIEW article.
+            # OVERVIEW ARTICLE - WYSIWYG TEMPLATE INTEGRATION
+            system_message = f"""You are an expert article generator for a knowledge base creating a high-level OVERVIEW article using WYSIWYG editor standards.
 
 CRITICAL OVERVIEW REQUIREMENTS:
 1. Create SUMMARY and NAVIGATION only - NO detailed implementation steps
-2. Provide roadmap with links to detailed sections
+2. Provide roadmap with links to detailed sections  
 3. Include key highlights and learning objectives
 4. Focus on WHAT users will learn, not HOW to implement
 
-ARTICLE STRUCTURE:
-- Brief introduction to {doc_title}
-- Key highlights and benefits (bullet points)
-- Learning objectives (what users will achieve)
-- Content roadmap (what topics are covered)
-- Prerequisites (if any)
+WYSIWYG TEMPLATE STRUCTURE FOR OVERVIEW:
+- Wrap all content in `<div class="article-body">`
+- Start with 1-2 introductory `<p>` paragraphs using `<strong>` for key terms
+- Use `<h2 id="unique-id">` for main sections with emoji prefixes (e.g., `📖 Overview`, `🎯 Key Features`)
+- Include mini-TOC: `<div id="mini-toc-container" class="mini-toc"><ul><li><a href="#overview">Overview</a></li><li><a href="#highlights">Key Highlights</a></li><li><a href="#topics">Topics Covered</a></li></ul></div>`
+- Use `<ul>` with emoji bullets for features/benefits (e.g., `⚡ <strong>Feature</strong>: Description`)
+- Add `<div class="note">💡 <strong>Note:</strong> [Navigation tip]</div>` for helpful guidance
+- End with `<div class="related-links wysiwyg-text-align-center">` for related articles
+- Use `<hr>` to separate major sections
 
 FORMATTING REQUIREMENTS:
-- Use proper HTML: <h2>, <h3>, <p>, <ul>, <li>
-- NO step-by-step procedures
-- NO detailed code examples
+- NO step-by-step procedures or detailed code examples
 - NO implementation instructions
-- Include mini-TOC with section links
+- Brief snippets only for illustration
+- Focus on navigation and guidance
+- Generate unique IDs for headings (e.g., `h_01A1B2C3D4E5F6G7H8I9J0`)
+- Use emojis in headings for visual appeal (🚀, 💡, 📋, etc.)
 
-AVOID:
-- Detailed procedures or "how to" steps
-- Complete code examples (brief snippets only)
-- Implementation details
-- Lengthy technical explanations
-
-Create a navigation-focused overview that guides users to detailed resources."""
+Create a navigation-focused overview using the WYSIWYG template structure."""
 
         else:
             # COMPLETE GUIDE ARTICLE - WYSIWYG TEMPLATE INTEGRATION

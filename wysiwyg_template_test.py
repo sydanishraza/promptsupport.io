@@ -532,14 +532,22 @@ def test_processing_pipeline_verification():
             log_test_result(f"🧪 Testing {scenario['name']}...")
             
             # Process content
-            payload = {
-                'content': scenario['content'],
-                'filename': f"{scenario['name'].lower().replace(' ', '_')}_test.txt"
-            }
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+                temp_file.write(scenario['content'])
+                temp_file_path = temp_file.name
             
-            response = requests.post(f"{API_BASE}/content/upload", 
-                                   data=payload, 
-                                   timeout=180)
+            try:
+                with open(temp_file_path, 'rb') as f:
+                    files = {'file': (f"{scenario['name'].lower().replace(' ', '_')}_test.txt", f, 'text/plain')}
+                    metadata = {'metadata': '{}'}
+                    
+                    response = requests.post(f"{API_BASE}/content/upload", 
+                                           files=files,
+                                           data=metadata,
+                                           timeout=180)
+            finally:
+                os.unlink(temp_file_path)
             
             if response.status_code == 200:
                 upload_data = response.json()

@@ -105,16 +105,26 @@ def test_clean_content_generation():
         # Process content through the system
         log_test_result("📤 Processing sample content through WYSIWYG pipeline...")
         
-        # Use text upload endpoint
-        payload = {
-            'content': sample_content,
-            'filename': 'google_maps_api_guide.txt'
-        }
+        # Create temporary text file for upload
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+            temp_file.write(sample_content)
+            temp_file_path = temp_file.name
         
-        start_time = time.time()
-        response = requests.post(f"{API_BASE}/content/upload", 
-                               data=payload, 
-                               timeout=300)
+        try:
+            # Upload file
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('google_maps_api_guide.txt', f, 'text/plain')}
+                metadata = {'metadata': '{}'}
+                
+                start_time = time.time()
+                response = requests.post(f"{API_BASE}/content/upload", 
+                                       files=files, 
+                                       data=metadata,
+                                       timeout=300)
+        finally:
+            # Clean up temp file
+            os.unlink(temp_file_path)
         
         if response.status_code != 200:
             log_test_result(f"❌ Content upload failed: Status {response.status_code}", "ERROR")

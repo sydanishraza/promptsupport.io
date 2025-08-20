@@ -2028,6 +2028,125 @@ def clean_document_title(filename: str) -> str:
         
     return title.strip()
 
+async def add_wysiwyg_enhancements(content: str, article_type: str = None) -> str:
+    """Add WYSIWYG enhancements without template contamination"""
+    try:
+        print(f"🎨 ADDING WYSIWYG ENHANCEMENTS to {article_type or 'article'}")
+        
+        # Only enhance if content is substantial
+        content_text = re.sub(r'<[^>]+>', '', content).strip()
+        if len(content_text) < 100:
+            print(f"🚫 Content too short for enhancements ({len(content_text)} chars)")
+            return content
+        
+        enhanced = content
+        
+        # 1. Add article-body wrapper for WYSIWYG compatibility
+        if '<div class="article-body">' not in enhanced:
+            enhanced = f'<div class="article-body">\n{enhanced}\n</div>'
+            print("✅ Added article-body wrapper")
+        
+        # 2. Enhance existing code blocks with proper classes
+        def enhance_code_block(match):
+            full_match = match.group(0)
+            # Don't modify if already enhanced
+            if 'line-numbers' in full_match:
+                return full_match
+            
+            # Extract language and content
+            language_match = re.search(r'class=["\']language-(\w+)["\']', full_match)
+            language = language_match.group(1) if language_match else 'text'
+            
+            code_content_match = re.search(r'<code[^>]*>(.*?)</code>', full_match, re.DOTALL)
+            code_content = code_content_match.group(1) if code_content_match else ''
+            
+            if code_content.strip():
+                return f'<pre class="line-numbers"><code class="language-{language}">{code_content}</code></pre>'
+            return full_match
+        
+        original_code_count = len(re.findall(r'<pre[^>]*><code', enhanced))
+        if original_code_count > 0:
+            enhanced = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_code_block, enhanced, flags=re.DOTALL)
+            print(f"✅ Enhanced {original_code_count} code blocks with line-numbers")
+        
+        # 3. Add heading IDs for navigation (only if not present)
+        def add_heading_id(match):
+            heading_tag = match.group(1)
+            heading_text = match.group(3)
+            existing_attrs = match.group(2) or ''
+            
+            # Skip if ID already exists
+            if 'id=' in existing_attrs:
+                return match.group(0)
+            
+            # Generate clean ID
+            heading_id = heading_text.lower().strip()
+            heading_id = re.sub(r'[^a-z0-9\s-]', '', heading_id)
+            heading_id = re.sub(r'\s+', '-', heading_id)
+            heading_id = heading_id[:50]  # Limit length
+            
+            return f'<{heading_tag}{existing_attrs} id="{heading_id}">{heading_text}</{heading_tag}>'
+        
+        heading_pattern = r'<(h[2-6])([^>]*)>([^<]*)</\1>'
+        headings_added = len(re.findall(heading_pattern, enhanced))
+        if headings_added > 0:
+            enhanced = re.sub(heading_pattern, add_heading_id, enhanced)
+            print(f"✅ Added navigation IDs to {headings_added} headings")
+        
+        # 4. Convert appropriate Q&A patterns to expandable sections (only if Q&A exists)
+        qa_pattern = r'(Q:|Question:|FAQ:)\s*([^?]+\?)\s*(A:|Answer:)?\s*([^Q\n]+)'
+        qa_matches = re.findall(qa_pattern, enhanced, re.IGNORECASE | re.MULTILINE)
+        
+        if qa_matches and len(qa_matches) > 1:  # Only if multiple Q&As
+            print(f"📖 Converting {len(qa_matches)} Q&A items to expandable format")
+            
+            expandable_content = ""
+            for match in qa_matches:
+                question = match[1].strip()
+                answer = match[3].strip()
+                
+                expandable_content += f'''<div class="expandable">
+<div class="expandable-header"><span class="expandable-title">{question}</span></div>
+<div class="expandable-content"><p>{answer}</p></div>
+</div>
+'''
+            
+            # Replace Q&A pattern with expandable format
+            enhanced = re.sub(qa_pattern, '', enhanced, flags=re.IGNORECASE | re.MULTILINE)
+            
+            # Insert expandables after the first heading that mentions FAQ/Q&A
+            if re.search(r'<h[2-6][^>]*[^>]*(?:faq|question)', enhanced, re.IGNORECASE):
+                enhanced = re.sub(
+                    r'(<h[2-6][^>]*[^>]*(?:faq|question)[^<]*</h[2-6]>)', 
+                    rf'\1\n{expandable_content}', enhanced, 
+                    flags=re.IGNORECASE, count=1
+                )
+                print(f"✅ Added {len(qa_matches)} expandable Q&A sections")
+        
+        # 5. Add contextual callouts only for technical content (sparingly)
+        if ('api' in content_text.lower() or 'tutorial' in content_text.lower() or 'code' in content_text.lower()):
+            if '<div class="note">' not in enhanced and '<blockquote class="tip">' not in enhanced:
+                # Add ONE contextual note based on content type
+                if 'api' in content_text.lower() and 'key' in content_text.lower():
+                    note = '<div class="note">🔑 <strong>API Key:</strong> Ensure your API key is properly configured and has the necessary permissions.</div>\n\n'
+                elif 'tutorial' in content_text.lower():
+                    note = '<div class="note">📚 <strong>Tutorial:</strong> Follow each step carefully for successful implementation.</div>\n\n'
+                else:
+                    note = ''
+                
+                if note:
+                    # Insert after first H2 section
+                    if '<h2' in enhanced:
+                        enhanced = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{note}', enhanced, count=1)
+                        print("✅ Added contextual note")
+        
+        print(f"✅ WYSIWYG enhancements complete - enhanced content without template contamination")
+        return enhanced
+        
+    except Exception as e:
+        print(f"❌ Error adding WYSIWYG enhancements: {e}")
+        return content
+
 async def ensure_enhanced_features(content: str, article_type: str, doc_title: str) -> str:
     """Enhance existing content with WYSIWYG features - NO TEMPLATE INJECTION"""
     try:

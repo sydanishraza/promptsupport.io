@@ -10,6 +10,116 @@ const debounce = (func, delay) => {
     timeoutId = setTimeout(() => func.apply(null, args), delay);
   };
 };
+
+// WYSIWYG Features Initialization
+const initializeWYSIWYGFeatures = (container) => {
+  if (!container) return;
+  
+  console.log('🎯 Initializing WYSIWYG interactive features...');
+  
+  // 1. Initialize Expandable Sections
+  const expandableHeaders = container.querySelectorAll('.expandable-header');
+  expandableHeaders.forEach(header => {
+    // Remove existing listeners to prevent duplicates
+    header.replaceWith(header.cloneNode(true));
+    const newHeader = container.querySelector('.expandable-header');
+    
+    if (newHeader) {
+      newHeader.addEventListener('click', function() {
+        const content = this.nextElementSibling;
+        if (content && content.classList.contains('expandable-content')) {
+          // Toggle content visibility with animation
+          if (content.style.display === 'none' || content.style.display === '') {
+            content.style.display = 'block';
+            content.classList.add('show');
+            content.style.maxHeight = content.scrollHeight + 'px';
+          } else {
+            content.style.display = 'none';
+            content.classList.remove('show');
+            content.style.maxHeight = '0px';
+          }
+          // Toggle expanded state
+          this.classList.toggle('expanded');
+        }
+      });
+    }
+  });
+  
+  // 2. Initialize Code Block Copy Buttons
+  const codeBlocks = container.querySelectorAll('.article-body pre:not([data-copy-initialized])');
+  codeBlocks.forEach(pre => {
+    // Skip if already has copy button
+    if (pre.querySelector('.copy-btn')) return;
+    
+    const code = pre.querySelector('code');
+    if (code) {
+      // Create copy button
+      const copyButton = document.createElement('button');
+      copyButton.className = 'copy-btn';
+      copyButton.textContent = 'Copy';
+      copyButton.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #498283;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        z-index: 10;
+      `;
+      
+      // Add click event
+      copyButton.addEventListener('click', () => {
+        const codeText = code.textContent;
+        
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(codeText).then(() => {
+            copyButton.textContent = 'Copied!';
+            copyButton.style.background = '#10b981';
+            setTimeout(() => {
+              copyButton.textContent = 'Copy';
+              copyButton.style.background = '#498283';
+            }, 2000);
+          }).catch(err => {
+            console.error('Copy failed:', err);
+          });
+        }
+      });
+      
+      // Make pre relative for absolute positioning
+      pre.style.position = 'relative';
+      pre.appendChild(copyButton);
+      pre.setAttribute('data-copy-initialized', 'true');
+    }
+  });
+  
+  // 3. Initialize Mini-TOC Active States
+  const miniTOCLinks = container.querySelectorAll('.mini-toc a');
+  miniTOCLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const targetId = this.getAttribute('href').substring(1);
+      const targetElement = container.querySelector(`#${targetId}`);
+      
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Update active state
+        miniTOCLinks.forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+      }
+    });
+  });
+  
+  console.log('✅ WYSIWYG features initialized:', {
+    expandables: expandableHeaders.length,
+    codeBlocks: codeBlocks.length,
+    tocLinks: miniTOCLinks.length
+  });
+};
 import { 
   Bold, 
   Italic, 

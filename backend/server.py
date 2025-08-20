@@ -1938,14 +1938,45 @@ Source content to base article on:
         )
         
         if response:
-            # Apply basic formatting and quality fixes only
+            # Apply basic formatting and quality fixes only  
             clean_content = await apply_quality_fixes(response)
             
-            # TEMPORARILY DISABLED: Template enhancement causing corruption
-            # enhanced_content = await ensure_enhanced_features(clean_content, article_type, doc_title)
+            # CONTENT VALIDATION: Ensure substantial content
+            content_text = re.sub(r'<[^>]+>', '', clean_content).strip()
+            if len(content_text) < 100:
+                print(f"⚠️ Generated content too short ({len(content_text)} chars), regenerating...")
+                
+                # Enhanced regeneration with stricter requirements
+                enhanced_system = f"""You are an expert technical writer. Create a comprehensive {article_type} article with MINIMUM 300 words.
+
+STRICT REQUIREMENTS:
+1. MINIMUM 300 words of actual content (not including HTML tags)
+2. Multiple detailed sections with <h2> and <h3> headings
+3. Include practical examples, code samples, or procedures from source
+4. Add contextual information and explanations
+5. Use semantic HTML formatting throughout
+6. Create engaging, informative content users will find valuable
+
+Source content to expand upon:
+{content[:20000]}"""
+
+                response = await call_llm_with_fallback(
+                    system_message=enhanced_system,
+                    user_message=f"Create substantial {article_type} content for: {doc_title}"
+                )
+                
+                if response:
+                    clean_content = await apply_quality_fixes(response)
+                    content_text = re.sub(r'<[^>]+>', '', clean_content).strip()
             
-            # Return clean content without template injection
-            return clean_content
+            # Add WYSIWYG enhancements without template contamination
+            if len(content_text) >= 100:
+                enhanced_content = await add_wysiwyg_enhancements(clean_content, article_type)
+                print(f"✅ High-quality content with WYSIWYG features: {len(content_text)} chars")
+                return enhanced_content
+            else:
+                print(f"⚠️ Content still insufficient: {len(content_text)} chars")
+                return clean_content
         else:
             return f"<h2>Error generating {article_type} content</h2><p>Please try again.</p>"
             

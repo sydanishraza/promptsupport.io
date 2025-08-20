@@ -1969,8 +1969,16 @@ async def ensure_enhanced_features(content: str, article_type: str, doc_title: s
         print(f"🔥 ENSURING WYSIWYG TEMPLATE FEATURES for {article_type}")
         
         # STEP 1: Wrap content in article-body if not already wrapped
+        # CRITICAL: Only enhance if we have substantial real content
+        content_without_tags = re.sub(r'<[^>]+>', '', content).strip()
+        
+        if len(content_without_tags) < 100:
+            print(f"❌ CRITICAL: Content too short ({len(content_without_tags)} chars), skipping template enhancement to prevent placeholder replacement")
+            return content
+        
         if '<div class="article-body">' not in content:
             content = f'<div class="article-body">\n{content}\n</div>'
+            print(f"✅ Wrapped content in article-body div")
         
         # STEP 2: ENSURE MINI-TOC IS PRESENT AT THE START (WYSIWYG Template format)
         if 'mini-toc-container' not in content.lower():

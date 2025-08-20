@@ -1079,3 +1079,336 @@ code {
   border: none;
   border-top: 2px solid #e5e7eb;
 }
+
+/* ========================================================================= */
+/* WYSIWYG TEMPLATE REFERENCE STYLES - INTEGRATED FROM EXTERNAL TEMPLATE    */
+/* ========================================================================= */
+
+/* Enhanced Article Body Container */
+.article-body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  max-width: 100%;
+}
+
+/* Enhanced Expandable Sections - Integrated Template */
+.article-body .expandable {
+  margin: 15px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.article-body .expandable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.article-body .expandable-header h1,
+.article-body .expandable-header h2,
+.article-body .expandable-header h3,
+.article-body .expandable-header h4,
+.article-body .expandable-header h5,
+.article-body .expandable-header h6 {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.article-body .expandable-header:hover {
+  background-color: #e4e9e9;
+  color: #498283;
+}
+
+.article-body .expandable-header.expanded {
+  background-color: #e4e9e9;
+  color: #498283;
+}
+
+.article-body .expandable-header::after {
+  content: "+";
+  font-size: 18px;
+  font-weight: bold;
+  color: #666;
+  transition: transform 0.3s ease, color 0.3s ease;
+  position: absolute;
+  right: 16px;
+}
+
+.article-body .expandable-header.expanded::after {
+  content: "×";
+  transform: rotate(0deg);
+  color: #498283;
+}
+
+.article-body .expandable-content {
+  display: none;
+  padding: 15px;
+  background-color: #fff;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.6;
+  border-top: 1px solid #e0e0e0;
+  transition: max-height 0.3s ease;
+}
+
+.article-body .expandable-content.show {
+  display: block;
+}
+
+/* Enhanced Related Links - Integrated Template */
+.article-body .related-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.article-body .related-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #498283;
+  text-decoration: none;
+  max-width: 100%;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  font-weight: 500;
+}
+
+.article-body .related-link:hover {
+  background-color: #498283;
+  border-color: #498283;
+  color: white !important;
+  text-decoration: none;
+}
+
+/* Enhanced Mini TOC - Integrated Template */
+.article-body .mini-toc {
+  background-color: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  margin: 20px 0;
+}
+
+.article-body .mini-toc h3 {
+  font-weight: 600;
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  color: #333;
+}
+
+.article-body .mini-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.article-body .mini-toc li {
+  margin: 8px 0;
+}
+
+.article-body .mini-toc a {
+  color: #498283;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.article-body .mini-toc a:hover {
+  background-color: #e4e9e9;
+  text-decoration: none;
+}
+
+.article-body .mini-toc a.active {
+  background-color: #498283;
+  color: white;
+}
+
+/* Enhanced Notes and Callouts - Integrated Template */
+.article-body .note {
+  padding: 12px 16px;
+  margin: 16px 0;
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-left: 4px solid #0ea5e9;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.article-body .note strong {
+  color: #0c4a6e;
+  font-weight: 600;
+}
+
+/* Enhanced Code Blocks - Integrated Template */
+.article-body pre {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  color: #212121;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 16px;
+  position: relative;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.article-body pre .copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #498283;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.article-body pre .copy-btn:hover {
+  background: #3a6f70;
+}
+
+.article-body code {
+  background-color: #f1f5f9;
+  color: #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.9em;
+  border: 1px solid #e2e8f0;
+}
+
+/* Enhanced Tables - Integrated Template */
+.article-body table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 20px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.article-body th {
+  background-color: #f8f9fa;
+  color: #333;
+  text-align: left;
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.article-body td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
+}
+
+.article-body tr:last-child td {
+  border-bottom: none;
+}
+
+.article-body tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Enhanced Headings - Integrated Template */
+.article-body h1,
+.article-body h2,
+.article-body h3 {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', Helvetica, Arial, sans-serif;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  margin: 24px 0 16px 0;
+  font-weight: 600;
+  color: #212121;
+}
+
+.article-body h1 {
+  font-size: 2em;
+  margin: 32px 0 20px 0;
+}
+
+.article-body h2 {
+  font-size: 1.5em;
+  margin: 28px 0 16px 0;
+}
+
+.article-body h3 {
+  font-size: 1.25em;
+  margin: 20px 0 12px 0;
+}
+
+.article-body h4,
+.article-body h5,
+.article-body h6 {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', Helvetica, Arial, sans-serif;
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+  color: #212121;
+}
+
+/* Enhanced Images - Integrated Template */
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 16px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.article-body .fancybox-link {
+  display: inline-block;
+  cursor: zoom-in;
+}
+
+/* Responsive Design - Mobile Optimization */
+@media (max-width: 768px) {
+  .article-body .related-links {
+    grid-template-columns: 1fr;
+  }
+  
+  .article-body .expandable-header {
+    padding: 10px 12px;
+  }
+  
+  .article-body .mini-toc {
+    padding: 12px;
+  }
+  
+  .article-body table {
+    font-size: 12px;
+  }
+  
+  .article-body th,
+  .article-body td {
+    padding: 8px 10px;
+  }
+}

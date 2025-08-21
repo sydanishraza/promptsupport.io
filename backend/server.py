@@ -11775,6 +11775,57 @@ def count_embedded_images(content: str) -> int:
     import re
     return len(re.findall(r'<img[^>]*>', content, re.IGNORECASE))
 
+# NEW REFINED ENGINE - Process content endpoint
+@app.post("/api/content/process-refined")
+async def process_content_refined(request: ContentProcessRequest):
+    """Process text content with the new Refined Engine"""
+    try:
+        from refined_engine import refined_engine
+        
+        print(f"🆕 REFINED ENGINE: Processing content request")
+        
+        # Extract content and metadata from request
+        content = request.content
+        metadata = {
+            "original_filename": request.metadata.get("title", "Text Input"),
+            "input_type": "text",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "refined_2.0"
+        }
+        
+        # Process with refined engine
+        generated_articles = await refined_engine.process_content(content, metadata)
+        
+        if generated_articles:
+            print(f"✅ REFINED ENGINE: Successfully created {len(generated_articles)} articles")
+            return {
+                "success": True,
+                "message": f"Content processed successfully with Refined Engine",
+                "articles_created": len(generated_articles),
+                "engine_used": "refined_2.0",
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"])
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            print(f"⚠️ REFINED ENGINE: No articles created")
+            return {
+                "success": False,
+                "message": "No articles were created from the provided content",
+                "engine_used": "refined_2.0"
+            }
+            
+    except Exception as e:
+        print(f"❌ REFINED ENGINE ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Refined Engine processing failed: {str(e)}")
+
 # Content processing endpoint
 @app.post("/api/content/process")
 async def process_content(request: ContentProcessRequest):

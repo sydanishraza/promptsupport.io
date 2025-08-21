@@ -12121,10 +12121,23 @@ async def compare_engines(request: ContentProcessRequest):
         
         comparison_results = await migration_tool.compare_engines(content, metadata)
         
+        # Clean up any ObjectId issues by converting to strings
+        def clean_mongo_objects(obj):
+            if isinstance(obj, dict):
+                return {k: clean_mongo_objects(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_mongo_objects(item) for item in obj]
+            elif hasattr(obj, '__dict__'):
+                return str(obj)
+            else:
+                return obj
+        
+        cleaned_results = clean_mongo_objects(comparison_results)
+        
         return {
             "success": True,
             "message": "Engine comparison completed successfully",
-            "comparison": comparison_results
+            "comparison": cleaned_results
         }
         
     except Exception as e:

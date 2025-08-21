@@ -17334,27 +17334,69 @@ File Information:
 - Upload date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
 - Source: Knowledge Engine File Upload"""
 
-        # Process the extracted content with timeout protection
+        # V2 ENGINE: Use direct file extraction for supported file types
         try:
-            await update_job_progress("processing", "Creating articles from extracted content...")
-            print(f"🚀 Starting content processing with timeout protection...")
+            await update_job_progress("processing", "V2 Engine: Extracting content with full structure preservation...")
+            print(f"🚀 V2 ENGINE: Starting file processing with V2 extractor - engine=v2")
             
-            # Add timeout protection for content processing
+            # V2 STEP 2: Use V2 Content Extractor for direct file processing
+            v2_extractor = V2ContentExtractor()
+            
+            # Determine MIME type
+            mime_type = "application/octet-stream"
+            if file_extension == 'pdf':
+                mime_type = "application/pdf"
+            elif file_extension in ['docx']:
+                mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            elif file_extension == 'doc':
+                mime_type = "application/msword"
+            elif file_extension == 'pptx':
+                mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            elif file_extension == 'xlsx':
+                mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            elif file_extension in ['txt', 'md']:
+                mime_type = "text/plain"
+            elif file_extension == 'html':
+                mime_type = "text/html"
+            elif file_extension == 'csv':
+                mime_type = "text/csv"
+            
+            # Extract using V2 system
+            normalized_doc = await v2_extractor.extract_document(file_content, file.filename, mime_type)
+            
+            print(f"📋 V2 ENGINE: Extracted {len(normalized_doc.blocks)} blocks, {len(normalized_doc.media)} media from {file.filename} - engine=v2")
+            
+            # Store normalized document in database
+            await store_normalized_document(normalized_doc)
+            
+            # Convert to legacy articles format for compatibility
+            chunks = await convert_normalized_doc_to_articles(normalized_doc)
+            
+            # Add V2 metadata
+            for chunk in chunks:
+                if isinstance(chunk, dict):
+                    chunk.setdefault('metadata', {})
+                    chunk['metadata']['engine'] = 'v2'
+                    chunk['metadata']['processing_version'] = '2.0'
+                    chunk['metadata']['normalized_doc_id'] = normalized_doc.doc_id
+                    chunk['metadata']['extraction_method'] = 'v2_direct_file_extraction'
+                    chunk['metadata']['file_type'] = file_extension
+            
+            await update_job_progress("finalizing", f"V2 Engine: Created {len(chunks)} articles with full structure preservation")
+            print(f"✅ V2 ENGINE: File processing completed: {len(chunks)} chunks created from normalized document - engine=v2")
+            
+        except Exception as v2_error:
+            print(f"⚠️ V2 ENGINE: Direct extraction failed, falling back to legacy text processing - {v2_error} - engine=v2")
+            
+            # Fallback to legacy text processing
             async def process_with_timeout():
                 enhanced_metadata = {
                     **file_metadata,
                     "original_filename": file.filename,
                     "file_extension": file_extension,
                     "file_size": len(file_content),
-                    "extraction_method": "automated"
+                    "extraction_method": "legacy_fallback"
                 }
-                
-                # SIMPLIFIED: Images are extracted and saved to Asset Library only (no automatic embedding)
-                if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
-                    await update_job_progress("processing", f"Saved {len(embedded_media)} images to Asset Library")
-                    print(f"📁 SIMPLIFIED MODE: {len(embedded_media)} images extracted and saved to Asset Library")
-                    print(f"🎯 Images are available for manual insertion via the article editor")
-                    # No contextual_images metadata needed - images are just in Asset Library
                 
                 return await process_text_content_v2(enriched_content, enhanced_metadata)
             

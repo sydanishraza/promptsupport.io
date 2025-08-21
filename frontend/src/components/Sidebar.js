@@ -219,6 +219,11 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
               {!collapsed && (
                 <>
                   <span className="flex-1 font-medium">{item.label}</span>
+                  {item.badge && (
+                    <span className="px-2 py-1 text-xs font-semibold bg-green-500 text-white rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
                   {item.expandable && (
                     <div className="text-gray-400">
                       {item.expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}

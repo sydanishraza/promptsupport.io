@@ -13401,6 +13401,8 @@ ENHANCED TECHNICAL WRITING REQUIREMENTS:
    - Use <strong> for emphasis, <em> for slight emphasis
    - NO MARKDOWN - Only HTML tags
    - Content must be WYSIWYG editor compatible
+   - **CRITICAL: NO IMAGE EMBEDDING** - Never include <img> tags or image references in content
+   - **MEDIA RULE: Save Only** - All media is handled separately; articles contain text only
 
 Respond with a JSON object:
 {

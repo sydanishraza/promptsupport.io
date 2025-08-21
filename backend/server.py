@@ -16451,6 +16451,7 @@ Source Information:
             {"$set": job.dict()}
         )
         
+        print(f"✅ V2 ENGINE: URL processing complete - {len(chunks)} chunks created - engine=v2")
         return {
             "job_id": job.job_id,
             "status": job.status,
@@ -16458,7 +16459,8 @@ Source Information:
             "page_title": title,
             "extracted_content_length": len(extracted_content),
             "chunks_created": len(chunks),
-            "message": "URL processed successfully"
+            "message": "V2 Engine: URL processed successfully",
+            "engine": "v2"
         }
         
     except requests.RequestException as e:

@@ -13295,11 +13295,21 @@ async def store_normalized_document(normalized_doc) -> bool:
         doc_dict = {
             "doc_id": normalized_doc.doc_id,
             "title": normalized_doc.title,
-            "source_type": normalized_doc.source_type,
-            "blocks": [block.__dict__ for block in normalized_doc.blocks],
-            "media": [media.__dict__ for media in normalized_doc.media],
+            "original_filename": normalized_doc.original_filename,
+            "file_id": normalized_doc.file_id,
+            "mime_type": normalized_doc.mime_type,
+            "language": normalized_doc.language,
+            "author": normalized_doc.author,
+            "created_date": normalized_doc.created_date.isoformat() if normalized_doc.created_date else None,
+            "modified_date": normalized_doc.modified_date.isoformat() if normalized_doc.modified_date else None,
+            "word_count": normalized_doc.word_count,
+            "page_count": normalized_doc.page_count,
+            "blocks": [block.dict() for block in normalized_doc.blocks],
+            "media": [media.dict() for media in normalized_doc.media],
             "metadata": normalized_doc.metadata,
-            "created_at": datetime.utcnow(),
+            "extraction_metadata": normalized_doc.extraction_metadata,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
             "engine": "v2"
         }
         

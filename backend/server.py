@@ -6913,6 +6913,66 @@ class SaveArticleRequest(BaseModel):
     content: str
     status: str = "draft"  # draft, published
 
+# V2 ENGINE: NORMALIZED DOCUMENT SCHEMA
+class SourcePointer(BaseModel):
+    """V2 Schema: Tracks the exact source location of content"""
+    file_id: str
+    mime_type: str
+    page_number: Optional[int] = None
+    slide_number: Optional[int] = None 
+    sheet_name: Optional[str] = None
+    timestamp: Optional[float] = None  # For audio/video
+    line_start: Optional[int] = None
+    line_end: Optional[int] = None
+    char_start: Optional[int] = None
+    char_end: Optional[int] = None
+
+class ContentBlock(BaseModel):
+    """V2 Schema: Represents a structured content block"""
+    block_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    block_type: str  # heading, paragraph, list, table, code, callout, quote, divider
+    content: str
+    level: Optional[int] = None  # For headings (H1=1, H2=2, etc)
+    language: Optional[str] = None  # For code blocks, detected language
+    metadata: Dict[str, Any] = {}
+    source_pointer: SourcePointer
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class MediaRecord(BaseModel):
+    """V2 Schema: Represents extracted media with metadata"""
+    media_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    media_type: str  # image, video, audio, diagram, chart
+    file_path: Optional[str] = None
+    url: Optional[str] = None
+    alt_text: Optional[str] = None
+    caption: Optional[str] = None
+    dimensions: Optional[Dict[str, int]] = None  # width, height
+    file_size: Optional[int] = None
+    format: Optional[str] = None  # jpg, png, mp4, etc
+    metadata: Dict[str, Any] = {}
+    source_pointer: SourcePointer
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class NormalizedDocument(BaseModel):
+    """V2 Schema: Complete normalized representation of extracted content"""
+    doc_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    original_filename: Optional[str] = None
+    file_id: str
+    mime_type: str
+    language: Optional[str] = None
+    author: Optional[str] = None
+    created_date: Optional[datetime] = None
+    modified_date: Optional[datetime] = None
+    word_count: int = 0
+    page_count: Optional[int] = None
+    metadata: Dict[str, Any] = {}
+    blocks: List[ContentBlock] = []
+    media: List[MediaRecord] = []
+    extraction_metadata: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 async def call_local_llm(system_message: str, user_message: str) -> Optional[str]:
     """
     DISABLED: Local LLM fallback disabled due to performance issues.

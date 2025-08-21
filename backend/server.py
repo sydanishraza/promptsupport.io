@@ -15503,16 +15503,27 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"📋 V2 ENGINE: Global outline created - {len(article_outlines)} articles planned, {len(discarded_blocks)} blocks discarded - engine=v2")
         
-        # V2 STEP 5: Use analysis results with global outline for intelligent article generation
+        # V2 STEP 6: Create detailed per-article outlines
+        per_article_outlines_result = await v2_article_planner.create_per_article_outlines(
+            normalized_doc, outline, analysis, run_id
+        )
+        
+        # Extract per-article outlines
+        per_article_outlines = per_article_outlines_result.get('per_article_outlines', []) if per_article_outlines_result else []
+        
+        print(f"📋 V2 ENGINE: Per-article outlines created - {len(per_article_outlines)} detailed outlines - engine=v2")
+        
+        # V2 STEP 6: Use analysis results with global outline and per-article outlines for intelligent article generation
         # Enhance analysis with outline information
         enhanced_analysis = analysis.copy()
         enhanced_analysis['global_outline'] = outline
         enhanced_analysis['article_outlines'] = article_outlines
         enhanced_analysis['discarded_blocks'] = discarded_blocks
+        enhanced_analysis['per_article_outlines'] = per_article_outlines
         
         articles = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, enhanced_analysis)
         
-        # V2 ENHANCEMENT: Add comprehensive metadata to all articles
+        # V2 ENHANCEMENT: Add comprehensive metadata to all articles including per-article outlines
         for article in articles:
             if isinstance(article, dict):
                 article.setdefault('metadata', {})
@@ -15524,9 +15535,10 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
                 article['metadata']['audience'] = audience
                 article['metadata']['granularity'] = granularity
                 article['metadata']['global_outline'] = outline
+                article['metadata']['per_article_outlines'] = per_article_outlines
                 article['metadata']['total_articles_planned'] = len(article_outlines)
         
-        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using global outline with {granularity} granularity for {audience} audience - engine=v2")
+        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using per-article outlines with {granularity} granularity for {audience} audience - engine=v2")
         return articles
         
     except Exception as e:

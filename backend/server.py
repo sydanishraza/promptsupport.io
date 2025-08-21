@@ -20843,6 +20843,15 @@ Source Information:
             
             print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(chunks)} final articles from URL {url} - engine=v2")
             
+            # CRITICAL FIX: Store V2 generated articles in content library for frontend access
+            if chunks:
+                for chunk in chunks:
+                    try:
+                        await db.content_library.insert_one(chunk)
+                        print(f"💾 V2 ENGINE: Stored URL article in content library: {chunk['title']} - engine=v2")
+                    except Exception as storage_error:
+                        print(f"❌ V2 ENGINE: Error storing URL article in content library: {storage_error} - engine=v2")
+            
         except Exception as v2_error:
             print(f"⚠️ V2 ENGINE: URL extraction failed, falling back to legacy processing - {v2_error} - engine=v2")
             

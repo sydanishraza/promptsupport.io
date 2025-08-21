@@ -20106,31 +20106,54 @@ File Information:
             
             print(f"📋 V2 ENGINE: Per-article outlines created - {len(per_article_outlines)} detailed outlines - engine=v2")
             
-            # V2 STEP 6: Use global outline and per-article outlines for precise article generation
-            enhanced_analysis = analysis.copy()
-            enhanced_analysis['global_outline'] = outline
-            enhanced_analysis['article_outlines'] = article_outlines
-            enhanced_analysis['discarded_blocks'] = discarded_blocks
-            enhanced_analysis['per_article_outlines'] = per_article_outlines
+            # V2 STEP 7: Generate final articles with strict format and audience-aware styling
+            print(f"🎯 V2 ENGINE: Starting Step 7 - Final article generation with V2ArticleGenerator - engine=v2")
             
-            chunks = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, enhanced_analysis)
+            # Use V2ArticleGenerator for final article generation
+            generated_articles_result = await v2_article_generator.generate_final_articles(
+                normalized_doc, 
+                per_article_outlines, 
+                analysis, 
+                run_id
+            )
             
-            # Add comprehensive V2 metadata including per-article outlines
-            for chunk in chunks:
-                if isinstance(chunk, dict):
-                    chunk.setdefault('metadata', {})
-                    chunk['metadata']['engine'] = 'v2'
-                    chunk['metadata']['processing_version'] = '2.0'
-                    chunk['metadata']['normalized_doc_id'] = normalized_doc.doc_id
-                    chunk['metadata']['run_id'] = run_id
-                    chunk['metadata']['analysis'] = analysis
-                    chunk['metadata']['audience'] = audience
-                    chunk['metadata']['granularity'] = granularity
-                    chunk['metadata']['global_outline'] = outline
-                    chunk['metadata']['per_article_outlines'] = per_article_outlines
-                    chunk['metadata']['total_articles_planned'] = len(article_outlines)
-                    chunk['metadata']['extraction_method'] = 'v2_direct_file_extraction'
-                    chunk['metadata']['file_type'] = file_extension
+            # Convert V2ArticleGenerator output to expected format
+            chunks = []
+            if generated_articles_result and 'generated_articles' in generated_articles_result:
+                for generated_article in generated_articles_result['generated_articles']:
+                    article_data = generated_article.get('article_data', {})
+                    if article_data:
+                        # Create article in expected format for content library storage
+                        chunk = {
+                            "id": str(uuid.uuid4()),
+                            "title": article_data.get('title', 'Generated Article'),
+                            "content": article_data.get('html', ''),
+                            "summary": article_data.get('summary', ''),
+                            "status": "draft",
+                            "created_at": datetime.utcnow().isoformat(),
+                            "updated_at": datetime.utcnow().isoformat(),
+                            "source_content": f"V2 Engine processed content from {file.filename}",
+                            "source_type": "v2_generated",
+                            "markdown": article_data.get('markdown', ''),
+                            "takeaways": [],
+                            "metadata": {
+                                "engine": "v2",
+                                "processing_version": "2.0",
+                                "normalized_doc_id": normalized_doc.doc_id,
+                                "run_id": run_id,
+                                "analysis": analysis,
+                                "audience": audience,
+                                "granularity": granularity,
+                                "article_id": generated_article.get('article_id', 'unknown'),
+                                "validation_metadata": article_data.get('validation_metadata', {}),
+                                "generated_by": "v2_article_generator",
+                                "extraction_method": "v2_direct_file_extraction",
+                                "file_type": file_extension
+                            }
+                        }
+                        chunks.append(chunk)
+            
+            print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(chunks)} final articles from {file.filename} - engine=v2")
             
             await update_job_progress("finalizing", f"V2 Engine: Created {len(chunks)} articles using detailed per-article outlines with {granularity} granularity for {audience} audience")
             print(f"✅ V2 ENGINE: File processing completed: {len(chunks)} chunks created using per-article outlines with {granularity} granularity for {audience} audience - engine=v2")

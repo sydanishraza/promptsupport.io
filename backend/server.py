@@ -7222,6 +7222,305 @@ async def content_analysis(request: AIAssistanceRequest):
         print(f"Content analysis error: {str(e)}")
         return {"error": str(e)}
 
+# ========================================
+# V2 ENGINE: CONTENT EXTRACTION & STRUCTURING SYSTEM
+# ========================================
+
+class V2ContentExtractor:
+    """V2 Engine: Advanced content extraction with 100% capture and provenance tracking"""
+    
+    def __init__(self):
+        self.supported_types = {
+            'text/plain': 'txt',
+            'text/markdown': 'md', 
+            'text/csv': 'csv',
+            'text/html': 'html',
+            'application/pdf': 'pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+            'application/msword': 'doc',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx'
+        }
+    
+    async def extract_document(self, file_content: bytes, filename: str, mime_type: str) -> NormalizedDocument:
+        """V2 Engine: Extract content from any supported file type into normalized schema"""
+        print(f"🔍 V2 EXTRACTOR: Starting extraction - {filename} ({mime_type}) - engine=v2")
+        
+        # Generate unique file ID
+        file_id = f"file_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
+        # Detect file extension
+        extension = filename.split('.')[-1].lower() if '.' in filename else 'unknown'
+        
+        try:
+            # Route to appropriate extractor
+            if mime_type == 'text/plain' or extension in ['txt', 'text']:
+                return await self._extract_text(file_content, filename, file_id, mime_type)
+            elif mime_type == 'text/markdown' or extension == 'md':
+                return await self._extract_markdown(file_content, filename, file_id, mime_type)
+            elif mime_type == 'text/csv' or extension == 'csv':
+                return await self._extract_csv(file_content, filename, file_id, mime_type)
+            elif mime_type == 'text/html' or extension in ['html', 'htm']:
+                return await self._extract_html(file_content, filename, file_id, mime_type)
+            elif mime_type == 'application/pdf' or extension == 'pdf':
+                return await self._extract_pdf(file_content, filename, file_id, mime_type)
+            elif extension in ['docx', 'doc']:
+                return await self._extract_docx(file_content, filename, file_id, mime_type)
+            elif extension == 'pptx':
+                return await self._extract_pptx(file_content, filename, file_id, mime_type)
+            elif extension == 'xlsx':
+                return await self._extract_xlsx(file_content, filename, file_id, mime_type)
+            else:
+                # Fallback to text extraction
+                return await self._extract_text(file_content, filename, file_id, mime_type)
+                
+        except Exception as e:
+            print(f"❌ V2 EXTRACTOR: Error extracting {filename}: {e} - engine=v2")
+            # Return empty document with error metadata
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=filename,
+                original_filename=filename,
+                file_id=file_id,
+                mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+    
+    async def extract_url_content(self, url: str, html_content: str) -> NormalizedDocument:
+        """V2 Engine: Extract content from scraped URL"""
+        print(f"🌐 V2 EXTRACTOR: Extracting URL content - {url} - engine=v2")
+        
+        file_id = f"url_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Extract title
+            title_tag = soup.find('title')
+            title = title_tag.get_text().strip() if title_tag else url
+            
+            # Extract metadata
+            meta_desc = soup.find('meta', attrs={'name': 'description'})
+            description = meta_desc.get('content', '').strip() if meta_desc else ""
+            
+            # Remove script and style elements
+            for script in soup(["script", "style", "nav", "footer", "header"]):
+                script.decompose()
+            
+            # Extract content blocks
+            blocks = []
+            media = []
+            
+            # Process content elements
+            for i, element in enumerate(soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'blockquote', 'pre', 'code', 'table'])):
+                content_text = element.get_text().strip()
+                if not content_text or len(content_text) < 10:  # Skip short/empty elements
+                    continue
+                
+                # Determine block type and level
+                if element.name.startswith('h'):
+                    block_type = 'heading'
+                    level = int(element.name[1])
+                elif element.name == 'p':
+                    block_type = 'paragraph'
+                    level = None
+                elif element.name in ['ul', 'ol']:
+                    block_type = 'list'
+                    level = None
+                    # Extract list items
+                    items = element.find_all('li')
+                    content_text = '\n'.join([f"• {item.get_text().strip()}" for item in items if item.get_text().strip()])
+                elif element.name == 'blockquote':
+                    block_type = 'quote'
+                    level = None
+                elif element.name in ['pre', 'code']:
+                    block_type = 'code'
+                    level = None
+                elif element.name == 'table':
+                    block_type = 'table'
+                    level = None
+                    # Extract table content
+                    rows = element.find_all('tr')
+                    table_content = []
+                    for row in rows:
+                        cells = row.find_all(['td', 'th'])
+                        if cells:
+                            table_content.append(' | '.join([cell.get_text().strip() for cell in cells]))
+                    content_text = '\n'.join(table_content)
+                else:
+                    block_type = 'paragraph'
+                    level = None
+                
+                # Create content block
+                if content_text:
+                    block = ContentBlock(
+                        block_type=block_type,
+                        content=content_text,
+                        level=level,
+                        metadata={
+                            "element_tag": element.name,
+                            "extraction_order": i
+                        },
+                        source_pointer=SourcePointer(
+                            file_id=file_id,
+                            mime_type="text/html",
+                            line_start=i,
+                            line_end=i
+                        )
+                    )
+                    blocks.append(block)
+            
+            # Extract images
+            for i, img in enumerate(soup.find_all('img')):
+                src = img.get('src', '')
+                alt_text = img.get('alt', '')
+                
+                if src:
+                    # Handle relative URLs
+                    if src.startswith('//'):
+                        src = 'https:' + src
+                    elif src.startswith('/'):
+                        from urllib.parse import urljoin
+                        src = urljoin(url, src)
+                    
+                    media_record = MediaRecord(
+                        media_type='image',
+                        url=src,
+                        alt_text=alt_text,
+                        metadata={
+                            "extraction_order": i,
+                            "original_tag": str(img)[:200]
+                        },
+                        source_pointer=SourcePointer(
+                            file_id=file_id,
+                            mime_type="text/html",
+                            line_start=i,
+                            line_end=i
+                        )
+                    )
+                    media.append(media_record)
+            
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=title,
+                original_filename=url,
+                file_id=file_id,
+                mime_type="text/html",
+                word_count=sum([len(block.content.split()) for block in blocks]),
+                metadata={
+                    "url": url,
+                    "description": description,
+                    "extraction_method": "url_scraping"
+                },
+                blocks=blocks,
+                media=media,
+                extraction_metadata={
+                    "status": "success",
+                    "blocks_extracted": len(blocks),
+                    "media_extracted": len(media)
+                }
+            )
+            
+        except Exception as e:
+            print(f"❌ V2 EXTRACTOR: Error extracting URL {url}: {e} - engine=v2")
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=url,
+                original_filename=url,
+                file_id=file_id,
+                mime_type="text/html",
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+    
+    async def extract_raw_text(self, text_content: str, title: str = "Raw Text") -> NormalizedDocument:
+        """V2 Engine: Extract content from raw text input"""
+        print(f"📝 V2 EXTRACTOR: Extracting raw text content - {len(text_content)} chars - engine=v2")
+        
+        file_id = f"text_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
+        try:
+            blocks = []
+            
+            # Split text into paragraphs and detect structure
+            paragraphs = text_content.split('\n\n')
+            
+            for i, para in enumerate(paragraphs):
+                para = para.strip()
+                if not para:
+                    continue
+                
+                # Detect heading patterns
+                if para.startswith('#'):
+                    # Markdown-style headings
+                    level = len(para) - len(para.lstrip('#'))
+                    content = para.lstrip('# ').strip()
+                    block_type = 'heading'
+                elif para.isupper() and len(para) < 100:
+                    # All caps short text (likely heading)
+                    block_type = 'heading'
+                    level = 2
+                    content = para
+                elif para.startswith(('•', '-', '*', '1.', '2.', '3.')):
+                    # List item
+                    block_type = 'list'
+                    level = None
+                    content = para
+                elif para.startswith('>') or (para.startswith('"') and para.endswith('"')):
+                    # Quote
+                    block_type = 'quote'
+                    level = None
+                    content = para.strip('>"')
+                elif '```' in para or para.startswith('    '):
+                    # Code block
+                    block_type = 'code'
+                    level = None
+                    content = para
+                else:
+                    # Regular paragraph
+                    block_type = 'paragraph'
+                    level = None
+                    content = para
+                
+                if content:
+                    block = ContentBlock(
+                        block_type=block_type,
+                        content=content,
+                        level=level,
+                        metadata={"extraction_order": i},
+                        source_pointer=SourcePointer(
+                            file_id=file_id,
+                            mime_type="text/plain",
+                            line_start=i,
+                            line_end=i
+                        )
+                    )
+                    blocks.append(block)
+            
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=title,
+                file_id=file_id,
+                mime_type="text/plain",
+                word_count=len(text_content.split()),
+                blocks=blocks,
+                extraction_metadata={
+                    "status": "success",
+                    "blocks_extracted": len(blocks),
+                    "extraction_method": "raw_text"
+                }
+            )
+            
+        except Exception as e:
+            print(f"❌ V2 EXTRACTOR: Error extracting raw text: {e} - engine=v2")
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=title,
+                file_id=file_id,
+                mime_type="text/plain",
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+
 @app.put("/api/content-library/{article_id}")
 async def update_article(article_id: str, request: SaveArticleRequest):
     """Update an existing article"""

@@ -467,16 +467,23 @@ SOURCE CONTENT:
             return content
 
     def generate_mini_toc(self, content: str) -> str:
-        """Generate mini table of contents from headings"""
+        """Generate mini table of contents from headings with proper right-alignment structure"""
         try:
             headings = re.findall(r'<h([2-6])[^>]*id="([^"]*)"[^>]*>([^<]*)</h[2-6]>', content)
             if len(headings) < 3:
                 return ""
             
-            toc_html = '<div id="mini-toc-container" class="mini-toc">\n<ul>\n'
+            toc_html = '''<div class="article-sidebar">
+<div class="mini-toc">
+<h3>📋 Navigation</h3>
+<ul>'''
+            
             for level, heading_id, text in headings:
                 toc_html += f'<li><a href="#{heading_id}">{text}</a></li>\n'
-            toc_html += '</ul>\n</div>'
+            
+            toc_html += '''</ul>
+</div>
+</div>'''
             
             return toc_html
             

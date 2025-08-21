@@ -12103,6 +12103,91 @@ async def upload_batch_files_advanced(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Batch processing failed: {str(e)}")
 
+# PHASE 2: ENGINE MIGRATION AND COMPARISON ENDPOINTS
+@app.post("/api/content/compare-engines")
+async def compare_engines(request: ContentProcessRequest):
+    """Compare different engine results on the same content"""
+    try:
+        from engine_migration_tool import migration_tool
+        
+        print(f"🔄 ENGINE COMPARISON: Testing multiple engines on same content")
+        
+        content = request.content
+        metadata = {
+            "original_filename": request.metadata.get("title", "Comparison Test"),
+            "input_type": "comparison_test",
+            "processing_timestamp": datetime.utcnow().isoformat()
+        }
+        
+        comparison_results = await migration_tool.compare_engines(content, metadata)
+        
+        return {
+            "success": True,
+            "message": "Engine comparison completed successfully",
+            "comparison": comparison_results
+        }
+        
+    except Exception as e:
+        print(f"❌ ENGINE COMPARISON ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Engine comparison failed: {str(e)}")
+
+@app.post("/api/content/migrate-articles")
+async def migrate_articles(request: Dict[str, Any]):
+    """Migrate existing articles to a different engine"""
+    try:
+        from engine_migration_tool import migration_tool
+        
+        article_ids = request.get('article_ids', [])
+        target_engine = request.get('target_engine', '')
+        
+        if not article_ids:
+            raise HTTPException(status_code=400, detail="No article IDs provided")
+        
+        if target_engine not in ['refined_2.0', 'advanced_2.1']:
+            raise HTTPException(status_code=400, detail="Invalid target engine")
+        
+        print(f"🔄 ARTICLE MIGRATION: Migrating {len(article_ids)} articles to {target_engine}")
+        
+        migration_results = await migration_tool.migrate_articles_to_engine(article_ids, target_engine)
+        
+        return {
+            "success": True,
+            "message": f"Migration to {target_engine} completed",
+            "migration": migration_results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ARTICLE MIGRATION ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Article migration failed: {str(e)}")
+
+@app.get("/api/content/engine-statistics")
+async def get_engine_statistics():
+    """Get statistics about articles created by different engines"""
+    try:
+        from engine_migration_tool import migration_tool
+        
+        print(f"📊 FETCHING ENGINE STATISTICS")
+        
+        statistics = await migration_tool.get_engine_statistics()
+        
+        return {
+            "success": True,
+            "message": "Engine statistics retrieved successfully",
+            "statistics": statistics
+        }
+        
+    except Exception as e:
+        print(f"❌ ENGINE STATISTICS ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Engine statistics failed: {str(e)}")
+
 # PHASE 2: ANALYTICS ENDPOINT
 @app.get("/api/content/analytics/advanced")
 async def get_advanced_processing_analytics():

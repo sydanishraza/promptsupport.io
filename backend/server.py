@@ -19483,15 +19483,26 @@ File Information:
             
             print(f"📋 V2 ENGINE: Global outline created - {len(article_outlines)} articles planned, {len(discarded_blocks)} blocks discarded - engine=v2")
             
-            # V2 STEP 5: Use global outline for precise article generation
+            # V2 STEP 6: Create detailed per-article outlines
+            per_article_outlines_result = await v2_article_planner.create_per_article_outlines(
+                normalized_doc, outline, analysis, run_id
+            )
+            
+            # Extract per-article outlines
+            per_article_outlines = per_article_outlines_result.get('per_article_outlines', []) if per_article_outlines_result else []
+            
+            print(f"📋 V2 ENGINE: Per-article outlines created - {len(per_article_outlines)} detailed outlines - engine=v2")
+            
+            # V2 STEP 6: Use global outline and per-article outlines for precise article generation
             enhanced_analysis = analysis.copy()
             enhanced_analysis['global_outline'] = outline
             enhanced_analysis['article_outlines'] = article_outlines
             enhanced_analysis['discarded_blocks'] = discarded_blocks
+            enhanced_analysis['per_article_outlines'] = per_article_outlines
             
             chunks = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, enhanced_analysis)
             
-            # Add comprehensive V2 metadata
+            # Add comprehensive V2 metadata including per-article outlines
             for chunk in chunks:
                 if isinstance(chunk, dict):
                     chunk.setdefault('metadata', {})
@@ -19503,12 +19514,13 @@ File Information:
                     chunk['metadata']['audience'] = audience
                     chunk['metadata']['granularity'] = granularity
                     chunk['metadata']['global_outline'] = outline
+                    chunk['metadata']['per_article_outlines'] = per_article_outlines
                     chunk['metadata']['total_articles_planned'] = len(article_outlines)
                     chunk['metadata']['extraction_method'] = 'v2_direct_file_extraction'
                     chunk['metadata']['file_type'] = file_extension
             
-            await update_job_progress("finalizing", f"V2 Engine: Created {len(chunks)} articles using global outline with {granularity} granularity for {audience} audience")
-            print(f"✅ V2 ENGINE: File processing completed: {len(chunks)} chunks created using global outline with {granularity} granularity for {audience} audience - engine=v2")
+            await update_job_progress("finalizing", f"V2 Engine: Created {len(chunks)} articles using detailed per-article outlines with {granularity} granularity for {audience} audience")
+            print(f"✅ V2 ENGINE: File processing completed: {len(chunks)} chunks created using per-article outlines with {granularity} granularity for {audience} audience - engine=v2")
             
         except Exception as v2_error:
             print(f"⚠️ V2 ENGINE: Direct extraction failed, falling back to legacy text processing - {v2_error} - engine=v2")

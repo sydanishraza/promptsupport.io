@@ -16484,7 +16484,8 @@ async def process_recording(
     title: str = Form(""),
     metadata: str = Form("{}")
 ):
-    """Process recorded content (screen, audio, video, screenshots)"""
+    """V2 ENGINE: Process recorded content (screen, audio, video, screenshots)"""
+    print(f"🚀 V2 ENGINE: Processing {recording_type} recording - {title} - engine=v2")
     try:
         recording_metadata = json.loads(metadata)
         

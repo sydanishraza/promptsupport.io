@@ -56,6 +56,8 @@ const MainLayout = () => {
         return <Connections />;
       case 'content-library':
         return <ContentLibrary />;
+      case 'refined-engine-test':
+        return <RefinedEngineTest />;
       case 'systems':
         return <SystemsModule onNavigate={setActiveRoute} />;
       case 'knowledge-base-builder':

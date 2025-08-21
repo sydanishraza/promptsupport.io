@@ -188,7 +188,7 @@ def execute_formatting_cleanup():
                     'successful_cleanups': successful_cleanups,
                     'failed_cleanups': failed_cleanups,
                     'success_rate': success_rate,
-                    'cleanup_details': cleanup_data.get('cleanup_details', [])
+                    'cleanup_details': cleanup_results.get('cleanup_details', [])
                 }
             else:
                 log_test_result(f"❌ SUCCESS RATE VALIDATION FAILED: {success_rate:.1f}% (<80%)", "ERROR")

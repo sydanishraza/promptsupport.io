@@ -16137,22 +16137,9 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(articles)} final articles with strict format - engine=v2")
         
-        # V2 ENHANCEMENT: Add comprehensive metadata to all articles including per-article outlines
-        for article in articles:
-            if isinstance(article, dict):
-                article.setdefault('metadata', {})
-                article['metadata']['engine'] = 'v2'
-                article['metadata']['processing_version'] = '2.0'
-                article['metadata']['normalized_doc_id'] = normalized_doc.doc_id
-                article['metadata']['run_id'] = run_id
-                article['metadata']['analysis'] = analysis
-                article['metadata']['audience'] = audience
-                article['metadata']['granularity'] = granularity
-                article['metadata']['global_outline'] = outline
-                article['metadata']['per_article_outlines'] = per_article_outlines
-                article['metadata']['total_articles_planned'] = len(article_outlines)
+        # Metadata already added during V2ArticleGenerator conversion above
         
-        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using per-article outlines with {granularity} granularity for {audience} audience - engine=v2")
+        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using V2ArticleGenerator with {analysis.get('granularity', 'shallow')} granularity for {analysis.get('audience', 'end_user')} audience - engine=v2")
         return articles
         
     except Exception as e:

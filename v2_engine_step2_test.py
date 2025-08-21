@@ -12,8 +12,8 @@ from datetime import datetime
 from typing import Dict, Any, List
 import os
 
-# Get backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://None.preview.emergentagent.com')
+# Get backend URL from environment - use local backend for testing
+BACKEND_URL = "http://localhost:8001"
 API_BASE = f"{BACKEND_URL}/api"
 
 class V2EngineStep2Tester:

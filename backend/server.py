@@ -12018,6 +12018,28 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         print(f"❌ Error in intelligent text processing: {e}")
         return []
 
+async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """V2 ENGINE: Enhanced text content processing with improved AI pipeline"""
+    try:
+        print(f"🚀 V2 ENGINE: Processing {len(content)} characters of content - engine=v2")
+        
+        # V2 ENHANCEMENT: Use enhanced intelligent content processing pipeline
+        articles = await intelligent_content_processing_pipeline(content, metadata)
+        
+        # V2 ENHANCEMENT: Add engine metadata to all articles
+        for article in articles:
+            if isinstance(article, dict):
+                article.setdefault('metadata', {})
+                article['metadata']['engine'] = 'v2'
+                article['metadata']['processing_version'] = '2.0'
+        
+        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles - engine=v2")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ V2 ENGINE: Error in text processing - {e} - engine=v2")
+        return []
+
 async def analyze_content_for_unique_sections(content: str, is_ultra_large: bool = False) -> list:
     """ENHANCED: Analyze content with functional stage grouping and procedural continuity preservation"""
     try:

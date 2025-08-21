@@ -16336,7 +16336,8 @@ async def process_url_content(
     url: str = Form(...),
     metadata: str = Form("{}")
 ):
-    """Process URL content by scraping and generating articles"""
+    """V2 ENGINE: Process URL content by scraping and generating articles"""
+    print(f"🚀 V2 ENGINE: Processing URL content - {url} - engine=v2")
     try:
         # Parse metadata
         url_metadata = json.loads(metadata)

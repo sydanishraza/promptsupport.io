@@ -842,235 +842,59 @@ FINAL OUTPUT REQUIREMENTS:
             return content
 
     async def apply_advanced_wysiwyg_enhancements(self, content: str, source_content: str, content_type: str, analysis: Dict[str, Any]) -> str:
-        """Apply advanced WYSIWYG enhancements based on content analysis"""
+        """Apply SIMPLE, CLEAN HTML formatting for advanced engine (no complex layouts)"""
         try:
-            print(f"🎨 APPLYING ADVANCED WYSIWYG ENHANCEMENTS for {content_type}")
+            print(f"🎨 APPLYING SIMPLE ADVANCED FORMATTING for {content_type}")
             
-            # Apply base enhancements
+            # Apply base simple enhancements from parent class
             enhanced = self.apply_wysiwyg_enhancements(content, source_content)
             
-            # Advanced enhancements based on content type and analysis
-            features = analysis.get('advanced_classification', {}).get('content_features', {})
-            structure = analysis.get('structural_analysis', {})
+            # Remove any complex layout structures that might have been added
+            enhanced = enhanced.replace('class="article-body-with-toc"', 'class="article-body"')
+            enhanced = enhanced.replace('class="article-main-content"', '')
+            enhanced = enhanced.replace('class="article-sidebar"', '')
             
-            # Enhanced table processing
-            if features.get('has_tables'):
-                enhanced = self.enhance_tables(enhanced)
+            # Clean up any advanced TOC or complex structures
+            enhanced = re.sub(r'<div[^>]*advanced-toc[^>]*>.*?</div>', '', enhanced, flags=re.DOTALL)
+            enhanced = re.sub(r'<div[^>]*mini-toc[^>]*>.*?</div>', '', enhanced, flags=re.DOTALL)
             
-            # Advanced code block enhancements
-            if features.get('has_code_examples'):
-                enhanced = self.enhance_code_blocks_advanced(enhanced, content_type)
-            
-            # Content-type specific enhancements
+            # Keep only basic content-type specific enhancements (simplified)
             if content_type == 'api_documentation':
-                enhanced = await self.add_api_specific_enhancements(enhanced, source_content)
+                enhanced = self.add_simple_api_enhancements(enhanced)
             elif content_type == 'troubleshooting_guide':
-                enhanced = self.add_troubleshooting_enhancements(enhanced)
-            elif content_type == 'compliance_documentation':
-                enhanced = self.add_compliance_enhancements(enhanced)
+                enhanced = self.add_simple_troubleshooting_enhancements(enhanced)
             
-            # Advanced navigation enhancements
-            heading_count = len(structure.get('heading_structure', []))
-            if heading_count > 4:
-                enhanced = self.add_advanced_navigation(enhanced, structure)
-            
-            print(f"✅ ADVANCED WYSIWYG ENHANCEMENTS COMPLETE")
+            print(f"✅ Simple advanced formatting complete")
             return enhanced
             
         except Exception as e:
-            print(f"❌ Error applying advanced WYSIWYG enhancements: {e}")
+            print(f"❌ Error applying simple advanced formatting: {e}")
             return content
 
-    def enhance_tables(self, content: str) -> str:
-        """Enhance table formatting and responsiveness"""
+    def add_simple_api_enhancements(self, content: str) -> str:
+        """Add simple API documentation enhancements (no complex styling)"""
         try:
-            # Add responsive table wrapper
-            table_pattern = r'(<table[^>]*>.*?</table>)'
-            
-            def wrap_table(match):
-                table_html = match.group(1)
-                return f'<div class="table-responsive">\n{table_html}\n</div>'
-            
-            enhanced = re.sub(table_pattern, wrap_table, content, flags=re.DOTALL)
-            
-            # Add table classes if not present
-            enhanced = re.sub(r'<table(?![^>]*class)', '<table class="table table-bordered"', enhanced)
-            
+            # Simple HTTP method highlighting
+            enhanced = re.sub(r'\b(GET|POST|PUT|DELETE|PATCH)\b', r'<strong>\1</strong>', content)
             return enhanced
         except Exception as e:
-            print(f"❌ Error enhancing tables: {e}")
+            print(f"❌ Error adding simple API enhancements: {e}")
             return content
 
-    def enhance_code_blocks_advanced(self, content: str, content_type: str) -> str:
-        """Advanced code block enhancements with content-type awareness"""
+    def add_simple_troubleshooting_enhancements(self, content: str) -> str:
+        """Add simple troubleshooting enhancements (no complex styling)"""
         try:
-            # Language detection based on content type and patterns
-            language_hints = {
-                'api_documentation': ['json', 'javascript', 'curl'],
-                'tutorial': ['javascript', 'html', 'css', 'python'],
-                'troubleshooting_guide': ['bash', 'javascript', 'sql'],
-                'installation_guide': ['bash', 'powershell', 'yaml']
-            }
-            
-            default_languages = language_hints.get(content_type, ['text'])
-            
-            # Enhanced code block processing
-            def enhance_code_block(match):
-                full_match = match.group(0)
-                if 'line-numbers' in full_match:
-                    return full_match
-                
-                code_content = match.group(1) if match.groups() else ''
-                
-                # Auto-detect language if not specified
-                detected_lang = self.detect_code_language(code_content, default_languages)
-                
-                return f'<pre class="line-numbers language-{detected_lang}"><code class="language-{detected_lang}">{code_content}</code></pre>'
-            
-            enhanced = re.sub(r'<pre[^>]*><code[^>]*>(.*?)</code></pre>', enhance_code_block, content, flags=re.DOTALL)
-            
+            # Simple Q&A formatting
+            enhanced = re.sub(r'^(Q:|Question:)\s*([^?]+\?)', r'<strong>\1</strong> \2', content, flags=re.MULTILINE)
+            enhanced = re.sub(r'^(A:|Answer:)\s*', r'<strong>\1</strong> ', enhanced, flags=re.MULTILINE)
             return enhanced
         except Exception as e:
-            print(f"❌ Error enhancing code blocks: {e}")
-            return content
-
-    def detect_code_language(self, code: str, default_languages: List[str]) -> str:
-        """Detect programming language from code content"""
-        try:
-            code_lower = code.lower()
-            
-            # Language patterns
-            patterns = {
-                'javascript': [r'function\s+\w+', r'var\s+\w+', r'console\.log', r'=>', r'const\s+\w+'],
-                'python': [r'def\s+\w+', r'import\s+\w+', r'print\s*\(', r'if\s+__name__'],
-                'html': [r'<!doctype', r'<html>', r'<div', r'<script>'],
-                'css': [r'\{[\s\S]*?\}', r'@media', r'\.[\w-]+\s*\{'],
-                'json': [r'^\s*\{', r':\s*"', r'^\s*\['],
-                'bash': [r'#!/bin/bash', r'\$\w+', r'echo\s+', r'cd\s+'],
-                'sql': [r'select\s+', r'from\s+', r'where\s+', r'insert\s+into'],
-                'curl': [r'curl\s+', r'-H\s+', r'--data', r'http[s]?://']
-            }
-            
-            # Score each language
-            scores = {}
-            for lang, lang_patterns in patterns.items():
-                score = sum(1 for pattern in lang_patterns if re.search(pattern, code_lower))
-                if score > 0:
-                    scores[lang] = score
-            
-            # Return best match or default
-            if scores:
-                return max(scores, key=scores.get)
-            
-            return default_languages[0] if default_languages else 'text'
-            
-        except Exception as e:
-            print(f"❌ Error detecting code language: {e}")
-            return 'text'
-
-    async def add_api_specific_enhancements(self, content: str, source_content: str) -> str:
-        """Add API documentation specific enhancements"""
-        try:
-            # Add API endpoint badges
-            endpoint_pattern = r'(GET|POST|PUT|DELETE|PATCH)\s+(/[^\s<]+)'
-            
-            def enhance_endpoint(match):
-                method = match.group(1)
-                endpoint = match.group(2)
-                method_class = f"method-{method.lower()}"
-                return f'<span class="api-method {method_class}">{method}</span> <code class="api-endpoint">{endpoint}</code>'
-            
-            enhanced = re.sub(endpoint_pattern, enhance_endpoint, content)
-            
-            # Add status code styling
-            status_pattern = r'\b([1-5]\d{2})\b'
-            enhanced = re.sub(status_pattern, r'<span class="status-code">\1</span>', enhanced)
-            
-            return enhanced
-        except Exception as e:
-            print(f"❌ Error adding API enhancements: {e}")
-            return content
-
-    def add_troubleshooting_enhancements(self, content: str) -> str:
-        """Add troubleshooting guide specific enhancements"""
-        try:
-            # Convert problem-solution pairs to structured format
-            problem_solution_pattern = r'<h4>Q:\s*([^<]+)</h4>\s*<p><strong>A:</strong>\s*([^<]+)</p>'
-            
-            def enhance_qa(match):
-                question = match.group(1)
-                answer = match.group(2)
-                return f'''<div class="troubleshoot-item">
-<div class="problem">
-<h4>🔍 Problem</h4>
-<p>{question}</p>
-</div>
-<div class="solution">
-<h4>✅ Solution</h4>
-<p>{answer}</p>
-</div>
-</div>'''
-            
-            enhanced = re.sub(problem_solution_pattern, enhance_qa, content)
-            
-            return enhanced
-        except Exception as e:
-            print(f"❌ Error adding troubleshooting enhancements: {e}")
-            return content
-
-    def add_compliance_enhancements(self, content: str) -> str:
-        """Add compliance documentation specific enhancements"""
-        try:
-            # Highlight compliance requirements
-            requirement_pattern = r'\b(must|shall|required|mandatory)\b'
-            enhanced = re.sub(requirement_pattern, r'<span class="compliance-required">\1</span>', content, flags=re.IGNORECASE)
-            
-            # Highlight optional items
-            optional_pattern = r'\b(may|should|recommended|optional)\b'
-            enhanced = re.sub(optional_pattern, r'<span class="compliance-optional">\1</span>', enhanced, flags=re.IGNORECASE)
-            
-            return enhanced
-        except Exception as e:
-            print(f"❌ Error adding compliance enhancements: {e}")
+            print(f"❌ Error adding simple troubleshooting enhancements: {e}")
             return content
 
     def add_advanced_navigation(self, content: str, structure: Dict[str, Any]) -> str:
-        """Add advanced navigation for complex documents with right-alignment"""
-        try:
-            headings = structure.get('heading_structure', [])
-            if len(headings) < 5:
-                return content
-            
-            # Create hierarchical TOC with proper structure
-            toc_html = '''<div class="article-sidebar">
-<div class="advanced-toc">
-<h3>📋 Navigation</h3>
-<ul class="toc-hierarchy">'''
-            
-            for heading in headings[:20]:  # Limit to first 20 headings
-                level = heading['level']
-                text = heading['text']
-                heading_id = re.sub(r'[^a-z0-9\s-]', '', text.lower()).replace(' ', '-')[:50]
-                
-                indent_class = f'toc-level-{level}'
-                toc_html += f'<li class="{indent_class}"><a href="#{heading_id}">{text}</a></li>\n'
-            
-            toc_html += '''</ul>
-</div>
-</div>'''
-            
-            # Create proper layout structure with TOC on the right
-            enhanced = content.replace('<div class="article-body">', 
-                '''<div class="article-body-with-toc">
-<div class="article-main-content">''')
-            enhanced = enhanced.replace('</div>', f'''</div>
-{toc_html}
-</div>''')
-            
-            return enhanced
-        except Exception as e:
-            print(f"❌ Error adding advanced navigation: {e}")
-            return content
+        """DISABLED - No advanced navigation to avoid layout issues"""
+        return content
 
     async def create_enhanced_fallback_content(self, content: str, title: str, analysis: Dict[str, Any]) -> str:
         """Create enhanced fallback content with analysis-based structure"""

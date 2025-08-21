@@ -19363,8 +19363,23 @@ Source Information:
             
             print(f"🎯 V2 ENGINE: Analysis complete - {analysis.get('content_type', 'unknown')} content for {audience} audience with {granularity} granularity - engine=v2")
             
-            # V2 STEP 4: Use analysis results for intelligent article generation
-            chunks = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, analysis)
+            # V2 STEP 5: Create global outline with 100% block assignment
+            global_outline = await v2_global_planner.create_global_outline(normalized_doc, analysis, run_id)
+            
+            # Extract outline for use in article generation
+            outline = global_outline.get('outline', {}) if global_outline else {}
+            article_outlines = outline.get('articles', [])
+            discarded_blocks = outline.get('discarded_blocks', [])
+            
+            print(f"📋 V2 ENGINE: Global outline created - {len(article_outlines)} articles planned, {len(discarded_blocks)} blocks discarded - engine=v2")
+            
+            # V2 STEP 5: Use global outline for precise article generation
+            enhanced_analysis = analysis.copy()
+            enhanced_analysis['global_outline'] = outline
+            enhanced_analysis['article_outlines'] = article_outlines
+            enhanced_analysis['discarded_blocks'] = discarded_blocks
+            
+            chunks = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, enhanced_analysis)
             
             # Add comprehensive V2 metadata
             for chunk in chunks:

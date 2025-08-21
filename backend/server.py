@@ -15463,7 +15463,8 @@ async def upload_file(
     file: UploadFile = File(...),
     metadata: str = Form("{}")
 ):
-    """Upload and process files (text, audio, video, images)"""
+    """V2 ENGINE: Upload and process files (text, audio, video, images)"""
+    print(f"🚀 V2 ENGINE: Processing file upload - {file.filename} - engine=v2")
     try:
         # Parse metadata
         file_metadata = json.loads(metadata)

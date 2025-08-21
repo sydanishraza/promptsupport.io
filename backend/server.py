@@ -7810,12 +7810,9 @@ class V2ContentExtractor:
                         )
                         blocks.append(table_block)
                 
-                # Extract images (using existing DOCX image extraction logic)
+                # V2 MEDIA: Extract images using save-only approach
                 try:
                     import zipfile
-                    from PIL import Image
-                    import io
-                    import base64
                     
                     # Extract images from DOCX using zip structure
                     with zipfile.ZipFile(temp_docx_path, 'r') as zip_ref:
@@ -7827,50 +7824,72 @@ class V2ContentExtractor:
                                 
                                 # Get image format
                                 img_format = img_path.split('.')[-1].lower()
+                                original_img_filename = f"docx_image_{img_idx + 1}.{img_format}"
                                 
-                                # Create unique filename for extracted image
-                                unique_filename = f"{file_id}_image_{img_idx + 1}.{img_format}"
+                                # Generate run_id for this processing session
+                                run_id = f"docx_{int(datetime.utcnow().timestamp())}"
                                 
-                                # Save image to assets directory
-                                asset_dir = "/app/backend/static/uploads"
-                                os.makedirs(asset_dir, exist_ok=True)
-                                asset_path = os.path.join(asset_dir, unique_filename)
+                                # Create context for this image
+                                context = f"docx-image-{img_idx + 1}"
                                 
-                                with open(asset_path, 'wb') as img_file:
-                                    img_file.write(img_data)
+                                # Source pointer for provenance
+                                source_pointer = {
+                                    "file_id": file_id,
+                                    "mime_type": mime_type,
+                                    "image_index": img_idx,
+                                    "original_path": img_path
+                                }
                                 
-                                # Get image dimensions
-                                try:
-                                    img = Image.open(io.BytesIO(img_data))
-                                    width, height = img.size
-                                except Exception:
-                                    width = height = 0
+                                # Additional metadata
+                                img_metadata = {
+                                    "docx_extraction": True,
+                                    "original_path": img_path,
+                                    "extraction_method": "v2_docx_zip"
+                                }
                                 
-                                media_record = MediaRecord(
-                                    media_type='image',
-                                    file_path=asset_path,
-                                    url=f"/api/static/uploads/{unique_filename}",
-                                    dimensions={"width": width, "height": height},
-                                    file_size=len(img_data),
-                                    format=img_format,
-                                    metadata={
-                                        "docx_extraction": True,
-                                        "original_path": img_path
-                                    },
-                                    source_pointer=SourcePointer(
-                                        file_id=file_id,
-                                        mime_type=mime_type,
-                                        line_start=img_idx,
-                                        line_end=img_idx
-                                    )
+                                # V2 MEDIA: Save using V2 Media Manager (save-only approach)
+                                media_asset = await v2_media_manager.save_media_asset(
+                                    media_data=img_data,
+                                    original_filename=original_img_filename,
+                                    run_id=run_id,
+                                    doc_id=file_id,
+                                    context=context,
+                                    source_pointer=source_pointer,
+                                    metadata=img_metadata
                                 )
-                                media.append(media_record)
+                                
+                                if media_asset:
+                                    # Create MediaRecord with reference-only approach (no embedding)
+                                    media_record = MediaRecord(
+                                        media_id=media_asset['media_id'],
+                                        media_type='image',
+                                        file_path=media_asset['file_path'],
+                                        url=media_asset['url'],
+                                        alt_text=media_asset['alt_text'],
+                                        caption=media_asset['detected_caption'],
+                                        dimensions=media_asset['dimensions'],
+                                        file_size=media_asset['file_size'],
+                                        format=media_asset['format'],
+                                        metadata={
+                                            **media_asset['metadata'],
+                                            "v2_save_only": True,
+                                            "no_embed": True
+                                        },
+                                        source_pointer=SourcePointer(
+                                            file_id=file_id,
+                                            mime_type=mime_type,
+                                            line_start=img_idx,
+                                            line_end=img_idx
+                                        )
+                                    )
+                                    media.append(media_record)
+                                    print(f"✅ V2 MEDIA: DOCX image saved with save-only approach - {original_img_filename} - engine=v2")
                                 
                             except Exception as e:
-                                print(f"⚠️ Error extracting image {img_path}: {e}")
+                                print(f"⚠️ V2 MEDIA: Error processing DOCX image {img_path}: {e} - engine=v2")
                                 
                 except Exception as e:
-                    print(f"⚠️ Error extracting DOCX images: {e}")
+                    print(f"⚠️ V2 MEDIA: Error extracting DOCX images with V2 system: {e} - engine=v2")
                 
                 return NormalizedDocument(
                     doc_id=file_id,

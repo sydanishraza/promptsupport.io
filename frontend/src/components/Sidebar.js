@@ -37,13 +37,7 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
       icon: Home,
       description: 'Overview of platform status, agent health, quick insights'
     },
-    {
-      id: 'refined-engine-test',
-      label: '🆕 Refined Engine',
-      icon: Brain,
-      description: 'Test the new Refined PromptSupport Engine v2.0',
-      badge: 'NEW'
-    },
+
     {
       id: 'knowledge-engine',
       label: 'Knowledge Engine',

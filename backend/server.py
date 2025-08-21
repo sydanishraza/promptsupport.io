@@ -14307,7 +14307,7 @@ async def create_article_from_blocks(blocks, title: str, normalized_doc) -> Dict
     return await create_article_from_blocks_v2(blocks, title, normalized_doc)
 
 async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """V2 ENGINE: Enhanced text content processing with normalized document extraction"""
+    """V2 ENGINE: Enhanced text content processing with normalized document extraction and multi-dimensional analysis"""
     try:
         print(f"🚀 V2 ENGINE: Processing {len(content)} characters of content - engine=v2")
         
@@ -14323,18 +14323,33 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         # Store normalized document in database
         await store_normalized_document(normalized_doc)
         
-        # V2 ENHANCEMENT: Convert normalized document back to legacy articles format for compatibility
-        articles = await convert_normalized_doc_to_articles(normalized_doc)
+        # V2 STEP 4: Perform multi-dimensional analysis
+        run_id = f"run_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
+        analysis_result = await v2_analyzer.analyze_normalized_document(normalized_doc, run_id)
         
-        # V2 ENHANCEMENT: Add engine metadata to all articles
+        # Extract analysis for use in processing
+        analysis = analysis_result.get('analysis', {}) if analysis_result else {}
+        audience = analysis.get('audience', 'end_user')
+        granularity = analysis.get('granularity', 'shallow')
+        
+        print(f"🎯 V2 ENGINE: Analysis complete - {analysis.get('content_type', 'unknown')} content for {audience} audience with {granularity} granularity - engine=v2")
+        
+        # V2 STEP 4: Use analysis results for intelligent article generation
+        articles = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, analysis)
+        
+        # V2 ENHANCEMENT: Add comprehensive metadata to all articles
         for article in articles:
             if isinstance(article, dict):
                 article.setdefault('metadata', {})
                 article['metadata']['engine'] = 'v2'
                 article['metadata']['processing_version'] = '2.0'
                 article['metadata']['normalized_doc_id'] = normalized_doc.doc_id
+                article['metadata']['run_id'] = run_id
+                article['metadata']['analysis'] = analysis
+                article['metadata']['audience'] = audience
+                article['metadata']['granularity'] = granularity
         
-        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles from normalized doc - engine=v2")
+        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using {granularity} granularity for {audience} audience - engine=v2")
         return articles
         
     except Exception as e:

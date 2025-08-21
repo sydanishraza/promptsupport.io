@@ -13288,6 +13288,123 @@ async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[D
         print(f"❌ Error in intelligent text processing: {e}")
         return []
 
+async def store_normalized_document(normalized_doc) -> bool:
+    """Store normalized document in database"""
+    try:
+        # Convert normalized document to dict for storage
+        doc_dict = {
+            "doc_id": normalized_doc.doc_id,
+            "title": normalized_doc.title,
+            "source_type": normalized_doc.source_type,
+            "blocks": [block.__dict__ for block in normalized_doc.blocks],
+            "media": [media.__dict__ for media in normalized_doc.media],
+            "metadata": normalized_doc.metadata,
+            "created_at": datetime.utcnow(),
+            "engine": "v2"
+        }
+        
+        # Store in normalized_documents collection
+        await db.normalized_documents.insert_one(doc_dict)
+        print(f"✅ V2 ENGINE: Stored normalized document {normalized_doc.doc_id} - engine=v2")
+        return True
+        
+    except Exception as e:
+        print(f"❌ V2 ENGINE: Error storing normalized document - {e} - engine=v2")
+        return False
+
+async def convert_normalized_doc_to_articles(normalized_doc) -> List[Dict[str, Any]]:
+    """Convert normalized document back to legacy articles format for compatibility"""
+    try:
+        articles = []
+        
+        # Group blocks into logical articles
+        current_article_blocks = []
+        current_title = normalized_doc.title
+        
+        for block in normalized_doc.blocks:
+            if block.block_type == 'heading' and block.level == 1 and current_article_blocks:
+                # Create article from current blocks
+                article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                if article:
+                    articles.append(article)
+                
+                # Start new article
+                current_article_blocks = [block]
+                current_title = block.content
+            else:
+                current_article_blocks.append(block)
+        
+        # Create final article
+        if current_article_blocks:
+            article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+            if article:
+                articles.append(article)
+        
+        # If no articles created, create one from all content
+        if not articles:
+            article = await create_article_from_blocks(normalized_doc.blocks, normalized_doc.title, normalized_doc)
+            if article:
+                articles.append(article)
+        
+        print(f"✅ V2 ENGINE: Converted normalized doc to {len(articles)} legacy articles - engine=v2")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ V2 ENGINE: Error converting normalized doc to articles - {e} - engine=v2")
+        return []
+
+async def create_article_from_blocks(blocks, title: str, normalized_doc) -> Dict[str, Any]:
+    """Create a single article from content blocks"""
+    try:
+        # Convert blocks to HTML content
+        html_parts = []
+        
+        for block in blocks:
+            if block.block_type == 'heading':
+                level = min(block.level, 6)  # Ensure valid HTML heading level
+                html_parts.append(f"<h{level}>{block.content}</h{level}>")
+            elif block.block_type == 'paragraph':
+                html_parts.append(f"<p>{block.content}</p>")
+            elif block.block_type == 'list':
+                list_tag = 'ol' if block.metadata.get('ordered', False) else 'ul'
+                items = block.content.split('\n') if isinstance(block.content, str) else [block.content]
+                html_parts.append(f"<{list_tag}>")
+                for item in items:
+                    if item.strip():
+                        html_parts.append(f"<li>{item.strip()}</li>")
+                html_parts.append(f"</{list_tag}>")
+            elif block.block_type == 'code':
+                html_parts.append(f"<pre><code>{block.content}</code></pre>")
+            else:
+                # Generic block
+                html_parts.append(f"<div class='{block.block_type}'>{block.content}</div>")
+        
+        content = '\n'.join(html_parts)
+        
+        # Create article object
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": title,
+            "content": content,
+            "status": "published",
+            "article_type": "main_content",
+            "source_document": normalized_doc.metadata.get("original_filename", "Unknown"),
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "engine": "v2",
+                "processing_version": "2.0",
+                "normalized_doc_id": normalized_doc.doc_id,
+                "block_count": len(blocks),
+                **normalized_doc.metadata
+            }
+        }
+        
+        return article
+        
+    except Exception as e:
+        print(f"❌ V2 ENGINE: Error creating article from blocks - {e} - engine=v2")
+        return None
+
 async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """V2 ENGINE: Enhanced text content processing with improved AI pipeline"""
     try:

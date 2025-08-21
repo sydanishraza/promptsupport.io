@@ -16141,10 +16141,13 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
             for generated_article in generated_articles_result['generated_articles']:
                 article_data = generated_article.get('article_data', {})
                 if article_data:
+                    # Extract title from HTML content
+                    article_title = _extract_title_from_html(article_data.get('html', ''), generated_article.get('title', 'Generated Article'))
+                    
                     # Create article in expected format for content library storage
                     article = {
                         "id": str(uuid.uuid4()),
-                        "title": article_data.get('title', 'Generated Article'),
+                        "title": article_title,
                         "content": article_data.get('html', ''),
                         "summary": article_data.get('summary', ''),
                         "status": "draft",

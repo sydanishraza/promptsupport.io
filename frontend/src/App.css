@@ -603,41 +603,173 @@ code {
   list-style-type: square;
 }
 
-/* Mini-TOC styling */
+/* Mini-TOC styling - Right-aligned, non-overlapping */
 .mini-toc {
   background-color: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
   padding: 1rem;
   margin: 1.5rem 0;
+  /* Remove from normal flow to prevent overlapping */
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: 0;
 }
 
-.mini-toc h3 {
-  margin: 0 0 0.75rem 0;
-  font-size: 1.125rem;
+/* Enhanced Mini TOC - Right-aligned with proper spacing */
+.article-body {
+  position: relative;
+  padding-right: 0; /* Reset any existing right padding */
+}
+
+.article-body .mini-toc-container,
+.article-body .mini-toc {
+  /* Create a right-aligned mini-TOC that doesn't overlap content */
+  float: right;
+  width: 280px;
+  background-color: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  margin: 20px 0 20px 20px; /* Add left margin to create space from main content */
+  position: relative;
+  clear: right;
+}
+
+/* Ensure main content has proper spacing when TOC is present */
+.article-body:has(.mini-toc) {
+  margin-right: 320px; /* Make space for the TOC (280px + 20px margin + 20px buffer) */
+}
+
+/* Alternative approach for better browser support */
+.article-body-with-toc {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.article-main-content {
+  flex: 1;
+  min-width: 0; /* Prevents flex item from overflowing */
+}
+
+.article-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.article-sidebar .mini-toc {
+  position: sticky;
+  top: 20px;
+  background-color: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  margin: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.article-body .mini-toc h3 {
+  font-weight: 600;
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  color: #333;
+}
+
+.article-body .mini-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.article-body .mini-toc li {
+  margin: 8px 0;
+}
+
+.article-body .mini-toc a {
+  color: #498283;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  display: block;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.article-body .mini-toc a:hover {
+  background-color: #e4e9e9;
+  text-decoration: none;
+}
+
+.article-body .mini-toc a.active {
+  background-color: #498283;
+  color: white;
+}
+
+/* Advanced TOC for complex documents */
+.advanced-toc {
+  width: 300px;
+  float: right;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0 20px 20px;
+  position: sticky;
+  top: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.advanced-toc h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
   font-weight: 600;
   color: #1f2937;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
 }
 
-.mini-toc ul {
-  margin: 0;
-  padding-left: 1rem;
+.advanced-toc .toc-hierarchy {
   list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.mini-toc li {
-  margin: 0.25rem 0;
+.advanced-toc .toc-hierarchy li {
+  margin: 0;
+  padding: 0;
 }
 
-.mini-toc a {
-  color: #2563eb;
+.advanced-toc .toc-hierarchy a {
+  display: block;
+  padding: 6px 0;
+  color: #374151;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 14px;
+  line-height: 1.4;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
-.mini-toc a:hover {
-  text-decoration: underline;
+.advanced-toc .toc-hierarchy a:hover {
+  color: #1f2937;
+  background-color: #f3f4f6;
+  padding-left: 8px;
 }
+
+/* Hierarchical indentation */
+.toc-level-1 a { font-weight: 600; }
+.toc-level-2 a { padding-left: 16px; font-weight: 500; }
+.toc-level-3 a { padding-left: 32px; font-weight: 400; color: #6b7280; }
+.toc-level-4 a { padding-left: 48px; font-weight: 400; color: #9ca3af; font-size: 13px; }
 
 /* Cross-references styling */
 .cross-ref {

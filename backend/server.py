@@ -14790,6 +14790,108 @@ async def create_article_from_blocks_v2(blocks, title: str, normalized_doc) -> D
         print(f"❌ V2 ENGINE: Error creating V2 article from blocks - {e} - engine=v2")
         return None
 
+async def create_article_from_blocks_v2_with_outline(blocks, title: str, normalized_doc, outline_info: Dict[str, Any]) -> Dict[str, Any]:
+    """V2 ENGINE: Create a single article from content blocks with global outline information"""
+    try:
+        # Convert blocks to HTML content with NO IMAGE EMBEDDING
+        html_parts = []
+        
+        for block in blocks:
+            if block.block_type == 'heading':
+                level = min(block.level, 6) if block.level else 2  # Default to H2 if no level
+                html_parts.append(f"<h{level}>{block.content}</h{level}>")
+            elif block.block_type == 'paragraph':
+                html_parts.append(f"<p>{block.content}</p>")
+            elif block.block_type == 'list':
+                # Detect if it's ordered or unordered list
+                list_items = []
+                if isinstance(block.content, str):
+                    lines = block.content.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if line and (line.startswith('•') or line.startswith('-') or line.startswith('*')):
+                            list_items.append(line[1:].strip())
+                        elif line and any(line.startswith(f"{i}.") for i in range(1, 20)):
+                            list_items.append(line.split('.', 1)[1].strip())
+                        elif line:
+                            list_items.append(line)
+                
+                if list_items:
+                    # Detect ordered vs unordered
+                    is_ordered = any(block.content.startswith(f"{i}.") for i in range(1, 10))
+                    list_tag = 'ol' if is_ordered else 'ul'
+                    html_parts.append(f"<{list_tag}>")
+                    for item in list_items:
+                        html_parts.append(f"<li>{item}</li>")
+                    html_parts.append(f"</{list_tag}>")
+                else:
+                    html_parts.append(f"<p>{block.content}</p>")
+                    
+            elif block.block_type == 'code':
+                language = block.language if hasattr(block, 'language') and block.language else ''
+                if language:
+                    html_parts.append(f"<pre><code class='language-{language}'>{block.content}</code></pre>")
+                else:
+                    html_parts.append(f"<pre><code>{block.content}</code></pre>")
+            elif block.block_type == 'quote':
+                html_parts.append(f"<blockquote>{block.content}</blockquote>")
+            elif block.block_type == 'table':
+                # Convert table content to HTML table
+                lines = block.content.split('\n') if isinstance(block.content, str) else [block.content]
+                if lines:
+                    html_parts.append("<table>")
+                    for i, line in enumerate(lines):
+                        if line.strip():
+                            cells = line.split('|')
+                            tag = 'th' if i == 0 else 'td'
+                            html_parts.append("<tr>")
+                            for cell in cells:
+                                html_parts.append(f"<{tag}>{cell.strip()}</{tag}>")
+                            html_parts.append("</tr>")
+                    html_parts.append("</table>")
+            else:
+                # Generic block - no embedding of any media
+                html_parts.append(f"<div class='content-block {block.block_type}'>{block.content}</div>")
+        
+        content = '\n'.join(html_parts)
+        
+        # V2 MEDIA RULE: Ensure NO image embedding in content
+        # Remove any potential <img> tags that might have been created
+        import re
+        content = re.sub(r'<img[^>]*>', '', content)  # Remove any img tags
+        content = re.sub(r'!\[[^\]]*\]\([^)]*\)', '', content)  # Remove markdown image syntax
+        
+        # Create article object with V2 metadata and outline information
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": title,
+            "content": content,
+            "status": "published",
+            "article_type": "main_content",
+            "source_document": normalized_doc.original_filename or "Unknown",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "engine": "v2",
+                "processing_version": "2.0",
+                "normalized_doc_id": normalized_doc.doc_id,
+                "block_count": len(blocks),
+                "v2_no_embed": True,  # Explicit flag indicating no media embedding
+                "media_handling": "reference_only",
+                "outline_based": True,
+                "article_id": outline_info.get("article_id", "unknown"),
+                "scope_summary": outline_info.get("scope_summary", ""),
+                "outline_source": outline_info.get("outline_source", "global_outline_v2"),
+                **normalized_doc.metadata
+            }
+        }
+        
+        print(f"📄 V2 ENGINE: Created outline-based article '{title}' with {len(blocks)} blocks (no media embedding) - engine=v2")
+        return article
+        
+    except Exception as e:
+        print(f"❌ V2 ENGINE: Error creating V2 outline-based article from blocks - {e} - engine=v2")
+        return None
+
 async def create_article_from_blocks(blocks, title: str, normalized_doc) -> Dict[str, Any]:
     """Legacy function - redirects to V2 implementation"""
     return await create_article_from_blocks_v2(blocks, title, normalized_doc)

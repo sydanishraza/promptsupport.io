@@ -20056,11 +20056,22 @@ Source Information:
             
             print(f"📋 V2 ENGINE: Global outline created - {len(article_outlines)} articles planned, {len(discarded_blocks)} blocks discarded - engine=v2")
             
-            # V2 STEP 5: Use global outline for precise article generation
+            # V2 STEP 6: Create detailed per-article outlines
+            per_article_outlines_result = await v2_article_planner.create_per_article_outlines(
+                normalized_doc, outline, analysis, run_id
+            )
+            
+            # Extract per-article outlines
+            per_article_outlines = per_article_outlines_result.get('per_article_outlines', []) if per_article_outlines_result else []
+            
+            print(f"📋 V2 ENGINE: Per-article outlines created - {len(per_article_outlines)} detailed outlines - engine=v2")
+            
+            # V2 STEP 6: Use global outline and per-article outlines for precise article generation
             enhanced_analysis = analysis.copy()
             enhanced_analysis['global_outline'] = outline
             enhanced_analysis['article_outlines'] = article_outlines
             enhanced_analysis['discarded_blocks'] = discarded_blocks
+            enhanced_analysis['per_article_outlines'] = per_article_outlines
             
             chunks = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, enhanced_analysis)
             

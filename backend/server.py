@@ -17883,17 +17883,48 @@ Source Information:
         
         print(f"✅ Extracted {len(extracted_content)} characters from URL")
         
-        # Process the extracted content
-        enhanced_metadata = {
-            **url_metadata,
-            "url": url,
-            "page_title": title,
-            "page_description": description,
-            "content_length": len(extracted_content),
-            "type": "url_processing"
-        }
-        
-        chunks = await process_text_content_v2(enriched_content, enhanced_metadata)
+        # V2 ENGINE: Use direct URL extraction with V2 system
+        try:
+            print(f"🌐 V2 ENGINE: Starting URL processing with V2 extractor - engine=v2")
+            
+            # V2 STEP 2: Use V2 Content Extractor for URL processing
+            v2_extractor = V2ContentExtractor()
+            
+            # Extract content using V2 URL extractor
+            normalized_doc = await v2_extractor.extract_url_content(url, response.text)
+            
+            print(f"📋 V2 ENGINE: Extracted {len(normalized_doc.blocks)} blocks, {len(normalized_doc.media)} media from URL - engine=v2")
+            
+            # Store normalized document in database
+            await store_normalized_document(normalized_doc)
+            
+            # Convert to legacy articles format for compatibility
+            chunks = await convert_normalized_doc_to_articles(normalized_doc)
+            
+            # Add V2 metadata
+            for chunk in chunks:
+                if isinstance(chunk, dict):
+                    chunk.setdefault('metadata', {})
+                    chunk['metadata']['engine'] = 'v2'
+                    chunk['metadata']['processing_version'] = '2.0'
+                    chunk['metadata']['normalized_doc_id'] = normalized_doc.doc_id
+                    chunk['metadata']['extraction_method'] = 'v2_url_extraction'
+                    chunk['metadata']['source_url'] = url
+            
+        except Exception as v2_error:
+            print(f"⚠️ V2 ENGINE: URL extraction failed, falling back to legacy processing - {v2_error} - engine=v2")
+            
+            # Fallback to legacy processing
+            enhanced_metadata = {
+                **url_metadata,
+                "url": url,
+                "page_title": title,
+                "page_description": description,
+                "content_length": len(extracted_content),
+                "type": "url_processing"
+            }
+            
+            chunks = await process_text_content_v2(enriched_content, enhanced_metadata)
         
         # Update job
         job.chunks = chunks

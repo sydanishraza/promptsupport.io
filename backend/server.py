@@ -7703,6 +7703,437 @@ class V2ContentExtractor:
                 extraction_metadata={"error": str(e), "status": "failed"}
             )
 
+    async def _extract_docx(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from DOCX files with comprehensive structure detection"""
+        try:
+            import tempfile
+            import os
+            from docx import Document
+            
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_docx_path = temp_file.name
+            
+            try:
+                doc = Document(temp_docx_path)
+                blocks = []
+                media = []
+                
+                # Extract document properties
+                props = doc.core_properties
+                author = props.author if props else None
+                title = props.title if props else filename
+                created_date = props.created if props else None
+                modified_date = props.modified if props else None
+                
+                # Extract paragraphs and their structure
+                for i, paragraph in enumerate(doc.paragraphs):
+                    text = paragraph.text.strip()
+                    if not text:
+                        continue
+                    
+                    # Determine block type based on style
+                    style_name = paragraph.style.name.lower()
+                    if 'heading' in style_name:
+                        block_type = 'heading'
+                        level = 1  # Default heading level
+                        if 'heading 1' in style_name:
+                            level = 1
+                        elif 'heading 2' in style_name:
+                            level = 2
+                        elif 'heading 3' in style_name:
+                            level = 3
+                        elif 'heading 4' in style_name:
+                            level = 4
+                        elif 'heading 5' in style_name:
+                            level = 5
+                        elif 'heading 6' in style_name:
+                            level = 6
+                    elif 'quote' in style_name or 'blockquote' in style_name:
+                        block_type = 'quote'
+                        level = None
+                    elif 'code' in style_name or paragraph.style.font.name in ['Courier', 'Consolas', 'Courier New']:
+                        block_type = 'code'
+                        level = None
+                    else:
+                        block_type = 'paragraph'
+                        level = None
+                    
+                    # Check for list items
+                    if hasattr(paragraph, '_element') and paragraph._element.xpath('.//w:numPr'):
+                        block_type = 'list'
+                    
+                    block = ContentBlock(
+                        block_type=block_type,
+                        content=text,
+                        level=level,
+                        metadata={
+                            "style_name": paragraph.style.name,
+                            "extraction_order": i
+                        },
+                        source_pointer=SourcePointer(
+                            file_id=file_id,
+                            mime_type=mime_type,
+                            line_start=i,
+                            line_end=i
+                        )
+                    )
+                    blocks.append(block)
+                
+                # Extract tables
+                for table_idx, table in enumerate(doc.tables):
+                    table_content = []
+                    for row_idx, row in enumerate(table.rows):
+                        row_content = []
+                        for cell in row.cells:
+                            cell_text = cell.text.strip()
+                            row_content.append(cell_text)
+                        if any(row_content):  # Only add non-empty rows
+                            table_content.append(' | '.join(row_content))
+                    
+                    if table_content:
+                        table_block = ContentBlock(
+                            block_type='table',
+                            content='\n'.join(table_content),
+                            metadata={
+                                "table_index": table_idx,
+                                "rows": len(table.rows),
+                                "columns": len(table.columns) if table.rows else 0
+                            },
+                            source_pointer=SourcePointer(
+                                file_id=file_id,
+                                mime_type=mime_type,
+                                line_start=len(blocks) + table_idx,
+                                line_end=len(blocks) + table_idx
+                            )
+                        )
+                        blocks.append(table_block)
+                
+                # Extract images (using existing DOCX image extraction logic)
+                try:
+                    import zipfile
+                    from PIL import Image
+                    import io
+                    import base64
+                    
+                    # Extract images from DOCX using zip structure
+                    with zipfile.ZipFile(temp_docx_path, 'r') as zip_ref:
+                        image_files = [f for f in zip_ref.namelist() if f.startswith('word/media/')]
+                        
+                        for img_idx, img_path in enumerate(image_files):
+                            try:
+                                img_data = zip_ref.read(img_path)
+                                
+                                # Get image format
+                                img_format = img_path.split('.')[-1].lower()
+                                
+                                # Create unique filename for extracted image
+                                unique_filename = f"{file_id}_image_{img_idx + 1}.{img_format}"
+                                
+                                # Save image to assets directory
+                                asset_dir = "/app/backend/static/uploads"
+                                os.makedirs(asset_dir, exist_ok=True)
+                                asset_path = os.path.join(asset_dir, unique_filename)
+                                
+                                with open(asset_path, 'wb') as img_file:
+                                    img_file.write(img_data)
+                                
+                                # Get image dimensions
+                                try:
+                                    img = Image.open(io.BytesIO(img_data))
+                                    width, height = img.size
+                                except Exception:
+                                    width = height = 0
+                                
+                                media_record = MediaRecord(
+                                    media_type='image',
+                                    file_path=asset_path,
+                                    url=f"/api/static/uploads/{unique_filename}",
+                                    dimensions={"width": width, "height": height},
+                                    file_size=len(img_data),
+                                    format=img_format,
+                                    metadata={
+                                        "docx_extraction": True,
+                                        "original_path": img_path
+                                    },
+                                    source_pointer=SourcePointer(
+                                        file_id=file_id,
+                                        mime_type=mime_type,
+                                        line_start=img_idx,
+                                        line_end=img_idx
+                                    )
+                                )
+                                media.append(media_record)
+                                
+                            except Exception as e:
+                                print(f"⚠️ Error extracting image {img_path}: {e}")
+                                
+                except Exception as e:
+                    print(f"⚠️ Error extracting DOCX images: {e}")
+                
+                return NormalizedDocument(
+                    doc_id=file_id,
+                    title=title,
+                    original_filename=filename,
+                    file_id=file_id,
+                    mime_type=mime_type,
+                    author=author,
+                    created_date=created_date,
+                    modified_date=modified_date,
+                    word_count=sum([len(block.content.split()) for block in blocks]),
+                    blocks=blocks,
+                    media=media,
+                    extraction_metadata={
+                        "status": "success",
+                        "blocks_extracted": len(blocks),
+                        "media_extracted": len(media),
+                        "tables_extracted": len([b for b in blocks if b.block_type == 'table'])
+                    }
+                )
+                
+            finally:
+                if os.path.exists(temp_docx_path):
+                    os.unlink(temp_docx_path)
+                    
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+
+    async def _extract_pptx(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from PowerPoint files"""
+        try:
+            import tempfile
+            import os
+            from pptx import Presentation
+            
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(suffix='.pptx', delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_pptx_path = temp_file.name
+            
+            try:
+                prs = Presentation(temp_pptx_path)
+                blocks = []
+                media = []
+                
+                # Extract presentation properties
+                try:
+                    props = prs.core_properties
+                    author = props.author if props else None
+                    title = props.title if props else filename
+                    created_date = props.created if props else None
+                    modified_date = props.modified if props else None
+                except Exception:
+                    author = None
+                    title = filename
+                    created_date = modified_date = None
+                
+                # Extract content from each slide
+                for slide_idx, slide in enumerate(prs.slides, 1):
+                    slide_title = f"Slide {slide_idx}"
+                    
+                    # Extract text from all shapes
+                    slide_content = []
+                    
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text") and shape.text.strip():
+                            text = shape.text.strip()
+                            
+                            # Determine if it's a title or content
+                            if hasattr(shape, 'placeholder_format') and shape.placeholder_format:
+                                if shape.placeholder_format.type == 1:  # Title placeholder
+                                    slide_title = text
+                                    blocks.append(ContentBlock(
+                                        block_type='heading',
+                                        content=text,
+                                        level=1,
+                                        metadata={"slide_number": slide_idx, "shape_type": "title"},
+                                        source_pointer=SourcePointer(
+                                            file_id=file_id,
+                                            mime_type=mime_type,
+                                            slide_number=slide_idx,
+                                            line_start=0,
+                                            line_end=0
+                                        )
+                                    ))
+                                else:
+                                    slide_content.append(text)
+                            else:
+                                slide_content.append(text)
+                    
+                    # Combine slide content into paragraphs
+                    if slide_content:
+                        content_text = '\n\n'.join(slide_content)
+                        
+                        # Detect if content contains bullet points
+                        if any(line.strip().startswith(('•', '-', '*', '1.', '2.', '3.')) for line in content_text.split('\n')):
+                            block_type = 'list'
+                        else:
+                            block_type = 'paragraph'
+                        
+                        blocks.append(ContentBlock(
+                            block_type=block_type,
+                            content=content_text,
+                            metadata={"slide_number": slide_idx, "slide_title": slide_title},
+                            source_pointer=SourcePointer(
+                                file_id=file_id,
+                                mime_type=mime_type,
+                                slide_number=slide_idx,
+                                line_start=1,
+                                line_end=len(slide_content)
+                            )
+                        ))
+                
+                return NormalizedDocument(
+                    doc_id=file_id,
+                    title=title,
+                    original_filename=filename,
+                    file_id=file_id,
+                    mime_type=mime_type,
+                    author=author,
+                    created_date=created_date,
+                    modified_date=modified_date,
+                    word_count=sum([len(block.content.split()) for block in blocks]),
+                    metadata={"slide_count": len(prs.slides)},
+                    blocks=blocks,
+                    media=media,
+                    extraction_metadata={
+                        "status": "success",
+                        "blocks_extracted": len(blocks),
+                        "slides_processed": len(prs.slides)
+                    }
+                )
+                
+            finally:
+                if os.path.exists(temp_pptx_path):
+                    os.unlink(temp_pptx_path)
+                    
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+
+    async def _extract_xlsx(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from Excel files"""
+        try:
+            import tempfile
+            import os
+            from openpyxl import load_workbook
+            
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_xlsx_path = temp_file.name
+            
+            try:
+                wb = load_workbook(temp_xlsx_path, read_only=True, data_only=True)
+                blocks = []
+                
+                # Extract content from each worksheet
+                for sheet_name in wb.sheetnames:
+                    ws = wb[sheet_name]
+                    
+                    # Add sheet header
+                    blocks.append(ContentBlock(
+                        block_type='heading',
+                        content=f"Worksheet: {sheet_name}",
+                        level=2,
+                        metadata={"sheet_name": sheet_name},
+                        source_pointer=SourcePointer(
+                            file_id=file_id,
+                            mime_type=mime_type,
+                            sheet_name=sheet_name,
+                            line_start=0,
+                            line_end=0
+                        )
+                    ))
+                    
+                    # Extract data rows
+                    rows_data = []
+                    headers = []
+                    
+                    # Get all rows with data
+                    for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
+                        # Skip empty rows
+                        if not any(cell for cell in row if cell is not None):
+                            continue
+                        
+                        # Convert row to strings
+                        row_values = [str(cell) if cell is not None else "" for cell in row]
+                        
+                        if row_idx == 1:
+                            # First row as headers
+                            headers = row_values
+                        
+                        rows_data.append(row_values)
+                    
+                    if rows_data:
+                        # Create table content
+                        if headers:
+                            table_content = f"Headers: {' | '.join(headers)}\n\n"
+                            data_rows = rows_data[1:] if len(rows_data) > 1 else []
+                        else:
+                            table_content = ""
+                            data_rows = rows_data
+                        
+                        # Add data rows
+                        for i, row in enumerate(data_rows, 1):
+                            if headers and len(row) == len(headers):
+                                row_content = ' | '.join([f"{headers[j]}: {cell}" for j, cell in enumerate(row)])
+                            else:
+                                row_content = ' | '.join(row)
+                            table_content += f"Row {i}: {row_content}\n"
+                        
+                        blocks.append(ContentBlock(
+                            block_type='table',
+                            content=table_content,
+                            metadata={
+                                "sheet_name": sheet_name,
+                                "headers": headers,
+                                "row_count": len(data_rows),
+                                "column_count": len(headers) if headers else 0
+                            },
+                            source_pointer=SourcePointer(
+                                file_id=file_id,
+                                mime_type=mime_type,
+                                sheet_name=sheet_name,
+                                line_start=1,
+                                line_end=len(rows_data)
+                            )
+                        ))
+                
+                wb.close()
+                
+                return NormalizedDocument(
+                    doc_id=file_id,
+                    title=filename,
+                    original_filename=filename,
+                    file_id=file_id,
+                    mime_type=mime_type,
+                    word_count=sum([len(block.content.split()) for block in blocks]),
+                    metadata={"worksheet_count": len(wb.sheetnames)},
+                    blocks=blocks,
+                    extraction_metadata={
+                        "status": "success",
+                        "blocks_extracted": len(blocks),
+                        "worksheets_processed": len(wb.sheetnames)
+                    }
+                )
+                
+            finally:
+                if os.path.exists(temp_xlsx_path):
+                    os.unlink(temp_xlsx_path)
+                    
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+
     async def _extract_csv(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
         """Extract content from CSV files"""
         try:

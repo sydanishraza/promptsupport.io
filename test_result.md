@@ -14,21 +14,33 @@
 # Main and testing agents must follow this exact format to maintain testing data. 
 # The testing data must be entered in yaml format Below is the data structure:
 # 
-## user_problem_statement: Fix Phantom Links Issue
+## user_problem_statement: V2 Engine Step 7 Implementation - Generate Articles (strict format + audience-aware)
 
-The user reported that hub articles contain broken internal links to non-existent articles, creating a poor navigation experience. The testing showed 33-64 phantom anchor links across hub articles (including links like #what-is-whisk-studio, #getting-started, #create-an-account) that point to non-existent sections instead of real Content Library articles. The TOC accuracy was 0.0% and users encounter broken navigation with 0 working Content Library links.
+IMPLEMENTATION SUMMARY:
+Successfully implemented Step 7 of the V2 Engine plan: "Generate Articles (strict format + audience-aware)". This step integrates the existing V2ArticleGenerator class into the main processing pipeline, replacing the older convert_normalized_doc_to_articles_with_analysis function.
 
-SOLUTION IMPLEMENTED:
-1. Fixed create_introductory_toc_article function to use /content-library/article/{id} format instead of #article-{id}
-2. Removed the first (incorrect) add_related_links_to_articles function that created phantom links
-3. Fixed remaining phantom links in Quick Navigation and related links sections
-4. All links now use proper Content Library URLs with target="_blank" for better UX
+CHANGES IMPLEMENTED:
+1. Updated process_text_content_v2 function to use v2_article_generator.generate_final_articles
+2. Updated /api/content/upload endpoint to use V2ArticleGenerator for file processing
+3. Updated /api/content/process-url endpoint to use V2ArticleGenerator for URL processing
+4. Added _extract_title_from_html method to V2ArticleGenerator class for better title extraction
+5. Ensured all generated articles follow the strict format requirements:
+   - H1 Title, Intro paragraph, Mini-TOC, Main Body, FAQs, Related Links
+   - Audience-aware styling (developer/business/admin/end_user)
+   - 100% coverage of assigned blocks
+   - No media embedding (only references)
+   - JSON output with html and summary
+   - HTML to Markdown conversion
 
 TESTING NEEDED:
-- Verify that hub articles now have working links to actual Content Library articles
-- Confirm that TOC links work properly 
-- Ensure no phantom anchor links remain
-- Test that article navigation functions correctly
+- Test V2 Engine Step 7 with text content processing
+- Test V2 Engine Step 7 with file upload processing  
+- Test V2 Engine Step 7 with URL processing
+- Verify strict article format compliance
+- Verify audience-aware styling works correctly
+- Confirm articles are properly stored in content library
+- Test HTML to Markdown conversion
+- Verify no media embedding occurs
 backend:
   - task: "V2 ENGINE STEP 1 IMPLEMENTATION TESTING"
     implemented: true

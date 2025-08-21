@@ -16840,6 +16840,34 @@ async def delete_content_library_article(article_id: str):
     except Exception as e:
         print(f"❌ Error deleting article: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# V2 ENGINE HEALTH CHECK
+@app.get("/api/engine")
+async def get_engine_status():
+    """V2 ENGINE: Get current engine status and configuration"""
+    print(f"📊 V2 ENGINE: Health check requested - engine=v2")
+    return {
+        "engine": "v2",
+        "legacy": "disabled",
+        "status": "active",
+        "version": "2.0",
+        "endpoints": {
+            "text_processing": "/api/content/process",
+            "file_upload": "/api/content/upload", 
+            "url_processing": "/api/content/process-url",
+            "recording_processing": "/api/content/process-recording"
+        },
+        "features": [
+            "multi_dimensional_analysis",
+            "adaptive_granularity",
+            "intelligent_chunking",
+            "cross_referencing",
+            "comprehensive_file_support",
+            "image_extraction",
+            "progress_tracking"
+        ],
+        "message": "V2 Engine is active and all legacy processing has been disabled"
+    }
 async def analyze_media_intelligence(request: Request):
     """
     Comprehensive media analysis using LLM + Vision models

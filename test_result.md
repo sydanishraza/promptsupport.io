@@ -3311,9 +3311,8 @@ backend:
 
 ## test_plan:
   current_focus:
-    - "CRITICAL WYSIWYG EDITOR COMPATIBILITY FIX TESTING"
-  stuck_tasks: 
-    - "CRITICAL WYSIWYG EDITOR COMPATIBILITY FIX TESTING"
+    - "V2 ENGINE STEP 1 IMPLEMENTATION TESTING"
+  stuck_tasks: []
   test_all: false
   test_priority: "critical_first"
 

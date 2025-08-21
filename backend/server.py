@@ -16207,7 +16207,14 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(articles)} final articles with strict format - engine=v2")
         
-        # Metadata already added during V2ArticleGenerator conversion above
+        # CRITICAL FIX: Store V2 generated articles in content library for frontend access
+        if articles:
+            for article in articles:
+                try:
+                    await db.content_library.insert_one(article)
+                    print(f"💾 V2 ENGINE: Stored article in content library: {article['title']} - engine=v2")
+                except Exception as storage_error:
+                    print(f"❌ V2 ENGINE: Error storing article in content library: {storage_error} - engine=v2")
         
         print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using V2ArticleGenerator with {analysis.get('granularity', 'shallow')} granularity for {analysis.get('audience', 'end_user')} audience - engine=v2")
         return articles

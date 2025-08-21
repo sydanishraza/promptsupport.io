@@ -16175,7 +16175,7 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
                 article_data = generated_article.get('article_data', {})
                 if article_data:
                     # Extract title from HTML content
-                    article_title = _extract_title_from_html(article_data.get('html', ''), generated_article.get('title', 'Generated Article'))
+                    article_title = v2_article_generator._extract_title_from_html(article_data.get('html', ''), generated_article.get('article_id', 'Generated Article'))
                     
                     # Create article in expected format for content library storage
                     article = {

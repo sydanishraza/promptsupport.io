@@ -20235,6 +20235,15 @@ File Information:
             
             print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(chunks)} final articles from {file.filename} - engine=v2")
             
+            # CRITICAL FIX: Store V2 generated articles in content library for frontend access
+            if chunks:
+                for chunk in chunks:
+                    try:
+                        await db.content_library.insert_one(chunk)
+                        print(f"💾 V2 ENGINE: Stored file article in content library: {chunk['title']} - engine=v2")
+                    except Exception as storage_error:
+                        print(f"❌ V2 ENGINE: Error storing file article in content library: {storage_error} - engine=v2")
+            
             await update_job_progress("finalizing", f"V2 Engine: Created {len(chunks)} articles using detailed per-article outlines with {granularity} granularity for {audience} audience")
             print(f"✅ V2 ENGINE: File processing completed: {len(chunks)} chunks created using per-article outlines with {granularity} granularity for {audience} audience - engine=v2")
             

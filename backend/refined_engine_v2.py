@@ -1035,14 +1035,17 @@ FINAL OUTPUT REQUIREMENTS:
             return content
 
     def add_advanced_navigation(self, content: str, structure: Dict[str, Any]) -> str:
-        """Add advanced navigation for complex documents"""
+        """Add advanced navigation for complex documents with right-alignment"""
         try:
             headings = structure.get('heading_structure', [])
             if len(headings) < 5:
                 return content
             
-            # Create hierarchical TOC
-            toc_html = '<div id="advanced-toc-container" class="advanced-toc">\n<h3>📋 Navigation</h3>\n<ul class="toc-hierarchy">\n'
+            # Create hierarchical TOC with proper structure
+            toc_html = '''<div class="article-sidebar">
+<div class="advanced-toc">
+<h3>📋 Navigation</h3>
+<ul class="toc-hierarchy">'''
             
             for heading in headings[:20]:  # Limit to first 20 headings
                 level = heading['level']
@@ -1052,10 +1055,17 @@ FINAL OUTPUT REQUIREMENTS:
                 indent_class = f'toc-level-{level}'
                 toc_html += f'<li class="{indent_class}"><a href="#{heading_id}">{text}</a></li>\n'
             
-            toc_html += '</ul>\n</div>'
+            toc_html += '''</ul>
+</div>
+</div>'''
             
-            # Insert after article-body opening
-            enhanced = content.replace('<div class="article-body">', f'<div class="article-body">\n{toc_html}\n<hr>')
+            # Create proper layout structure with TOC on the right
+            enhanced = content.replace('<div class="article-body">', 
+                '''<div class="article-body-with-toc">
+<div class="article-main-content">''')
+            enhanced = enhanced.replace('</div>', f'''</div>
+{toc_html}
+</div>''')
             
             return enhanced
         except Exception as e:

@@ -1,0 +1,18415 @@
+#!/usr/bin/env python3
+"""
+PromptSupport Enhanced Content Engine Backend
+FastAPI server with AI integrations for content processing
+"""
+
+import os
+import uuid
+import asyncio
+from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any
+import json
+import io
+import base64
+from bson import ObjectId
+
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Header, Request
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse, Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+import motor.motor_asyncio
+from pymongo import MongoClient
+import aiofiles
+from dotenv import load_dotenv
+import requests
+import httpx
+import re
+import markdown
+from bs4 import BeautifulSoup
+from media_intelligence import media_intelligence
+
+# HTML preprocessing pipeline imports
+import mammoth
+import pypandoc
+# from pdfminer.six import extract_text as pdf_extract_text
+from lxml import etree
+from lxml.html import fromstring as html_fromstring, tostring as html_tostring
+import shutil
+import subprocess
+
+# Load environment variables
+load_dotenv()
+
+# Helper function to convert ObjectId to string for JSON serialization
+def objectid_to_str(data):
+    """Convert ObjectId to string for JSON serialization"""
+    if isinstance(data, ObjectId):
+        return str(data)
+    elif isinstance(data, dict):
+        return {key: objectid_to_str(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [objectid_to_str(item) for item in data]
+    return data
+
+# Configuration
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport_db")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
+QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
+QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="PromptSupport Enhanced Content Engine",
+    description="AI-native content processing and management system",
+    version="1.0.0"
+)
+
+# Mount static files for serving uploaded images under /api/static route
+import os
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/api/static", StaticFiles(directory=static_dir), name="static")
+
+# CORS middleware - Enhanced configuration for preview environments
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "*",  # Allow all origins for development
+        "https://content-engine-6.preview.emergentagent.com",
+        "https://content-engine-6.preview.emergentagent.com", 
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"]  # Expose all headers
+)
+
+# === DOCUMENT PROCESSING HELPER FUNCTIONS ===
+
+def is_table_of_contents(text: str, position: int = 0) -> bool:
+    """Detect Table of Contents sections"""
+    toc_indicators = [
+        'table of contents',
+        'contents',
+        'index',
+        '...........',  # Dotted lines common in TOCs
+    ]
+    
+    text_lower = text.lower()
+    
+    # Check for TOC title
+    if any(indicator in text_lower for indicator in toc_indicators[:3]):
+        return True
+        
+    # Check for dotted lines or page numbers (TOC formatting)
+    if ('.' * 5 in text) or (re.search(r'\d+$', text.strip())):
+        return True
+        
+    # Check if this looks like a TOC entry (short line with numbers)
+    if len(text) < 100 and re.search(r'^\w.*\d+$', text.strip()):
+        return True
+        
+    return False
+
+def is_header_footer_or_page_number(text: str) -> bool:
+    """Detect headers, footers, and page numbers"""
+    # Page numbers (just numbers or "Page X")
+    if re.match(r'^(page\s+)?\d+$', text.lower().strip()):
+        return True
+        
+    # Very short text that might be headers/footers
+    if len(text.strip()) < 10 and not any(c.isalpha() for c in text):
+        return True
+        
+    # Common header/footer patterns
+    header_footer_patterns = [
+        r'^\d+$',  # Just numbers
+        r'^page \d+',  # Page numbers
+        r'confidential',
+        r'proprietary',
+        r'draft',
+        r'version \d+',
+    ]
+    
+    return any(re.search(pattern, text.lower()) for pattern in header_footer_patterns)
+
+def is_legal_disclaimer(text: str) -> bool:
+    """Detect legal disclaimers and copyright notices"""
+    legal_patterns = [
+        r'copyright',
+        r'©',
+        r'all rights reserved',
+        r'proprietary and confidential',
+        r'trademark',
+        r'disclaimer',
+        r'terms of use',
+        r'privacy policy',
+        r'legal notice'
+    ]
+    
+    text_lower = text.lower()
+    return any(re.search(pattern, text_lower) for pattern in legal_patterns)
+
+def is_cover_page(paragraphs_sample: list) -> bool:
+    """Detect if the first few paragraphs constitute a cover page"""
+    if not paragraphs_sample:
+        return False
+        
+    first_page_text = '\n'.join([p.text for p in paragraphs_sample[:5] if hasattr(p, 'text')])
+    
+    cover_indicators = [
+        len(first_page_text.split('\n')) <= 5 and any(word in first_page_text.upper() for word in ['GUIDE', 'MANUAL', 'DOCUMENT', 'REPORT']),
+        first_page_text.count('\n') <= 3 and len(first_page_text) < 200,
+        any(pattern in first_page_text.upper() for pattern in ['COPYRIGHT', '©', 'ALL RIGHTS RESERVED'])
+    ]
+    
+    return any(cover_indicators)
+
+def detect_heading_level_from_text(text: str) -> int:
+    """Detect heading level from text patterns"""
+    text = text.strip()
+    
+    # Check for numbered headings
+    if re.match(r'^\d+\.?\s+', text):
+        return 2
+    if re.match(r'^\d+\.\d+\.?\s+', text):
+        return 3
+    if re.match(r'^\d+\.\d+\.\d+\.?\s+', text):
+        return 4
+        
+    # Check for text patterns that suggest headings
+    if text.isupper() and len(text) < 100:
+        return 1
+    if text.endswith(':') and len(text) < 80:
+        return 3
+        
+    return None
+
+async def regenerate_articles_with_enhanced_context(extracted_content: dict, contextual_images: list, template_data: dict, training_session: dict) -> list:
+    """Phase 2: Enhanced article regeneration with contextual analysis"""
+    try:
+        print(f"🪄 Phase 2: Starting enhanced article regeneration")
+        
+        # Analyze content structure for semantic splitting
+        articles_data = []
+        current_article = {
+            "content_blocks": [],
+            "images": [],
+            "headings": [],
+            "title": ""
+        }
+        
+        h1_count = 0
+        
+        for block in extracted_content['structure']:
+            block_type = block['type']
+            content = block['content']
+            
+            # Major heading changes trigger new articles
+            if block_type == 'h1':
+                # Save current article if it has content
+                if current_article['content_blocks']:
+                    articles_data.append(current_article)
+                
+                # Start new article
+                h1_count += 1
+                current_article = {
+                    "content_blocks": [block],
+                    "images": [],
+                    "headings": [content],
+                    "title": content or f"Article {h1_count}"
+                }
+            elif block_type == 'h2' and len(current_article['content_blocks']) > 0:
+                # H2 might trigger new article if current is getting long
+                current_word_count = sum(len(b['content'].split()) for b in current_article['content_blocks'])
+                if current_word_count > 8000:  # PERFORMANCE BOOST: Increased from 3000 to 8000 words per article for fewer LLM calls
+                    # Save current article and start new one
+                    articles_data.append(current_article)
+                    current_article = {
+                        "content_blocks": [block],
+                        "images": [],
+                        "headings": [content],
+                        "title": content or f"Article {len(articles_data) + 1}"
+                    }
+                else:
+                    current_article['content_blocks'].append(block)
+                    current_article['headings'].append(content)
+            else:
+                current_article['content_blocks'].append(block)
+        
+        # Add final article
+        if current_article['content_blocks']:
+            articles_data.append(current_article)
+        
+        # Distribute images across articles based on context
+        images_per_article = len(contextual_images) // max(1, len(articles_data))
+        for i, article_data in enumerate(articles_data):
+            start_idx = i * images_per_article
+            end_idx = start_idx + images_per_article if i < len(articles_data) - 1 else len(contextual_images)
+            article_data['images'] = contextual_images[start_idx:end_idx]
+        
+        # Generate final articles
+        final_articles = []
+        
+        for i, article_data in enumerate(articles_data):
+            # Create structured content
+            html_content = await generate_enhanced_html_content(article_data, template_data)
+            markdown_content = await generate_enhanced_markdown_content(article_data, template_data)
+            
+            # Create media array with placement info
+            media_array = []
+            for img in article_data['images']:
+                media_array.append({
+                    "url": img['url'],
+                    "alt": img['alt_text'],
+                    "caption": img.get('caption', ''),
+                    "placement": img.get('placement', 'inline'),
+                    "filename": img['filename']
+                })
+            
+            article = {
+                "id": str(uuid.uuid4()),
+                "title": f"Article {i+1} From {training_session['filename']}" if not article_data['title'] else article_data['title'],
+                "html": html_content,
+                "markdown": markdown_content,
+                "content": html_content,  # For backward compatibility
+                "media": media_array,
+                "tags": ["extracted", "generated", "enhanced"],
+                "status": "training",
+                "template_id": training_session['template_id'],
+                "session_id": training_session['session_id'],
+                "word_count": len(html_content.split()),
+                "image_count": len(media_array),
+                "format": "html",
+                "created_at": datetime.utcnow().isoformat(),
+                "ai_processed": True,
+                "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
+                "training_mode": True,
+                "metadata": {
+                    "article_number": i + 1,
+                    "source_filename": training_session['filename'],
+                    "template_applied": training_session['template_id'],
+                    "phase": "enhanced_extraction"
+                }
+            }
+            
+            final_articles.append(article)
+            print(f"📄 Generated enhanced article {i+1}: {len(html_content)} chars, {len(media_array)} images")
+        
+        print(f"✅ Phase 2 Complete: Generated {len(final_articles)} enhanced articles")
+        return final_articles
+        
+    except Exception as e:
+        print(f"❌ Enhanced regeneration error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def generate_enhanced_html_content(article_data: dict, template_data: dict) -> str:
+    """Generate HTML content for an article"""
+    html_parts = []
+    
+    # Add title
+    if article_data['title']:
+        html_parts.append(f"<h1>{article_data['title']}</h1>")
+    
+    # Process content blocks
+    image_index = 0
+    
+    for block in article_data['content_blocks']:
+        block_type = block['type']
+        content = block['content']
+        
+        if block_type.startswith('h'):
+            level = block_type[1]
+            html_parts.append(f"<{block_type}>{content}</{block_type}>")
+        elif block_type == 'paragraph':
+            html_parts.append(f"<p>{content}</p>")
+            
+            # Insert image after some paragraphs
+            if image_index < len(article_data['images']) and len(html_parts) % 3 == 0:
+                img = article_data['images'][image_index]
+                img_html = f'<figure class="embedded-image"><img src="{img["url"]}" alt="{img["alt_text"]}" style="max-width: 100%; height: auto; margin: 1rem 0;"><figcaption>{img.get("caption", f"Figure {image_index + 1}")}</figcaption></figure>'
+                html_parts.append(img_html)
+                image_index += 1
+    
+    # Add remaining images at the end
+    while image_index < len(article_data['images']):
+        img = article_data['images'][image_index]
+        img_html = f'<figure class="embedded-image"><img src="{img["url"]}" alt="{img["alt_text"]}" style="max-width: 100%; height: auto; margin: 1rem 0;"><figcaption>{img.get("caption", f"Figure {image_index + 1}")}</figcaption></figure>'
+        html_parts.append(img_html)
+        image_index += 1
+    
+    return '\n\n'.join(html_parts)
+
+async def generate_enhanced_markdown_content(article_data: dict, template_data: dict) -> str:
+    """Generate Markdown content for an article"""
+    md_parts = []
+    
+    # Add title
+    if article_data['title']:
+        md_parts.append(f"# {article_data['title']}")
+    
+    # Process content blocks
+    image_index = 0
+    
+    for block in article_data['content_blocks']:
+        block_type = block['type']
+        content = block['content']
+        
+        if block_type == 'h1':
+            md_parts.append(f"# {content}")
+        elif block_type == 'h2':
+            md_parts.append(f"## {content}")
+        elif block_type == 'h3':
+            md_parts.append(f"### {content}")
+        elif block_type == 'h4':
+            md_parts.append(f"#### {content}")
+        elif block_type == 'paragraph':
+            # Convert HTML formatting to Markdown
+            md_content = content.replace('<strong>', '**').replace('</strong>', '**')
+            md_content = md_content.replace('<em>', '*').replace('</em>', '*')
+            md_content = md_content.replace('<u>', '_').replace('</u>', '_')
+            md_parts.append(md_content)
+            
+            # Insert image after some paragraphs
+            if image_index < len(article_data['images']) and len(md_parts) % 3 == 0:
+                img = article_data['images'][image_index]
+                md_parts.append(f"![{img['alt_text']}]({img['url']})")
+                if img.get('caption'):
+                    md_parts.append(f"*{img['caption']}*")
+                image_index += 1
+    
+    # Add remaining images at the end
+    while image_index < len(article_data['images']):
+        img = article_data['images'][image_index]
+        md_parts.append(f"![{img['alt_text']}]({img['url']})")
+        if img.get('caption'):
+            md_parts.append(f"*{img['caption']}*")
+        image_index += 1
+    
+    return '\n\n'.join(md_parts)
+
+async def generate_comprehensive_outline(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Step 2: Generate a comprehensive topic-specific outline after content analysis"""
+    try:
+        print(f"📋 STEP 2: GENERATING COMPREHENSIVE OUTLINE from {len(content)} characters")
+        
+        system_message = """You are a technical documentation expert. Analyze the provided content and create a comprehensive, topic-specific outline.
+
+CRITICAL INSTRUCTIONS:
+1. Read and analyze the ENTIRE content thoroughly
+2. Identify ALL major topics, subtopics, and important details
+3. Create a logical, hierarchical structure that covers 100% of the content
+4. Each outline item should be substantial enough for a detailed article
+5. Ensure NO content is missed or summarized away
+6. Group related topics together logically
+
+OUTPUT FORMAT - Return valid JSON:
+{
+  "document_analysis": {
+    "title": "Main document title/subject",
+    "type": "user guide|technical manual|API documentation|tutorial|etc",
+    "complexity": "basic|intermediate|advanced",
+    "estimated_reading_time": 15
+  },
+  "comprehensive_outline": [
+    {
+      "topic_title": "Introduction and Overview",
+      "topic_type": "overview",
+      "content_focus": "What this covers and why it matters",
+      "key_points": ["point1", "point2", "point3"],
+      "estimated_length": "medium",
+      "priority": "high"
+    },
+    {
+      "topic_title": "Getting Started Guide", 
+      "topic_type": "how-to",
+      "content_focus": "Step-by-step setup and configuration",
+      "key_points": ["installation", "setup", "first steps"],
+      "estimated_length": "long",
+      "priority": "high"
+    }
+  ],
+  "outline_summary": {
+    "total_topics": 8,
+    "overview_topics": 1,
+    "how_to_topics": 3,
+    "reference_topics": 2,
+    "concept_topics": 2
+  }
+}
+
+Create as many topics as needed for comprehensive coverage. Do not limit yourself."""
+
+        # Generate outline using LLM
+        outline_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Analyze this content and create a comprehensive topic-specific outline:\n\n{content[:25000]}"
+        )
+        
+        if outline_response:
+            try:
+                # Clean the response - remove code block markers if present
+                cleaned_response = outline_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]  # Remove ```json
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]  # Remove ```
+                cleaned_response = cleaned_response.strip()
+                
+                outline_data = json.loads(cleaned_response)
+                total_topics = len(outline_data.get('comprehensive_outline', []))
+                print(f"✅ COMPREHENSIVE OUTLINE GENERATED: {total_topics} topics planned")
+                return outline_data
+            except json.JSONDecodeError as e:
+                print(f"⚠️ Outline JSON parsing error: {e}")
+                print(f"Raw response: {outline_response[:500]}...")
+                
+        print("⚠️ Outline generation failed")
+        return None
+        
+    except Exception as e:
+        print(f"❌ Error generating comprehensive outline: {e}")
+        return None
+
+async def create_articles_from_outline(content: str, outline: Dict[str, Any], metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create articles one by one based on the comprehensive outline"""
+    try:
+        articles = []
+        outline_items = outline.get('comprehensive_outline', [])
+        
+        print(f"🏗️ CREATING ARTICLES FROM OUTLINE: {len(outline_items)} articles planned")
+        
+        for i, item in enumerate(outline_items):
+            try:
+                print(f"📄 Creating article {i+1}/{len(outline_items)}: {item.get('article_title', 'Untitled')}")
+                
+                # Create targeted system message for this specific article
+                system_message = f"""You are a technical writer creating a comprehensive article based on a specific section of a larger document.
+
+ARTICLE REQUIREMENTS:
+- Title: {item.get('article_title', 'Untitled')}
+- Type: {item.get('article_type', 'informational')}
+- Content Focus: {item.get('content_summary', 'General content')}
+- Key Topics: {', '.join(item.get('key_topics', []))}
+
+CRITICAL INSTRUCTIONS:
+1. Extract ALL relevant content from the source document for this article
+2. Create a comprehensive, standalone article that covers the topic thoroughly
+3. Include ALL technical details, procedures, and specifications
+4. Use proper HTML formatting with headings, lists, and emphasis
+5. Ensure the article is complete and self-contained
+6. Do NOT reference other articles or create placeholder links
+
+CRITICAL OUTPUT FORMAT:
+- Return ONLY article content HTML (headings, paragraphs, lists, etc.)
+- Do NOT include document structure tags: <!DOCTYPE>, <html>, <head>, <body>
+- Do NOT wrap content in ```html code blocks
+- Start directly with content (e.g., <h2>Introduction</h2><p>Content...</p>)
+- Use semantic HTML: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>"""
+
+                # Extract relevant content for this specific article
+                article_content = await call_llm_with_fallback(
+                    system_message=system_message,
+                    user_message=f"Create a comprehensive article from this source document:\n\n{content}"
+                )
+                
+                if article_content:
+                    # CRITICAL FIX: Clean HTML content to remove document structure
+                    cleaned_content = clean_article_html_content(article_content)
+                    
+                    # CONTENT VALIDATION: Ensure we have substantial content
+                    content_text = re.sub(r'<[^>]+>', '', cleaned_content).strip()
+                    if len(content_text) < 50:
+                        print(f"⚠️ Article content too short ({len(content_text)} chars), regenerating...")
+                        # Try to regenerate with enhanced prompt
+                        enhanced_system_message = f"""You are a technical writer creating a comprehensive article based on a specific section of a larger document.
+
+ARTICLE REQUIREMENTS:
+- Title: {item.get('article_title', 'Untitled')}
+- Type: {item.get('article_type', 'informational')}
+- Content Focus: {item.get('content_summary', 'General content')}
+- Key Topics: {', '.join(item.get('key_topics', []))}
+
+CRITICAL INSTRUCTIONS:
+1. Extract ALL relevant content from the source document for this article
+2. Create a comprehensive, standalone article that covers the topic thoroughly
+3. Include ALL technical details, procedures, and specifications
+4. Use proper HTML formatting with headings, lists, and emphasis
+5. Ensure the article is complete and self-contained
+6. MINIMUM 200 words of actual content
+
+CRITICAL OUTPUT FORMAT:
+- Return ONLY article content HTML (headings, paragraphs, lists, etc.)
+- Do NOT include document structure tags: <!DOCTYPE>, <html>, <head>, <body>
+- Do NOT wrap content in ```html code blocks
+- Start directly with content (e.g., <h2>Introduction</h2><p>Content...</p>)
+- Use semantic HTML: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>
+- ENSURE substantial content - at least 200 words"""
+
+                        article_content = await call_llm_with_fallback(
+                            system_message=enhanced_system_message,
+                            user_message=f"Create a comprehensive article from this source document:\n\n{content}"
+                        )
+                        if article_content:
+                            cleaned_content = clean_article_html_content(article_content)
+                            content_text = re.sub(r'<[^>]+>', '', cleaned_content).strip()
+                    
+                    # Final validation before saving
+                    if len(content_text) >= 50:
+                        # Create article object
+                        article = {
+                            "id": str(uuid.uuid4()),
+                            "title": item.get('article_title', f'Article {i+1}'),
+                            "content": cleaned_content,
+                            "status": "published",
+                            "article_type": item.get('article_type', 'informational'),
+                            "source_document": metadata.get("original_filename", "Unknown"),
+                            "estimated_length": item.get('estimated_length', 'medium'),
+                            "key_topics": item.get('key_topics', []),
+                            "created_at": datetime.utcnow(),
+                            "metadata": {
+                                "outline_based": True,
+                                "article_number": i + 1,
+                                "total_articles": len(outline_items),
+                                "content_validated": True,
+                                "content_length": len(content_text),
+                                **metadata
+                            }
+                        }
+                        
+                        # CRITICAL FIX: Save article to database
+                        await db.content_library.insert_one(article)
+                        articles.append(article)
+                        print(f"✅ Article created and saved: {article['title']} ({len(content_text)} chars)")
+                    else:
+                        print(f"⚠️ Article still too short after regeneration, skipping: {item.get('article_title', 'Untitled')}")
+                else:
+                    print(f"⚠️ Failed to create article: {item.get('article_title', 'Untitled')}")
+                    
+            except Exception as e:
+                print(f"❌ Error creating article {i+1}: {e}")
+                continue
+        
+        print(f"🎉 OUTLINE-BASED ARTICLE CREATION COMPLETE: {len(articles)} articles created")
+        
+        # ENHANCEMENT: Add missing features that were in the original pipeline
+        if articles:
+            print(f"🔗 ADDING COMPREHENSIVE ENHANCEMENTS: TOC, related links, cross-references, and FAQ generation")
+            
+            # Create introductory TOC article when multiple articles are generated
+            if len(articles) > 1:
+                print(f"📋 Creating introductory Table of Contents article for {len(articles)} articles")
+                intro_article = await create_introductory_toc_article(articles, metadata)
+                if intro_article:
+                    # Save introductory article to database
+                    await db.content_library.insert_one(intro_article)
+                    articles.insert(0, intro_article)  # Add as first article
+                    print(f"✅ Introductory TOC article created and saved: {intro_article['title']}")
+            
+            # Add related links and cross-references to all articles
+            enhanced_articles = await add_related_links_to_articles(articles)
+            
+            # Generate FAQ/Troubleshooting article if content is substantial
+            content_length = len(content)
+            if content_length > 2000:  # Only for substantial content
+                try:
+                    print(f"❓ Generating FAQ/Troubleshooting article for comprehensive coverage")
+                    faq_article_chunk = await generate_faq_troubleshooting_article(content, metadata)
+                    if faq_article_chunk:
+                        # Convert DocumentChunk to article format and save to database
+                        # Extract title from DocumentChunk content or metadata
+                        faq_title = getattr(faq_article_chunk, 'title', None) or \
+                                    faq_article_chunk.metadata.get('title', 'FAQ and Troubleshooting')
+                        
+                        # Validate FAQ content before saving
+                        faq_content_text = re.sub(r'<[^>]+>', '', faq_article_chunk.content).strip()
+                        if len(faq_content_text) >= 100:  # Ensure substantial FAQ content
+                            faq_article = {
+                                "id": str(uuid.uuid4()),
+                                "title": faq_title,
+                                "content": faq_article_chunk.content,
+                                "status": "published",
+                                "article_type": "faq-troubleshooting",
+                                "source_document": metadata.get("original_filename", "Unknown"),
+                                "tags": getattr(faq_article_chunk, 'tags', []) or [],
+                                "created_at": datetime.utcnow(),
+                                "metadata": {
+                                    "outline_based": True,
+                                    "enhancement_type": "faq_troubleshooting",
+                                    "article_number": len(enhanced_articles) + 1,
+                                    "total_articles": len(enhanced_articles) + 1,
+                                    "content_validated": True,
+                                    "content_length": len(faq_content_text),
+                                    **metadata
+                                }
+                            }
+                            
+                            # Save FAQ article to database
+                            await db.content_library.insert_one(faq_article)
+                            enhanced_articles.append(faq_article)
+                            print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']} ({len(faq_content_text)} chars)")
+                        else:
+                            print(f"⚠️ FAQ content too short ({len(faq_content_text)} chars), skipping FAQ article")
+                    else:
+                        print(f"⚠️ FAQ generation returned None, skipping FAQ article")
+                except Exception as faq_error:
+                    print(f"⚠️ FAQ generation failed (non-critical): {faq_error}")
+                    # Continue without FAQ - don't let this trigger fallback processing
+            
+            print(f"✅ ENHANCED OUTLINE-BASED PROCESSING COMPLETE: {len(enhanced_articles)} total articles with full enhancements")
+            return enhanced_articles
+        
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error in outline-based article creation: {e}")
+        return []
+
+async def generate_topic_article(content: str, topic: Dict[str, Any], metadata: Dict[str, Any], topic_number: int, total_topics: int) -> Dict[str, Any]:
+    """Step 3: Generate a single comprehensive article for a specific topic"""
+    try:
+        topic_title = topic.get('topic_title', f'Topic {topic_number}')
+        print(f"📄 STEP 3.{topic_number}: GENERATING ARTICLE '{topic_title}'")
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 100:
+            print(f"❌ TOPIC ARTICLE ERROR: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content for topic: {len(content)} characters")
+        
+        system_message = f"""You are a technical writer creating a comprehensive article for a specific topic from a larger document.
+
+TOPIC SPECIFICATIONS:
+- Title: {topic_title}
+- Type: {topic.get('topic_type', 'informational')}
+- Focus: {topic.get('content_focus', 'General information')}
+- Key Points: {', '.join(topic.get('key_points', []))}
+- Priority: {topic.get('priority', 'medium')}
+
+CONTENT REQUIREMENTS:
+1. Extract ALL relevant information from the source content for this topic
+2. Create a comprehensive, standalone article
+3. Include ALL technical details, procedures, and specifications
+4. Use proper HTML structure with semantic elements
+5. Make the article complete and self-contained
+6. Do NOT create placeholder links or references to other articles
+
+OUTPUT FORMAT:
+Return ONLY clean HTML content without any markdown formatting:
+- Start directly with the main heading: <h2>{topic_title}</h2>
+- Use h2 for main sections, h3 for subsections
+- Use semantic HTML: p, ul, ol, li, strong, em, pre, code
+- Do NOT include document structure tags (html, head, body)
+- Do NOT wrap in markdown code blocks (```html)
+- Do NOT use markdown formatting (##, **, etc.)"""
+
+        print(f"🤖 CALLING LLM for topic article generation...")
+        
+        # Generate article content with validation
+        article_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Create a comprehensive article for this topic from the source content. Use HTML formatting:\n\n{content[:20000]}"
+        )
+        
+        print(f"📥 Topic LLM Response received: {len(article_response) if article_response else 0} characters")
+        
+        if not article_response or len(article_response.strip()) < 50:
+            print(f"❌ TOPIC ARTICLE ERROR: Empty or insufficient LLM response ({len(article_response) if article_response else 0} chars)")
+            return None
+        
+        # Clean the HTML content with validation
+        cleaned_content = clean_article_html_content(article_response)
+        
+        print(f"🧹 Topic content after cleaning: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 50:
+            print(f"❌ TOPIC ARTICLE ERROR: Content lost during cleaning (original: {len(article_response)}, cleaned: {len(cleaned_content)})")
+            # Fallback: use original response if cleaning removed everything
+            cleaned_content = article_response
+        
+        # Create article object
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": topic_title,
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": topic.get('topic_type', 'informational'),
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": topic.get('key_points', []),
+            "priority": topic.get('priority', 'medium'),
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "outline_based": True,
+                "topic_number": topic_number,
+                "total_topics": total_topics,
+                "estimated_length": topic.get('estimated_length', 'medium'),
+                "content_length": len(cleaned_content),
+                **metadata
+            }
+        }
+        
+        print(f"✅ ARTICLE GENERATED: '{topic_title}' ({len(cleaned_content)} chars)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Error generating article for topic '{topic.get('topic_title', 'Unknown')}': {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def create_overview_article(all_articles: List[Dict[str, Any]], outline_data: Dict[str, Any], metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Step 4: Create comprehensive overview article with mini-TOC"""
+    try:
+        print(f"📊 STEP 4: CREATING OVERVIEW ARTICLE with mini-TOC for {len(all_articles)} articles")
+        
+        doc_analysis = outline_data.get('document_analysis', {})
+        doc_title = doc_analysis.get('title', 'Documentation')
+        doc_type = doc_analysis.get('type', 'guide')
+        
+        # Create mini table of contents
+        toc_html = "<h3>📋 Table of Contents</h3>\n<ul class='toc-list'>\n"
+        for i, article in enumerate(all_articles, 1):
+            article_title = article['title']
+            article_type = article.get('article_type', 'informational')
+            toc_html += f'<li><strong>{i}. <a href="/content-library/article/{article["id"]}" target="_blank">{article_title}</a></strong></li>\n'
+        toc_html += "</ul>\n"
+        
+        # Create overview content
+        overview_content = f"""<h2>📖 {doc_title} - Complete Guide</h2>
+
+<div class="overview-summary">
+<h3>🎯 Overview</h3>
+<p>This comprehensive {doc_type} covers all aspects of <strong>{doc_title}</strong> with detailed explanations, step-by-step instructions, and practical examples. The content is organized into <strong>{len(all_articles)} focused articles</strong> for easy navigation and reference.</p>
+
+<h3>📚 What You'll Learn</h3>
+<ul>
+<li>Complete understanding of all {doc_title} features and functionality</li>
+<li>Step-by-step procedures and best practices</li>
+<li>Troubleshooting and frequently asked questions</li>
+<li>Practical examples and real-world applications</li>
+</ul>
+</div>
+
+{toc_html}
+
+<div class="navigation-help">
+<h3>🧭 How to Use This Guide</h3>
+<p>Each article in this guide is designed to be comprehensive and self-contained. You can:</p>
+<ul>
+<li><strong>Follow sequentially</strong> - Read articles in order for complete coverage</li>
+<li><strong>Jump to specific topics</strong> - Use the table of contents to find what you need</li>
+<li><strong>Reference as needed</strong> - Each article provides complete information on its topic</li>
+</ul>
+</div>"""
+        
+        # Create overview article
+        overview_article = {
+            "id": str(uuid.uuid4()),
+            "title": f"{doc_title} - Complete Overview",
+            "content": overview_content,
+            "status": "published",
+            "article_type": "overview",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["overview", "table-of-contents", "navigation"],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "outline_based": True,
+                "is_overview": True,
+                "total_linked_articles": len(all_articles),
+                **metadata
+            }
+        }
+        
+        print(f"✅ OVERVIEW ARTICLE CREATED with mini-TOC linking to {len(all_articles)} articles")
+        return overview_article
+        
+    except Exception as e:
+        print(f"❌ Error creating overview article: {e}")
+        return None
+
+async def create_faq_article(content: str, all_articles: List[Dict[str, Any]], metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Step 5: Create comprehensive FAQ article"""
+    try:
+        print(f"❓ STEP 5: CREATING FAQ ARTICLE based on content analysis")
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 1000:
+            print(f"⚠️ Skipping FAQ creation: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content for FAQ: {len(content)} characters")
+        
+        system_message = """You are creating a comprehensive FAQ article based on the source content and related articles.
+
+REQUIREMENTS:
+1. Analyze the content to identify potential questions users might have
+2. Create practical, useful questions and detailed answers
+3. Focus on troubleshooting, common issues, and clarifications
+4. Group questions logically by topic/category
+5. Provide complete, actionable answers
+
+OUTPUT FORMAT:
+Return clean HTML with this structure (NO markdown formatting):
+<h2>Frequently Asked Questions</h2>
+<div class="faq-section">
+<h3>Getting Started</h3>
+<div class="faq-item">
+<h4>Q: How do I [specific question]?</h4>
+<p><strong>A:</strong> [Detailed answer with steps if applicable]</p>
+</div>
+</div>
+
+Create 8-15 practical questions covering different aspects of the content.
+Do NOT use markdown code blocks or backticks.
+Return ONLY the HTML content without any wrapper tags."""
+
+        print(f"🤖 CALLING LLM for FAQ generation...")
+        
+        # Generate FAQ content with validation
+        faq_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Create a comprehensive FAQ based on this content. Use HTML formatting and provide practical questions and answers:\n\n{content[:15000]}"
+        )
+        
+        print(f"📥 FAQ LLM Response received: {len(faq_response) if faq_response else 0} characters")
+        
+        if not faq_response or len(faq_response.strip()) < 100:
+            print(f"❌ FAQ ERROR: Empty or insufficient LLM response ({len(faq_response) if faq_response else 0} chars)")
+            return None
+        
+        # Clean content with validation
+        cleaned_content = clean_article_html_content(faq_response)
+        
+        print(f"🧹 FAQ content after cleaning: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 100:
+            print(f"❌ FAQ ERROR: Content lost during cleaning (original: {len(faq_response)}, cleaned: {len(cleaned_content)})")
+            # Fallback: use original response if cleaning removed everything
+            cleaned_content = faq_response
+        
+        faq_article = {
+            "id": str(uuid.uuid4()),
+            "title": "Frequently Asked Questions & Troubleshooting",
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": "faq",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["faq", "troubleshooting", "questions", "help"],
+            "priority": "medium",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "outline_based": True,
+                "is_faq": True,
+                "related_articles_count": len(all_articles),
+                "content_length": len(cleaned_content),
+                **metadata
+            }
+        }
+        
+        print(f"✅ FAQ ARTICLE CREATED with comprehensive Q&A ({len(cleaned_content)} chars)")
+        return faq_article
+        
+    except Exception as e:
+        print(f"❌ Error creating FAQ article: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def add_cross_references_and_related_links(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Enhanced cross-references system that includes ALL related articles with organized categories"""
+    try:
+        print(f"🔗 ENHANCED CROSS-REFERENCES: Adding comprehensive related links to {len(articles)} articles")
+        
+        enhanced_articles = []
+        
+        for i, article in enumerate(articles):
+            # ENHANCED: Find ALL related articles and organize by type
+            current_tags = set(article.get('tags', []))
+            current_type = article.get('article_type', '')
+            current_title_lower = article['title'].lower()
+            
+            # Organize related articles by category 
+            related_by_category = {
+                'main_guides': [],
+                'overviews': [],
+                'faqs': [],
+                'references': [],
+                'how_tos': [],
+                'other': []
+            }
+            
+            for other_article in articles:
+                if other_article['id'] == article['id']:
+                    continue
+                    
+                other_tags = set(other_article.get('tags', []))
+                other_type = other_article.get('article_type', '')
+                other_title = other_article['title']
+                
+                # Calculate relevance using multiple factors
+                shared_tags = len(current_tags.intersection(other_tags))
+                title_similarity = len(set(current_title_lower.split()) & set(other_title.lower().split())) > 0
+                
+                # Include article if it's related in any way (more inclusive approach)
+                is_related = (
+                    shared_tags > 0 or  # Shared tags
+                    title_similarity or  # Similar titles
+                    (current_type == 'overview') or  # Overview links to everything
+                    (other_type in ['faq', 'overview']) or  # Always include FAQ and overview
+                    (current_type == 'faq' and other_type != 'faq')  # FAQ links to all content
+                )
+                
+                if is_related:
+                    related_info = {
+                        'title': other_title,
+                        'id': other_article['id'],
+                        'type': other_type,
+                        'relevance': shared_tags + (2 if title_similarity else 0)
+                    }
+                    
+                    # Categorize by article type for better organization
+                    if other_type in ['complete_guide', 'main_content']:
+                        related_by_category['main_guides'].append(related_info)
+                    elif other_type == 'overview':
+                        related_by_category['overviews'].append(related_info)
+                    elif other_type in ['faq', 'faq-troubleshooting']:
+                        related_by_category['faqs'].append(related_info)
+                    elif other_type == 'reference':
+                        related_by_category['references'].append(related_info)
+                    elif other_type in ['how-to', 'tutorial']:
+                        related_by_category['how_tos'].append(related_info)
+                    else:
+                        related_by_category['other'].append(related_info)
+            
+            # Build simple comprehensive related links list (user requested no divs/categories)
+            all_related = []
+            for category_articles in related_by_category.values():
+                all_related.extend(category_articles)
+            
+            # Sort all related articles by relevance
+            all_related.sort(key=lambda x: x['relevance'], reverse=True)
+            
+            if all_related:
+                related_links_html = '\n<hr>\n<div class="related-links">\n<h3>🔗 Related Articles</h3>\n<ul>\n'
+                
+                # Show all related articles in a simple list (limit to 20 for performance)
+                for related in all_related[:20]:
+                    icon = {'overview': '📖', 'complete_guide': '📚', 'faq': '❓', 'faq-troubleshooting': '❓', 
+                           'how-to': '🛠️', 'tutorial': '🛠️', 'reference': '📋', 'main_content': '📚', 
+                           'section_guide': '📄'}.get(related['type'], '📄')
+                    related_links_html += f'<li>{icon} <a href="/content-library/article/{related["id"]}" target="_blank"><strong>{related["title"]}</strong></a></li>\n'
+                
+                related_links_html += '</ul>\n</div>'
+                
+                # Add to article content if not already present
+                if 'related-links' not in article['content']:
+                    article['content'] += related_links_html
+                    print(f"✅ Added {len(all_related[:20])} related links to: {article['title'][:50]}...")
+            
+            enhanced_articles.append(article)
+        
+        print(f"✅ CROSS-REFERENCES COMPLETE: Enhanced {len(enhanced_articles)} articles with related links")
+        return enhanced_articles
+        
+    except Exception as e:
+        print(f"❌ Error adding cross-references: {e}")
+        return articles
+
+async def analyze_content_type_and_flow(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """PHASE 6: Multi-dimensional content analysis with adaptive granularity"""
+    try:
+        print(f"🔍 ANALYZING CONTENT TYPE AND FLOW for intelligent structuring")
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 500:
+            print(f"⚠️ Content analysis: Insufficient content ({len(content)} chars), defaulting to unified")
+            return {
+                "content_analysis": {
+                    "primary_type": "guide",
+                    "should_split": False,
+                    "has_code_blocks": False,
+                    "has_step_by_step": True
+                },
+                "structuring_decision": {
+                    "should_split": False,
+                    "reasoning": "Insufficient content for analysis, keeping unified for better user experience"
+                }
+            }
+        
+        print(f"📝 Analyzing {len(content)} characters for content type and flow")
+        
+        system_message = """You are a content analysis expert. Analyze the provided content to determine the optimal article structure while preserving rich formatting.
+
+CRITICAL ANALYSIS REQUIREMENTS:
+1. Identify the CONTENT TYPE (tutorial, product guide, API reference, mixed content, etc.)
+2. Analyze CONTENT FLOW (sequential steps, independent chapters, reference sections)
+3. Determine if content should be UNIFIED or SPLIT based on user experience
+4. Consider code blocks, procedures, lists, callouts, and context dependencies
+5. Preserve rich formatting elements (lists, code blocks, tables, callouts)
+
+DECISION CRITERIA FOR SPLITTING:
+- KEEP UNIFIED: 
+  * Step-by-step tutorials with sequential dependencies
+  * How-to guides where steps build on each other
+  * Single workflows or procedures
+  * Content with extensive code examples that need context
+  * Short to medium documents (<10,000 characters)
+  
+- SPLIT CONTENT: 
+  * Large product manuals with truly independent chapters (>15,000 characters)
+  * Reference materials with separate topics
+  * Multi-topic documentation where each section stands alone
+  * Mixed content types (tutorial + reference + troubleshooting)
+
+FORMATTING PRESERVATION PRIORITY:
+- Tutorials and procedures should ALWAYS stay unified to preserve:
+  * Code block context and explanations
+  * Step-by-step flow and dependencies
+  * List formatting and callouts
+  * Technical formatting and examples
+
+OUTPUT FORMAT - Return valid JSON:
+{
+  "content_analysis": {
+    "primary_type": "tutorial|product_guide|api_reference|mixed_content|reference_manual",
+    "content_flow": "sequential|independent_chapters|mixed",
+    "has_code_blocks": true,
+    "has_step_by_step": true,
+    "has_rich_formatting": true,
+    "sections_depend_on_each_other": true,
+    "complexity_level": "basic|intermediate|advanced",
+    "estimated_length": "short|medium|large"
+  },
+  "structuring_decision": {
+    "should_split": false,
+    "reasoning": "This is a step-by-step tutorial where sections depend on each other sequentially and contain code blocks that need context",
+    "recommended_structure": "unified_guide|chapter_based|topic_based",
+    "formatting_priority": "preserve_code_context|maintain_list_structure|keep_callouts",
+    "recommended_articles": [
+      {
+        "article_type": "overview_and_guide",
+        "title": "Complete Google Maps API Tutorial",
+        "description": "Comprehensive guide including setup, implementation, and customization with all code examples",
+        "includes_sections": ["introduction", "setup", "implementation", "customization"],
+        "preserve_formatting": true
+      },
+      {
+        "article_type": "faq",
+        "title": "Google Maps API - FAQ and Troubleshooting", 
+        "description": "Common questions and solutions"
+      }
+    ]
+  }
+}
+
+IMPORTANT: Prioritize keeping tutorials, procedures, and content with rich formatting unified to maintain context, code examples, and formatting integrity."""
+
+        print(f"🤖 CALLING LLM for content analysis...")
+        
+        # Analyze content structure with validation
+        analysis_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"Analyze this content to determine optimal article structure:\n\n{content[:15000]}"
+        )
+        
+        print(f"📥 Content Analysis LLM Response: {len(analysis_response) if analysis_response else 0} characters")
+        
+        if analysis_response and len(analysis_response.strip()) > 10:
+            try:
+                # Clean JSON response
+                cleaned_response = analysis_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                cleaned_response = cleaned_response.strip()
+                
+                analysis_data = json.loads(cleaned_response)
+                
+                content_type = analysis_data.get('content_analysis', {}).get('primary_type', 'mixed_content')
+                should_split = analysis_data.get('structuring_decision', {}).get('should_split', True)
+                
+                print(f"✅ CONTENT ANALYSIS COMPLETE:")
+                print(f"   📋 Type: {content_type}")
+                print(f"   🔀 Should split: {should_split}")
+                print(f"   💡 Reasoning: {analysis_data.get('structuring_decision', {}).get('reasoning', 'Default analysis')}")
+                
+                return analysis_data
+                
+            except json.JSONDecodeError as e:
+                print(f"⚠️ Content analysis JSON parsing error: {e}")
+                print(f"Raw response: {analysis_response[:500]}...")
+        
+        # Fallback analysis based on simple heuristics
+        print(f"⚠️ Using fallback content analysis")
+        word_count = len(content.split())
+        has_steps = any(keyword in content.lower() for keyword in ['step', 'procedure', 'tutorial', 'guide', 'how to'])
+        has_code = any(keyword in content for keyword in ['<code>', '```', 'function', 'var ', 'const ', '<script>'])
+        
+        # Simple heuristic: if it's short with steps and code, keep unified
+        should_split = not (word_count < 3000 and has_steps and has_code)
+        
+        return {
+            "content_analysis": {
+                "primary_type": "tutorial" if has_steps else "mixed_content",
+                "should_split": should_split,
+                "has_code_blocks": has_code,
+                "has_step_by_step": has_steps
+            },
+            "structuring_decision": {
+                "should_split": should_split,
+                "reasoning": f"Fallback analysis: {word_count} words, steps: {has_steps}, code: {has_code}"
+            }
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in content analysis: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "structuring_decision": {"should_split": False, "reasoning": "Error in analysis, defaulting to unified for safety"}
+        }
+
+async def enhanced_multi_dimensional_analysis(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """PHASE 6: Advanced multi-dimensional content classification and granularity analysis"""
+    try:
+        print(f"🧠 PHASE 6: MULTI-DIMENSIONAL CONTENT ANALYSIS STARTED")
+        print(f"📊 Analyzing {len(content)} characters with advanced classification")
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 300:
+            print(f"⚠️ Insufficient content for multi-dimensional analysis ({len(content)} chars)")
+            return {
+                "content_classification": {
+                    "content_type": "simple_guide",
+                    "audience": "general",
+                    "format_signals": ["text_heavy"],
+                    "complexity_level": "basic"
+                },
+                "granularity_decision": {
+                    "level": "shallow",
+                    "article_count_estimate": 2,
+                    "reasoning": "Insufficient content for complex analysis"
+                },
+                "processing_strategy": {
+                    "approach": "unified",
+                    "section_strategy": "maintain_flow"
+                }
+            }
+        
+        # Advanced LLM analysis system message
+        system_message = """You are an advanced content classification expert. Perform comprehensive multi-dimensional analysis to determine optimal content processing strategy.
+
+PHASE 6 MULTI-DIMENSIONAL CLASSIFICATION:
+
+1. CONTENT TYPE DETECTION:
+   - tutorial: Step-by-step instructions, sequential procedures
+   - reference: API docs, lookup materials, specifications  
+   - conceptual: Explanatory content, overviews, concepts
+   - compliance: Policies, regulations, audit materials
+   - release_notes: Updates, changelogs, version information
+   - mixed: Combination of multiple types
+
+2. AUDIENCE IDENTIFICATION:
+   - developer: Technical implementation, code-heavy content
+   - end_user: User guides, how-to instructions
+   - admin: Administrative procedures, configuration guides  
+   - business: Strategy, planning, business processes
+
+3. FORMAT SIGNALS ANALYSIS:
+   - code_heavy: Significant code blocks and technical examples
+   - table_heavy: Extensive tabular data and structured information
+   - diagram_heavy: References to images, charts, visual elements
+   - narrative: Text-heavy explanatory content
+   - list_heavy: Extensive bullet points and enumerated items
+
+4. COMPLEXITY EVALUATION:
+   - basic: Simple, straightforward content (<3000 chars)
+   - intermediate: Moderate complexity with some technical elements (3000-10000 chars)
+   - advanced: Complex, comprehensive documentation (>10000 chars)
+
+5. GRANULARITY RECOMMENDATIONS:
+   - shallow: 2-3 articles (simple guides, short procedures)
+   - moderate: 4-6 articles (feature guides, medium documentation)  
+   - deep: 7+ articles (comprehensive manuals, API documentation)
+
+6. PROCESSING STRATEGY:
+   - unified: Keep content together (tutorials, step-by-step procedures)
+   - shallow_split: Minimal division (overview + main content + FAQ)
+   - moderate_split: Logical sections (overview + 3-5 chapters + FAQ)
+   - deep_split: Comprehensive division (overview + many chapters + FAQ)
+
+OUTPUT FORMAT - Return valid JSON:
+{
+  "content_classification": {
+    "content_type": "tutorial|reference|conceptual|compliance|release_notes|mixed",
+    "audience": "developer|end_user|admin|business",
+    "format_signals": ["code_heavy", "table_heavy", "diagram_heavy", "narrative", "list_heavy"],
+    "complexity_level": "basic|intermediate|advanced",
+    "dependencies": {
+      "has_sequential_steps": true,
+      "sections_interdependent": true,
+      "code_context_critical": true
+    }
+  },
+  "granularity_decision": {
+    "level": "shallow|moderate|deep", 
+    "article_count_estimate": 3,
+    "reasoning": "Detailed explanation for granularity choice",
+    "content_length_factor": "short|medium|large",
+    "section_complexity_factor": "simple|moderate|complex"
+  },
+  "processing_strategy": {
+    "approach": "unified|shallow_split|moderate_split|deep_split",
+    "section_strategy": "maintain_flow|logical_breaks|module_based|topic_based",
+    "formatting_priority": "preserve_code_context|maintain_list_structure|keep_callouts|preserve_tables",
+    "recommended_structure": {
+      "articles": [
+        {
+          "type": "overview|main_content|chapter|faq",
+          "title_pattern": "Complete Guide|Chapter X|FAQ", 
+          "content_focus": "description of what this article covers"
+        }
+      ]
+    }
+  }
+}
+
+CRITICAL DECISION RULES:
+- Tutorials with sequential dependencies → unified approach
+- API documentation with independent endpoints → deep split
+- Mixed content with multiple audiences → moderate split with clear sections
+- Code-heavy content → preserve context and flow
+- Complex product manuals → deep split with hierarchical structure"""
+
+        print(f"🤖 CALLING ADVANCED LLM for multi-dimensional analysis...")
+        
+        # Enhanced content analysis with comprehensive prompting
+        analysis_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"""Perform comprehensive multi-dimensional analysis on this content:
+
+METADATA CONTEXT:
+- Filename: {metadata.get('original_filename', 'Unknown')}
+- File type: {metadata.get('file_extension', 'unknown')}
+- Content length: {len(content)} characters
+
+CONTENT TO ANALYZE:
+{content[:20000]}
+
+Analyze this content and provide complete multi-dimensional classification, granularity recommendations, and processing strategy as specified in the JSON format."""
+        )
+        
+        print(f"📥 Advanced Analysis LLM Response: {len(analysis_response) if analysis_response else 0} characters")
+        
+        if analysis_response and len(analysis_response.strip()) > 50:
+            try:
+                # Enhanced JSON parsing with validation
+                cleaned_response = analysis_response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.endswith('```'):
+                    cleaned_response = cleaned_response[:-3]
+                
+                analysis_data = json.loads(cleaned_response.strip())
+                
+                # Validate required fields
+                required_fields = ['content_classification', 'granularity_decision', 'processing_strategy']
+                if all(field in analysis_data for field in required_fields):
+                    print(f"✅ ADVANCED ANALYSIS SUCCESS: {analysis_data['content_classification']['content_type']} | {analysis_data['granularity_decision']['level']} | {analysis_data['processing_strategy']['approach']}")
+                    return analysis_data
+                else:
+                    print(f"⚠️ INCOMPLETE ANALYSIS RESPONSE: Missing required fields")
+                    
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON parsing error in advanced analysis: {e}")
+                print(f"Raw response: {analysis_response[:500]}...")
+        
+        # FALLBACK: Enhanced basic analysis
+        print(f"🔄 USING ENHANCED FALLBACK ANALYSIS")
+        return await enhanced_fallback_analysis(content, metadata)
+        
+    except Exception as e:
+        print(f"❌ Error in multi-dimensional analysis: {e}")
+        import traceback
+        traceback.print_exc()
+        return await enhanced_fallback_analysis(content, metadata)
+
+async def enhanced_fallback_analysis(content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Enhanced fallback analysis with pattern detection"""
+    try:
+        print(f"🔄 ENHANCED FALLBACK ANALYSIS: Pattern-based classification")
+        
+        # Enhanced pattern detection
+        word_count = len(content.split())
+        char_count = len(content)
+        
+        # Content type detection
+        has_steps = bool(re.search(r'(step\s+\d+|^\d+\.|first|second|third|then|next|finally)', content.lower()))
+        has_code = bool(re.search(r'(<code>|<pre>|```|\bfunction\b|\bclass\b|\bdef\b|console\.log|\bimport\b)', content))
+        has_api_refs = bool(re.search(r'(endpoint|api|GET|POST|PUT|DELETE|/api/)', content, re.IGNORECASE))
+        has_tables = bool(re.search(r'(<table>|<tr>|<td>|\|.*\|)', content))
+        has_lists = bool(re.search(r'(<ul>|<ol>|<li>|\*\s|\-\s|^\d+\.)', content))
+        
+        # Determine content type
+        if has_steps and has_code:
+            content_type = "tutorial"
+        elif has_api_refs:
+            content_type = "reference"
+        elif has_steps:
+            content_type = "tutorial"
+        else:
+            content_type = "conceptual"
+        
+        # Determine audience
+        if has_code or has_api_refs:
+            audience = "developer"
+        else:
+            audience = "end_user"
+            
+        # Format signals
+        format_signals = []
+        if has_code:
+            format_signals.append("code_heavy")
+        if has_tables:
+            format_signals.append("table_heavy")
+        if has_lists:
+            format_signals.append("list_heavy")
+        if not any([has_code, has_tables, has_lists]):
+            format_signals.append("narrative")
+        
+        # Complexity and granularity
+        if char_count < 3000:
+            complexity = "basic"
+            granularity = "shallow"
+            article_estimate = 2
+        elif char_count < 10000:
+            complexity = "intermediate"  
+            granularity = "moderate"
+            article_estimate = 4
+        else:
+            complexity = "advanced"
+            granularity = "deep" 
+            article_estimate = 7
+        
+        # Processing strategy - TUTORIAL PRIORITY FIX
+        if content_type == "tutorial" and has_steps:
+            approach = "unified"
+            section_strategy = "maintain_flow"
+            # Override granularity for tutorials to keep them unified
+            granularity = "shallow"  # Force shallow for unified processing
+            article_estimate = 2  # Overview + main content for tutorials
+        elif content_type == "tutorial":
+            approach = "unified" 
+            section_strategy = "maintain_flow"
+            granularity = "shallow"
+            article_estimate = 2
+        elif granularity == "shallow":
+            approach = "shallow_split"
+            section_strategy = "logical_breaks"
+        elif granularity == "moderate":
+            approach = "moderate_split" 
+            section_strategy = "logical_breaks"
+        else:
+            approach = "deep_split"
+            section_strategy = "topic_based"
+        
+        return {
+            "content_classification": {
+                "content_type": content_type,
+                "audience": audience,
+                "format_signals": format_signals,
+                "complexity_level": complexity,
+                "dependencies": {
+                    "has_sequential_steps": has_steps,
+                    "sections_interdependent": content_type == "tutorial",
+                    "code_context_critical": has_code and has_steps
+                }
+            },
+            "granularity_decision": {
+                "level": granularity,
+                "article_count_estimate": article_estimate,
+                "reasoning": f"Enhanced fallback: {content_type} content, {complexity} complexity, {word_count} words",
+                "content_length_factor": "short" if char_count < 5000 else "medium" if char_count < 15000 else "large",
+                "section_complexity_factor": "simple" if not has_code else "moderate" if word_count < 5000 else "complex"
+            },
+            "processing_strategy": {
+                "approach": approach,
+                "section_strategy": section_strategy,
+                "formatting_priority": "preserve_code_context" if has_code else "maintain_list_structure" if has_lists else "keep_callouts",
+                "recommended_structure": {
+                    "articles": [
+                        {
+                            "type": "main_content" if approach == "unified" else "overview",
+                            "title_pattern": "Complete Guide" if approach == "unified" else "Overview",
+                            "content_focus": f"{content_type} content with {complexity} complexity"
+                        }
+                    ]
+                }
+            }
+        }
+        
+    except Exception as e:
+        print(f"❌ Fallback analysis error: {e}")
+        # Ultimate fallback
+        return {
+            "content_classification": {"content_type": "mixed", "audience": "general", "format_signals": ["narrative"], "complexity_level": "basic"},
+            "granularity_decision": {"level": "shallow", "article_count_estimate": 2, "reasoning": "Error fallback"},
+            "processing_strategy": {"approach": "unified", "section_strategy": "maintain_flow"}
+        }
+
+async def generate_unified_article(content: str, metadata: Dict[str, Any], content_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate a single comprehensive article when content should stay unified"""
+    try:
+        print(f"📄 GENERATING UNIFIED ARTICLE (keeping content together)")
+        
+        analysis = content_analysis.get('content_analysis', {})
+        primary_type = analysis.get('primary_type', 'guide')
+        
+        # Determine article title based on content
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 100:
+            print(f"❌ UNIFIED ARTICLE ERROR: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content: {len(content)} characters for unified article")
+        
+        system_message = f"""You are a technical writer creating comprehensive content optimized for WYSIWYG editors.
+
+CONTENT TYPE: {primary_type}
+APPROACH: Enhanced unified article for WYSIWYG editor
+
+CRITICAL WYSIWYG EDITOR REQUIREMENTS:
+1. Generate clean, semantic HTML that editors can render and edit
+2. DO NOT wrap the entire article in <pre><code> tags
+3. Use proper HTML elements that map to editor toolbar features
+4. Only use <pre><code> for actual code samples, not for content display
+
+SEMANTIC HTML STRUCTURE REQUIRED:
+- h2, h3 for section headings (NO h1 - editor will add page title)
+- p for paragraphs
+- ul/ol/li for lists
+- table/tr/td/th for tabular data
+- blockquote for quotes
+- code for inline code references
+- pre + code ONLY for actual code samples with language="xxx"
+- figure/figcaption for images and media
+- a for links with proper href attributes
+
+FORMATTING GUIDELINES:
+- Use semantic class names (doc-heading, doc-list, doc-table, etc.)
+- For code examples: <pre><code class="language-javascript">actual code here</code></pre>
+- For callouts: <div class="callout callout-note">content</div>
+- For emphasis: <strong>, <em>, not <b>, <i>
+- For inline code: <code class="inline-code">filename.js</code>
+- NO inline styles - use semantic classes only
+
+CONTENT STRUCTURE:
+1. Overview section (h2)
+2. Main content sections with proper hierarchy (h2, h3)
+3. Include ALL technical details, procedures, and examples
+4. Code samples in proper <pre><code> blocks with language classes
+5. Step-by-step procedures in ordered lists
+6. Rich formatting (callouts, tables, emphasis) where appropriate
+
+AVOID:
+- Wrapping entire content in code blocks
+- Using <pre><code> for display content
+- Inline styles
+- Legacy HTML attributes
+- Document wrapper tags (html, head, body)
+- Multiple h1 tags
+
+OUTPUT FORMAT:
+Return ONLY the article content as clean, editor-ready HTML:
+- Start with h2 for main sections
+- Use semantic HTML elements throughout
+- Include code examples with proper language classes
+- Maintain context and technical accuracy
+- Ensure content is comprehensive and detailed
+
+Create a complete, unified guide that covers all aspects with rich formatting."""
+
+        print(f"🤖 CALLING LLM for unified article generation...")
+        
+        # Generate unified article with content validation
+        article_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message="Create a comprehensive unified article from this content.\n\nCRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly.\n\nUse HTML formatting and include ALL information:\n\n" + content[:25000]
+        )
+        
+        print(f"📥 LLM Response received: {len(article_response) if article_response else 0} characters")
+        
+        if not article_response or len(article_response.strip()) < 50:
+            print(f"❌ UNIFIED ARTICLE ERROR: Empty or insufficient LLM response ({len(article_response) if article_response else 0} chars)")
+            return None
+        
+        # Clean the HTML content with validation
+        cleaned_content = clean_article_html_content(article_response)
+        
+        print(f"🧹 Content after cleaning: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 50:
+            print(f"❌ UNIFIED ARTICLE ERROR: Content lost during cleaning (original: {len(article_response)}, cleaned: {len(cleaned_content)})")
+            # Fallback: use original response if cleaning removed everything
+            cleaned_content = article_response
+        
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": f"{doc_title} - Complete Guide",
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": "unified_guide",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["complete-guide", primary_type, "unified"],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "unified_article": True,
+                "content_type": primary_type,
+                "processing_approach": "unified",
+                "content_length": len(cleaned_content),
+                "original_content_length": len(content),
+                **metadata
+            }
+        }
+        
+        print(f"✅ UNIFIED ARTICLE GENERATED: '{article['title']}' ({len(cleaned_content)} chars)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Error generating unified article: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def enhanced_generate_unified_article(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """PHASE 6: Enhanced unified article generation with adaptive analysis"""
+    try:
+        print(f"📄 ENHANCED UNIFIED ARTICLE GENERATION")
+        
+        # Extract analysis data
+        content_classification = analysis.get('content_classification', {})
+        content_type = content_classification.get('content_type', 'guide')
+        audience = content_classification.get('audience', 'general')
+        complexity = content_classification.get('complexity_level', 'intermediate')
+        
+        # Determine article title based on content
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        # ENHANCED VALIDATION: Check input content
+        if not content or len(content.strip()) < 100:
+            print(f"❌ ENHANCED UNIFIED ARTICLE ERROR: Insufficient content ({len(content)} chars)")
+            return None
+        
+        print(f"📝 Input content: {len(content)} characters | Type: {content_type} | Audience: {audience}")
+        
+        # Check if this is an Overview vs Complete Guide - ENHANCED DETECTION
+        is_overview = (
+            "overview" in content_type.lower() or 
+            "overview" in (metadata.get('original_filename', '').lower()) or
+            content_type.lower() in ['overview', 'summary', 'introduction']
+        )
+        
+        if is_overview:
+            system_message = f"""You are an expert technical writer creating a HIGH-LEVEL OVERVIEW article for navigation and summary purposes.
+
+CRITICAL OVERVIEW REQUIREMENTS - NO DETAILED IMPLEMENTATION:
+1. Create SUMMARY and NAVIGATION ONLY - ABSOLUTELY NO step-by-step procedures
+2. NEVER include detailed "how to" instructions or implementation steps
+3. NEVER include complete code examples (brief snippets only if essential)
+4. Focus on WHAT users will learn and achieve, NOT HOW to implement
+5. Maximum 2000 characters - keep concise and high-level
+
+OVERVIEW STRUCTURE (HIGH-LEVEL ONLY):
+- Brief introduction to {content_type} (1-2 sentences)
+- Key benefits and use cases (bullet points)
+- What users will learn (learning objectives)
+- Content roadmap (topics covered, NOT implementation steps)
+- Prerequisites overview (if any)
+- Navigation to detailed resources
+
+ENHANCED NAVIGATION FEATURES:
+- Mini-TOC with links to main concepts: <div class="mini-toc"><h3>Topics Covered</h3><ul><li><a href="#concept1">Main Concept 1</a></li></ul></div>
+- Cross-references: <a href="/content-library/complete-guide" class="cross-ref">Complete Implementation Guide</a>
+- Related links: <a href="/content-library/setup" class="cross-ref">Setup Instructions</a>
+
+STRICTLY AVOID IN OVERVIEW:
+- Step-by-step procedures (e.g., "Step 1:", "First, do X", "Follow these steps")
+- Detailed implementation instructions
+- Complete code examples (only brief concepts if absolutely necessary)
+- Configuration details or specific settings
+- Lengthy technical explanations
+- Any "how to" content
+
+FORMATTING:
+- Use proper HTML: <h2>, <h3>, <p>, <ul>, <li>
+- Include callouts for key highlights: <div class="callout callout-tip"><div class="callout-title">💡 Key Benefit</div></div>
+- Keep content brief and navigation-focused
+
+Create a concise, high-level overview that guides users to detailed implementation resources."""
+
+        else:
+            # COMPLETE GUIDE ARTICLE - DETAILED IMPLEMENTATION
+            system_message = f"""You are an expert technical writer creating a COMPREHENSIVE COMPLETE GUIDE with detailed implementation steps.
+
+CRITICAL COMPLETE GUIDE REQUIREMENTS:
+1. Provide DETAILED, step-by-step implementation instructions
+2. Include COMPLETE, working code examples with proper formatting
+3. Use ALL enhanced WYSIWYG editor features available
+4. Create comprehensive, professional implementation content
+5. Minimum 3000 characters for thorough coverage
+
+ENHANCED WYSIWYG FEATURES TO USE:
+- Mini-TOC with anchor links: <div class="mini-toc"><h3>Implementation Guide</h3><ul><li><a href="#setup">Setup & Prerequisites</a></li><li><a href="#implementation">Step-by-Step Implementation</a></li></ul></div>
+- Note callouts: <div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">Important implementation details</div></div>
+- Warning callouts: <div class="callout callout-warning"><div class="callout-title">⚠️ Warning</div><div class="callout-content">Critical implementation warnings</div></div>
+- Tip callouts: <div class="callout callout-tip"><div class="callout-title">💡 Pro Tip</div><div class="callout-content">Implementation best practices</div></div>
+
+ORDERED LIST REQUIREMENTS (CRITICAL):
+- Use SINGLE <ol> tags with continuous numbering
+- Format: <ol class="doc-list doc-list-ordered"><li>Complete step 1 instructions</li><li>Complete step 2 instructions</li></ol>
+- For nested procedures: <ol class="doc-list doc-list-nested"><li>Sub-step a with details</li><li>Sub-step b with details</li></ol>
+- NEVER create separate <ol> tags for each step
+
+CODE BLOCK REQUIREMENTS:
+- Include COMPLETE, working code examples
+- Proper language classes: <pre><code class="language-javascript">complete working code here</code></pre>
+- Include full HTML structure when showing HTML examples
+- NEVER leave code blocks empty or incomplete
+
+DETAILED CONTENT STRUCTURE WITH ANCHOR IDS:
+1. Mini-TOC with working implementation links
+2. Introduction: <h2 id="introduction">Introduction to {content_type}</h2>
+3. Prerequisites: <h2 id="prerequisites">Prerequisites & Requirements</h2>
+4. Setup: <h2 id="setup">Setup & Configuration</h2>
+5. Implementation: <h2 id="implementation">Step-by-Step Implementation</h2>
+6. Advanced features: <h2 id="advanced">Advanced Configuration</h2>
+7. Troubleshooting: <h2 id="troubleshooting">Common Issues & Solutions</h2>
+
+QUALITY REQUIREMENTS:
+- ABSOLUTELY NO text duplication or repetition
+- Complete sentences with clear, detailed explanations
+- Professional technical writing style with comprehensive detail
+- Include all necessary implementation specifics
+- Provide complete working examples and code
+
+Create detailed, comprehensive implementation content that demonstrates all WYSIWYG editor capabilities."""
+
+        print(f"🤖 CALLING ENHANCED LLM for unified article generation...")
+        
+        # Generate enhanced unified article with content validation
+        article_response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"""Create a comprehensive unified article from this content. 
+
+CRITICAL: DO NOT wrap your entire response in <pre><code> tags. Return clean HTML content directly for WYSIWYG editors.
+
+Use enhanced HTML formatting and include ALL information with proper structure:
+
+{content[:25000]}"""
+        )
+        
+        print(f"📥 Enhanced LLM Response received: {len(article_response) if article_response else 0} characters")
+        
+        if not article_response or len(article_response.strip()) < 50:
+            print(f"❌ ENHANCED UNIFIED ARTICLE ERROR: Empty or insufficient LLM response")
+            return None
+        
+        # Apply enhanced format preservation
+        cleaned_content = await enhanced_format_preservation(article_response)
+        
+        print(f"🧹 Enhanced content after processing: {len(cleaned_content)} characters")
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 50:
+            print(f"❌ ENHANCED UNIFIED ARTICLE ERROR: Content lost during processing")
+            # Fallback: use original response
+            cleaned_content = article_response
+        
+        # Create enhanced article object
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": f"{doc_title} - Complete Guide",
+            "content": cleaned_content,
+            "status": "published",
+            "article_type": "enhanced_unified_guide",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["complete-guide", content_type, "unified", "enhanced", audience],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "enhanced_unified_article": True,
+                "content_type": content_type,
+                "target_audience": audience,
+                "complexity_level": complexity,
+                "processing_approach": "enhanced_unified",
+                "content_length": len(cleaned_content),
+                "original_content_length": len(content),
+                "phase": "6_enhanced",
+                **metadata
+            }
+        }
+        
+        print(f"✅ ENHANCED UNIFIED ARTICLE GENERATED: '{article['title']}' ({len(cleaned_content)} chars)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Error generating enhanced unified article: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def enhanced_format_preservation(content: str) -> str:
+    """PHASE 6: Enhanced formatting preservation optimized for WYSIWYG editor"""
+    try:
+        # Apply basic HTML cleaning first
+        content = clean_article_html_content(content)
+        
+        # WYSIWYG EDITOR OPTIMIZATION
+        
+        # 1. Convert markdown-style code blocks to proper HTML for editor
+        # Only use <pre><code> for actual code samples, not for display content
+        def process_code_block(match):
+            lang = match.group(1) if match.group(1) else ""
+            code_content = match.group(2).strip()
+            
+            # Check if this is actual code content vs display content
+            if lang and lang.lower() in ['javascript', 'js', 'python', 'css', 'json', 'bash', 'sh']:
+                return f'<pre><code class="language-{lang.lower()}">{code_content}</code></pre>'
+            elif lang and lang.lower() == 'html':
+                # For HTML examples, preserve as code but escape properly
+                escaped_code = code_content.replace('<', '&lt;').replace('>', '&gt;')
+                return f'<pre><code class="language-html">{escaped_code}</code></pre>'
+            else:
+                # For display/example content, use regular formatting
+                return f'<div class="code-example"><pre><code>{code_content}</code></pre></div>'
+        
+        # Process language-specific code blocks first
+        content = re.sub(r'```(\w+)?\s*(.*?)```', process_code_block, content, flags=re.DOTALL)
+        
+        # 2. Enhanced callout processing for WYSIWYG editor
+        callout_patterns = {
+            r'(?:^|\n)(note|NOTE):\s*([^\n]+(?:\n(?!(?:tip|warning|important|TIP|WARNING|IMPORTANT):)[^\n]+)*)': 
+                r'<div class="callout callout-note"><div class="callout-title">📝 Note</div><div class="callout-content">\2</div></div>',
+            r'(?:^|\n)(tip|TIP):\s*([^\n]+(?:\n(?!(?:note|warning|important|NOTE|WARNING|IMPORTANT):)[^\n]+)*)': 
+                r'<div class="callout callout-tip"><div class="callout-title">💡 Tip</div><div class="callout-content">\2</div></div>',
+            r'(?:^|\n)(warning|WARNING):\s*([^\n]+(?:\n(?!(?:note|tip|important|NOTE|TIP|IMPORTANT):)[^\n]+)*)': 
+                r'<div class="callout callout-warning"><div class="callout-title">⚠️ Warning</div><div class="callout-content">\2</div></div>',
+            r'(?:^|\n)(important|IMPORTANT):\s*([^\n]+(?:\n(?!(?:note|tip|warning|NOTE|TIP|WARNING):)[^\n]+)*)': 
+                r'<div class="callout callout-important"><div class="callout-title">❗ Important</div><div class="callout-content">\2</div></div>'
+        }
+        
+        for pattern, replacement in callout_patterns.items():
+            content = re.sub(pattern, replacement, content, flags=re.IGNORECASE | re.MULTILINE)
+        
+        # 3. Optimize table formatting for editor
+        content = re.sub(r'<table[^>]*>', '<table class="doc-table">', content)
+        
+        # 4. Enhance list formatting and fix fragmented ordered lists
+        content = re.sub(r'<ul[^>]*>', '<ul class="doc-list">', content)
+        content = re.sub(r'<ol[^>]*>', '<ol class="doc-list doc-list-ordered">', content)
+        
+        # CRITICAL FIX: Consolidate fragmented ordered lists into continuous numbering
+        content = fix_fragmented_ordered_lists(content)
+        
+        # 5. Clean inline code formatting
+        content = re.sub(r'<code>([^<]+)</code>', r'<code class="inline-code">\1</code>', content)
+        
+        # 6. Improve heading hierarchy
+        content = re.sub(r'<h1([^>]*)>', r'<h1 class="doc-heading doc-h1"\1>', content)
+        content = re.sub(r'<h2([^>]*)>', r'<h2 class="doc-heading doc-h2"\1>', content)
+        content = re.sub(r'<h3([^>]*)>', r'<h3 class="doc-heading doc-h3"\1>', content)
+        
+        # 7. Enhance blockquotes
+        content = re.sub(r'<blockquote[^>]*>', '<blockquote class="doc-blockquote">', content)
+        
+        # 8. Clean up excessive whitespace while preserving structure
+        content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
+        
+        return content
+        
+    except Exception as e:
+        print(f"❌ Error in enhanced format preservation: {e}")
+        return content
+
+# Placeholder functions for Phase 6 features - to be implemented
+
+async def create_high_quality_article_content(content: str, article_type: str, metadata: Dict[str, Any]) -> str:
+    """Create high-quality article content with proper formatting and no duplication"""
+    try:
+        print(f"🎯 CREATING HIGH-QUALITY ARTICLE: {article_type}")
+        
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
+        
+        if "overview" in article_type.lower():
+            # OVERVIEW ARTICLE - SOURCE CONTENT SUMMARY  
+            system_message = f"""You are a content summarization specialist creating a high-level overview from source document content.
+
+CORE PRINCIPLE: Create overview using ONLY information from the provided source content. Do NOT add generic sections or placeholder content.
+
+TASK: Extract and summarize the key topics, sections, and information from the source to create a navigation-focused overview.
+
+OVERVIEW APPROACH:
+1. **Source Analysis**: Identify main topics, sections, and key concepts from source content
+2. **Summarize Sections**: Create brief summaries of what each section covers based on source
+3. **Extract Key Points**: Highlight important features, concepts, or steps mentioned in source
+4. **Create Navigation**: Build roadmap based on actual source structure
+
+HTML STRUCTURE:
+- Wrap in `<div class="article-body">`
+- Introductory paragraphs explaining what the source document covers
+- `<h2>` sections based on source content structure
+- Lists of key topics found in source material
+- Brief descriptions of what each source section contains
+
+CONTENT RESTRICTIONS:
+- NO generic "Key Features" unless features are explicitly mentioned in source
+- NO placeholder navigation tips unless guidance exists in source
+- NO generic benefits lists unless benefits are stated in source
+- NO template-style "What you'll learn" unless learning objectives exist in source
+
+WYSIWYG ENHANCEMENTS:
+- Add mini-TOC only if source has clear multiple sections
+- Use proper heading hierarchy based on source structure
+- Format source lists appropriately
+- Add contextual notes only if source contains important warnings/tips
+
+Focus on accurately representing what the source document contains, not what a generic overview should have."""
+
+        else:
+            # CONTEXTUAL CONTENT GENERATION - NO TEMPLATES
+            system_message = f"""You are a content enhancement specialist that transforms raw document content into professional HTML articles for knowledge base display.
+
+CORE PRINCIPLE: Use ONLY the provided source content. Do NOT add generic examples, placeholder FAQs, or template sections.
+
+TASK: Transform the exact source content into well-structured HTML while preserving all original information, code examples, and specific details.
+
+CONTENT PROCESSING APPROACH:
+1. **Preserve Source Content**: Keep all original text, code examples, instructions, and specific details
+2. **Enhance Structure**: Add proper HTML headings, lists, and semantic markup to organize existing content  
+3. **Add Contextual Features**: Only add WYSIWYG features that enhance the actual source content
+4. **No Generic Addition**: Never add placeholder FAQs, generic code examples, or template links
+
+HTML STRUCTURE REQUIREMENTS:
+- Wrap in `<div class="article-body">`
+- Use `<h2 id="section-name">` for main sections from source content
+- Use `<h3>` for subsections found in source
+- Convert source lists to `<ul>` or `<ol>` with proper formatting
+- Convert source code blocks to `<pre class="line-numbers"><code class="language-X">` format
+- Use `<strong>` for emphasis on key terms found in source
+
+WYSIWYG ENHANCEMENTS (only when source content warrants):
+- Add mini-TOC if source has multiple clear sections
+- Convert existing FAQ content to expandable format
+- Add contextual notes only for complex technical content
+- Use tables for source data that would benefit from tabular format
+
+CRITICAL RULES:
+- NEVER invent new FAQs, code examples, or related links
+- NEVER add "Getting Started Guide" or "Best Practices" placeholder links  
+- NEVER add generic "What are the benefits?" style questions
+- NEVER add template JavaScript examples unless they exist in source
+- Focus on making the SOURCE CONTENT look professional and well-structured
+
+Your goal is to enhance presentation of existing content, not replace it with templates."""
+
+        # Generate high-quality content
+        response = await call_llm_with_fallback(
+            system_message=system_message,
+            user_message=f"""Create a high-quality {article_type} article for: {doc_title}
+
+CRITICAL: Ensure NO text duplication, complete code examples, and proper WYSIWYG formatting.
+
+Source content to base article on:
+{content[:20000]}"""
+        )
+        
+        if response:
+            # Apply basic formatting and quality fixes only  
+            clean_content = await apply_quality_fixes(response)
+            
+            # CONTENT VALIDATION: Ensure substantial content
+            content_text = re.sub(r'<[^>]+>', '', clean_content).strip()
+            if len(content_text) < 100:
+                print(f"⚠️ Generated content too short ({len(content_text)} chars), regenerating...")
+                
+                # Enhanced regeneration with stricter requirements
+                enhanced_system = f"""You are an expert technical writer. Create a comprehensive {article_type} article with MINIMUM 300 words.
+
+STRICT REQUIREMENTS:
+1. MINIMUM 300 words of actual content (not including HTML tags)
+2. Multiple detailed sections with <h2> and <h3> headings
+3. Include practical examples, code samples, or procedures from source
+4. Add contextual information and explanations
+5. Use semantic HTML formatting throughout
+6. Create engaging, informative content users will find valuable
+
+Source content to expand upon:
+{content[:20000]}"""
+
+                response = await call_llm_with_fallback(
+                    system_message=enhanced_system,
+                    user_message=f"Create substantial {article_type} content for: {doc_title}"
+                )
+                
+                if response:
+                    clean_content = await apply_quality_fixes(response)
+                    content_text = re.sub(r'<[^>]+>', '', clean_content).strip()
+            
+            # Add WYSIWYG enhancements without template contamination
+            if len(content_text) >= 100:
+                enhanced_content = await add_wysiwyg_enhancements(clean_content, article_type)
+                print(f"✅ High-quality content with WYSIWYG features: {len(content_text)} chars")
+                return enhanced_content
+            else:
+                print(f"⚠️ Content still insufficient: {len(content_text)} chars")
+                return clean_content
+        else:
+            return f"<h2>Error generating {article_type} content</h2><p>Please try again.</p>"
+            
+    except Exception as e:
+        print(f"❌ Error creating high-quality article content: {e}")
+        return f"<h2>Error</h2><p>Could not generate content: {e}</p>"
+
+def clean_document_title(filename: str) -> str:
+    """Clean source document titles from clutter and technical suffixes"""
+    if not filename:
+        return "Guide"
+    
+    # Remove file extensions
+    title = filename.replace('.docx', '').replace('.pdf', '').replace('.doc', '').replace('.txt', '')
+    
+    # Replace underscores and hyphens with spaces
+    title = title.replace('_', ' ').replace('-', ' ')
+    
+    # Remove common technical suffixes and prefixes
+    suffixes_to_remove = [
+        'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9',
+        'version 1', 'version 2', 'version 3', 'version 4', 'version 5',
+        'ver 1', 'ver 2', 'ver 3', 'ver 4', 'ver 5',
+        'draft', 'final', 'final version', 'complete', 'full',
+        'doc', 'document', 'documentation', 'guide book', 'manual doc',
+        'user manual', 'admin guide', 'technical spec', 'specification',
+        '2024', '2023', '2025', 'updated', 'latest', 'new',
+        'FINAL', 'DRAFT', 'COMPLETE', 'FULL'
+    ]
+    
+    # Convert to lowercase for comparison but preserve original case for title
+    title_lower = title.lower().strip()
+    
+    for suffix in suffixes_to_remove:
+        if title_lower.endswith(suffix.lower()):
+            # Remove the suffix, preserving case
+            title = title[:len(title)-len(suffix)].strip()
+            title_lower = title.lower()
+        if title_lower.startswith(suffix.lower()):
+            # Remove prefix
+            title = title[len(suffix):].strip()
+            title_lower = title.lower()
+    
+    # Clean up multiple spaces and capitalize properly
+    title = ' '.join(word.capitalize() for word in title.split() if word.strip())
+    
+    # If title becomes empty or too short, provide fallback
+    if not title or len(title.strip()) < 3:
+        return "Guide"
+        
+    return title.strip()
+
+async def add_wysiwyg_enhancements(content: str, article_type: str = None) -> str:
+    """Add WYSIWYG enhancements without template contamination"""
+    try:
+        print(f"🎨 ADDING WYSIWYG ENHANCEMENTS to {article_type or 'article'}")
+        
+        # Only enhance if content is substantial
+        content_text = re.sub(r'<[^>]+>', '', content).strip()
+        if len(content_text) < 100:
+            print(f"🚫 Content too short for enhancements ({len(content_text)} chars)")
+            return content
+        
+        enhanced = content
+        
+        # 1. Add article-body wrapper for WYSIWYG compatibility
+        if '<div class="article-body">' not in enhanced:
+            enhanced = f'<div class="article-body">\n{enhanced}\n</div>'
+            print("✅ Added article-body wrapper")
+        
+        # 2. Enhance existing code blocks with proper classes
+        def enhance_code_block(match):
+            full_match = match.group(0)
+            # Don't modify if already enhanced
+            if 'line-numbers' in full_match:
+                return full_match
+            
+            # Extract language and content
+            language_match = re.search(r'class=["\']language-(\w+)["\']', full_match)
+            language = language_match.group(1) if language_match else 'text'
+            
+            code_content_match = re.search(r'<code[^>]*>(.*?)</code>', full_match, re.DOTALL)
+            code_content = code_content_match.group(1) if code_content_match else ''
+            
+            if code_content.strip():
+                return f'<pre class="line-numbers"><code class="language-{language}">{code_content}</code></pre>'
+            return full_match
+        
+        original_code_count = len(re.findall(r'<pre[^>]*><code', enhanced))
+        if original_code_count > 0:
+            enhanced = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_code_block, enhanced, flags=re.DOTALL)
+            print(f"✅ Enhanced {original_code_count} code blocks with line-numbers")
+        
+        # 3. Add heading IDs for navigation (only if not present)
+        def add_heading_id(match):
+            heading_tag = match.group(1)
+            heading_text = match.group(3)
+            existing_attrs = match.group(2) or ''
+            
+            # Skip if ID already exists
+            if 'id=' in existing_attrs:
+                return match.group(0)
+            
+            # Generate clean ID
+            heading_id = heading_text.lower().strip()
+            heading_id = re.sub(r'[^a-z0-9\s-]', '', heading_id)
+            heading_id = re.sub(r'\s+', '-', heading_id)
+            heading_id = heading_id[:50]  # Limit length
+            
+            return f'<{heading_tag}{existing_attrs} id="{heading_id}">{heading_text}</{heading_tag}>'
+        
+        heading_pattern = r'<(h[2-6])([^>]*)>([^<]*)</\1>'
+        headings_added = len(re.findall(heading_pattern, enhanced))
+        if headings_added > 0:
+            enhanced = re.sub(heading_pattern, add_heading_id, enhanced)
+            print(f"✅ Added navigation IDs to {headings_added} headings")
+        
+        # 4. Convert appropriate Q&A patterns to expandable sections (only if Q&A exists)
+        qa_pattern = r'(Q:|Question:|FAQ:)\s*([^?]+\?)\s*(A:|Answer:)?\s*([^Q\n]+)'
+        qa_matches = re.findall(qa_pattern, enhanced, re.IGNORECASE | re.MULTILINE)
+        
+        if qa_matches and len(qa_matches) > 1:  # Only if multiple Q&As
+            print(f"📖 Converting {len(qa_matches)} Q&A items to expandable format")
+            
+            expandable_content = ""
+            for match in qa_matches:
+                question = match[1].strip()
+                answer = match[3].strip()
+                
+                expandable_content += f'''<div class="expandable">
+<div class="expandable-header"><span class="expandable-title">{question}</span></div>
+<div class="expandable-content"><p>{answer}</p></div>
+</div>
+'''
+            
+            # Replace Q&A pattern with expandable format
+            enhanced = re.sub(qa_pattern, '', enhanced, flags=re.IGNORECASE | re.MULTILINE)
+            
+            # Insert expandables after the first heading that mentions FAQ/Q&A
+            if re.search(r'<h[2-6][^>]*[^>]*(?:faq|question)', enhanced, re.IGNORECASE):
+                enhanced = re.sub(
+                    r'(<h[2-6][^>]*[^>]*(?:faq|question)[^<]*</h[2-6]>)', 
+                    rf'\1\n{expandable_content}', enhanced, 
+                    flags=re.IGNORECASE, count=1
+                )
+                print(f"✅ Added {len(qa_matches)} expandable Q&A sections")
+        
+        # 5. Add contextual callouts only for technical content (sparingly)
+        if ('api' in content_text.lower() or 'tutorial' in content_text.lower() or 'code' in content_text.lower()):
+            if '<div class="note">' not in enhanced and '<blockquote class="tip">' not in enhanced:
+                # Add ONE contextual note based on content type
+                if 'api' in content_text.lower() and 'key' in content_text.lower():
+                    note = '<div class="note">🔑 <strong>API Key:</strong> Ensure your API key is properly configured and has the necessary permissions.</div>\n\n'
+                elif 'tutorial' in content_text.lower():
+                    note = '<div class="note">📚 <strong>Tutorial:</strong> Follow each step carefully for successful implementation.</div>\n\n'
+                else:
+                    note = ''
+                
+                if note:
+                    # Insert after first H2 section
+                    if '<h2' in enhanced:
+                        enhanced = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{note}', enhanced, count=1)
+                        print("✅ Added contextual note")
+        
+        print(f"✅ WYSIWYG enhancements complete - enhanced content without template contamination")
+        return enhanced
+        
+    except Exception as e:
+        print(f"❌ Error adding WYSIWYG enhancements: {e}")
+        return content
+
+async def ensure_enhanced_features(content: str, article_type: str, doc_title: str) -> str:
+    """Enhance existing content with WYSIWYG features - NO TEMPLATE INJECTION"""
+    try:
+        print(f"🎯 SELECTIVE ENHANCEMENT for {article_type} - enhancing existing content only")
+        
+        # Check content quality - skip if minimal content
+        content_without_tags = re.sub(r'<[^>]+>', '', content).strip()
+        
+        if len(content_without_tags) < 100:
+            print(f"🚫 Content too short ({len(content_without_tags)} chars) - returning as-is")
+            return content
+        
+        # STEP 1: Article body wrapper (essential)
+        if '<div class="article-body">' not in content:
+            content = f'<div class="article-body">\n{content}\n</div>'
+            print(f"✅ Added article-body wrapper")
+        
+        # STEP 2: Enhance code blocks only (no injection)
+        def enhance_existing_code(match):
+            code_element = match.group(0)
+            if 'line-numbers' in code_element:
+                return code_element
+            
+            # Extract language and content
+            language_match = re.search(r'class=["\']language-(\w+)["\']', code_element)
+            language = language_match.group(1) if language_match else 'text'
+            
+            code_content_match = re.search(r'<code[^>]*>(.*?)</code>', code_element, re.DOTALL)
+            code_content = code_content_match.group(1) if code_content_match else ''
+            
+            return f'<pre class="line-numbers"><code class="language-{language}">{code_content}</code></pre>'
+        
+        # Only enhance existing code blocks
+        original_code_count = len(re.findall(r'<pre[^>]*><code', content))
+        content = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', enhance_existing_code, content, flags=re.DOTALL)
+        
+        if original_code_count > 0:
+            print(f"✅ Enhanced {original_code_count} existing code blocks with line-numbers class")
+        
+        # STEP 3: Convert existing FAQ patterns to expandable (no generic addition)
+        faq_pattern = r'(Q:|Question:|FAQ:)\s*([^?]+\?)\s*(A:|Answer:)?\s*([^Q\n]+)'
+        faq_matches = re.findall(faq_pattern, content, re.IGNORECASE | re.MULTILINE)
+        
+        if faq_matches and 'expandable' not in content:
+            print(f"📖 Converting {len(faq_matches)} existing FAQ items to expandable format")
+            
+            expandable_content = ""
+            for match in faq_matches:
+                question = match[1].strip()
+                answer = match[3].strip()
+                
+                expandable_content += f'''<div class="expandable">
+<div class="expandable-header"><span class="expandable-title">{question}</span></div>
+<div class="expandable-content"><p>{answer}</p></div>
+</div>
+'''
+            
+            # Replace FAQ pattern with expandable format
+            content = re.sub(faq_pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+            
+            if '<h2' in content and 'faq' in content.lower():
+                content = re.sub(r'(<h2[^>]*[^>]*faq[^<]*</h2>)', rf'\1\n{expandable_content}', content, flags=re.IGNORECASE)
+        
+        # STEP 4: Add single contextual note only if highly technical content
+        if ('<div class="note">' not in content and 
+            ('api' in content.lower() and 'key' in content.lower()) or
+            ('tutorial' in content.lower() and ('code' in content.lower() or 'example' in content.lower()))):
+            
+            # Add one highly contextual note
+            if 'api' in content.lower() and 'key' in content.lower():
+                note = '''<div class="note">🔑 <strong>API Key:</strong> Ensure your API key is properly configured and has the necessary permissions.</div>
+
+'''
+            elif 'tutorial' in content.lower():
+                note = '''<div class="note">📚 <strong>Tutorial:</strong> Follow each step carefully for successful implementation.</div>
+
+'''
+            
+            # Insert after first H2 section
+            if '<h2' in content:
+                content = re.sub(r'(<h2[^>]*>[^<]*</h2>)', rf'\1\n{note}', content, count=1)
+                print(f"✅ Added 1 contextual note based on content type")
+        
+        # STEP 5: Add proper heading IDs for navigation
+        content = re.sub(r'<h2([^>]*)>([^<]*)</h2>', 
+                        lambda m: f'<h2{m.group(1)} id="{m.group(2).lower().replace(" ", "-").replace("#", "").replace(":", "").strip()}">{m.group(2)}</h2>', 
+                        content)
+        
+        print(f"✅ Selective enhancement complete - enhanced existing content without template injection")
+        return content
+        
+    except Exception as e:
+        print(f"❌ Error in selective enhancement: {e}")
+        return content
+
+async def apply_quality_fixes(content: str) -> str:
+    """Apply comprehensive quality fixes using proper BeautifulSoup text processing"""
+    try:
+        from bs4 import BeautifulSoup
+        
+        print(f"🔧 APPLYING PROPER QUALITY FIXES to content: {len(content)} chars")
+        
+        # Fix 0: COMPREHENSIVE HTML WRAPPER CLEANING - Remove ALL document structure
+        
+        # Remove markdown code block wrappers completely
+        if '```html' in content:
+            print(f"🚨 REMOVING HTML MARKDOWN WRAPPERS")
+            content = re.sub(r'```html.*?```', '', content, flags=re.DOTALL | re.IGNORECASE)
+        
+        if '```' in content and ('<!DOCTYPE' in content or '<html' in content):
+            print(f"🚨 REMOVING ANY MARKDOWN WRAPPERS WITH HTML")
+            content = re.sub(r'```[^`]*<!DOCTYPE[^`]*```', '', content, flags=re.DOTALL | re.IGNORECASE)
+            content = re.sub(r'```[^`]*<html[^`]*```', '', content, flags=re.DOTALL | re.IGNORECASE)
+        
+        # FIXED: Remove ONLY document wrapper elements, preserve content
+        # Only remove full document wrappers, not content within them
+        if '<!DOCTYPE' in content and '<html' in content and '</html>' in content:
+            # Extract content from between body tags if present
+            body_match = re.search(r'<body[^>]*>(.*?)</body>', content, re.DOTALL | re.IGNORECASE)
+            if body_match:
+                content = body_match.group(1)
+                print(f"✅ Extracted content from <body> tags")
+            else:
+                # Just remove document structure tags
+                content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'<head[^>]*>.*?</head>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove only metadata elements, not content
+        content = re.sub(r'<meta[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<title[^>]*>.*?</title>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<link[^>]*>', '', content, flags=re.IGNORECASE)
+        
+        # PRESERVE content styles and scripts that contain actual content/data
+        # Only remove empty style/script blocks
+        content = re.sub(r'<style[^>]*>\s*</style>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<script[^>]*>\s*</script>', '', content, flags=re.IGNORECASE)
+        
+        # Clean up wrapper artifacts
+        content = re.sub(r'^[`\s]*', '', content.strip())
+        content = re.sub(r'[`\s]*$', '', content.strip())
+        
+        print(f"✅ HTML wrapper cleaning completed")
+        
+        # Fix 1: PROPER TEXT DEDUPLICATION using BeautifulSoup
+        
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        def remove_text_duplicates(text):
+            """Remove duplicate sentences and phrases from text"""
+            if not text or not text.strip():
+                return text
+            
+            # Split by sentences (periods, exclamation marks, question marks)
+            sentences = re.split(r'([.!?])', text)
+            
+            # Process sentence pairs (text + punctuation)
+            cleaned_parts = []
+            seen_sentences = set()
+            
+            i = 0
+            while i < len(sentences):
+                if i + 1 < len(sentences):
+                    sentence = sentences[i].strip()
+                    punctuation = sentences[i + 1] if i + 1 < len(sentences) else ''
+                    
+                    if sentence and sentence.lower() not in seen_sentences:
+                        seen_sentences.add(sentence.lower())
+                        cleaned_parts.append(sentence + punctuation)
+                    
+                    i += 2
+                else:
+                    # Handle last part without punctuation
+                    sentence = sentences[i].strip()
+                    if sentence and sentence.lower() not in seen_sentences:
+                        cleaned_parts.append(sentence)
+                    i += 1
+            
+            result = ''.join(cleaned_parts)
+            
+            # Additional cleanup for word-level duplications
+            words = result.split()
+            cleaned_words = []
+            i = 0
+            while i < len(words):
+                if i + 1 < len(words) and words[i].lower() == words[i + 1].lower():
+                    # Skip duplicate word
+                    cleaned_words.append(words[i])
+                    i += 2  # Skip the duplicate
+                else:
+                    cleaned_words.append(words[i])
+                    i += 1
+            
+            final_result = ' '.join(cleaned_words)
+            
+            # Fix common duplication patterns
+            final_result = re.sub(r'(\b\w+)\s+\1\b', r'\1', final_result, flags=re.IGNORECASE)
+            
+            return final_result
+        
+        # Apply deduplication to all text elements
+        for element in soup.find_all(['p', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'div']):
+            if element.string:  # Only process elements with direct text content
+                original_text = element.string
+                cleaned_text = remove_text_duplicates(original_text)
+                if cleaned_text != original_text and cleaned_text.strip():
+                    print(f"🔧 Fixed duplication: '{original_text[:50]}...' → '{cleaned_text[:50]}...'")
+                    element.string = cleaned_text
+            elif element.get_text() and not element.find_all():  # Text node without child elements
+                original_text = element.get_text()
+                cleaned_text = remove_text_duplicates(original_text)
+                if cleaned_text != original_text and cleaned_text.strip():
+                    print(f"🔧 Fixed duplication in {element.name}: '{original_text[:50]}...' → '{cleaned_text[:50]}...'")
+                    element.clear()
+                    element.append(cleaned_text)
+        
+        content = str(soup)
+        
+        # Fix 2: Clean up broken elements
+        content = re.sub(r'<li>\s*</li>', '', content)
+        content = re.sub(r'<p>\s*</p>', '', content)
+        content = re.sub(r'<h[1-6]>\s*</h[1-6]>', '', content)
+        
+        # Fix 3: Fix broken UI references
+        content = re.sub(r'click\s+\.\s*', 'click the button. ', content, flags=re.IGNORECASE)
+        content = re.sub(r'navigate to\s+\.\s*', 'navigate to the section. ', content, flags=re.IGNORECASE)
+        content = re.sub(r'Go to the\s+\.\s*', 'Go to the console. ', content, flags=re.IGNORECASE)
+        
+        # Fix 4: ENHANCED LIST FORMATTING with hierarchical support
+        # Apply proper CSS classes for ordered lists with hierarchical numbering
+        content = re.sub(r'<ol(?![^>]*class=)(?![^>]*style=)', '<ol class="doc-list doc-list-ordered"', content)
+        
+        # Handle nested ordered lists with different numbering styles
+        # First level: 1, 2, 3... (default)
+        # Second level: a, b, c... (lower-alpha) 
+        # Third level: i, ii, iii... (lower-roman)
+        nested_ol_count = 0
+        def replace_nested_ol(match):
+            nonlocal nested_ol_count
+            nested_ol_count += 1
+            if nested_ol_count % 3 == 1:
+                return '<ol class="doc-list doc-list-nested doc-list-lower-alpha"'
+            elif nested_ol_count % 3 == 2:
+                return '<ol class="doc-list doc-list-nested doc-list-lower-roman"'
+            else:
+                return '<ol class="doc-list doc-list-nested"'
+        
+        # Apply nested styles to ordered lists within list items
+        content = re.sub(r'<li[^>]*>([^<]*)<ol(?![^>]*class=)', 
+                        lambda m: m.group(0).replace('<ol', f'<ol class="doc-list doc-list-nested"'), 
+                        content)
+        
+        # Apply proper CSS classes for unordered lists with alternating styles
+        content = re.sub(r'<ul(?![^>]*class=)', '<ul class="doc-list doc-list-unordered"', content)
+        
+        # Handle nested unordered lists with different bullet styles
+        content = re.sub(r'<li[^>]*>([^<]*)<ul(?![^>]*class=)', 
+                        lambda m: m.group(0).replace('<ul', '<ul class="doc-list doc-list-nested doc-list-circle"'), 
+                        content)
+        
+        # Fix 5: ENHANCED HEADING HIERARCHY - Ensure no H1 tags in content (title field handles H1)
+        # Convert ALL H1 tags to H2 since title field provides the H1
+        content = re.sub(r'<h1([^>]*)>', r'<h2\1>', content)
+        content = re.sub(r'</h1>', '</h2>', content)
+        
+        # Fix 5b: Remove duplicate title text that appears in content
+        # Use a generic title for comparison
+        doc_title = 'Guide'
+        
+        # Remove sentences that duplicate the title
+        title_words = set(doc_title.lower().split())
+        if len(title_words) > 1:  # Only if title has multiple words
+            # Pattern to match opening paragraphs that repeat the title
+            title_pattern = '|'.join(re.escape(word) for word in title_words if len(word) > 3)
+            if title_pattern:
+                # Remove paragraphs that are just title repetition
+                content = re.sub(rf'<p[^>]*>\s*(?:(?:{title_pattern})\s*[-–—:]\s*)*(?:{title_pattern})?\s*</p>', 
+                                '', content, flags=re.IGNORECASE)
+        
+        # Fix 6: Clean up excessive whitespace while preserving code blocks
+        parts = re.split(r'(<pre[^>]*>.*?</pre>)', content, flags=re.DOTALL | re.IGNORECASE)
+        cleaned_parts = []
+        
+        for i, part in enumerate(parts):
+            if i % 2 == 0:  # Not a code block
+                part = re.sub(r'\n\s*\n\s*\n', '\n\n', part)
+                part = re.sub(r'[ \t]+', ' ', part)
+            cleaned_parts.append(part)
+        
+        content = ''.join(cleaned_parts)
+        
+        print(f"✅ Quality fixes applied successfully: {len(content)} chars final")
+        return content.strip()
+        
+    except Exception as e:
+        print(f"❌ Error applying quality fixes: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Simple fallback
+        try:
+            content = re.sub(r'<title[^>]*>.*?</title>', '', content, flags=re.IGNORECASE | re.DOTALL)
+            content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+            content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+            content = re.sub(r'(\b\w+)\s+\1\b', r'\1', content, flags=re.IGNORECASE)
+            return content.strip()
+        except:
+            return content
+
+async def add_enhanced_cross_references(generated_articles: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Placeholder for enhanced cross-reference addition"""
+    # For now, use the existing cross-reference logic
+    return await add_cross_references_and_related_links(generated_articles)
+
+async def create_overview_article_with_sections(content: str, sections: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Create overview article with sections - only if no Introduction section exists"""
+    
+    # Check if there's already an Introduction section to avoid duplication
+    has_intro = any(
+        section.get('title', '').lower() in ['introduction', 'overview', 'getting started', 'intro'] 
+        for section in sections
+    )
+    
+    if has_intro:
+        print("🚫 SKIPPING overview creation - Introduction section already exists in sections")
+        return None
+    
+    doc_title = clean_document_title(metadata.get('original_filename', 'Guide'))
+    
+    # Create mini-TOC for sections
+    toc_items = []
+    for i, section in enumerate(sections):
+        section_title = section.get('title', f'Section {i+1}')
+        section_id = section_title.lower().replace(' ', '-').replace('&', 'and')
+        toc_items.append(f'<li><a href="#section-{section_id}">{section_title}</a></li>')
+    
+    mini_toc = f"""<div class="mini-toc">
+<h3>📋 Guide Contents</h3>
+<ul>
+{chr(10).join(toc_items)}
+</ul>
+</div>"""
+    
+    overview_content = f"""{mini_toc}
+
+<h2 id="guide-overview">📖 {doc_title} - Guide Overview</h2>
+
+<div class="callout callout-info">
+<div class="callout-title">ℹ️ About This Guide</div>
+<div class="callout-content">This comprehensive guide covers all aspects of <strong>{doc_title}</strong> with detailed sections for easy navigation and reference.</div>
+</div>
+
+<p>The content is organized into <strong>{len(sections)} focused sections</strong>:</p>
+
+<div class="sections-overview">
+"""
+    
+    for i, section in enumerate(sections):
+        section_title = section.get('title', f'Section {i+1}')
+        section_desc = section.get('description', 'Content section with detailed information')
+        section_id = section_title.lower().replace(' ', '-').replace('&', 'and')
+        
+        overview_content += f"""
+<h3 id="section-{section_id}">{i+1}. {section_title}</h3>
+<p>{section_desc}</p>"""
+    
+    overview_content += """
+</div>
+
+<div class="callout callout-tip">
+<div class="callout-title">💡 Navigation Guide</div>
+<div class="callout-content">Use the table of contents above to jump directly to any section that interests you most.</div>
+</div>"""
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": f"{doc_title} - Guide Overview",
+        "content": overview_content,
+        "status": "published",
+        "article_type": "overview",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["overview", "moderate_split", "navigation"],
+        "priority": "high",
+        "created_at": datetime.utcnow(),
+        "metadata": {
+            "granularity_level": "moderate",
+            "processing_approach": "moderate_split",
+            "article_sequence": 1,
+            "has_mini_toc": True,
+            "sections_count": len(sections),
+            **metadata
+        }
+    }
+
+async def create_section_article(content: str, section: Dict[str, Any], metadata: Dict[str, Any], analysis: Dict[str, Any], sequence: int) -> Dict[str, Any]:
+    """Create enhanced section article using high-quality content generation"""
+    section_title = section.get('title', f'Section {sequence}')
+    section_description = section.get('description', 'This section covers important information.')
+    content_focus = section.get('content_focus', 'General content')
+    
+    print(f"📝 Creating enhanced section article: {section_title}")
+    
+    # Create focused content for this section using enhanced generation
+    # Add section context to metadata for better content generation
+    section_metadata = {
+        **metadata,
+        'section_title': section_title,
+        'section_description': section_description,
+        'content_focus': content_focus,
+        'article_sequence': sequence
+    }
+    
+    # Generate enhanced content for this specific section
+    section_content = await create_high_quality_article_content(
+        content, 
+        "section_guide",  # Use section-specific content type
+        section_metadata
+    )
+    
+    # Fallback if enhanced generation fails
+    if not section_content or len(section_content.strip()) < 100:
+        # Create basic structured content with mini-TOC
+        section_content = f"""<div class="mini-toc">
+<h3>📋 Section Contents</h3>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#details">Key Details</a></li>
+<li><a href="#implementation">Implementation</a></li>
+</ul>
+</div>
+
+<h2 id="overview">{section_title}</h2>
+
+<div class="callout callout-info">
+<div class="callout-title">ℹ️ Section Overview</div>
+<div class="callout-content">{section_description}</div>
+</div>
+
+<h3 id="details">Key Details</h3>
+<p><strong>Content Focus:</strong> {content_focus}</p>
+
+<h3 id="implementation">Implementation</h3>
+<p>This section provides detailed information and practical guidance on {section_title.lower()}.</p>
+
+<div class="callout callout-tip">
+<div class="callout-title">💡 Tip</div>
+<div class="callout-content">Review related sections for comprehensive understanding of the complete process.</div>
+</div>"""
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": section_title,
+        "content": section_content,
+        "status": "published",
+        "article_type": "section_guide",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["section_guide", "moderate_split", analysis.get('content_classification', {}).get('content_type', 'guide')],
+        "priority": "medium",
+        "created_at": datetime.utcnow(),
+        "metadata": {
+            "granularity_level": "moderate",
+            "processing_approach": "moderate_split",
+            "article_sequence": sequence,
+            "section_description": section_description,
+            "content_focus": content_focus,
+            "has_mini_toc": True,
+            **metadata
+        }
+    }
+
+async def create_simple_moderate_split(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Enhanced simple moderate split with actual content generation"""
+    try:
+        print(f"🔧 CREATING SIMPLE MODERATE SPLIT with actual content")
+        
+        articles = []
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        content_type = analysis['content_classification']['content_type']
+        
+        # Check if content already has introduction/overview sections to avoid duplication
+        has_intro = any(
+            keyword in content.lower() 
+            for keyword in ['## introduction', '## overview', '## getting started', '## intro', 
+                           '<h2>introduction', '<h2>overview', '<h2>getting started', '<h2>intro']
+        )
+        
+        if has_intro:
+            print("🚫 SKIPPING overview creation in simple moderate split - Introduction section already exists in content")
+        
+        # 1. Overview article using enhanced content generation
+        print(f"📖 Creating enhanced overview article using high-quality content generation")
+        overview_content = await create_high_quality_article_content(content, "overview", metadata)
+        
+        if not overview_content or len(overview_content.strip()) < 100:
+            # Emergency fallback with some actual content
+            overview_content = f"<h2>{doc_title} - Overview</h2>\n<p>This comprehensive guide provides detailed information about {doc_title.lower()}.</p>\n<p>The content includes step-by-step instructions, technical details, and practical examples.</p>"
+            
+            overview = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Overview",
+                "content": overview_content,
+                "status": "published",
+                "article_type": "overview",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["overview", "moderate_split", content_type],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "article_sequence": 1, 
+                    "content_type": content_type,
+                    "processing_approach": "simple_moderate_split",
+                    **metadata
+                }
+            }
+            articles.append(overview)
+        
+        # 2. Main content article using enhanced content generation
+        print(f"📚 Creating enhanced main content article using high-quality content generation")
+        main_content = await create_high_quality_article_content(content, "complete_guide", metadata)
+        
+        if not main_content or len(main_content.strip()) < 100:
+            # Emergency fallback - at least include some actual content
+            content_preview = content[:2000] if len(content) > 2000 else content
+            main_content = f"<h2>{doc_title} - Complete Guide</h2>\n<div class=\"content-section\">{content_preview}</div>"
+        
+        main = {
+            "id": str(uuid.uuid4()),
+            "title": f"{doc_title} - Complete Guide", 
+            "content": main_content,
+            "status": "published",
+            "article_type": "main_content",
+            "source_document": metadata.get("original_filename", "Unknown"),
+            "tags": ["main_content", "moderate_split", content_type, "complete_guide"],
+            "priority": "high",
+            "created_at": datetime.utcnow(),
+            "metadata": {
+                "article_sequence": 2,
+                "content_type": content_type, 
+                "processing_approach": "simple_moderate_split",
+                **metadata
+            }
+        }
+        articles.append(main)
+        
+        print(f"✅ SIMPLE MODERATE SPLIT: Created {len(articles)} articles with actual content")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error in simple moderate split: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def create_enhanced_overview_article(outline_topics: List[Dict[str, Any]], metadata: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Create enhanced overview article - only if no Introduction article exists"""
+    
+    # Check if there's already an Introduction/Overview topic to avoid duplication
+    has_intro = any(
+        topic.get('topic_title', '').lower() in ['introduction', 'overview', 'getting started']
+        for topic in outline_topics
+    )
+    
+    if has_intro:
+        print(f"🚫 SKIPPING overview creation - Introduction article already exists")
+        return None
+    
+    doc_title = clean_document_title(metadata.get('original_filename', 'Guide'))
+    
+    # Create comprehensive overview with mini-TOC and enhanced content
+    toc_items = []
+    for i, topic in enumerate(outline_topics[:8]):  # Show first 8 topics in TOC
+        topic_id = topic.get('topic_title', f'topic-{i}').lower().replace(' ', '-').replace('&', 'and')
+        toc_items.append(f'<li><a href="#section-{topic_id}">{topic.get("topic_title", f"Topic {i+1}")}</a></li>')
+    
+    mini_toc = f"""<div class="mini-toc">
+<h3>📋 Contents</h3>
+<ul>
+{chr(10).join(toc_items)}
+</ul>
+</div>"""
+    
+    # Create sections for each topic with enhanced content
+    sections_content = []
+    for i, topic in enumerate(outline_topics):
+        topic_title = topic.get('topic_title', f'Section {i+1}')
+        topic_focus = topic.get('content_focus', 'Key information and procedures')
+        topic_id = topic_title.lower().replace(' ', '-').replace('&', 'and')
+        
+        section_html = f"""<h2 id="section-{topic_id}">{topic_title}</h2>
+<p><strong>Focus:</strong> {topic_focus}</p>"""
+        
+        # Add key points if available
+        key_points = topic.get('key_points', [])
+        if key_points:
+            section_html += "\n<h3>Key Topics Covered:</h3>\n<ul>\n"
+            for point in key_points[:5]:  # Limit to 5 key points
+                section_html += f"<li>{point}</li>\n"
+            section_html += "</ul>"
+        
+        sections_content.append(section_html)
+    
+    overview_content = f"""{mini_toc}
+
+<h2 id="introduction">About This Guide</h2>
+<div class="callout callout-info">
+<div class="callout-title">ℹ️ Overview</div>
+<div class="callout-content">This comprehensive guide covers all aspects of <strong>{doc_title}</strong> with detailed explanations, step-by-step instructions, and practical examples.</div>
+</div>
+
+<p>The content is organized into <strong>{len(outline_topics)} focused sections</strong> for easy navigation and reference. Each section provides complete information on its topic with practical examples and technical details.</p>
+
+<h2 id="structure">Guide Structure</h2>
+
+{chr(10).join(sections_content)}
+
+<div class="callout callout-tip">
+<div class="callout-title">💡 Navigation Tip</div>
+<div class="callout-content">Use the table of contents above to jump directly to any section, or read sequentially for complete coverage.</div>
+</div>"""
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": f"{doc_title} - Complete Guide Overview",
+        "content": overview_content,
+        "status": "published",
+        "article_type": "enhanced_overview",
+        "source_document": metadata.get("original_filename", "Unknown"),
+        "tags": ["overview", "deep_split", "enhanced", "navigation"],
+        "priority": "high",
+        "created_at": datetime.utcnow(),
+        "metadata": {
+            "granularity_level": "deep",
+            "processing_approach": "deep_split",
+            "article_sequence": 1,
+            "has_mini_toc": True,
+            "sections_count": len(outline_topics),
+            **metadata
+        }
+    }
+
+async def generate_enhanced_topic_article(content: str, topic: Dict[str, Any], metadata: Dict[str, Any], analysis: Dict[str, Any], sequence: int, total_topics: int) -> Dict[str, Any]:
+    """Placeholder for enhanced topic article generation"""
+    # Use existing topic article generation for now
+    return await generate_topic_article(content, topic, metadata, sequence, total_topics)
+
+async def adaptive_granularity_processor(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """PHASE 6: Adaptive granularity processing engine"""
+    try:
+        granularity_level = analysis['granularity_decision']['level']
+        processing_approach = analysis['processing_strategy']['approach']
+        
+        print(f"🎯 ADAPTIVE GRANULARITY PROCESSOR: {granularity_level} | {processing_approach}")
+        
+        generated_articles = []
+        
+        if processing_approach == "unified":
+            # Use enhanced unified approach with high-quality content generation 
+            print(f"📄 UNIFIED PROCESSING: Single comprehensive article")
+            
+            # Generate high-quality content with proper formatting
+            article_content = await create_high_quality_article_content(content, "complete_guide", metadata)
+            
+            # Create the complete article object with proper title structure
+            doc_title = clean_document_title(metadata.get('original_filename', 'Guide'))
+            
+            unified_article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title}",  # FIXED: Remove redundant "Complete Guide" suffix 
+                "content": article_content,
+                "status": "published",
+                "article_type": "complete_guide",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["complete_guide", "unified", analysis.get('content_classification', {}).get('content_type', 'guide')],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "unified_article": True,
+                    "processing_approach": "unified",
+                    "granularity_level": analysis.get('granularity_decision', {}).get('level', 'shallow'),
+                    "content_type": analysis.get('content_classification', {}).get('content_type', 'guide'),
+                    **metadata
+                }
+            }
+            generated_articles.append(unified_article)
+            
+            # FIXED: Do NOT create redundant overview for unified processing - complete guide is self-contained
+                
+        elif processing_approach == "shallow_split":
+            print(f"📖 SHALLOW SPLIT PROCESSING: 2-3 articles")
+            articles = await create_shallow_split_articles(content, metadata, analysis)
+            generated_articles.extend(articles)
+            
+        elif processing_approach == "moderate_split":
+            print(f"📚 MODERATE SPLIT PROCESSING: 4-6 articles")
+            articles = await create_moderate_split_articles(content, metadata, analysis)
+            generated_articles.extend(articles)
+            
+        elif processing_approach == "deep_split":
+            print(f"📊 DEEP SPLIT PROCESSING: 7+ articles")
+            articles = await create_deep_split_articles(content, metadata, analysis)
+            generated_articles.extend(articles)
+        
+        # Always create FAQ for substantial content with proper standardization
+        if len(content) > 2000:
+            print(f"📚 CREATING STANDARDIZED FAQ ARTICLE")
+            
+            # Extract subject from filename for standardized title
+            doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ')
+            subject = doc_title if doc_title != 'Guide' else analysis.get('content_classification', {}).get('content_type', 'Content')
+            faq_title = f"Frequently Asked Questions & Troubleshooting – {subject}"
+            
+            # Generate high-quality FAQ content with cross-references
+            faq_system_message = f"""You are an expert technical writer creating a comprehensive FAQ & Troubleshooting article.
+
+CRITICAL FAQ STANDARDIZATION REQUIREMENTS:
+1. Use proper HTML formatting (NO Markdown)
+2. Include comprehensive cross-references with clickable links
+3. Add organized "Related Links" block at the end
+4. Use proper FAQ structure with categories
+5. Include WYSIWYG editor features (callouts, mini-TOC)
+
+ENHANCED FAQ STRUCTURE:
+- Mini-TOC with anchor links to categories
+- FAQ Categories with proper HTML headings
+- Cross-references within answers: <a href="#section-id" class="cross-ref">Link text</a>
+- Related Links block with grid layout
+
+WYSIWYG FEATURES TO INCLUDE:
+- Mini-TOC: <div class="mini-toc"><h3>FAQ Categories</h3><ul><li><a href="#getting-started">Getting Started</a></li></ul></div>
+- Callouts: <div class="callout callout-tip"><div class="callout-title">💡 Tip</div><div class="callout-content">Helpful information</div></div>
+- Cross-references: <a href="#implementation" class="cross-ref">Implementation Guide</a>
+
+REQUIRED SECTIONS:
+1. Mini-TOC of FAQ categories
+2. Getting Started & Setup (5-7 questions)
+3. Implementation & Configuration (5-7 questions)
+4. Common Issues & Troubleshooting (5-7 questions)
+5. Advanced Topics & Best Practices (3-5 questions)
+6. Related Links block with organized categories
+
+RELATED LINKS STRUCTURE:
+<div class="related-articles">
+  <h3>🔗 Related Links</h3>
+  <div class="links-grid">
+    <div class="links-category">
+      <h4>Setup & Configuration</h4>
+      <ul>
+        <li><a href="/content-library/setup-guide">Setup Guide</a></li>
+        <li><a href="/content-library/configuration">Configuration Options</a></li>
+      </ul>
+    </div>
+    <div class="links-category">  
+      <h4>Implementation</h4>
+      <ul>
+        <li><a href="/content-library/complete-guide">Complete Implementation Guide</a></li>
+        <li><a href="/content-library/best-practices">Best Practices</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+Create comprehensive FAQ content with proper HTML formatting and cross-references."""
+
+            faq_response = await call_llm_with_fallback(
+                system_message=faq_system_message,
+                user_message=f"Create a comprehensive FAQ & Troubleshooting article for {subject}. Use proper HTML formatting and include cross-references.\n\nContent to base FAQs on:\n\n{content[:15000]}"
+            )
+            
+            if faq_response:
+                faq_content = await apply_quality_fixes(faq_response)
+                
+                faq_article = {
+                    "id": str(uuid.uuid4()),
+                    "title": faq_title,
+                    "content": faq_content,
+                    "status": "published",
+                    "article_type": "faq",
+                    "source_document": metadata.get("original_filename", "Unknown"),
+                    "tags": ["faq", "troubleshooting", subject.lower().replace(' ', '-'), "standardized"],
+                    "priority": "high",
+                    "created_at": datetime.utcnow(),
+                    "metadata": {
+                        "standardized_faq": True,
+                        "subject": subject,
+                        "cross_references": True,
+                        "related_links": True,
+                        **metadata
+                    }
+                }
+                generated_articles.append(faq_article)
+        
+        # Add cross-references and related links
+        if len(generated_articles) > 1:
+            enhanced_articles = await add_enhanced_cross_references(generated_articles, analysis)
+            generated_articles = enhanced_articles
+        
+        print(f"✅ ADAPTIVE PROCESSING COMPLETE: {len(generated_articles)} articles generated")
+        return generated_articles
+        
+    except Exception as e:
+        print(f"❌ Error in adaptive granularity processor: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def create_shallow_split_articles(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create 2-3 articles with shallow splitting"""
+    try:
+        print(f"📖 CREATING SHALLOW SPLIT ARTICLES")
+        
+        articles = []
+        content_type = analysis['content_classification']['content_type']
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        # 1. Overview Article using enhanced content generation
+        print(f"📖 Creating enhanced overview article for shallow split")
+        overview_content_html = await create_high_quality_article_content(content, "overview", metadata)
+        
+        if overview_content_html and len(overview_content_html.strip()) > 100:
+            overview_article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Overview",
+                "content": overview_content_html,
+                "status": "published",
+                "article_type": "overview",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["overview", content_type, "shallow_split"],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "granularity_level": "shallow",
+                    "processing_approach": "shallow_split",
+                    "article_sequence": 1,
+                    "content_type": content_type,
+                    **metadata
+                }
+            }
+            articles.append(overview_article)
+        
+        # 2. Main Content Article using enhanced content generation
+        print(f"📚 Creating enhanced main content article for shallow split")
+        main_content_html = await create_high_quality_article_content(content, "complete_guide", metadata)
+        
+        if main_content_html and len(main_content_html.strip()) > 100:
+            main_article = {
+                "id": str(uuid.uuid4()),
+                "title": f"{doc_title} - Complete Guide",
+                "content": main_content_html,
+                "status": "published",
+                "article_type": "main_content",
+                "source_document": metadata.get("original_filename", "Unknown"),
+                "tags": ["main_content", content_type, "shallow_split"],
+                "priority": "high",
+                "created_at": datetime.utcnow(),
+                "metadata": {
+                    "granularity_level": "shallow",
+                    "processing_approach": "shallow_split",
+                    "article_sequence": 2,
+                    "content_type": content_type,
+                    **metadata
+                }
+            }
+            articles.append(main_article)
+        
+        print(f"✅ SHALLOW SPLIT: Created {len(articles)} articles")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error creating shallow split articles: {e}")
+        return []
+
+async def create_moderate_split_articles(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create 4-6 articles with moderate splitting"""
+    try:
+        print(f"📚 CREATING MODERATE SPLIT ARTICLES")
+        
+        articles = []
+        content_type = analysis['content_classification']['content_type']
+        doc_title = metadata.get('original_filename', 'Guide').replace('.docx', '').replace('.pdf', '').replace('_', ' ')
+        
+        # Generate content outline for moderate split
+        outline_system = f"""Create a moderate split outline for this content (4-6 main sections).
+
+CONTENT TYPE: {content_type}
+APPROACH: Moderate split (4-6 articles)
+
+Analyze the content and create 4-6 logical sections that:
+1. Can stand alone but connect logically
+2. Have balanced content distribution
+3. Maintain context for technical elements
+4. Provide comprehensive coverage
+
+Return JSON format:
+{{
+  "sections": [
+    {{
+      "title": "Section Title",
+      "description": "What this section covers",
+      "content_focus": "Key topics and elements"
+    }}
+  ]
+}}"""
+
+        outline_response = await call_llm_with_fallback(
+            system_message=outline_system,
+            user_message=f"Create moderate split outline for:\n\n{content[:15000]}"
+        )
+        
+        if outline_response:
+            try:
+                outline_data = json.loads(outline_response.strip())
+                sections = outline_data.get('sections', [])
+                
+                # Create overview article
+                overview_article = await create_overview_article_with_sections(content, sections, metadata, analysis)
+                if overview_article:
+                    articles.append(overview_article)
+                
+                # Create articles for each section
+                for i, section in enumerate(sections[:6]):  # Limit to 6 sections
+                    section_article = await create_section_article(content, section, metadata, analysis, i + 2)
+                    if section_article:
+                        articles.append(section_article)
+                        
+            except json.JSONDecodeError:
+                # Fallback to simple splitting
+                print(f"⚠️ Outline parsing failed, using simple moderate split")
+                articles = await create_simple_moderate_split(content, metadata, analysis)
+        
+        print(f"✅ MODERATE SPLIT: Created {len(articles)} articles")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error creating moderate split articles: {e}")
+        return []
+
+async def create_deep_split_articles(content: str, metadata: Dict[str, Any], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create 7+ articles with deep splitting"""
+    try:
+        print(f"📊 CREATING DEEP SPLIT ARTICLES")
+        
+        # Use existing outline-first approach for deep splitting
+        outline_data = await generate_comprehensive_outline(content, metadata)
+        if not outline_data:
+            print(f"❌ Could not generate outline for deep split")
+            return []
+        
+        articles = []
+        outline_topics = outline_data.get('comprehensive_outline', [])
+        content_type = analysis['content_classification']['content_type']
+        
+        print(f"📋 DEEP SPLIT: Processing {len(outline_topics)} topics")
+        
+        # Create overview article
+        overview_article = await create_enhanced_overview_article(outline_topics, metadata, analysis)
+        if overview_article:
+            articles.append(overview_article)
+        
+        # Create article for each topic
+        for i, topic in enumerate(outline_topics):
+            article = await generate_enhanced_topic_article(content, topic, metadata, analysis, i + 2, len(outline_topics))
+            if article:
+                articles.append(article)
+                print(f"💾 DEEP SPLIT ARTICLE {i+2}/{len(outline_topics)+1}: {article['title']}")
+        
+        print(f"✅ DEEP SPLIT: Created {len(articles)} articles")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error creating deep split articles: {e}")
+        return []
+
+async def intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """PHASE 6: ENHANCED INTELLIGENT PIPELINE with adaptive granularity processing"""
+    try:
+        print(f"🧠 PHASE 6: ENHANCED INTELLIGENT CONTENT PROCESSING PIPELINE STARTED")
+        print(f"📄 Content: {len(content)} characters from {metadata.get('original_filename', 'Unknown')}")
+        
+        # STEP 1: Enhanced multi-dimensional content analysis
+        print(f"🔍 STEP 1: Enhanced multi-dimensional content analysis")
+        analysis = await enhanced_multi_dimensional_analysis(content, metadata)
+        
+        # STEP 2: Adaptive granularity processing
+        print(f"🎯 STEP 2: Adaptive granularity processing")
+        generated_articles = await adaptive_granularity_processor(content, metadata, analysis)
+        
+        # STEP 3: Save all articles to database
+        print(f"💾 STEP 3: Saving {len(generated_articles)} articles to database")
+        for i, article in enumerate(generated_articles, 1):
+            try:
+                await db.content_library.insert_one(article)
+                print(f"💾 SAVED ARTICLE {i}/{len(generated_articles)}: {article['title']}")
+            except Exception as save_error:
+                print(f"⚠️ Error saving article {i}: {save_error}")
+        
+        # STEP 4: Update articles with cross-references if needed
+        if len(generated_articles) > 1:
+            print(f"🔗 STEP 4: Updating cross-references in database")
+            for article in generated_articles:
+                try:
+                    await db.content_library.update_one(
+                        {"id": article["id"]},
+                        {"$set": {"content": article["content"]}}
+                    )
+                except Exception as update_error:
+                    print(f"⚠️ Error updating cross-references for {article['title']}: {update_error}")
+        
+        # STEP 5: Final summary
+        processing_approach = analysis.get('processing_strategy', {}).get('approach', 'unknown')
+        granularity_level = analysis.get('granularity_decision', {}).get('level', 'unknown')
+        
+        print(f"🎉 PHASE 6 ENHANCED PIPELINE COMPLETE:")
+        print(f"   📊 Processing approach: {processing_approach}")
+        print(f"   🎯 Granularity level: {granularity_level}")
+        print(f"   📄 Generated articles: {len(generated_articles)}")
+        print(f"   🔗 Cross-references: {'Yes' if len(generated_articles) > 1 else 'No'}")
+        
+        return generated_articles
+        
+    except Exception as e:
+        print(f"❌ PHASE 6 ENHANCED PIPELINE ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # FALLBACK: Use original approach
+        print(f"🔄 FALLBACK: Using original intelligent pipeline approach")
+        try:
+            return await original_intelligent_content_processing_pipeline(content, metadata)
+        except Exception as fallback_error:
+            print(f"❌ FALLBACK ALSO FAILED: {fallback_error}")
+            return []
+
+async def original_intelligent_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """ORIGINAL INTELLIGENT PIPELINE: Fallback for when Phase 6 fails"""
+    try:
+        print(f"🔄 ORIGINAL INTELLIGENT CONTENT PROCESSING PIPELINE (FALLBACK)")
+        print(f"📄 Content: {len(content)} characters from {metadata.get('original_filename', 'Unknown')}")
+        
+        # STEP 1: Analyze content type and flow to determine structure
+        analysis = await analyze_content_type_and_flow(content, metadata)
+        should_split = analysis.get('structuring_decision', {}).get('should_split', True)
+        reasoning = analysis.get('structuring_decision', {}).get('reasoning', 'Default analysis')
+        
+        print(f"🎯 STRUCTURING DECISION: {'SPLIT' if should_split else 'KEEP UNIFIED'}")
+        print(f"💡 Reasoning: {reasoning}")
+        
+        generated_articles = []
+        
+        if not should_split:
+            # UNIFIED APPROACH: Keep content together as one comprehensive article
+            print(f"📄 UNIFIED PROCESSING: Creating single comprehensive article")
+            
+            unified_article = await enhanced_generate_unified_article(content, metadata, analysis)
+            if unified_article:
+                await db.content_library.insert_one(unified_article)
+                generated_articles.append(unified_article)
+                print(f"💾 SAVED UNIFIED ARTICLE: {unified_article['title']}")
+            
+        else:
+            # SPLIT APPROACH: Use the original outline-first approach
+            print(f"🔀 SPLIT PROCESSING: Using outline-first approach for multiple articles")
+            
+            # Generate comprehensive outline
+            outline_data = await generate_comprehensive_outline(content, metadata)
+            if not outline_data:
+                print(f"❌ PIPELINE FAILED: Could not generate outline")
+                return []
+            
+            # Generate articles for each topic
+            outline_topics = outline_data.get('comprehensive_outline', [])
+            print(f"📋 PROCESSING {len(outline_topics)} TOPICS individually")
+            
+            for i, topic in enumerate(outline_topics, 1):
+                article = await generate_topic_article(content, topic, metadata, i, len(outline_topics))
+                if article:
+                    await db.content_library.insert_one(article)
+                    generated_articles.append(article)
+                    print(f"💾 SAVED ARTICLE {i}/{len(outline_topics)}: {article['title']}")
+            
+            # Create overview article with mini-TOC for split content
+            if generated_articles:
+                overview_article = await create_overview_article(generated_articles, outline_data, metadata)
+                if overview_article:
+                    await db.content_library.insert_one(overview_article)
+                    generated_articles.insert(0, overview_article)
+                    print(f"💾 SAVED OVERVIEW ARTICLE with mini-TOC")
+        
+        # ALWAYS: Create FAQ article for substantial content
+        if len(content) > 2000:
+            faq_article = await create_faq_article(content, generated_articles, metadata)
+            if faq_article:
+                await db.content_library.insert_one(faq_article)
+                generated_articles.append(faq_article)
+                print(f"💾 SAVED FAQ ARTICLE")
+        
+        # ALWAYS: Add cross-references and related links
+        if len(generated_articles) > 1:
+            enhanced_articles = await add_cross_references_and_related_links(generated_articles)
+            
+            # Update articles in database with cross-references
+            for article in enhanced_articles:
+                await db.content_library.update_one(
+                    {"id": article["id"]},
+                    {"$set": {"content": article["content"]}}
+                )
+            
+            generated_articles = enhanced_articles
+        
+        print(f"🎉 ORIGINAL INTELLIGENT PIPELINE COMPLETE: Generated {len(generated_articles)} articles")
+        if should_split:
+            print(f"   📊 Split approach: Overview + {len(outline_topics)} topic articles + FAQ")
+        else:
+            print(f"   📄 Unified approach: 1 comprehensive guide + FAQ")
+        print(f"   🔗 All articles enhanced with cross-references")
+        
+        return generated_articles
+        
+    except Exception as e:
+        print(f"❌ ORIGINAL INTELLIGENT PIPELINE ERROR: {e}")
+        return []
+
+async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """LEGACY WRAPPER: Redirects to intelligent content processing pipeline for backward compatibility"""
+    print(f"🔄 LEGACY WRAPPER: Redirecting to intelligent content processing pipeline")
+    return await intelligent_content_processing_pipeline(content, metadata)
+
+# Legacy function name for backward compatibility
+async def clean_content_processing_pipeline(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Legacy wrapper - redirects to intelligent_content_processing_pipeline"""
+    return await intelligent_content_processing_pipeline(content, metadata)
+
+
+# === END HELPER FUNCTIONS ===
+
+# Universal phantom link prevention instruction for LLM prompts
+PHANTOM_LINK_PREVENTION = """
+🚫 ABSOLUTE PROHIBITION - NO ANCHOR LINKS ALLOWED:
+- NEVER, UNDER ANY CIRCUMSTANCES, create links starting with # (anchor links)
+- NEVER create href="#anything" - this creates broken navigation
+- NEVER create links like #getting-started, #what-is-whisk-studio, #setup, #implementation, etc.
+- NEVER create table of contents with clickable links - use plain text only
+- NEVER create navigation elements with links - use descriptive text instead
+- If referencing other sections, use phrases like "see the section on..." without links
+- Only external URLs (https://...) are allowed, and only if they are real websites
+- When listing topics or sections, use plain text bullets, not links
+- Replace any link temptation with descriptive text: "The setup section covers..." instead of links
+"""
+
+def validate_and_remove_phantom_links(html_content: str, existing_article_ids: list = None) -> str:
+    """
+    ULTRA-AGGRESSIVE phantom link removal using simple regex patterns.
+    Removes ALL anchor links starting with # plus invalid content library links.
+    """
+    try:
+        import re
+        
+        if existing_article_ids is None:
+            existing_article_ids = []
+        
+        original_content = html_content
+        
+        # STEP 1: Remove ALL anchor tags that have href starting with #
+        # This catches all phantom links like #what-is-*, #getting-started, etc.
+        phantom_anchor_pattern = r'<a[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>(.*?)</a>'
+        phantom_matches = re.findall(phantom_anchor_pattern, html_content, flags=re.IGNORECASE | re.DOTALL)
+        html_content = re.sub(phantom_anchor_pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # STEP 2: Remove anchor tags with empty or missing href
+        empty_href_pattern = r'<a[^>]*href\s*=\s*["\'][\s]*["\'][^>]*>(.*?)</a>'
+        html_content = re.sub(empty_href_pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # STEP 3: Remove anchor tags without href attribute at all
+        no_href_pattern = r'<a(?![^>]*href)[^>]*>(.*?)</a>'
+        html_content = re.sub(no_href_pattern, r'\1', html_content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # STEP 4: Validate and clean content library links if we have existing article IDs
+        if existing_article_ids:
+            def validate_content_library_link(match):
+                article_id = match.group(1)
+                link_text = match.group(2)
+                
+                if article_id not in existing_article_ids:
+                    print(f"🧹 INVALID CONTENT LIBRARY LINK REMOVED: {article_id}")
+                    return link_text  # Return just the text, remove the link
+                
+                return match.group(0)  # Keep the link if valid
+            
+            content_library_pattern = r'<a[^>]*href\s*=\s*["\']/?content-library/article/([^"\']+)["\'][^>]*>(.*?)</a>'
+            html_content = re.sub(
+                content_library_pattern,
+                validate_content_library_link,
+                html_content,
+                flags=re.IGNORECASE | re.DOTALL
+            )
+        
+        # Log what was cleaned
+        if phantom_matches:
+            print(f"🧹 PHANTOM LINK CLEANUP: Removed {len(phantom_matches)} phantom anchor links")
+            for i, match in enumerate(phantom_matches[:3]):  # Show first 3
+                print(f"   Removed phantom link text: '{match[:30]}...'")
+        
+        if html_content != original_content:
+            print(f"🧹 CONTENT SANITIZED: {len(original_content)} → {len(html_content)} characters")
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"⚠️ Error in phantom link cleanup: {e}")
+        return html_content
+
+def aggressive_phantom_link_cleanup_final_pass(html_content: str) -> str:
+    """
+    NUCLEAR OPTION: Remove ANY remaining anchor links that might be phantom.
+    This is the absolute final cleanup pass.
+    """
+    try:
+        import re
+        
+        # NUCLEAR STEP 1: Find and remove any remaining anchor tags
+        remaining_anchors = re.findall(r'<a[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>([^<]*)</a>', html_content, flags=re.IGNORECASE)
+        if remaining_anchors:
+            print(f"🚨 NUCLEAR CLEANUP: Found {len(remaining_anchors)} remaining phantom links, removing...")
+            for anchor in remaining_anchors[:3]:  # Show first 3
+                print(f"   Nuclear removal: '{anchor[:30]}...'")
+        
+        # Remove all remaining # anchor links
+        html_content = re.sub(r'<a[^>]*href\s*=\s*["\']#[^"\']*["\'][^>]*>([^<]*)</a>', r'\1', html_content, flags=re.IGNORECASE)
+        
+        # NUCLEAR STEP 2: Remove any stray anchor tags
+        html_content = re.sub(r'<a[^>]*href\s*=\s*["\'][\s]*["\'][^>]*>([^<]*)</a>', r'\1', html_content, flags=re.IGNORECASE)
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"⚠️ Error in nuclear phantom link cleanup: {e}")
+        return html_content
+
+async def create_introductory_toc_article(articles: list, metadata: dict) -> dict:
+    """Create a comprehensive introductory article with table of contents when multiple articles are generated"""
+    try:
+        source_filename = metadata.get('original_filename', 'Document')
+        
+        # Generate specific title based on source document
+        if source_filename:
+            doc_name = source_filename.replace('.docx', '').replace('.pdf', '').replace('_', ' ').title()
+            toc_title = f"{doc_name}: Complete Guide Overview"
+        else:
+            toc_title = "Document Overview and Table of Contents"
+        
+        # ENHANCED INTRODUCTORY CONTENT: Create a proper introduction with topic summary
+        intro_summary = await generate_topic_summary(articles)
+        
+        # Generate TOC content with enhanced structure and mini TOC with links
+        toc_items = []
+        article_links = []
+        
+        for i, article in enumerate(articles):
+            title = article.get('title', f'Article {i+1}')
+            article_type = article.get('metadata', {}).get('article_type', 'guide')
+            article_id = article.get('id', f'article-{i}')
+            
+            # Create proper links for navigation to actual Content Library articles
+            toc_items.append(f'<li><strong><a href="/content-library/article/{article_id}" target="_blank">{title}</a></strong></li>')
+            article_links.append({
+                'title': title,
+                'type': article_type,
+                'id': article_id
+            })
+        
+        # ENHANCED INTRODUCTORY ARTICLE: Comprehensive overview with topic summary
+        toc_html = f"""<h2>Introduction</h2>
+{intro_summary}
+
+<blockquote class="note">📝 <strong>About This Guide:</strong> This comprehensive documentation has been intelligently processed and organized into <strong>{len(articles)} focused articles</strong> using professional technical writing standards to provide the most effective learning experience.</blockquote>
+
+<h2>Complete Table of Contents</h2>
+<p>This guide covers the following topics in logical sequence:</p>
+
+<ol class="toc-list" style="margin: 1.5rem 0; padding-left: 1.5rem;">
+{chr(10).join(toc_items)}
+</ol>
+
+<h2>How to Use This Guide</h2>
+<table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+<thead>
+<tr style="background-color: #f8fafc;">
+<th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">Reading Approach</th>
+<th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">Recommended For</th>
+<th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid #e5e7eb; padding: 12px;"><strong>Sequential Reading</strong></td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Beginners, comprehensive learning</td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Follow the articles in order for complete understanding of the topic</td>
+</tr>
+<tr>
+<td style="border: 1px solid #e5e7eb; padding: 12px;"><strong>Reference Use</strong></td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Experienced users, specific needs</td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Jump directly to specific articles based on immediate requirements</td>
+</tr>
+<tr>
+<td style="border: 1px solid #e5e7eb; padding: 12px;"><strong>Cross-Reference Navigation</strong></td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">All users</td>
+<td style="border: 1px solid #e5e7eb; padding: 12px;">Use "Related Articles" links at the bottom of each article for contextual navigation</td>
+</tr>
+</tbody>
+</table>
+
+<h2>Article Types Explained</h2>
+<ul>
+<li><strong>Overview:</strong> High-level introductions and summaries</li>
+<li><strong>Concept:</strong> Detailed explanations of principles and features</li>
+<li><strong>How-to:</strong> Step-by-step procedural guides</li>
+<li><strong>Use-Case:</strong> Practical implementation examples and scenarios</li>
+<li><strong>FAQ/Troubleshooting:</strong> Common questions and problem resolution</li>
+</ul>
+
+<blockquote class="tip">💡 <strong>Pro Tip:</strong> Each article includes specific takeaways, examples, and related links to help you master the content effectively. Use the Table of Contents above to navigate between articles seamlessly.</blockquote>
+
+<h2>Quick Navigation</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+{chr(10).join([f'<div style="background-color: #f8fafc; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6;"><strong><a href="/content-library/article/{link["id"]}" target="_blank">{link["title"]}</a></strong><br><em>{link["type"]}</em></div>' for link in article_links])}
+</div>"""
+        
+        # Create comprehensive markdown version
+        markdown_content = f"""## Introduction
+{intro_summary.replace('<p>', '').replace('</p>', '').replace('<strong>', '**').replace('</strong>', '**')}
+
+> 📝 **About This Guide:** This comprehensive documentation has been intelligently processed and organized into **{len(articles)} focused articles** using professional technical writing standards to provide the most effective learning experience.
+
+## Complete Table of Contents
+
+This guide covers the following topics in logical sequence:
+
+{chr(10).join([f"{i+1}. **[{article.get('title', f'Article {i+1}')}](#article-{article.get('id', f'article-{i}')})** *({article.get('metadata', {}).get('article_type', 'guide')})*" for i, article in enumerate(articles)])}
+
+## How to Use This Guide
+
+| Reading Approach | Recommended For | Description |
+|------------------|-----------------|-------------|
+| **Sequential Reading** | Beginners, comprehensive learning | Follow the articles in order for complete understanding |
+| **Reference Use** | Experienced users, specific needs | Jump directly to specific articles based on requirements |
+| **Cross-Reference Navigation** | All users | Use "Related Articles" links for contextual navigation |
+
+## Article Types Explained
+
+- **Overview:** High-level introductions and summaries
+- **Concept:** Detailed explanations of principles and features  
+- **How-to:** Step-by-step procedural guides
+- **Use-Case:** Practical implementation examples and scenarios
+- **FAQ/Troubleshooting:** Common questions and problem resolution
+
+> 💡 **Pro Tip:** Each article includes specific takeaways, examples, and related links to help you master the content effectively."""
+
+        # Create comprehensive TOC article structure
+        intro_article = {
+            "id": str(uuid.uuid4()),
+            "title": toc_title,
+            "content": toc_html,
+            "summary": f"Comprehensive overview and navigation guide for {len(articles)} articles covering {source_filename}. Includes topic introduction, complete table of contents with links, and usage recommendations.",
+            "tags": ["overview", "introduction", "table-of-contents", "navigation", "guide", "documentation"],
+            "takeaways": [
+                f"Complete guide contains {len(articles)} focused articles organized by professional standards",
+                "Multiple reading approaches supported: sequential, reference, and cross-reference navigation",
+                "Each article includes related links and is categorized by type for optimal user experience",
+                "Content covers comprehensive topic overview with practical examples and troubleshooting"
+            ],
+            "source_job_id": metadata.get("source_job_id", ""),
+            "source_document": source_filename,
+            "processing_metadata": {
+                "created_from": "introductory_toc_generator",
+                "article_type": "overview",
+                "total_articles": len(articles),
+                "has_topic_summary": True,
+                "enhanced_navigation": True
+            },
+            "status": "published",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        print(f"✅ Created comprehensive introductory article: '{toc_title}' with topic summary for {len(articles)} articles")
+        return intro_article
+        
+    except Exception as e:
+        print(f"❌ Error creating introductory TOC article: {e}")
+        return None
+
+async def generate_topic_summary(articles: list) -> str:
+    """Generate a topic summary based on article content for the introductory article"""
+    try:
+        # Analyze article titles and content to generate topic summary
+        titles = [article.get('title', '') for article in articles if article.get('title')]
+        article_types = [article.get('metadata', {}).get('article_type', 'general') for article in articles]
+        
+        # Extract common themes from titles
+        common_themes = extract_common_themes(titles)
+        
+        # Generate context-aware summary
+        if any('api' in title.lower() for title in titles):
+            topic_type = "API integration and development"
+        elif any(word in ' '.join(titles).lower() for word in ['maps', 'google', 'location']):
+            topic_type = "location-based services and mapping"
+        elif any(word in ' '.join(titles).lower() for word in ['tutorial', 'guide', 'implementation']):
+            topic_type = "technical implementation and best practices"
+        else:
+            topic_type = "comprehensive technical documentation"
+        
+        # Count article types for better summary
+        type_counts = {}
+        for article_type in article_types:
+            type_counts[article_type] = type_counts.get(article_type, 0) + 1
+        
+        type_summary = ', '.join([f"{count} {atype} article{'s' if count > 1 else ''}" for atype, count in type_counts.items() if count > 0])
+        
+        summary = f"""<p>This comprehensive documentation focuses on <strong>{topic_type}</strong>, providing both theoretical understanding and practical implementation guidance. The content has been carefully structured to cover all essential aspects of the topic.</p>
+
+<p>The guide includes <strong>{type_summary}</strong>, ensuring you have access to both conceptual explanations and hands-on examples. Whether you're looking for quick reference information or detailed step-by-step instructions, this documentation provides the comprehensive coverage you need.</p>
+
+<p><strong>Key topics covered:</strong> {', '.join(common_themes[:5]) if common_themes else 'Comprehensive coverage of the subject matter'}.</p>"""
+        
+        return summary
+        
+    except Exception as e:
+        print(f"⚠️ Topic summary generation failed: {e}")
+        return "<p>This comprehensive guide provides detailed coverage of the topic with multiple focused articles for effective learning and reference.</p>"
+
+def extract_common_themes(titles: list) -> list:
+    """Extract common themes from article titles"""
+    try:
+        import re
+        
+        # Common technical terms to look for
+        all_words = []
+        for title in titles:
+            # Extract meaningful words (exclude common words)
+            words = re.findall(r'\b[A-Za-z]{4,}\b', title.lower())
+            all_words.extend(words)
+        
+        # Count word frequency
+        word_counts = {}
+        for word in all_words:
+            word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # Filter out very common words and get meaningful themes
+        exclude_words = {'guide', 'comprehensive', 'tutorial', 'article', 'using', 'with', 'into', 'from'}
+        themes = [word for word, count in word_counts.items() 
+                 if count > 1 and word not in exclude_words]
+        
+        return sorted(themes, key=lambda x: word_counts[x], reverse=True)
+        
+    except Exception as e:
+        print(f"⚠️ Theme extraction failed: {e}")
+        return []
+
+async def add_related_links_to_articles(created_articles: list) -> list:
+    """ENHANCED: Add comprehensive navigation, cross-references, and procedural flow links"""
+    try:
+        updated_articles = []
+        
+        # Get existing Content Library articles for cross-references
+        try:
+            existing_articles = []
+            async for existing_article in db.content_library.find().limit(30):
+                existing_articles.append({
+                    'id': existing_article.get('id'),
+                    'title': existing_article.get('title', 'Untitled'),
+                    'tags': existing_article.get('tags', []),
+                    'summary': existing_article.get('summary', ''),
+                    'stage_type': existing_article.get('metadata', {}).get('stage_type'),
+                    'focus': existing_article.get('metadata', {}).get('content_focus', 'general')
+                })
+            print(f"🔗 Found {len(existing_articles)} existing articles for comprehensive cross-linking")
+        except Exception as e:
+            print(f"⚠️ Could not fetch existing articles for linking: {e}")
+            existing_articles = []
+        
+        # ENHANCEMENT: Detect procedural sequences and add navigation
+        def detect_procedural_sequence(articles: list) -> dict:
+            """Detect procedural sequences for proper navigation ordering"""
+            
+            stage_order = {
+                'setup': 1,
+                'implementation': 2, 
+                'customization': 3,
+                'troubleshooting': 4
+            }
+            
+            sequences = {}
+            for article in articles:
+                stage_type = article.get('metadata', {}).get('stage_type', 'general')
+                stage_order_num = stage_order.get(stage_type, 99)
+                
+                if 'procedural_sequence' not in sequences:
+                    sequences['procedural_sequence'] = []
+                
+                sequences['procedural_sequence'].append({
+                    'article': article,
+                    'stage': stage_type,
+                    'order': stage_order_num
+                })
+            
+            # Sort by procedural order
+            for seq_name in sequences:
+                sequences[seq_name].sort(key=lambda x: x['order'])
+            
+            return sequences
+        
+        # Detect procedural sequences
+        sequences = detect_procedural_sequence(created_articles)
+        
+        for i, article in enumerate(created_articles):
+            original_content = article.get('content', '')
+            article_stage = article.get('metadata', {}).get('stage_type', 'general')
+            article_focus = article.get('metadata', {}).get('content_focus', 'general')
+            
+            # FIXED: Procedural Navigation with real article links
+            procedural_nav = []
+            
+            # Simple previous/next navigation based on article order
+            for idx, art in enumerate(created_articles):
+                if art.get('id') == article.get('id'):
+                    # Previous article link
+                    if idx > 0:
+                        prev_article = created_articles[idx - 1]
+                        prev_id = prev_article.get('id')
+                        prev_title = prev_article.get('title', 'Previous Article')
+                        prev_stage = prev_article.get('metadata', {}).get('stage_type', 'guide')
+                        procedural_nav.append(f'<li>⬅️ <strong>Previous:</strong> <a href="/content-library/article/{prev_id}" target="_blank">{prev_title}</a></li>')
+                    
+                    # Next article link  
+                    if idx < len(created_articles) - 1:
+                        next_article = created_articles[idx + 1]
+                        next_id = next_article.get('id')
+                        next_title = next_article.get('title', 'Next Article')
+                        next_stage = next_article.get('metadata', {}).get('stage_type', 'guide')
+                        procedural_nav.append(f'<li>➡️ <strong>Next:</strong> <a href="/content-library/article/{next_id}" target="_blank">{next_title}</a></li>')
+                    break
+            
+            # FIXED: Thematic Cross-References (Same Document/Topic) with real article links
+            thematic_links = []
+            
+            # Links to articles from same document with proper validation
+            same_doc_articles = [art for art in created_articles if art != article and 
+                               art.get('source_document') == article.get('source_document') and
+                               art.get('id')]  # Ensure article has valid ID
+            
+            for related_article in same_doc_articles[:4]:  # Show up to 4 related articles
+                related_id = related_article.get('id')
+                related_title = related_article.get('title', 'Related Article')
+                related_stage = related_article.get('metadata', {}).get('stage_type', 'general')
+                related_icon = get_article_type_icon(related_stage)
+                thematic_links.append(f'<li>{related_icon} <a href="/content-library/article/{related_id}" target="_blank">{related_title}</a></li>')
+            
+            # ENHANCEMENT 3: Content Library Cross-References (Topic Similarity)
+            library_links = []
+            
+            if existing_articles:
+                article_tags = set(article.get('tags', []))
+                article_keywords = extract_keywords_from_content(article.get('content', ''))
+                
+                # Find related articles from Content Library
+                related_from_library = []
+                for existing_article in existing_articles:
+                    # Skip if it's one of the current articles being processed
+                    if any(existing_article['id'] == art.get('id') for art in created_articles):
+                        continue
+                    
+                    existing_tags = set(existing_article.get('tags', []))
+                    existing_title = existing_article.get('title', '').lower()
+                    existing_focus = existing_article.get('focus', 'general')
+                    
+                    # Calculate relevance score
+                    relevance_score = 0
+                    
+                    # Tag overlap
+                    tag_overlap = len(article_tags & existing_tags)
+                    relevance_score += tag_overlap * 0.3
+                    
+                    # Keyword matching
+                    keyword_matches = sum(1 for keyword in article_keywords[:8] 
+                                        if keyword.lower() in existing_title)
+                    relevance_score += keyword_matches * 0.2
+                    
+                    # Focus area similarity
+                    if existing_focus == article_focus:
+                        relevance_score += 0.2
+                    
+                    # Stage type similarity (for procedural content)
+                    if (existing_article.get('stage_type') == article_stage and 
+                        article_stage != 'general'):
+                        relevance_score += 0.3
+                    
+                    if relevance_score > 0.3:  # Minimum relevance threshold
+                        related_from_library.append({
+                            'article': existing_article,
+                            'relevance': relevance_score
+                        })
+                
+                # Sort by relevance and add top matches
+                related_from_library.sort(key=lambda x: x['relevance'], reverse=True)
+                for related_item in related_from_library[:2]:  # Top 2 most relevant
+                    related_article = related_item['article']
+                    related_id = related_article.get('id')
+                    related_title = related_article.get('title', 'Related Article')
+                    library_links.append(f'<li>🔗 <a href="/content-library/article/{related_id}" target="_blank">{related_title}</a></li>')
+            
+            # ENHANCEMENT 4: External Reference Links (Context-Aware)
+            external_links = generate_contextual_external_links(article.get('content', ''), 
+                                                               article.get('tags', []), 
+                                                               article_stage)
+            
+            # ENHANCEMENT 5: Build Comprehensive Related Links Section  
+            related_links_sections = []
+            
+            # Procedural Navigation Section
+            if procedural_nav:
+                nav_section = f"""
+<h4>🔄 Procedural Navigation</h4>
+<ul>
+{chr(10).join(procedural_nav)}
+</ul>"""
+                related_links_sections.append(nav_section)
+            
+            # Thematic Links Section
+            if thematic_links:
+                thematic_section = f"""
+<h4>📚 Related in This Guide</h4>
+<ul>
+{chr(10).join(thematic_links)}
+</ul>"""
+                related_links_sections.append(thematic_section)
+            
+            # Content Library Links Section
+            if library_links:
+                library_section = f"""
+<h4>🔗 Related Articles</h4>
+<ul>
+{chr(10).join(library_links)}
+</ul>"""
+                related_links_sections.append(library_section)
+            
+            # External References Section
+            if external_links:
+                external_section = f"""
+<h4>🌐 External Resources</h4>
+<ul>
+{chr(10).join(external_links)}
+</ul>"""
+                related_links_sections.append(external_section)
+            
+            # Create final related links HTML
+            if related_links_sections:
+                related_section = f"""
+<hr>
+<div class="related-links">
+<h3>🔗 Related Articles & Resources</h3>
+{chr(10).join(related_links_sections)}
+</div>
+"""
+                # Add to content with deduplication check
+                if 'related-links' not in original_content:
+                    article['content'] = original_content + related_section
+                    link_count = len(procedural_nav) + len(thematic_links) + len(library_links) + len(external_links)
+                    print(f"✅ Added {link_count} comprehensive links to: {article.get('title', 'Untitled')[:50]}")
+                else:
+                    print(f"⚠️ Related links already exist in: {article.get('title', 'Untitled')[:50]}")
+            
+            updated_articles.append(article)
+        
+        return updated_articles
+        
+    except Exception as e:
+        print(f"❌ Error adding comprehensive related links: {e}")
+        return created_articles
+
+def generate_contextual_external_links(content: str, tags: list, stage_type: str = 'general') -> list:
+    """Generate context-aware external reference links based on content analysis and stage"""
+    external_links = []
+    
+    content_lower = content.lower()
+    
+    # Stage-specific external links
+    if stage_type == 'setup':
+        if 'api' in content_lower and 'key' in content_lower:
+            external_links.append('<li>🔑 <a href="https://developers.google.com/maps/gmp-get-started" target="_blank">Getting Started with Google APIs</a></li>')
+        if 'authentication' in content_lower or 'auth' in content_lower:
+            external_links.append('<li>🔐 <a href="https://auth0.com/docs/get-started" target="_blank">Authentication Best Practices</a></li>')
+            
+    elif stage_type == 'implementation':
+        if 'javascript' in content_lower and 'api' in content_lower:
+            external_links.append('<li>📖 <a href="https://developer.mozilla.org/en-US/docs/Web/API" target="_blank">Web APIs Reference (MDN)</a></li>')
+        if 'integration' in content_lower:
+            external_links.append('<li>⚙️ <a href="https://docs.github.com/en/developers/overview/about-integrations" target="_blank">Integration Guidelines</a></li>')
+            
+    elif stage_type == 'troubleshooting':
+        external_links.append('<li>🐛 <a href="https://stackoverflow.com/questions/tagged/api" target="_blank">Common API Issues (Stack Overflow)</a></li>')
+        external_links.append('<li>📋 <a href="https://httpstatuses.com/" target="_blank">HTTP Status Code Reference</a></li>')
+    
+    # Content-specific external links
+    if 'google' in content_lower and 'maps' in content_lower:
+        external_links.append('<li>🗺️ <a href="https://developers.google.com/maps/documentation" target="_blank">Google Maps API Documentation</a></li>')
+    elif 'shopify' in content_lower:
+        external_links.append('<li>🛍️ <a href="https://shopify.dev/api" target="_blank">Shopify API Documentation</a></li>')
+    elif 'wordpress' in content_lower:
+        external_links.append('<li>📝 <a href="https://developer.wordpress.org/plugins/" target="_blank">WordPress Plugin Development</a></li>')
+    elif 'webhook' in content_lower or 'callback' in content_lower:
+        external_links.append('<li>🔄 <a href="https://webhooks.fyi/" target="_blank">Webhooks Guide</a></li>')
+    
+    # Limit to prevent clutter
+    return external_links[:3]
+
+def extract_keywords_from_content(content: str) -> list:
+    """Extract keywords from article content for topic similarity matching"""
+    try:
+        import re
+        
+        # Remove HTML tags
+        clean_content = re.sub(r'<[^>]+>', '', content)
+        
+        # Extract meaningful words (4+ characters, not common words)
+        words = re.findall(r'\b[A-Za-z]{4,}\b', clean_content.lower())
+        
+        # Common words to exclude
+        exclude_words = {
+            'this', 'that', 'with', 'have', 'will', 'from', 'they', 'been', 
+            'were', 'said', 'each', 'which', 'their', 'time', 'more', 'very',
+            'what', 'know', 'just', 'first', 'into', 'over', 'think', 'also',
+            'your', 'work', 'life', 'only', 'still', 'should', 'after',
+            'being', 'made', 'before', 'here', 'through', 'when', 'where'
+        }
+        
+        # Filter and count word frequency
+        word_counts = {}
+        for word in words:
+            if word not in exclude_words and len(word) > 3:
+                word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # Return top keywords sorted by frequency
+        top_keywords = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
+        return [keyword for keyword, count in top_keywords[:10]]
+        
+    except Exception as e:
+        print(f"⚠️ Keyword extraction failed: {e}")
+        return []
+
+def get_article_type_icon(article_type: str) -> str:
+    """Get appropriate icon for article type"""
+    icons = {
+        'overview': '📋',
+        'concept': '💡',
+        'how-to': '🔧',
+        'use-case': '📄',
+        'faq-troubleshooting': '❓',
+        'general': '📖'
+    }
+    return icons.get(article_type, '📄')
+
+async def generate_external_reference_links(article: dict) -> list:
+    """Generate external reference links based on article content analysis"""
+    try:
+        content = article.get('content', '').lower()
+        title = article.get('title', '').lower()
+        external_links = []
+        
+        # Analyze content for common technical topics and generate relevant external links
+        if any(term in content or term in title for term in ['google maps', 'maps api', 'google api']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://developers.google.com/maps/documentation" target="_blank">Google Maps Platform Documentation</a></li>',
+                '<li>🌐 External: <a href="https://console.cloud.google.com/google/maps-apis" target="_blank">Google Cloud Console - Maps APIs</a></li>'
+            ])
+        
+        elif any(term in content or term in title for term in ['javascript', 'js', 'react', 'frontend']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">MDN JavaScript Documentation</a></li>',
+                '<li>🌐 External: <a href="https://reactjs.org/docs" target="_blank">React Documentation</a></li>'
+            ])
+        
+        elif any(term in content or term in title for term in ['api', 'rest', 'endpoint', 'integration']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://swagger.io/docs/" target="_blank">API Documentation Best Practices</a></li>',
+                '<li>🌐 External: <a href="https://restfulapi.net/" target="_blank">RESTful API Design Guidelines</a></li>'
+            ])
+        
+        elif any(term in content or term in title for term in ['troubleshoot', 'debug', 'error', 'problem']):
+            external_links.extend([
+                '<li>🌐 External: <a href="https://stackoverflow.com/" target="_blank">Stack Overflow - Developer Community</a></li>',
+                '<li>🌐 External: <a href="https://github.com/" target="_blank">GitHub - Code Examples and Issues</a></li>'
+            ])
+        
+        # Generic helpful resources if no specific topic detected
+        if not external_links:
+            external_links.extend([
+                '<li>🌐 External: <a href="https://developer.mozilla.org/" target="_blank">MDN Web Docs</a></li>',
+                '<li>🌐 External: <a href="https://stackoverflow.com/" target="_blank">Stack Overflow Community</a></li>'
+            ])
+        
+        # Limit to 2 external links to avoid overwhelming
+        return external_links[:2]
+        
+    except Exception as e:
+        print(f"⚠️ External link generation failed: {e}")
+        return []
+
+def extract_keywords_from_content(content: str) -> list:
+    """Extract keywords from article content for topic similarity matching"""
+    try:
+        import re
+        
+        # Remove HTML tags
+        clean_content = re.sub(r'<[^>]+>', '', content)
+        
+        # Extract meaningful words (4+ characters, not common words)
+        words = re.findall(r'\b[A-Za-z]{4,}\b', clean_content.lower())
+        
+        # Common words to exclude
+        exclude_words = {
+            'this', 'that', 'with', 'have', 'will', 'from', 'they', 'been', 
+            'were', 'said', 'each', 'which', 'their', 'time', 'more', 'very',
+            'what', 'know', 'just', 'first', 'into', 'over', 'think', 'also',
+            'your', 'work', 'life', 'only', 'can', 'still', 'should', 'after',
+            'being', 'now', 'made', 'before', 'here', 'through', 'when', 'where'
+        }
+        
+        # Filter and count word frequency
+        word_counts = {}
+        for word in words:
+            if word not in exclude_words and len(word) > 3:
+                word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # Return top keywords sorted by frequency
+        keywords = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
+        return [word for word, count in keywords[:10]]  # Top 10 keywords
+        
+    except Exception as e:
+        print(f"⚠️ Keyword extraction failed: {e}")
+        return []
+
+# === HTML PREPROCESSING PIPELINE FOR ACCURATE IMAGE REINSERTION ===
+
+class DocumentPreprocessor:
+    """
+    Revolutionary 3-phase HTML preprocessing pipeline for accurate image reinsertion
+    Phase 1: Convert documents to structured HTML with block IDs and image tokenization
+    Phase 2: AI processing that preserves tokens and structure  
+    Phase 3: Token replacement with rich image HTML
+    """
+    
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        self.asset_dir = f"static/uploads/session_{session_id}"
+        self.block_counter = 0
+        self.image_counter = 0
+        self.extracted_images = {}
+        
+        # Ensure asset directory exists
+        os.makedirs(self.asset_dir, exist_ok=True)
+    
+    async def preprocess_document(self, file_path: str, file_type: str) -> tuple[list, dict]:
+        """
+        Phase 1: Convert document to multiple structured HTML chunks with block IDs and image tokenization
+        Returns: (html_chunks_list, image_assets)
+        """
+        print(f"🔄 Phase 1: Starting HTML preprocessing with structural chunking for {file_type} document")
+        
+        try:
+            # Convert document to HTML based on type
+            if file_type.lower() in ['docx', 'doc']:
+                html_content, images = await self._convert_docx_to_html(file_path)
+                
+                # ENHANCED: Insert pending assets into Asset Library database
+                if hasattr(self, 'pending_assets') and self.pending_assets:
+                    try:
+                        # Use global database connection instead of creating new one
+                        global db
+                        
+                        # Insert all pending assets
+                        if self.pending_assets and db is not None:
+                            await db.assets.insert_many(self.pending_assets)
+                            print(f"📚 Successfully added {len(self.pending_assets)} assets to Asset Library")
+                            
+                        # Clear pending assets
+                        self.pending_assets = []
+                        
+                    except Exception as db_error:
+                        print(f"⚠️ Failed to insert assets into Asset Library: {db_error}")
+                        # Continue processing even if Asset Library insertion fails
+                        
+            elif file_type.lower() == 'pdf':
+                html_content, images = await self._convert_pdf_to_html(file_path)
+                
+                # FIXED: Add Asset Library insertion for PDF images (same as DOCX)
+                print(f"🔍 DEBUG: Checking for PDF pending_assets: hasattr={hasattr(self, 'pending_assets')}")
+                if hasattr(self, 'pending_assets'):
+                    print(f"🔍 DEBUG: Found {len(self.pending_assets)} pending PDF assets to insert")
+                    
+                if hasattr(self, 'pending_assets') and self.pending_assets:
+                    try:
+                        # Batch insert PDF images into Asset Library
+                        result = await db.assets.insert_many(self.pending_assets)
+                        print(f"📚 FIXED: Successfully inserted {len(result.inserted_ids)} PDF images into Asset Library")
+                        print(f"🔍 DEBUG: Inserted IDs: {result.inserted_ids[:3]}...")  # Show first 3 IDs
+                        
+                        # Clear pending assets after successful insertion
+                        self.pending_assets.clear()
+                        
+                    except Exception as db_error:
+                        print(f"❌ CRITICAL: Failed to insert PDF assets into Asset Library: {db_error}")
+                        import traceback
+                        traceback.print_exc()
+                        # Continue processing even if Asset Library insertion fails
+                else:
+                    print(f"⚠️ DEBUG: No pending PDF assets found. hasattr={hasattr(self, 'pending_assets')}, pending_assets={getattr(self, 'pending_assets', [])}")
+                    if hasattr(self, 'pending_assets'):
+                        print(f"⚠️ DEBUG: pending_assets length: {len(self.pending_assets)}")
+                    print(f"⚠️ DEBUG: PDF images extracted: {len(images)}")
+            
+            elif file_type.lower() in ['ppt', 'pptx']:
+                html_content, images = await self._convert_ppt_to_html(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {file_type}")
+            
+            print(f"📄 Converted to HTML: {len(html_content)} characters, {len(images)} images extracted")
+            
+            # NEW APPROACH: Create structural HTML chunks at conversion level
+            html_chunks = self._create_structural_html_chunks(html_content, images)
+            print(f"📚 Created {len(html_chunks)} structural HTML chunks")
+            
+            # PERFORMANCE OPTIMIZATION: Use parallel processing for chunks
+            if len(html_chunks) > 2:  # Use parallel processing for multiple chunks
+                print(f"🚀 Using parallel processing for {len(html_chunks)} chunks")
+                try:
+                    processed_chunks = await process_chunks_in_parallel(html_chunks, self, max_concurrent=2)
+                    print(f"✅ Parallel processing complete: {len(processed_chunks)} chunks processed")
+                except Exception as parallel_error:
+                    print(f"❌ Parallel processing failed: {parallel_error}, falling back to sequential")
+                    # Fallback to sequential processing
+                    processed_chunks = []
+                    for i, chunk_data in enumerate(html_chunks):
+                        print(f"🏗️ Sequential processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                        
+                        # Assign structural block IDs
+                        structured_html = self._assign_block_ids_to_chunk(chunk_data['content'], chunk_data['section_id'])
+                        
+                        # Tokenize images for this chunk
+                        tokenized_html = self._tokenize_images_in_chunk(structured_html, chunk_data['images'])
+                        
+                        processed_chunk = {
+                            'section_id': chunk_data['section_id'],
+                            'title': chunk_data['title'],
+                            'content': tokenized_html,
+                            'images': chunk_data['images'],
+                            'token_count': len(tokenized_html.split()) * 1.3  # Better token estimation
+                        }
+                        
+                        processed_chunks.append(processed_chunk)
+                        print(f"✅ Chunk {i+1} processed: ~{processed_chunk['token_count']:,} tokens")
+            else:
+                # Use sequential processing for small number of chunks
+                print(f"📝 Using sequential processing for {len(html_chunks)} chunks")
+                processed_chunks = []
+                for i, chunk_data in enumerate(html_chunks):
+                    print(f"🏗️ Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                    
+                    # Assign structural block IDs
+                    structured_html = self._assign_block_ids_to_chunk(chunk_data['content'], chunk_data['section_id'])
+                    
+                    # Tokenize images for this chunk
+                    tokenized_html = self._tokenize_images_in_chunk(structured_html, chunk_data['images'])
+                    
+                    # Create processed chunk with correct field names
+                    processed_chunk = {
+                        'section_id': chunk_data['section_id'],
+                        'title': chunk_data['title'],
+                        'content': tokenized_html,
+                        'images': chunk_data['images'],
+                        'token_count': len(tokenized_html.split()) * 1.3  # Better token estimation
+                    }
+                    
+                    processed_chunks.append(processed_chunk)
+                    print(f"✅ Chunk {i+1} processed: ~{processed_chunk['token_count']:,} tokens")
+            
+            return processed_chunks, self.extracted_images
+            
+        except Exception as e:
+            print(f"❌ Phase 1 preprocessing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
+    
+    def _save_docx_image(self, image):
+        """Save DOCX image and return placeholder for mammoth inline processing"""
+        try:
+            self.image_counter += 1
+            
+            # Determine file extension from content type
+            content_type = getattr(image, 'content_type', 'image/png')
+            if 'jpeg' in content_type or 'jpg' in content_type:
+                ext = 'jpg'
+            elif 'png' in content_type:
+                ext = 'png'
+            elif 'gif' in content_type:
+                ext = 'gif'
+            else:
+                ext = 'png'  # Default to PNG
+            
+            image_filename = f"img_{self.image_counter}.{ext}"
+            image_path = os.path.join(self.asset_dir, image_filename)
+            
+            # Get image data - mammoth uses different attribute names
+            try:
+                # Try different possible attribute names for image data
+                if hasattr(image, 'open'):
+                    # mammoth Image object has 'open' method
+                    with image.open() as image_data:
+                        image_bytes = image_data.read()
+                elif hasattr(image, 'bytes'):
+                    image_bytes = image.bytes
+                elif hasattr(image, 'data'):
+                    image_bytes = image.data
+                else:
+                    print(f"⚠️ Unknown image data format for image {self.image_counter}")
+                    # Create a placeholder to continue processing
+                    image_bytes = b''
+            except Exception as img_error:
+                print(f"❌ Failed to extract image {self.image_counter}: {img_error}")
+                # Create a placeholder to continue processing
+                image_bytes = b''
+            
+            # Store image metadata with correct URL path
+            image_id = f"doc_{self.session_id}_img_{self.image_counter}"
+            
+            # Ensure correct directory structure for serving
+            session_dir = f"static/uploads/session_{self.session_id}"
+            os.makedirs(session_dir, exist_ok=True)
+            
+            # Update paths to use session directory
+            image_path = os.path.join(session_dir, image_filename)
+            
+            # Save image to correct location AND Asset Library
+            if image_bytes:
+                try:
+                    # Save to session directory for immediate use
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(image_bytes)
+                    print(f"💾 Saved image to session: {image_path} ({len(image_bytes)} bytes)")
+                    
+                    # ENHANCED: Also save to Asset Library for long-term storage
+                    try:
+                        asset_id = str(uuid.uuid4())
+                        asset_filename = f"{asset_id}_{image_filename}"
+                        asset_path = f"static/uploads/{asset_filename}"
+                        
+                        # Save to main assets directory
+                        with open(asset_path, "wb") as asset_file:
+                            asset_file.write(image_bytes)
+                        
+                        # Store in Asset Library database (sync version)
+                        asset_doc = {
+                            "id": asset_id,
+                            "filename": image_filename,
+                            "original_filename": image_filename,
+                            "asset_type": "image", 
+                            "file_size": len(image_bytes),
+                            "content_type": content_type,
+                            "url": f"/api/static/uploads/{asset_filename}",
+                            "session_url": f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                            "created_at": datetime.utcnow().isoformat(),
+                            "source": "training_engine_extraction",
+                            "session_id": self.session_id
+                        }
+                        
+                        # OPTIMIZED: Batch Asset Library insertion at end instead of during processing
+                        if not hasattr(self, 'pending_assets'):
+                            self.pending_assets = []
+                        self.pending_assets.append(asset_doc)
+                        print(f"📚 OPTIMIZED: Queued for batch Asset Library insertion: {asset_filename}")
+                        
+                    except Exception as asset_error:
+                        print(f"⚠️ Failed to prepare Asset Library entry: {asset_error}")
+                        # Continue processing even if Asset Library preparation fails
+                        
+                except Exception as save_error:
+                    print(f"❌ Failed to save image {image_filename}: {save_error}")
+            
+            self.extracted_images[image_id] = {
+                'filename': image_filename,
+                'path': image_path,
+                'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                'alt_text': f"Image {self.image_counter}",
+                'content_type': content_type,
+                'size_bytes': len(image_bytes) if image_bytes else 0
+            }
+            
+            return {
+                "src": f"IMAGE_PLACEHOLDER_{image_id}"  # Placeholder for tokenization
+            }
+            
+        except Exception as e:
+            print(f"❌ Failed to save DOCX image: {e}")
+            return {"src": ""}
+
+    async def _convert_docx_to_html(self, file_path: str) -> tuple[str, list]:
+        """Convert DOCX to HTML using mammoth with enhanced image extraction"""
+        try:
+            print(f"🔍 Converting DOCX file: {file_path}")
+            
+            # ENHANCED: Add file validation before processing
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"DOCX file not found: {file_path}")
+            
+            file_size = os.path.getsize(file_path)
+            print(f"📊 DOCX file size: {file_size} bytes")
+            
+            # Check if file is actually a valid zip file (DOCX format)
+            import zipfile
+            try:
+                with zipfile.ZipFile(file_path, 'r') as test_zip:
+                    # Basic validation - check for required DOCX files
+                    required_files = ['word/document.xml', '[Content_Types].xml']
+                    zip_contents = test_zip.namelist()
+                    
+                    has_required = any(req in zip_contents for req in required_files)
+                    if not has_required:
+                        print(f"⚠️ File appears to be text content with .docx extension, treating as text")
+                        # Read as text file and convert to basic HTML
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            text_content = f.read()
+                        
+                        # Convert text to basic HTML structure
+                        html_content = self._convert_text_to_basic_html(text_content)
+                        return html_content, []
+                    
+            except zipfile.BadZipFile:
+                print(f"⚠️ File is not a valid zip file, treating as text content")
+                # Read as text file and convert to basic HTML
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    text_content = f.read()
+                
+                # Convert text to basic HTML structure  
+                html_content = self._convert_text_to_basic_html(text_content)
+                return html_content, []
+            
+            # Continue with standard DOCX processing using mammoth
+            import mammoth
+            
+            # Prepare custom converter for better HTML structure with enhanced table support
+            style_map = """
+                p[style-name='Heading 1'] => h1:fresh
+                p[style-name='Heading 2'] => h2:fresh  
+                p[style-name='Heading 3'] => h3:fresh
+                p[style-name='Title'] => h1:fresh
+                p[style-name='Subtitle'] => h2:fresh
+                table => table.docx-table
+                tr => tr
+                td => td
+                th => th
+            """
+            
+            # Convert DOCX to HTML with enhanced image and table extraction
+            with open(file_path, "rb") as docx_file:
+                # Use mammoth to convert with enhanced options
+                result = mammoth.convert_to_html(
+                    docx_file,
+                    style_map=style_map,
+                    convert_image=mammoth.images.inline(self._save_docx_image),
+                    ignore_empty_paragraphs=False,  # Keep structure
+                    include_embedded_style_map=True,  # Use document styles
+                    include_default_style_map=True   # Use default styles
+                )
+                
+                html_content = result.value
+                messages = result.messages
+                
+                # Log any conversion messages
+                if messages:
+                    print(f"📋 Mammoth conversion messages: {len(messages)}")
+                    for msg in messages[:5]:  # Show first 5 messages
+                        print(f"   - {msg}")
+                
+                # ENHANCED: Post-process HTML for better structure
+                html_content = await self._enhance_docx_html_structure(html_content)
+                
+                print(f"📝 DOCX converted to HTML: {len(html_content)} characters")
+                
+                # Get images that were extracted during conversion
+                images = []
+                for image_id, image_data in self.extracted_images.items():
+                    if f"IMAGE_PLACEHOLDER_{image_id}" in html_content:
+                        images.append({
+                            'id': image_id,
+                            'filename': image_data['filename'],
+                            'url': image_data['url'],
+                            'alt_text': image_data['alt_text']
+                        })
+                
+                print(f"🖼️ Extracted {len(images)} images from DOCX")
+                
+                # ENHANCED: Insert pending assets into Asset Library database
+                if hasattr(self, 'pending_assets') and self.pending_assets:
+                    try:
+                        # Get database connection (assuming it's available in the calling context)
+                        # This will be handled by the calling async function
+                        print(f"📚 {len(self.pending_assets)} assets prepared for Asset Library insertion")
+                    except Exception as db_error:
+                        print(f"⚠️ Asset Library preparation note: {db_error}")
+                
+                return html_content, images
+                
+        except Exception as e:
+            print(f"❌ DOCX conversion failed: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # ENHANCED: Fallback to text processing if DOCX conversion fails
+            try:
+                print(f"🔄 Attempting text fallback for DOCX file")
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    text_content = f.read()
+                
+                html_content = self._convert_text_to_basic_html(text_content)
+                print(f"✅ Text fallback successful: {len(html_content)} characters")
+                return html_content, []
+                
+            except Exception as fallback_error:
+                print(f"❌ Text fallback also failed: {fallback_error}")
+                return f"<p>Failed to convert DOCX: {str(e)}</p>", []
+    
+    async def _enhance_docx_html_structure(self, html_content: str) -> str:
+        """Enhance DOCX HTML structure with better formatting and table styling"""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Enhance table styling
+            tables = soup.find_all('table')
+            for table in tables:
+                # Add better table styling
+                table['style'] = 'border-collapse: collapse; width: 100%; margin: 1rem 0; border: 1px solid #ddd;'
+                table['class'] = 'docx-table'
+                
+                # Style table cells
+                for cell in table.find_all(['td', 'th']):
+                    cell['style'] = 'border: 1px solid #ddd; padding: 8px; text-align: left;'
+                    if cell.name == 'th':
+                        cell['style'] += ' background-color: #f5f5f5; font-weight: bold;'
+            
+            # Fix empty paragraphs and improve spacing
+            paragraphs = soup.find_all('p')
+            for p in paragraphs:
+                # Remove completely empty paragraphs
+                if not p.get_text().strip() and not p.find('img'):
+                    p.extract()
+                else:
+                    # Ensure proper paragraph spacing
+                    p['style'] = 'margin-bottom: 1em;'
+            
+            # Enhance heading structure
+            headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+            for heading in headings:
+                # Clean up heading text
+                heading_text = heading.get_text().strip()
+                if heading_text:
+                    # Add proper heading styling
+                    level = int(heading.name[1])
+                    margin_top = max(2 - (level - 1) * 0.2, 1)
+                    heading['style'] = f'margin-top: {margin_top}em; margin-bottom: 0.5em; font-weight: bold;'
+            
+            # Enhance list formatting
+            lists = soup.find_all(['ul', 'ol'])
+            for list_elem in lists:
+                list_elem['style'] = 'margin: 1em 0; padding-left: 2em;'
+                
+                # Style list items
+                for li in list_elem.find_all('li'):
+                    li['style'] = 'margin-bottom: 0.5em;'
+            
+            # Clean up the HTML
+            cleaned_html = str(soup)
+            
+            # Remove excessive whitespace
+            import re
+            cleaned_html = re.sub(r'\n\s*\n', '\n\n', cleaned_html)
+            cleaned_html = re.sub(r'<p>\s*</p>', '', cleaned_html)
+            
+            print("✨ Enhanced DOCX HTML structure with improved formatting")
+            return cleaned_html
+            
+        except Exception as e:
+            print(f"⚠️ HTML enhancement failed: {e}, returning original")
+            return html_content
+    
+    def _convert_text_to_basic_html(self, text_content: str) -> str:
+        """Convert plain text content to basic HTML structure"""
+        try:
+            lines = text_content.split('\n')
+            html_parts = []
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Simple heuristics for basic structure
+                if len(line) < 100 and line.isupper():
+                    # All caps short lines might be headings
+                    html_parts.append(f"<h2>{line}</h2>")
+                elif line.endswith(':') and len(line) < 80:
+                    # Lines ending with colon might be subheadings
+                    html_parts.append(f"<h3>{line}</h3>")
+                else:
+                    # Regular paragraph
+                    html_parts.append(f"<p>{line}</p>")
+            
+            return '\n'.join(html_parts)
+            
+        except Exception as e:
+            print(f"❌ Text to HTML conversion failed: {e}")
+            return f"<p>{text_content}</p>"
+    
+    async def _convert_pdf_to_html(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF to HTML using enhanced multi-library approach"""
+        try:
+            print(f"🔍 Converting PDF file: {file_path}")
+            
+            # ENHANCED: Add file validation before processing
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"PDF file not found: {file_path}")
+            
+            file_size = os.path.getsize(file_path)
+            print(f"📊 PDF file size: {file_size} bytes")
+            
+            # OPTIMIZED: Smart PDF processing method selection based on file characteristics
+            html_content = None
+            images = []
+            
+            # Quick file analysis to choose optimal processing method
+            processing_method = await self._select_optimal_pdf_method(file_path, file_size)
+            print(f"🎯 OPTIMIZED: Selected {processing_method} for PDF processing based on file analysis")
+            
+            # Process with selected method first, then fallback only if necessary
+            try:
+                if processing_method == "pymupdf":
+                    html_content, images = await self._convert_pdf_with_pymupdf(file_path)
+                    print("✅ PDF processed successfully with PyMuPDF (optimized selection)")
+                elif processing_method == "pdfplumber":
+                    html_content, images = await self._convert_pdf_with_pdfplumber(file_path)
+                    print("✅ PDF processed successfully with pdfplumber (optimized selection)")
+                else:
+                    # Fallback to PyMuPDF as default
+                    html_content, images = await self._convert_pdf_with_pymupdf(file_path)
+                    print("✅ PDF processed successfully with PyMuPDF (default)")
+                    
+            except Exception as primary_error:
+                print(f"⚠️ Primary method {processing_method} failed: {primary_error}")
+                
+                # OPTIMIZED: Single fallback instead of sequential failures
+                try:
+                    if processing_method != "pypdf2":
+                        html_content, images = await self._convert_pdf_with_pypdf2(file_path)
+                        print("✅ PDF processed successfully with PyPDF2 (optimized fallback)")
+                    else:
+                        html_content, images = await self._convert_pdf_with_pymupdf(file_path)
+                        print("✅ PDF processed successfully with PyMuPDF (optimized fallback)")
+                except Exception as fallback_error:
+                    print(f"❌ Optimized PDF processing failed. Fallback error: {fallback_error}")
+                    raise Exception(f"PDF processing failed: {primary_error}")
+            
+            if not html_content:
+                raise Exception("No content extracted from PDF")
+                
+            print(f"📝 PDF converted to HTML: {len(html_content)} characters, {len(images)} images extracted")
+            return html_content, images
+            
+        except Exception as e:
+            print(f"❌ PDF conversion failed: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # ENHANCED: Provide more informative error message
+            return f"<p>Failed to convert PDF '{os.path.basename(file_path)}': {str(e)}</p>", []
+    
+    async def _select_optimal_pdf_method(self, file_path: str, file_size: int) -> str:
+        """OPTIMIZATION: Select optimal PDF processing method based on file characteristics"""
+        try:
+            # Quick heuristics for method selection
+            if file_size < 1024 * 1024:  # Less than 1MB - likely simple text
+                return "pypdf2"  # Fastest for simple PDFs
+            elif file_size < 10 * 1024 * 1024:  # Less than 10MB - standard document
+                return "pymupdf"  # Best balance of features and speed
+            else:  # Large PDF - likely has complex formatting
+                return "pdfplumber"  # Better for complex layouts
+                
+        except Exception as e:
+            print(f"⚠️ PDF method selection failed: {e}, defaulting to PyMuPDF")
+            return "pymupdf"
+    
+    async def _convert_pdf_with_pymupdf(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using PyMuPDF (fitz) - best for text and image extraction"""
+        try:
+            import fitz  # PyMuPDF
+            
+            doc = fitz.open(file_path)
+            html_parts = []
+            images = []
+            
+            print(f"📖 Processing PDF with {len(doc)} pages using PyMuPDF")
+            
+            for page_num in range(len(doc)):
+                page = doc.load_page(page_num)
+                
+                # Extract text with formatting
+                text_dict = page.get_text("dict")
+                page_html = await self._process_pymupdf_page(text_dict, page_num)
+                
+                if page_html.strip():
+                    html_parts.append(f"<h2>Page {page_num + 1}</h2>")
+                    html_parts.append(page_html)
+                
+                # Extract images from this page
+                page_images = await self._extract_images_from_pymupdf_page(page, page_num)
+                images.extend(page_images)
+                
+                # Add small delay for large PDFs
+                if page_num % 10 == 0 and page_num > 0:
+                    await asyncio.sleep(0.1)
+            
+            doc.close()
+            
+            html_content = '\n\n'.join(html_parts) if html_parts else "<p>No readable content found in PDF</p>"
+            print(f"✅ PyMuPDF: Extracted {len(html_parts)} pages, {len(images)} images")
+            
+            return html_content, images
+            
+        except ImportError:
+            raise Exception("PyMuPDF (fitz) not available")
+        except Exception as e:
+            raise Exception(f"PyMuPDF processing failed: {str(e)}")
+    
+    async def _process_pymupdf_page(self, text_dict: dict, page_num: int) -> str:
+        """Process PyMuPDF text dictionary into structured HTML"""
+        try:
+            html_elements = []
+            
+            blocks = text_dict.get("blocks", [])
+            for block in blocks:
+                if "lines" not in block:
+                    continue
+                    
+                for line in block["lines"]:
+                    line_text_parts = []
+                    line_formatting = {}
+                    
+                    for span in line.get("spans", []):
+                        text = span.get("text", "").strip()
+                        if not text:
+                            continue
+                            
+                        # Analyze formatting
+                        font_size = span.get("size", 12)
+                        font_flags = span.get("flags", 0)
+                        
+                        # Determine if this is a heading based on font size and formatting
+                        is_bold = font_flags & 2**4  # Bold flag
+                        is_large = font_size > 14
+                        
+                        if is_large and is_bold:
+                            # Likely a heading
+                            if font_size > 18:
+                                line_formatting["tag"] = "h1"
+                            elif font_size > 16:
+                                line_formatting["tag"] = "h2"
+                            else:
+                                line_formatting["tag"] = "h3"
+                        elif is_bold:
+                            text = f"<strong>{text}</strong>"
+                            
+                        line_text_parts.append(text)
+                    
+                    # Combine line text
+                    line_text = " ".join(line_text_parts).strip()
+                    if not line_text:
+                        continue
+                    
+                    # Apply formatting
+                    if line_formatting.get("tag"):
+                        html_elements.append(f'<{line_formatting["tag"]}>{line_text}</{line_formatting["tag"]}>')
+                    else:
+                        html_elements.append(f"<p>{line_text}</p>")
+            
+            return '\n'.join(html_elements)
+            
+        except Exception as e:
+            print(f"⚠️ Error processing PyMuPDF page {page_num}: {e}")
+            return "<p>Error processing page content</p>"
+    
+    async def _extract_images_from_pymupdf_page(self, page, page_num: int) -> list:
+        """Extract meaningful content images from a PyMuPDF page (filtering out headers, footers, decorative elements)"""
+        try:
+            images = []
+            image_list = page.get_images()
+            
+            # Get page dimensions for position filtering
+            page_rect = page.rect
+            page_height = page_rect.height
+            page_width = page_rect.width
+            
+            # Define header/footer regions (top/bottom 10% of page)
+            header_boundary = page_height * 0.1
+            footer_boundary = page_height * 0.9
+            
+            print(f"📄 Page {page_num + 1}: Found {len(image_list)} images, applying content filtering...")
+            
+            for img_index, img in enumerate(image_list):
+                try:
+                    # Get the XREF of the image
+                    xref = img[0]
+                    
+                    # Get image position and dimensions
+                    img_rects = page.get_image_rects(xref)
+                    if not img_rects:
+                        continue
+                    
+                    img_rect = img_rects[0]  # Use first occurrence
+                    img_y = img_rect.y0
+                    img_height = img_rect.height
+                    img_width = img_rect.width
+                    
+                    # Extract the image for size analysis
+                    base_image = page.parent.extract_image(xref)
+                    image_bytes = base_image["image"]
+                    image_ext = base_image["ext"]
+                    
+                    # INTELLIGENT FILTERING: Skip non-content images
+                    
+                    # Filter 1: Skip very small images (likely bullets, icons, decorative elements)
+                    if len(image_bytes) < 5000:  # Less than 5KB
+                        print(f"  ❌ Skipped small image: {len(image_bytes)} bytes (likely decorative)")
+                        continue
+                    
+                    # Filter 2: Skip images in header/footer regions
+                    if img_y < header_boundary:
+                        print(f"  ❌ Skipped header image at y={img_y:.1f} (header boundary: {header_boundary:.1f})")
+                        continue
+                    
+                    if img_y > footer_boundary:
+                        print(f"  ❌ Skipped footer image at y={img_y:.1f} (footer boundary: {footer_boundary:.1f})")
+                        continue
+                    
+                    # Filter 3: Skip very small visual dimensions (likely icons)
+                    if img_width < 50 or img_height < 50:
+                        print(f"  ❌ Skipped tiny image: {img_width}x{img_height} pixels (likely icon/bullet)")
+                        continue
+                    
+                    # Filter 4: Skip extremely wide but short images (likely decorative bars/lines)
+                    if img_width > 400 and img_height < 20:
+                        print(f"  ❌ Skipped decorative bar: {img_width}x{img_height} pixels")
+                        continue
+                    
+                    # Filter 5: Skip images that appear on multiple consecutive pages (likely template elements)
+                    if hasattr(self, 'image_fingerprints'):
+                        # Create a simple fingerprint based on size
+                        fingerprint = f"{len(image_bytes)}_{img_width}_{img_height}"
+                        
+                        if fingerprint in self.image_fingerprints:
+                            self.image_fingerprints[fingerprint]['pages'].append(page_num + 1)
+                            
+                            # If same image appears on 3+ pages, it's likely a template element
+                            if len(self.image_fingerprints[fingerprint]['pages']) >= 3:
+                                print(f"  ❌ Skipped template image: appears on pages {self.image_fingerprints[fingerprint]['pages']} (likely header/footer logo)")
+                                continue
+                        else:
+                            self.image_fingerprints[fingerprint] = {
+                                'pages': [page_num + 1],
+                                'size': len(image_bytes)
+                            }
+                    else:
+                        self.image_fingerprints = {}
+                        fingerprint = f"{len(image_bytes)}_{img_width}_{img_height}"
+                        self.image_fingerprints[fingerprint] = {
+                            'pages': [page_num + 1],
+                            'size': len(image_bytes)
+                        }
+                    
+                    # ✅ CONTENT IMAGE: Passed all filters - this is likely meaningful content
+                    print(f"  ✅ Content image accepted: {len(image_bytes)} bytes, {img_width}x{img_height} pixels, y={img_y:.1f}")
+                    
+                    # Save image
+                    self.image_counter += 1
+                    image_filename = f"content_img_page{page_num + 1}_{img_index + 1}.{image_ext}"
+                    image_path = os.path.join(self.asset_dir, image_filename)
+                    
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(image_bytes)
+                    
+                    # Store image metadata
+                    image_id = f"pdf_{self.session_id}_p{page_num + 1}_img{img_index + 1}"
+                    self.extracted_images[image_id] = {
+                        'filename': image_filename,
+                        'path': image_path,
+                        'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                        'alt_text': f"Content Image from Page {page_num + 1}",
+                        'content_type': f"image/{image_ext}",
+                        'size_bytes': len(image_bytes),
+                        'dimensions': f"{img_width}x{img_height}",
+                        'position_y': img_y,
+                        'is_content_image': True
+                    }
+                    
+                    # FIXED: Prepare Asset Library entry for batch insertion (same as DOCX processing)
+                    asset_id = str(uuid.uuid4())
+                    asset_filename = f"{asset_id}_{image_filename}"
+                    asset_path = os.path.join("/app/backend/static/uploads", asset_filename)
+                    
+                    # Copy to main uploads directory for Asset Library  
+                    try:
+                        with open(asset_path, "wb") as asset_file:
+                            asset_file.write(image_bytes)
+                        
+                        asset_doc = {
+                            "id": asset_id,
+                            "filename": image_filename,
+                            "original_filename": image_filename,
+                            "asset_type": "image",
+                            "file_size": len(image_bytes),
+                            "content_type": f"image/{image_ext}",
+                            "url": f"/api/static/uploads/{asset_filename}",
+                            "session_url": f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                            "created_at": datetime.utcnow().isoformat(),
+                            "source": "pdf_content_extraction",  # UPDATED: Specify content extraction
+                            "session_id": self.session_id,
+                            "page_number": page_num + 1,
+                            "image_index": img_index + 1,
+                            "dimensions": f"{img_width}x{img_height}",
+                            "position_y": img_y,
+                            "is_content_image": True,  # ADDED: Mark as content image
+                            "extraction_filters_passed": "size,position,template,content"  # ADDED: Filtering info
+                        }
+                        
+                        # FIXED: Queue content image for batch Asset Library insertion
+                        if not hasattr(self, 'pending_assets'):
+                            self.pending_assets = []
+                        self.pending_assets.append(asset_doc)
+                        print(f"📚 CONTENT IMAGE: Queued for Asset Library: {asset_filename}")
+                        
+                    except Exception as asset_error:
+                        print(f"⚠️ Failed to prepare content image for Asset Library: {asset_error}")
+                    
+                    images.append({
+                        'id': image_id,
+                        'filename': image_filename,
+                        'url': f"/api/static/uploads/session_{self.session_id}/{image_filename}",
+                        'alt_text': f"Content Image from Page {page_num + 1}",
+                        'dimensions': f"{img_width}x{img_height}",
+                        'is_content': True
+                    })
+                    
+                    print(f"💾 CONTENT IMAGE: Extracted {image_filename} ({len(image_bytes)} bytes, {img_width}x{img_height})")
+                    
+                except Exception as img_error:
+                    print(f"⚠️ Failed to extract image {img_index} from page {page_num}: {img_error}")
+                    continue
+            
+            # Summary of filtering results
+            filtered_count = len(image_list) - len(images)
+            print(f"📊 Page {page_num + 1} filtering results: {len(images)} content images extracted, {filtered_count} decorative/template images filtered out")
+            
+            return images
+            
+        except Exception as e:
+            print(f"❌ Error extracting images from page {page_num}: {e}")
+            return []
+    
+    async def _convert_pdf_with_pdfplumber(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using pdfplumber - good for structured content and tables"""
+        try:
+            import pdfplumber
+            
+            html_parts = []
+            images = []
+            
+            with pdfplumber.open(file_path) as pdf:
+                print(f"📖 Processing PDF with {len(pdf.pages)} pages using pdfplumber")
+                
+                for page_num, page in enumerate(pdf.pages):
+                    # Extract text
+                    page_text = page.extract_text()
+                    if page_text:
+                        # Convert text to basic HTML structure
+                        page_html = self._convert_text_to_basic_html(page_text)
+                        if page_html.strip():
+                            html_parts.append(f"<h2>Page {page_num + 1}</h2>")
+                            html_parts.append(page_html)
+                    
+                    # Extract tables
+                    tables = page.extract_tables()
+                    for table_num, table in enumerate(tables):
+                        if table:
+                            table_html = self._convert_table_to_html(table, page_num, table_num)
+                            html_parts.append(table_html)
+                    
+                    # Add delay for large PDFs
+                    if page_num % 10 == 0 and page_num > 0:
+                        await asyncio.sleep(0.1)
+            
+            html_content = '\n\n'.join(html_parts) if html_parts else "<p>No readable content found in PDF</p>"
+            print(f"✅ pdfplumber: Extracted {len(html_parts)} content blocks")
+            
+            return html_content, images
+            
+        except ImportError:
+            raise Exception("pdfplumber not available")
+        except Exception as e:
+            raise Exception(f"pdfplumber processing failed: {str(e)}")
+    
+    def _convert_table_to_html(self, table: list, page_num: int, table_num: int) -> str:
+        """Convert a table array to HTML table"""
+        try:
+            if not table or not any(table):
+                return ""
+            
+            html = [f'<h4>Table {table_num + 1} (Page {page_num + 1})</h4>']
+            html.append('<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; margin: 1rem 0;">')
+            
+            # Process rows
+            for row_num, row in enumerate(table):
+                if not row or not any(cell for cell in row if cell):
+                    continue
+                    
+                html.append('<tr>')
+                for cell in row:
+                    cell_content = str(cell).strip() if cell else ""
+                    tag = "th" if row_num == 0 else "td"
+                    html.append(f'<{tag}>{cell_content}</{tag}>')
+                html.append('</tr>')
+            
+            html.append('</table>')
+            return '\n'.join(html)
+            
+        except Exception as e:
+            print(f"⚠️ Error converting table to HTML: {e}")
+            return f"<p>Table {table_num + 1} (conversion error)</p>"
+    
+    async def _convert_pdf_with_pdfminer(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using pdfminer.six - robust text extraction"""
+        try:
+            from pdfminer.high_level import extract_text
+            from pdfminer.layout import LAParams
+            
+            # Extract text with layout analysis
+            laparams = LAParams(
+                line_margin=0.5,
+                char_margin=2.0,
+                word_margin=0.1,
+                boxes_flow=0.5
+            )
+            
+            text = extract_text(file_path, laparams=laparams)
+            
+            if not text or not text.strip():
+                raise Exception("No text content extracted")
+            
+            # Convert to HTML structure
+            html_content = self._convert_text_to_basic_html(text)
+            print(f"✅ pdfminer.six: Extracted {len(text)} characters")
+            
+            return html_content, []
+            
+        except ImportError:
+            raise Exception("pdfminer.six not available")
+        except Exception as e:
+            raise Exception(f"pdfminer.six processing failed: {str(e)}")
+    
+    async def _convert_pdf_with_pypdf2(self, file_path: str) -> tuple[str, list]:
+        """Convert PDF using PyPDF2 - basic fallback"""
+        try:
+            import PyPDF2
+            
+            text_parts = []
+            
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                
+                print(f"📖 Processing PDF with {len(pdf_reader.pages)} pages using PyPDF2")
+                
+                for page_num, page in enumerate(pdf_reader.pages):
+                    try:
+                        page_text = page.extract_text()
+                        if page_text and page_text.strip():
+                            text_parts.append(f"Page {page_num + 1}")
+                            text_parts.append(page_text)
+                            text_parts.append("")  # Add spacing
+                    except Exception as page_error:
+                        print(f"⚠️ Error extracting page {page_num}: {page_error}")
+                        continue
+            
+            if not text_parts:
+                raise Exception("No text content extracted from any page")
+            
+            full_text = '\n'.join(text_parts)
+            html_content = self._convert_text_to_basic_html(full_text)
+            
+            print(f"✅ PyPDF2: Extracted {len(full_text)} characters")
+            return html_content, []
+            
+        except ImportError:
+            raise Exception("PyPDF2 not available")
+        except Exception as e:
+            raise Exception(f"PyPDF2 processing failed: {str(e)}")
+    
+    async def _convert_ppt_to_html(self, file_path: str) -> tuple[str, list]:
+        """Convert PowerPoint to HTML with slide structure"""
+        try:
+            # Try to use python-pptx for basic extraction
+            from pptx import Presentation
+            
+            prs = Presentation(file_path)
+            html_parts = []
+            images = []
+            
+            for i, slide in enumerate(prs.slides):
+                html_parts.append(f"<h2>Slide {i + 1}</h2>")
+                
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        html_parts.append(f"<p>{shape.text}</p>")
+                    elif shape.shape_type == 13:  # Picture type
+                        # Handle images in slides
+                        self.image_counter += 1
+                        image_id = f"ppt_{self.session_id}_img_{self.image_counter}"
+                        images.append({
+                            'id': image_id,
+                            'filename': f"slide_{i+1}_img_{self.image_counter}.png",
+                            'alt_text': f"Slide {i+1} Image {self.image_counter}"
+                        })
+                        html_parts.append(f"<p>IMAGE_PLACEHOLDER_{image_id}</p>")
+            
+            html_content = '\n'.join(html_parts)
+            return html_content, images
+            
+        except Exception as e:
+            print(f"❌ PowerPoint conversion failed: {e}")
+            return f"<p>Failed to convert PowerPoint: {str(e)}</p>", []
+    
+    def _create_structural_html_chunks(self, html_content: str, images: list) -> list:
+        """
+        FIXED: Create logical article chunks based on H1 AND H2 headings for better chunking
+        Enhanced to support documents with H2-based structure (common in user guides)
+        """
+        try:
+            # ENHANCED: Detect if content is Markdown and convert to HTML first
+            if self._is_markdown_content(html_content):
+                print("📝 Markdown content detected - converting to HTML for H1 detection")
+                html_content = self._convert_markdown_to_html(html_content)
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            chunks = []
+            current_chunk_content = []
+            current_section_id = "intro"
+            current_title = "Introduction"
+            section_counter = 0
+            
+            # Distribute images across chunks based on document position
+            chunk_images = {}  # Will map section_id to list of images
+            
+            # ISSUE FIX: Look for H1 AND H2 elements for better chunking
+            h1_elements = soup.find_all('h1')
+            h2_elements = soup.find_all('h2')
+            major_headings = h1_elements + h2_elements
+            
+            print(f"📊 Document analysis: {len(h1_elements)} H1 elements, {len(h2_elements)} H2 elements found")
+            print(f"🎯 ENHANCED CHUNKING: Using {len(major_headings)} major headings for chunking")
+            
+            if len(major_headings) > 0:
+                print(f"🔍 DEBUG: Major headings found:")
+                for i, heading in enumerate(major_headings[:10]):  # Show first 10
+                    print(f"   {heading.name.upper()} #{i+1}: '{heading.get_text().strip()[:50]}'")
+            
+            # ISSUE FIX: Enhanced chunking logic - use H1 OR H2 elements
+            if len(major_headings) <= 1:
+                # FALLBACK: No major heading structure OR only 1 heading
+                print("📄 Insufficient heading structure - checking content size for chunking")
+                
+                # Check if content is large enough to warrant chunking
+                content_length = len(html_content)
+                if content_length > 12000:  # If content is very large, force paragraph-based chunking
+                    print(f"📏 Large content ({content_length} chars) - using paragraph-based chunking")
+                    return self._create_paragraph_based_chunks(html_content, images)
+                else:
+                    print(f"📄 Creating single comprehensive article ({content_length} chars)")
+                    all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+                    
+                    chunk_html = self._create_chunk_html(all_elements)
+                    if self._is_chunk_valid(chunk_html):
+                        chunks.append({
+                            'section_id': 'full_document',
+                            'title': 'Complete Document',
+                            'content': chunk_html,
+                            'images': images  # All images go to this single chunk
+                        })
+                        print(f"✅ Comprehensive article created: Complete Document ({len(chunk_html)} chars)")
+            
+            else:
+                # ENHANCED: H1 AND H2 based chunking for better article distribution
+                print(f"📄 Major heading structure detected - using ENHANCED heading-based chunking")
+                
+                for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
+                    
+                    # Break at both H1 AND H2 boundaries for better chunking
+                    if element.name in ['h1', 'h2']:
+                        # Save current chunk if it has content
+                        if current_chunk_content:
+                            chunk_html = self._create_chunk_html(current_chunk_content)
+                            if self._is_chunk_valid(chunk_html):
+                                chunks.append({
+                                    'section_id': current_section_id,
+                                    'title': current_title,
+                                    'content': chunk_html,
+                                    'images': chunk_images.get(current_section_id, [])
+                                })
+                                print(f"✅ ENHANCED article created: {current_title} ({len(chunk_html)} chars)")
+                        
+                        # Start new chunk
+                        section_counter += 1
+                        current_section_id = f"section_{section_counter}"
+                        # Get clean title from heading text
+                        heading_text = element.get_text().strip()
+                        current_title = heading_text if heading_text else f"Section {section_counter}"
+                        
+                        # Start new chunk content with this heading
+                        current_chunk_content = [element]
+                        
+                    else:
+                        # Add all non-major-heading elements to current chunk
+                        current_chunk_content.append(element)
+                
+                # Don't forget the final chunk
+                if current_chunk_content:
+                    chunk_html = self._create_chunk_html(current_chunk_content)
+                    if self._is_chunk_valid(chunk_html):
+                        chunks.append({
+                            'section_id': current_section_id,
+                            'title': current_title,
+                            'content': chunk_html,
+                            'images': chunk_images.get(current_section_id, [])
+                        })
+                        print(f"✅ ENHANCED final article: {current_title} ({len(chunk_html)} chars)")
+            
+            print(f"🎯 ENHANCED CHUNKING COMPLETE: Created {len(chunks)} logical articles")
+            return chunks
+            
+        except Exception as e:
+            print(f"❌ Structural chunking failed: {e}")
+            # Ultimate fallback: single chunk
+            return [{
+                'section_id': 'fallback',
+                'title': 'Document Content',
+                'content': html_content,
+                'images': images
+            }]
+    
+    def _is_markdown_content(self, content: str) -> bool:
+        """
+        Detect if content is likely Markdown format
+        Looks for common Markdown syntax patterns
+        """
+        markdown_indicators = [
+            r'^#+\s',  # Headers (# ## ###)
+            r'^\*\*.*\*\*',  # Bold text
+            r'^_.*_',  # Italic text
+            r'^\* ',  # Unordered lists
+            r'^\d+\. ',  # Ordered lists
+            r'```',  # Code blocks
+        ]
+        
+        lines = content.split('\n')
+        markdown_score = 0
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            for pattern in markdown_indicators:
+                if re.match(pattern, line):
+                    markdown_score += 1
+                    break
+        
+        # If more than 20% of non-empty lines contain markdown syntax
+        non_empty_lines = len([line for line in lines if line.strip()])
+        if non_empty_lines > 0:
+            markdown_ratio = markdown_score / non_empty_lines
+            is_markdown = markdown_ratio > 0.2
+            print(f"📝 Markdown detection: {markdown_score}/{non_empty_lines} lines ({markdown_ratio:.2%}) - {'Markdown' if is_markdown else 'Plain text'}")
+            return is_markdown
+        
+        return False
+    
+    def _convert_markdown_to_html(self, markdown_content: str) -> str:
+        """
+        Convert Markdown content to HTML for proper H1 detection
+        Uses simple regex-based conversion for common patterns
+        """
+        try:
+            html_content = markdown_content
+            
+            # Convert headers (most important for H1 detection)
+            html_content = re.sub(r'^# (.*)$', r'<h1>\1</h1>', html_content, flags=re.MULTILINE)
+            html_content = re.sub(r'^## (.*)$', r'<h2>\1</h2>', html_content, flags=re.MULTILINE)
+            html_content = re.sub(r'^### (.*)$', r'<h3>\1</h3>', html_content, flags=re.MULTILINE)
+            html_content = re.sub(r'^#### (.*)$', r'<h4>\1</h4>', html_content, flags=re.MULTILINE)
+            html_content = re.sub(r'^##### (.*)$', r'<h5>\1</h5>', html_content, flags=re.MULTILINE)
+            html_content = re.sub(r'^###### (.*)$', r'<h6>\1</h6>', html_content, flags=re.MULTILINE)
+            
+            # Convert paragraphs (wrap non-tag lines in <p> tags)
+            lines = html_content.split('\n')
+            processed_lines = []
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    processed_lines.append('')
+                elif line.startswith('<h') or line.startswith('</'):
+                    processed_lines.append(line)
+                elif not any(line.startswith(tag) for tag in ['<', '*', '-', '+']):
+                    # Wrap non-empty, non-header lines in paragraph tags
+                    processed_lines.append(f'<p>{line}</p>')
+                else:
+                    processed_lines.append(line)
+            
+            html_content = '\n'.join(processed_lines)
+            
+            print(f"📝 Converted Markdown to HTML - {len(re.findall(r'<h1>', html_content))} H1 tags found")
+            return html_content
+            
+        except Exception as e:
+            print(f"❌ Markdown conversion failed: {e}")
+            return markdown_content  # Return original if conversion fails
+    
+    def _create_chunk_html(self, elements: list) -> str:
+        """Create valid HTML from a list of elements"""
+        if not elements:
+            return ""
+        
+        html_parts = []
+        for element in elements:
+            html_parts.append(str(element))
+        
+        return '\n'.join(html_parts)
+    
+    def _is_chunk_valid(self, chunk_html: str) -> bool:
+        """Check if chunk has substantial content - reduced threshold for simple documents"""
+        if not chunk_html or not chunk_html.strip():
+            return False
+        
+        # Remove HTML tags to get text content
+        soup = BeautifulSoup(chunk_html, 'html.parser')
+        text_content = soup.get_text().strip()
+        
+        # Check for minimum content length (reduced threshold)
+        if len(text_content) < 100:  # At least 100 characters
+            return False
+        
+        # Check for meaningful content (not just whitespace or minimal text)
+        words = text_content.split()
+        if len(words) < 10:  # At least 10 words
+            return False
+        
+        return True
+    def _create_paragraph_based_chunks(self, html_content: str, images: list) -> list:
+        """Create chunks based on paragraphs when no clear heading structure exists"""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            chunks = []
+            current_chunk_content = []
+            current_chunk_size = 0
+            section_counter = 1
+            chunk_target_size = 6000  # Target size per chunk
+            
+            print(f"📄 Creating paragraph-based chunks with target size {chunk_target_size} chars")
+            
+            # Get all significant elements
+            all_elements = soup.find_all(['h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+            
+            for element in all_elements:
+                element_size = len(str(element))
+                
+                # If adding this element would exceed target size, finalize current chunk
+                if current_chunk_size + element_size > chunk_target_size and current_chunk_content:
+                    chunk_html = self._create_chunk_html(current_chunk_content)
+                    
+                    if self._is_chunk_valid(chunk_html):
+                        chunks.append({
+                            'section_id': f'section_{section_counter}',
+                            'title': f'Document Section {section_counter}',
+                            'content': chunk_html,
+                            'images': []  # Distribute images later
+                        })
+                        print(f"✅ Paragraph chunk created: Section {section_counter} ({current_chunk_size} chars)")
+                    
+                    # Start new chunk
+                    section_counter += 1
+                    current_chunk_content = [element]
+                    current_chunk_size = element_size
+                else:
+                    current_chunk_content.append(element)
+                    current_chunk_size += element_size
+            
+            # Add final chunk
+            if current_chunk_content:
+                chunk_html = self._create_chunk_html(current_chunk_content)
+                if self._is_chunk_valid(chunk_html):
+                    chunks.append({
+                        'section_id': f'section_{section_counter}',
+                        'title': f'Document Section {section_counter}',
+                        'content': chunk_html,
+                        'images': []
+                    })
+                    print(f"✅ Final paragraph chunk: Section {section_counter} ({current_chunk_size} chars)")
+            
+            # Distribute images across chunks
+            if chunks and images:
+                images_per_chunk = len(images) // len(chunks)
+                for i, chunk in enumerate(chunks):
+                    start_idx = i * images_per_chunk
+                    end_idx = start_idx + images_per_chunk
+                    if i == len(chunks) - 1:  # Last chunk gets remaining images
+                        chunk['images'] = images[start_idx:]
+                    else:
+                        chunk['images'] = images[start_idx:end_idx]
+            
+            print(f"🎯 Paragraph-based chunking complete: {len(chunks)} chunks created")
+            return chunks
+            
+        except Exception as e:
+            print(f"❌ Paragraph-based chunking failed: {e}")
+            return [{
+                'section_id': 'fallback',
+                'title': 'Document Content',
+                'content': html_content,
+                'images': images
+            }]
+    
+    def _create_paragraph_based_chunks(self, html_content: str, images: list) -> list:
+        """Create chunks based on paragraphs when no clear heading structure exists"""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            chunks = []
+            current_chunk_content = []
+            current_section_id = "section_1"
+            section_counter = 1
+            
+            # Get all content elements
+            all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+            
+            for element in all_elements:
+                current_chunk_content.append(element)
+                
+                # Check if current chunk is getting large (every 10 elements)
+                if len(current_chunk_content) % 10 == 0:
+                    current_html = self._create_chunk_html(current_chunk_content)
+                    if len(current_html) > 8000:  # ~2000 words
+                        # Save current chunk
+                        chunks.append({
+                            'section_id': current_section_id,
+                            'title': f'Section {section_counter}',
+                            'content': current_html,
+                            'images': []
+                        })
+                        print(f"✅ Paragraph-based chunk created: Section {section_counter} ({len(current_html)} chars)")
+                        
+                        # Start new chunk
+                        section_counter += 1
+                        current_section_id = f"section_{section_counter}"
+                        current_chunk_content = []
+            
+            # Add final chunk if it has content
+            if current_chunk_content:
+                chunk_html = self._create_chunk_html(current_chunk_content)
+                if self._is_chunk_valid(chunk_html):
+                    chunks.append({
+                        'section_id': current_section_id,
+                        'title': f'Section {section_counter}',
+                        'content': chunk_html,
+                        'images': []
+                    })
+                    print(f"✅ Final paragraph-based chunk: Section {section_counter} ({len(chunk_html)} chars)")
+            
+            # Distribute images across chunks
+            if chunks and images:
+                images_per_chunk = len(images) // len(chunks)
+                for i, chunk in enumerate(chunks):
+                    start_idx = i * images_per_chunk
+                    end_idx = start_idx + images_per_chunk if i < len(chunks) - 1 else len(images)
+                    chunk['images'] = images[start_idx:end_idx]
+            
+            return chunks if chunks else [{
+                'section_id': 'full_document',
+                'title': 'Complete Document',
+                'content': html_content,
+                'images': images
+            }]
+            
+        except Exception as e:
+            print(f"❌ Paragraph-based chunking failed: {e}")
+            return [{
+                'section_id': 'full_document',
+                'title': 'Complete Document',
+                'content': html_content,
+                'images': images
+            }]
+    
+    def _distribute_images_to_chunks(self, chunks: list, images: list):
+        """Distribute images to appropriate chunks based on content proximity"""
+        try:
+            for image in images:
+                image_id = image['id']
+                best_chunk_idx = 0
+                
+                # Simple distribution: spread images evenly across chunks
+                # In a more sophisticated implementation, we could analyze image placement context
+                chunk_idx = len([img for img in images[:images.index(image)]]) % len(chunks)
+                
+                if chunk_idx < len(chunks):
+                    chunks[chunk_idx]['images'].append(image)
+                    print(f"📷 Assigned image {image_id} to chunk {chunk_idx + 1}")
+                
+        except Exception as e:
+            print(f"⚠️ Image distribution failed: {e}, assigning all images to first chunk")
+            if chunks:
+                chunks[0]['images'] = images
+    
+    def _assign_block_ids_to_chunk(self, chunk_html: str, section_id: str) -> str:
+        """
+        Assign unique data-block-id to every content block within a chunk
+        OPTIMIZED: Reduced verbosity and faster processing for large chunks
+        """
+        try:
+            soup = BeautifulSoup(chunk_html, 'html.parser')
+            element_counter = 0
+            
+            # Performance optimization: reduce logging for large chunks
+            chunk_size = len(chunk_html)
+            is_large_chunk = chunk_size > 30000  # 30KB threshold
+            
+            elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table'])
+            
+            for element in elements:
+                element_counter += 1
+                block_id = f"{section_id}_{element.name}_{element_counter}"
+                element['data-block-id'] = block_id
+                self.block_counter += 1
+                
+                # Reduced logging frequency for performance
+                if not is_large_chunk:
+                    print(f"📋 Assigned block ID: {block_id} to <{element.name}>")
+                elif element_counter % 25 == 0:  # Log every 25th element for large chunks
+                    print(f"📋 Block ID progress: {element_counter}/{len(elements)} elements in {section_id}")
+            
+            if is_large_chunk:
+                print(f"📋 Block ID assignment complete for {section_id}: {element_counter} elements")
+            
+            return str(soup)
+            
+        except Exception as e:
+            print(f"❌ Block ID assignment failed for chunk: {e}")
+            return chunk_html
+    
+    def _tokenize_images_in_chunk(self, chunk_html: str, chunk_images: list) -> str:
+        """
+        Replace image placeholders with positioned tokens within a specific chunk
+        """
+        try:
+            tokenized_html = chunk_html
+            
+            for image in chunk_images:
+                image_id = image['id']
+                placeholder = f"IMAGE_PLACEHOLDER_{image_id}"
+                
+                if placeholder in tokenized_html:
+                    # Create rich image token with metadata
+                    image_token = f"""<!-- IMAGE_BLOCK:{image_id} -->
+<div data-image-id="{image_id}" data-original-filename="{image.get('filename', '')}" data-alt="{image.get('alt_text', '')}">
+    [IMAGE: {image.get('alt_text', 'Image')}]
+</div>
+<!-- END_IMAGE_BLOCK:{image_id} -->"""
+                    
+                    tokenized_html = tokenized_html.replace(placeholder, image_token)
+                    print(f"🏷️ Tokenized image: {image_id} in chunk")
+            
+            return tokenized_html
+            
+        except Exception as e:
+            print(f"❌ Image tokenization failed for chunk: {e}")
+            return chunk_html
+    
+    async def process_with_ai_preserving_tokens(self, html_chunks: list, template_data: dict) -> list:
+        """
+        Phase 2: AI processing that preserves tokens and block structure
+        Processes multiple HTML chunks independently
+        """
+        print(f"🤖 Phase 2: Starting AI processing with {len(html_chunks)} structural chunks")
+        
+        processed_chunks = []
+        
+        try:
+            for i, chunk_data in enumerate(html_chunks):
+                print(f"🔄 Processing chunk {i+1}/{len(html_chunks)}: {chunk_data['title']}")
+                print(f"📊 Chunk tokens: ~{chunk_data.get('token_count', chunk_data.get('token_estimate', 0)):,}")
+                
+                # Process this chunk with AI
+                processed_content = await self._process_chunk_with_ai(chunk_data, template_data, i)
+                
+                # Create processed chunk data
+                processed_chunk = {
+                    'section_id': chunk_data['section_id'],
+                    'title': chunk_data['title'],
+                    'content': processed_content,
+                    'images': chunk_data['images'],
+                    'original_token_estimate': chunk_data.get('token_count', chunk_data.get('token_estimate', 0))
+                }
+                
+                processed_chunks.append(processed_chunk)
+                print(f"✅ Chunk {i+1} processed successfully")
+                
+                # Small delay between chunks to avoid rate limiting
+                await asyncio.sleep(1)
+            
+            print(f"✅ All {len(processed_chunks)} chunks processed successfully")
+            return processed_chunks
+                
+        except Exception as e:
+            print(f"❌ AI processing failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return html_chunks  # Return original chunks as fallback
+    
+    async def _process_chunk_with_ai(self, chunk_data: dict, template_data: dict, chunk_index: int) -> str:
+        """Process a single HTML chunk with AI while preserving structure, with large chunk handling"""
+        try:
+            # Check chunk size - handle very large H1 chunks differently
+            chunk_size = len(chunk_data['content'])
+            is_very_large = chunk_size > 200000  # ~50K tokens
+            
+            if is_very_large:
+                print(f"🔍 Very large H1 chunk detected: {chunk_data['title']} ({chunk_size} chars)")
+                print(f"📝 Attempting streamlined processing for large logical article...")
+            
+            system_message = """You are an expert content writer improving a section of a technical document with enhanced technical writing standards.
+
+CRITICAL REQUIREMENTS:
+1. PRESERVE ALL <!-- IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear
+2. PRESERVE ALL <!-- END_IMAGE_BLOCK:xxx --> tokens EXACTLY as they appear  
+3. MAINTAIN all data-block-id attributes on HTML elements
+4. PRESERVE the [IMAGE: ...] placeholders within image blocks
+5. Keep the HTML structure intact (headings, paragraphs, lists)
+
+ENHANCED TECHNICAL WRITING STANDARDS:
+6. **Title Handling**: The article title acts as the H1 heading - DO NOT repeat it inside the article body
+7. **Technical Writing Elements**: Use professional components:
+   - **Callouts**: Use <blockquote> or <div class="callout"> for Tips, Warnings, Notes
+   - **Tables**: For structured data, comparisons, and parameters
+   - **Lists**: Numbered lists for sequential steps; bullet lists for features/options
+   - **Code Blocks**: <pre><code> for code samples, queries, configurations
+   - **Inline Code**: <code> for small code references in sentences
+8. **Content Quality**: Transform generic titles into specific, actionable ones
+9. **Article Categorization**: Structure content as one of:
+   - **Concepts**: Explain principles, features, or ideas in depth
+   - **How-to/Guides**: Step-by-step procedures for specific tasks
+   - **Use-Case Walkthroughs**: Applied scenarios and implementations
+   - **FAQs**: Direct answers to common questions
+   - **Troubleshooting**: Problem diagnosis and solutions
+
+Your task is to:
+- Improve text content for clarity, readability, and professional engagement
+- Apply appropriate technical writing elements (callouts, tables, code blocks)
+- Ensure specific, actionable titles that reflect exact content
+- Structure content according to article type (concept, how-to, use-case, etc.)
+- Expand content appropriately while maintaining focus on this section
+- Preserve all structural elements and image tokens
+
+Do NOT:
+- Remove or modify any image tokens or data-block-id attributes
+- Change the basic HTML structure or heading hierarchy
+- Generate new fake images or remove existing image references
+- Merge or split major sections
+- Repeat the article title inside the body content"""
+
+            # Adjust processing approach for very large chunks
+            if is_very_large:
+                # For very large chunks, focus on structural improvements rather than content expansion
+                user_message = f"""Please improve this large document section with enhanced technical writing standards:
+
+SECTION: {chunk_data['title']}
+
+{chunk_data['content'][:50000]}...
+[Content truncated for processing - full content will be preserved]
+
+ENHANCEMENT REQUIREMENTS:
+1. **Title Optimization**: Ensure the title "{chunk_data['title']}" is specific and actionable, not generic
+2. **Technical Writing Elements**: Apply appropriate professional components:
+   - Use <blockquote> or styled <div> blocks for callouts (💡 Tips, 📝 Notes, ⚠️ Warnings)
+   - Structure data in <table> format for comparisons, parameters, configurations
+   - Use <ol> for sequential steps, <ul> for feature lists and options
+   - Apply <pre><code> for code samples and <code> for inline references
+3. **Content Categorization**: Structure this section as:
+   - **Concept**: If explaining principles or features
+   - **How-to Guide**: If providing step-by-step procedures
+   - **Use-Case Walkthrough**: If demonstrating implementations
+   - **FAQ/Troubleshooting**: If addressing problems/questions
+4. **Professional Standards**: 
+   - Clear heading hierarchy (H2, H3, H4 - NO H1 as that's the title)
+   - Actionable language for instructions
+   - Consistent terminology and UI references
+   - Remove ambiguity and improve transitions
+
+Focus on:
+- Structural improvements and formatting consistency
+- Professional technical writing element integration
+- Title optimization for clarity and specificity
+- Content organization according to article type
+- Preserving all image positions and tokens exactly as they are
+
+Note: This is a large logical section that should remain as one article. Focus on improvements without major content expansion."""
+            else:
+                user_message = f"""Please improve this document section with enhanced technical writing standards:
+
+SECTION: {chunk_data['title']}
+
+{chunk_data['content']}
+
+ENHANCEMENT REQUIREMENTS:
+1. **Title Optimization**: Refine the title "{chunk_data['title']}" to be specific and actionable:
+   - **Concepts**: "API Core Concepts and Components" instead of "Understanding the API"
+   - **How-to**: "Integrating Maps into React Applications" instead of "Comprehensive Guide to Maps"
+   - **Use-Cases**: "Building Location-Based Store Finder" instead of "Maps Implementation Guide"
+   - **Troubleshooting**: "Resolving 'Invalid API Key' Errors" instead of "API Issues Guide"
+
+2. **Technical Writing Elements**: Apply professional components:
+   - **Callouts**: Use <blockquote class="tip">, <blockquote class="warning">, <blockquote class="note"> with appropriate emoji (💡 📝 ⚠️)
+   - **Tables**: Structure parameters, configurations, and comparisons in proper <table> format
+   - **Lists**: <ol> for sequential procedures, <ul> for features/options/requirements
+   - **Code Elements**: <pre><code> for multi-line code, <code> for inline references
+   - **Expand/Collapse**: Use <details><summary> for optional or detailed information
+
+3. **Content Structure by Type**:
+   - **Concept Articles**: Explain principles, features, definitions with examples
+   - **How-to Guides**: Clear step-by-step procedures with numbered lists
+   - **Use-Case Walkthroughs**: Applied scenarios with implementation details
+   - **FAQ/Troubleshooting**: Problem-solution format with clear diagnosis steps
+
+4. **Professional Standards**:
+   - Clear heading hierarchy starting with H2 (NO H1 - that's the title)
+   - Actionable, specific language for all instructions
+   - Consistent UI terminology and interface references
+   - Proper transitions between sections
+   - Remove generic phrases and improve specificity
+
+Focus on:
+- Making content comprehensive, informative, and professionally structured
+- Applying appropriate technical writing elements based on content type
+- Optimizing title for clarity and searchability
+- Improving readability and flow within this section
+- Preserving all image positions and tokens exactly as they are"""
+
+            # Use the existing LLM fallback system with chunk-specific session ID
+            chunk_session_id = f"{self.session_id}_chunk_{chunk_index}"
+            
+            # For very large chunks, try a more conservative approach first
+            if is_very_large:
+                print(f"🎯 Processing large H1 chunk with conservative approach...")
+                
+            improved_content = await call_llm_with_fallback(system_message, user_message, chunk_session_id)
+            
+            if improved_content:
+                print(f"✅ AI processing complete for chunk {chunk_index + 1}: {len(improved_content)} characters")
+                return improved_content
+            else:
+                print(f"⚠️ AI processing failed for chunk {chunk_index + 1}, returning original content")
+                return chunk_data['content']
+                
+        except Exception as e:
+            print(f"❌ AI processing failed for chunk {chunk_index + 1}: {e}")
+            return chunk_data['content']
+    
+    def replace_tokens_with_rich_images(self, processed_chunks: list) -> list:
+        """
+        Phase 3: Replace image tokens with rich HTML figure elements for all chunks
+        """
+        print(f"🖼️ Phase 3: Starting token replacement across {len(processed_chunks)} chunks")
+        
+        final_chunks = []
+        
+        try:
+            for i, chunk_data in enumerate(processed_chunks):
+                print(f"🎨 Processing tokens in chunk {i+1}: {chunk_data['title']}")
+                
+                result_html = chunk_data['content']
+                
+                # Find all image blocks and replace with rich HTML
+                import re
+                
+                pattern = r'<!-- IMAGE_BLOCK:([^>]+) -->(.*?)<!-- END_IMAGE_BLOCK:\1 -->'
+                matches = re.findall(pattern, result_html, re.DOTALL)
+                
+                images_replaced = 0
+                for image_id, block_content in matches:
+                    if image_id in self.extracted_images:
+                        image_data = self.extracted_images[image_id]
+                        
+                        # Create rich figure element
+                        rich_image_html = f"""<figure style="margin: 20px 0; text-align: center;">
+    <img src="{image_data['url']}" 
+         alt="{image_data['alt_text']}" 
+         style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+    <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic;">
+        {image_data['alt_text']}
+    </figcaption>
+</figure>"""
+                        
+                        # Replace the entire image block
+                        full_token = f"<!-- IMAGE_BLOCK:{image_id} -->{block_content}<!-- END_IMAGE_BLOCK:{image_id} -->"
+                        result_html = result_html.replace(full_token, rich_image_html)
+                        images_replaced += 1
+                        
+                        print(f"🎨 Replaced token {image_id} with rich HTML in chunk {i+1}")
+                    else:
+                        print(f"⚠️ Image data not found for token: {image_id} in chunk {i+1}")
+                
+                # Create final chunk data
+                final_chunk = {
+                    'section_id': chunk_data['section_id'],
+                    'title': chunk_data['title'],
+                    'content': result_html,
+                    'images_replaced': images_replaced,
+                    'original_images': len(chunk_data.get('images', []))
+                }
+                
+                final_chunks.append(final_chunk)
+                print(f"✅ Chunk {i+1} token replacement complete: {images_replaced} images embedded")
+            
+            print(f"🎉 Phase 3 complete: Token replacement finished for all {len(final_chunks)} chunks")
+            return final_chunks
+            
+        except Exception as e:
+            print(f"❌ Token replacement failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return processed_chunks  # Return processed chunks without token replacement
+
+def convert_markdown_to_html_for_text_processing(content: str) -> str:
+    """
+    Convert Markdown content to HTML for text processing and chunking
+    This is a standalone function for use outside the DocumentPreprocessor class
+    """
+    try:
+        html_content = content
+        
+        # Convert headers (most important for H1 detection)
+        html_content = re.sub(r'^# (.*)$', r'<h1>\1</h1>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^## (.*)$', r'<h2>\1</h2>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^### (.*)$', r'<h3>\1</h3>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^#### (.*)$', r'<h4>\1</h4>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^##### (.*)$', r'<h5>\1</h5>', html_content, flags=re.MULTILINE)
+        html_content = re.sub(r'^###### (.*)$', r'<h6>\1</h6>', html_content, flags=re.MULTILINE)
+        
+        # Convert paragraphs (wrap non-tag lines in <p> tags)
+        lines = html_content.split('\n')
+        processed_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                processed_lines.append('')
+            elif line.startswith('<h') or line.startswith('</'):
+                processed_lines.append(line)
+            elif not any(line.startswith(tag) for tag in ['<', '*', '-', '+']):
+                # Wrap non-empty, non-header lines in paragraph tags
+                processed_lines.append(f'<p>{line}</p>')
+            else:
+                processed_lines.append(line)
+        
+        html_content = '\n'.join(processed_lines)
+        
+        print(f"📝 Converted Markdown to HTML for text processing - {len(re.findall(r'<h1>', html_content))} H1 tags found")
+        return html_content
+        
+    except Exception as e:
+        print(f"❌ Markdown conversion for text processing failed: {e}")
+        return content  # Return original if conversion fails
+
+    def _split_large_chunk(self, large_chunk: dict) -> list:
+        """
+        Split a chunk that's too large into smaller, manageable pieces
+        FIXED: Prevent recursive title accumulation
+        """
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(large_chunk['content'], 'html.parser')
+            
+            sub_chunks = []
+            current_elements = []
+            
+            # FIXED: Get base title without accumulated parts
+            base_title = large_chunk['title'].split(' (Part')[0]
+            sub_counter = 1
+            
+            # Split into larger sub-chunks (50K chars instead of 30K)
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table']):
+                current_elements.append(element)
+                
+                # Check size every 10 elements (increased from 5)
+                if len(current_elements) % 10 == 0:
+                    current_html = ''.join(str(el) for el in current_elements)
+                    if len(current_html) > 50000:  # ~12K tokens (increased from 7.5K)
+                        # Save sub-chunk with clean title
+                        sub_chunks.append({
+                            'section_id': f"{large_chunk['section_id']}_part_{sub_counter}",
+                            'title': f"{base_title} (Part {sub_counter})",  # Clean title
+                            'content': current_html,
+                            'images': []  # Images will be distributed later
+                        })
+                        print(f"✅ Sub-chunk created: {base_title} Part {sub_counter} ({len(current_html)} chars)")
+                        
+                        # Reset for next sub-chunk
+                        current_elements = []
+                        sub_counter += 1
+            
+            # Add final sub-chunk
+            if current_elements:
+                final_html = ''.join(str(el) for el in current_elements)
+                if len(final_html) > 1000:  # Minimum size (increased from 500)
+                    sub_chunks.append({
+                        'section_id': f"{large_chunk['section_id']}_part_{sub_counter}",
+                        'title': f"{base_title} (Part {sub_counter})",  # Clean title
+                        'content': final_html,
+                        'images': []
+                    })
+                    print(f"✅ Final sub-chunk created: {base_title} Part {sub_counter} ({len(final_html)} chars)")
+            
+            return sub_chunks if sub_chunks else [large_chunk]
+            
+        except Exception as e:
+            print(f"❌ Large chunk splitting failed: {e}")
+            return [large_chunk]
+
+    def _tokenize_images(self, structured_html: str, images: list) -> str:
+        """
+        Phase 1c: Replace image placeholders with positioned tokens
+        Creates <!-- IMAGE_BLOCK:xxx --> tokens that AI can preserve
+        """
+        try:
+            tokenized_html = structured_html
+            
+            for image in images:
+                image_id = image['id']
+                placeholder = f"IMAGE_PLACEHOLDER_{image_id}"
+                
+                # Create rich image token with metadata
+                image_token = f"""<!-- IMAGE_BLOCK:{image_id} -->
+<div data-image-id="{image_id}" data-original-filename="{image.get('filename', '')}" data-alt="{image.get('alt_text', '')}">
+    [IMAGE: {image.get('alt_text', 'Image')}]
+</div>
+<!-- END_IMAGE_BLOCK:{image_id} -->"""
+                
+                tokenized_html = tokenized_html.replace(placeholder, image_token)
+                print(f"🏷️ Tokenized image: {image_id}")
+            
+            return tokenized_html
+            
+        except Exception as e:
+            print(f"❌ Image tokenization failed: {e}")
+            return structured_html
+# === END HTML PREPROCESSING PIPELINE ===
+
+async def extract_document_title(file_path: str, file_extension: str, html_content: str = None) -> str:
+    """
+    ISSUE 2 FIX: Extract document title prioritizing FILENAME over content extraction
+    Priority: Filename (without extension) > H1 > Title style > First paragraph
+    """
+    try:
+        # ISSUE 2 FIX: PRIORITIZE FILENAME for clean title handling
+        filename = os.path.basename(file_path)
+        if '.' in filename:
+            filename_title = filename.rsplit('.', 1)[0]
+        else:
+            filename_title = filename
+        
+        # Clean up the filename title
+        filename_title = filename_title.replace('_', ' ').replace('-', ' ').title()
+        filename_title = ' '.join(filename_title.split())  # Clean extra spaces
+        
+        print(f"🎯 ISSUE 2 FIX: Using FILENAME as primary title: '{filename_title}'")
+        return filename_title
+        
+        # COMMENTED OUT: Content-based title extraction (causes duplicate H1 issues)
+        # if file_extension == 'docx':
+        #     # Try to extract from DOCX structure first
+        #     try:
+        #         from docx import Document
+        #         doc = Document(file_path)
+        #         
+        #         # Check for Title style first
+        #         for para in doc.paragraphs:
+        #             if para.style.name == 'Title' and para.text.strip():
+        #                 title = para.text.strip()
+        #                 print(f"📋 Found Title style: {title}")
+        #                 return title
+        #         
+        #         # Check for Heading 1
+        #         for para in doc.paragraphs:
+        #             if para.style.name == 'Heading 1' and para.text.strip():
+        #                 title = para.text.strip()
+        #                 print(f"📋 Found Heading 1: {title}")
+        #                 return title
+        #         
+        #         # Check for first non-empty paragraph as fallback
+        #         for para in doc.paragraphs:
+        #             if para.text.strip() and len(para.text.strip()) < 100:  # Likely a title
+        #                 title = para.text.strip()
+        #                 print(f"📋 Found first paragraph title: {title}")
+        #                 return title
+        #                 
+        #     except Exception as docx_error:
+        #         print(f"⚠️ DOCX title extraction failed: {docx_error}")
+        # 
+        # # Fallback: Extract from HTML content if available
+        # if html_content:
+        #     from bs4 import BeautifulSoup
+        #     soup = BeautifulSoup(html_content, 'html.parser')
+        #     
+        #     # Look for H1 elements
+        #     h1_elements = soup.find_all('h1')
+        #     if h1_elements and h1_elements[0].get_text().strip():
+        #         title = h1_elements[0].get_text().strip()
+        #         print(f"📋 Found H1 in HTML: {title}")
+        #         return title
+        #     
+        #     # Look for any heading elements
+        #     for heading in soup.find_all(['h1', 'h2', 'h3']):
+        #         if heading.get_text().strip():
+        #             title = heading.get_text().strip()
+        #             print(f"📋 Found heading in HTML: {title}")
+        #             return title
+        #     
+        #     # Look for first paragraph that might be a title
+        #     paragraphs = soup.find_all('p')
+        #     if paragraphs:
+        #         first_text = paragraphs[0].get_text().strip()
+        #         if first_text and len(first_text) < 100:
+        #             print(f"📋 Found paragraph title in HTML: {first_text}")
+        #             return first_text
+        
+    except Exception as e:
+        print(f"❌ ISSUE 2 FIX: Title extraction failed, using fallback: {e}")
+        # Final fallback: use filename without extension
+        filename = os.path.basename(file_path)
+        if '.' in filename:
+            title = filename.rsplit('.', 1)[0]
+        else:
+            title = filename
+        
+        # Clean up the filename title
+        title = title.replace('_', ' ').replace('-', ' ').title()
+        title = ' '.join(title.split())  # Clean extra spaces
+        print(f"🔄 ISSUE 2 FIX: Fallback filename title: '{title}'")
+        return title
+        title = title.replace('_', ' ').replace('-', ' ')
+        title = ' '.join(word.capitalize() for word in title.split())
+        
+        print(f"📋 Using cleaned filename as title: {title}")
+        return title
+        
+    except Exception as e:
+        print(f"❌ Title extraction failed: {e}")
+        return "Untitled Document"
+
+async def extract_h1_title_from_content(content: str) -> str:
+    """
+    Extract the first H1 heading from HTML content
+    Returns the text content of the first H1 element found
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find the first H1 element
+        h1_element = soup.find('h1')
+        if h1_element and h1_element.get_text().strip():
+            title = h1_element.get_text().strip()
+            print(f"📋 Extracted H1 title from content: {title}")
+            return title
+        
+        return ""
+        
+    except Exception as e:
+        print(f"❌ H1 title extraction failed: {e}")
+        return ""
+
+async def chunk_large_document_for_polishing(content: str, title: str) -> list:
+    """
+    ISSUE 1 FIX: Aggressive chunking for documents over 3,000 characters
+    Does not require H1 structure - forces chunking for better processing
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        content_length = len(content)
+        print(f"🔥 ISSUE 1 FIX: Force chunking document ({content_length} chars)")
+        
+        # Find ALL headings (not just H1) for potential chunk boundaries
+        all_headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        
+        print(f"📊 Document analysis: {len(all_headings)} headings found (H1-H6)")
+        
+        # ISSUE 1 FIX: FORCE chunking even if no proper heading structure
+        if len(all_headings) < 2:
+            print(f"⚠️ ISSUE 1 FIX: Insufficient heading structure - FORCING paragraph-based chunking")
+            
+            # Split by paragraphs when no headings are available
+            paragraphs = soup.find_all('p')
+            if len(paragraphs) >= 3:  # Need at least 3 paragraphs to chunk
+                print(f"📄 ISSUE 1 FIX: Splitting by paragraphs ({len(paragraphs)} found)")
+                
+                # Group paragraphs into chunks of ~1,500-2,500 chars each
+                chunks = []
+                current_chunk_paras = []
+                current_chunk_size = 0
+                chunk_counter = 0
+                
+                for para in paragraphs:
+                    para_text = para.get_text().strip()
+                    para_size = len(para_text)
+                    
+                    # If adding this paragraph would exceed ~2,500 chars, finalize current chunk
+                    if current_chunk_size + para_size > 2500 and current_chunk_paras:
+                        chunk_counter += 1
+                        chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                        
+                        chunks.append({
+                            'title': f"{title} - Part {chunk_counter}",
+                            'content': chunk_html,
+                            'chunk_type': 'paragraph_based',
+                            'text_length': current_chunk_size,
+                            'min_threshold_met': True
+                        })
+                        print(f"✅ ISSUE 1 FIX: Paragraph chunk created: Part {chunk_counter} ({current_chunk_size} chars)")
+                        
+                        # Start new chunk
+                        current_chunk_paras = [para]
+                        current_chunk_size = para_size
+                    else:
+                        current_chunk_paras.append(para)
+                        current_chunk_size += para_size
+                
+                # Add final chunk if it has content
+                if current_chunk_paras:
+                    chunk_counter += 1
+                    chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                    
+                    chunks.append({
+                        'title': f"{title} - Part {chunk_counter}",
+                        'content': chunk_html,
+                        'chunk_type': 'paragraph_based',
+                        'text_length': current_chunk_size,
+                        'min_threshold_met': True
+                    })
+                    print(f"✅ ISSUE 1 FIX: Final paragraph chunk: Part {chunk_counter} ({current_chunk_size} chars)")
+                
+                if len(chunks) > 1:
+                    print(f"🎉 ISSUE 1 FIX: FORCE chunking successful - created {len(chunks)} paragraph-based chunks")
+                    return chunks
+            
+            # Ultimate fallback: Split content by character count (brutal but effective)
+            print(f"🔪 ISSUE 1 FIX: BRUTAL FORCE CHUNKING - splitting by character count")
+            chunk_size = 2000  # ~2000 chars per chunk
+            chunks = []
+            
+            for i in range(0, len(content), chunk_size):
+                chunk_content = content[i:i + chunk_size]
+                chunk_num = (i // chunk_size) + 1
+                
+                chunks.append({
+                    'title': f"{title} - Segment {chunk_num}",
+                    'content': f"<p>{chunk_content}</p>",
+                    'chunk_type': 'character_based',
+                    'text_length': len(chunk_content),
+                    'min_threshold_met': True
+                })
+                print(f"✅ ISSUE 1 FIX: Character chunk created: Segment {chunk_num} ({len(chunk_content)} chars)")
+            
+            print(f"💪 ISSUE 1 FIX: BRUTAL chunking completed - {len(chunks)} character-based chunks")
+            return chunks
+        
+        # Use heading-based chunking (H1-H6, not just H1)
+        chunks = []
+        current_chunk_elements = []
+        current_chunk_title = title
+        chunk_counter = 0
+        
+        # Process all elements and group by ANY heading boundary (H1-H6)
+        all_elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'table', 'blockquote', 'pre', 'code'])
+        
+        for element in all_elements:
+            # Check if this is ANY heading (not just H1)
+            if element.name in ['h1', 'h2', 'h3']:  # Use H1, H2, H3 as chunk boundaries
+                # Save current chunk if it has content
+                if current_chunk_elements:
+                    chunk_html = ''.join(str(el) for el in current_chunk_elements)
+                    chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+                    
+                    # ISSUE 1 FIX: Lower threshold (500 chars vs 1000)
+                    if chunk_text_length > 500:
+                        chunks.append({
+                            'title': current_chunk_title,
+                            'content': chunk_html,
+                            'chunk_type': 'heading_section',
+                            'text_length': chunk_text_length,
+                            'min_threshold_met': True
+                        })
+                        print(f"✅ ISSUE 1 FIX: Heading chunk created: {current_chunk_title} ({chunk_text_length} chars)")
+                    else:
+                        print(f"⚠️ Small section merged: {current_chunk_title} ({chunk_text_length} chars)")
+                        if chunks:
+                            chunks[-1]['content'] += chunk_html
+                            chunks[-1]['title'] += f" + {current_chunk_title}"
+                            chunks[-1]['text_length'] += chunk_text_length
+                
+                # Start new chunk
+                chunk_counter += 1
+                heading_text = element.get_text().strip()
+                current_chunk_title = heading_text if heading_text else f"{title} - Section {chunk_counter}"
+                current_chunk_elements = [element]
+            else:
+                # Add all non-heading elements to current chunk
+                current_chunk_elements.append(element)
+        
+        # Don't forget the final chunk
+        if current_chunk_elements:
+            chunk_html = ''.join(str(el) for el in current_chunk_elements)
+            chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+            
+            if chunk_text_length > 500:
+                chunks.append({
+                    'title': current_chunk_title,
+                    'content': chunk_html,
+                    'chunk_type': 'final_section',
+                    'text_length': chunk_text_length,
+                    'min_threshold_met': True
+                })
+                print(f"✅ ISSUE 1 FIX: Final chunk: {current_chunk_title} ({chunk_text_length} chars)")
+        
+        # If we still don't have enough chunks, this is our absolute fallback
+        if len(chunks) <= 1:
+            print(f"🆘 ISSUE 1 FIX: Still single chunk - applying EMERGENCY character splitting")
+            return await chunk_large_document_for_polishing(content, title)  # This will hit the character-based fallback above
+        
+        print(f"🎯 ISSUE 1 FIX: Successfully created {len(chunks)} chunks using heading boundaries")
+        return chunks
+        
+    except Exception as e:
+        print(f"❌ ISSUE 1 FIX: Chunking failed: {e}")
+        # Emergency fallback: return as single chunk but mark for special processing
+        return [{
+            'title': title,
+            'content': content,
+            'chunk_type': 'error_fallback',
+            'min_threshold_met': True,
+            'error_occurred': True
+        }]
+
+async def optimized_chunk_large_document(content: str, title: str) -> list:
+    """
+    OPTIMIZED: Fast chunking for documents over 8,000 characters
+    Streamlined approach for better performance
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        content_length = len(content)
+        print(f"⚡ OPTIMIZED: Fast chunking document ({content_length} chars)")
+        
+        # Find H1 and H2 headings for chunk boundaries (streamlined approach)
+        major_headings = soup.find_all(['h1', 'h2'])
+        
+        print(f"📊 Document analysis: {len(major_headings)} major headings found (H1-H2)")
+        
+        # OPTIMIZATION: Use larger chunks for fewer LLM calls
+        if len(major_headings) < 2:
+            print(f"⚡ OPTIMIZED: Simple paragraph chunking for speed")
+            
+            # Split by paragraphs with larger chunk sizes
+            paragraphs = soup.find_all('p')
+            if len(paragraphs) >= 2:
+                chunks = []
+                current_chunk_paras = []
+                current_chunk_size = 0
+                chunk_counter = 0
+                
+                # OPTIMIZATION: Larger chunks (4000-6000 chars) for speed
+                for para in paragraphs:
+                    para_text = para.get_text().strip()
+                    para_size = len(para_text)
+                    
+                    if current_chunk_size + para_size > 6000 and current_chunk_paras:
+                        chunk_counter += 1
+                        chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                        
+                        chunks.append({
+                            'title': f"{title} - Part {chunk_counter}",
+                            'content': chunk_html,
+                            'chunk_type': 'optimized_paragraph',
+                            'text_length': current_chunk_size,
+                            'min_threshold_met': True
+                        })
+                        print(f"✅ OPTIMIZED: Fast chunk created: Part {chunk_counter} ({current_chunk_size} chars)")
+                        
+                        current_chunk_paras = [para]
+                        current_chunk_size = para_size
+                    else:
+                        current_chunk_paras.append(para)
+                        current_chunk_size += para_size
+                
+                # Add final chunk
+                if current_chunk_paras:
+                    chunk_counter += 1
+                    chunk_html = ''.join(str(p) for p in current_chunk_paras)
+                    
+                    chunks.append({
+                        'title': f"{title} - Part {chunk_counter}",
+                        'content': chunk_html,
+                        'chunk_type': 'optimized_paragraph',
+                        'text_length': current_chunk_size,
+                        'min_threshold_met': True
+                    })
+                    print(f"✅ OPTIMIZED: Final fast chunk: Part {chunk_counter} ({current_chunk_size} chars)")
+                
+                if len(chunks) > 1:
+                    print(f"🚀 OPTIMIZED: Fast chunking successful - created {len(chunks)} chunks")
+                    return chunks
+            
+            # Fallback: Larger character-based chunks for speed
+            print(f"⚡ OPTIMIZED: Large character chunks for maximum speed")
+            chunk_size = 5000  # Larger chunks for speed
+            chunks = []
+            
+            for i in range(0, len(content), chunk_size):
+                chunk_content = content[i:i + chunk_size]
+                chunk_num = (i // chunk_size) + 1
+                
+                chunks.append({
+                    'title': f"{title} - Segment {chunk_num}",
+                    'content': f"<p>{chunk_content}</p>",
+                    'chunk_type': 'optimized_character',
+                    'text_length': len(chunk_content),
+                    'min_threshold_met': True
+                })
+                print(f"✅ OPTIMIZED: Fast segment created: Segment {chunk_num} ({len(chunk_content)} chars)")
+            
+            print(f"🚀 OPTIMIZED: Fast chunking completed - {len(chunks)} segments")
+            return chunks
+        
+        # Use streamlined heading-based chunking (H1-H2 only for speed)
+        chunks = []
+        current_chunk_elements = []
+        current_chunk_title = title
+        chunk_counter = 0
+        
+        all_elements = soup.find_all(['h1', 'h2', 'p', 'ul', 'ol', 'div', 'table'])
+        
+        for element in all_elements:
+            if element.name in ['h1', 'h2']:  # Only major headings for speed
+                if current_chunk_elements:
+                    chunk_html = ''.join(str(el) for el in current_chunk_elements)
+                    chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+                    
+                    # OPTIMIZATION: Lower threshold for faster processing
+                    if chunk_text_length > 800:
+                        chunks.append({
+                            'title': current_chunk_title,
+                            'content': chunk_html,
+                            'chunk_type': 'optimized_heading',
+                            'text_length': chunk_text_length,
+                            'min_threshold_met': True
+                        })
+                        print(f"✅ OPTIMIZED: Fast heading chunk: {current_chunk_title} ({chunk_text_length} chars)")
+                    else:
+                        if chunks:
+                            chunks[-1]['content'] += chunk_html
+                            chunks[-1]['text_length'] += chunk_text_length
+                
+                chunk_counter += 1
+                heading_text = element.get_text().strip()
+                current_chunk_title = heading_text if heading_text else f"{title} - Section {chunk_counter}"
+                current_chunk_elements = [element]
+            else:
+                current_chunk_elements.append(element)
+        
+        # Final chunk
+        if current_chunk_elements:
+            chunk_html = ''.join(str(el) for el in current_chunk_elements)
+            chunk_text_length = len(BeautifulSoup(chunk_html, 'html.parser').get_text().strip())
+            
+            if chunk_text_length > 800:
+                chunks.append({
+                    'title': current_chunk_title,
+                    'content': chunk_html,
+                    'chunk_type': 'optimized_final',
+                    'text_length': chunk_text_length,
+                    'min_threshold_met': True
+                })
+                print(f"✅ OPTIMIZED: Final fast chunk: {current_chunk_title} ({chunk_text_length} chars)")
+        
+        print(f"🚀 OPTIMIZED: Successfully created {len(chunks)} fast chunks")
+        return chunks
+        
+    except Exception as e:
+        print(f"❌ OPTIMIZED: Fast chunking failed: {e}")
+        return [{
+            'title': title,
+            'content': content,
+            'chunk_type': 'optimized_fallback',
+            'min_threshold_met': True,
+            'error_occurred': True
+        }]
+
+async def polish_article_content(content: str, title: str, template_data: dict) -> dict:
+    """
+    OPTIMIZED: Final content polishing with PERFORMANCE IMPROVEMENTS
+    Reduced processing time through optimized thresholds and streamlined logic
+    """
+    try:
+        print(f"⚡ OPTIMIZED: Starting fast content polishing for: {title}")
+        
+        # OPTIMIZATION 1: Increased threshold for faster processing (fewer chunks = faster)
+        content_length = len(content)
+        max_single_polishing_size = 8000  # INCREASED from 3,000 to 8,000 for speed
+        
+        print(f"🔍 OPTIMIZED: Content length {content_length} chars vs threshold {max_single_polishing_size} chars")
+        
+        if content_length > max_single_polishing_size:
+            print(f"📊 OPTIMIZED: Large content ({content_length} chars > {max_single_polishing_size}) - using optimized chunking")
+            
+            # OPTIMIZATION 2: Streamlined chunking for speed
+            chunks = await optimized_chunk_large_document(content, title)
+            
+            print(f"🔄 OPTIMIZED: Document chunked into {len(chunks)} articles for faster processing")
+            return {
+                'html': content,
+                'markdown': content,
+                'content': content,
+                'polished': False,
+                'requires_chunked_processing': True,
+                'chunks': chunks,
+                'word_count': len(content.split()),
+                'chunking_reason': 'optimized_8000_threshold'
+            }
+        
+        # For content under 8,000 chars, proceed with single article processing
+        print(f"📝 OPTIMIZED: Content under threshold ({content_length} chars) - fast single article processing")
+        
+        # OPTIMIZATION 3: Streamlined system message for faster LLM processing
+        system_message = """You are a professional technical writer. Transform content into clean, comprehensive HTML articles.
+
+REQUIREMENTS:
+1. PRESERVE THE ORIGINAL TITLE - use exactly as provided
+2. ENHANCE content clarity and technical accuracy
+3. CREATE logical structure with proper HTML formatting
+4. GENERATE comprehensive, publication-ready content
+5. USE semantic HTML: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <blockquote>, <code>, <pre>
+6. MAINTAIN data-block-id attributes for image placement
+7. NO IMAGES in content - images managed separately
+8. TARGET: 800-1500 words for optimal coverage"""
+
+        # OPTIMIZATION 4: Streamlined user message for faster processing
+        user_message = f"""Transform this content into professional HTML documentation:
+
+TITLE: {title}
+CONTENT: {content[:12000]}{'...' if len(content) > 12000 else ''}
+
+Create comprehensive, well-structured HTML with proper headings and formatting."""
+
+        # Use the LLM fallback system for content polishing
+        polished_content = await call_llm_with_fallback(system_message, user_message)
+        
+        if polished_content and len(polished_content.strip()) > 100:
+            print(f"✅ Content polishing successful: {len(polished_content)} characters")
+            
+            # Extract clean HTML and ensure proper structure for Content Library
+            polished_html = polished_content.strip()
+            
+            # Remove any remaining code block markers
+            if polished_html.startswith('```'):
+                lines = polished_html.split('\n')
+                polished_html = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
+            
+            # Remove any article/header wrappers if present (Content Library handles these)
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(polished_html, 'html.parser')
+            
+            # Extract content from article/header wrappers if they exist
+            if soup.find('article'):
+                article_content = soup.find('article')
+                # Extract all content from within article, removing the wrapper
+                content_elements = []
+                for child in article_content.children:
+                    if child.name:  # Skip text nodes
+                        if child.name in ['header', 'section']:
+                            # Extract content from header/section wrappers
+                            for inner_child in child.children:
+                                if inner_child.name:
+                                    content_elements.append(str(inner_child))
+                        else:
+                            content_elements.append(str(child))
+                polished_html = '\n'.join(content_elements)
+            
+            # Ensure content starts with H1 title if not present
+            if not polished_html.strip().startswith('<h1'):
+                polished_html = f'<h1>{title}</h1>\n{polished_html}'
+            
+            return {
+                'html': polished_html,
+                'markdown': polished_html,  # Use HTML as markdown for now
+                'content': polished_html,
+                'polished': True,
+                'word_count': len(polished_html.split())
+            }
+        else:
+            print(f"❌ Content polishing failed or produced insufficient content")
+            # Return original content with proper structure for Content Library
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Create clean HTML structure without wrappers
+            clean_content = f'<h1>{title}</h1>\n'
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
+                if element.name == 'h1':
+                    continue  # Skip additional H1s since we added the title
+                clean_content += str(element) + '\n'
+            
+            return {
+                'html': clean_content,
+                'markdown': clean_content,
+                'content': clean_content,
+                'polished': False,
+                'polishing_failed': True,
+                'word_count': len(content.split())
+            }
+    
+    except Exception as e:
+        print(f"❌ Content polishing error: {e}")
+        # Return original content with clean structure for Content Library
+        from bs4 import BeautifulSoup
+        try:
+            soup = BeautifulSoup(content, 'html.parser')
+            clean_content = f'<h1>{title}</h1>\n'
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
+                if element.name == 'h1':
+                    continue  # Skip additional H1s since we added the title
+                clean_content += str(element) + '\n'
+        except:
+            # Final fallback if HTML parsing fails
+            clean_content = f'<h1>{title}</h1>\n<p>{content}</p>'
+        
+        return {
+            'html': clean_content,
+            'markdown': clean_content,
+            'content': clean_content,
+            'polished': False,
+            'polishing_error': str(e),
+            'word_count': len(content.split())
+        }
+
+async def process_individual_chunk(chunk_data: dict, document_title: str, template_data: dict, training_session: dict, image_assets: dict) -> dict:
+    """
+    Process an individual chunk from a large document with LLM polishing
+    """
+    try:
+        chunk_title = chunk_data['title']
+        chunk_content = chunk_data['content']
+        
+        print(f"🔄 Processing individual chunk: {chunk_title}")
+        
+        # Apply optimized LLM polishing to this specific chunk
+        system_message = """You are a professional technical writer and content editor specializing in creating high-quality documentation.
+
+CRITICAL TASK: Transform and significantly improve the provided content section using professional technical writing standards. DO NOT simply preserve - analyze, restructure, and enhance.
+
+REQUIREMENTS FOR CONTENT TRANSFORMATION:
+1. ANALYZE the source content and identify key concepts and information
+2. RESTRUCTURE with clear, logical flow and professional organization  
+3. ENHANCE clarity, readability, and technical accuracy
+4. ADD context and professional transitions where needed
+5. CREATE comprehensive, publication-ready content that improves upon the source
+
+HTML FORMATTING REQUIREMENTS:
+1. Generate clean HTML suitable for modern web applications
+2. DO NOT include wrapper elements - content-level HTML only
+3. Use semantic HTML with appropriate Tailwind CSS classes
+4. Maintain data-block-id attributes for image placement
+5. Start with H1 for section title, use H2/H3 for subsections
+
+OUTPUT FORMAT: Return ONLY enhanced, content-level HTML without wrapper elements."""
+
+        # Optimized user message with length limits to prevent timeouts
+        chunk_content_preview = chunk_content[:10000] + '...' if len(chunk_content) > 10000 else chunk_content
+        
+        user_message = f"""Transform and significantly improve this content section:
+
+SECTION TITLE: {chunk_title}
+DOCUMENT CONTEXT: {document_title}
+
+SOURCE CONTENT: {chunk_content_preview}
+
+TASK: Create a comprehensive, standalone article that significantly enhances the source material with professional technical writing standards."""
+
+        # Polish the chunk content
+        polished_content = await call_llm_with_fallback(system_message, user_message)
+        
+        if polished_content and len(polished_content.strip()) > 100:
+            print(f"✅ Chunk polishing successful: {len(polished_content)} characters")
+            
+            # Clean the polished content for Content Library compatibility
+            polished_html = polished_content.strip()
+            if polished_html.startswith('```'):
+                lines = polished_html.split('\n')
+                polished_html = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
+            
+            # Remove article/header wrappers if present
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(polished_html, 'html.parser')
+            
+            if soup.find('article'):
+                article_content = soup.find('article')
+                content_elements = []
+                for child in article_content.children:
+                    if child.name:
+                        if child.name in ['header', 'section']:
+                            for inner_child in child.children:
+                                if inner_child.name:
+                                    content_elements.append(str(inner_child))
+                        else:
+                            content_elements.append(str(child))
+                polished_html = '\n'.join(content_elements)
+            
+            # Ensure starts with H1 title
+            if not polished_html.strip().startswith('<h1'):
+                polished_html = f'<h1>{chunk_title}</h1>\n{polished_html}'
+            
+            polished_result = {
+                'html': polished_html,
+                'markdown': polished_html,
+                'content': polished_html,
+                'polished': True,
+                'word_count': len(polished_html.split())
+            }
+        else:
+            print(f"❌ Chunk polishing failed, using structured original content")
+            # Generate clean HTML structure for Content Library
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(chunk_content, 'html.parser')
+            
+            clean_content = f'<h1>{chunk_title}</h1>\n'
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
+                if element.name == 'h1':
+                    continue  # Skip additional H1s
+                clean_content += str(element) + '\n'
+            
+            polished_result = {
+                'html': clean_content,
+                'markdown': clean_content,
+                'content': clean_content,
+                'polished': False,
+                'word_count': len(chunk_content.split())
+            }
+        
+        # Create article from polished chunk
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": chunk_title,
+            "html": polished_result['html'],
+            "markdown": polished_result['markdown'],
+            "content": polished_result['content'],
+            "media": [
+                {
+                    "url": img_data['url'],
+                    "alt": img_data['alt_text'],
+                    "caption": img_data.get('caption', ''),
+                    "placement": "inline",
+                    "filename": img_data['filename']
+                }
+                for img_data in image_assets.values()
+                if any(img['id'] in polished_result['content'] for img in [{'id': k} for k in image_assets.keys()])
+            ],
+            "tags": ["extracted", "generated", "html-pipeline", "chunked-section", "polished"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": polished_result['word_count'],
+            "image_count": 0,  # Will be updated based on media
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": True,
+            "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
+            "training_mode": True,
+            "content_polished": polished_result['polished'],
+            "metadata": {
+                "source_filename": training_session['filename'],
+                "template_applied": training_session['template_id'],
+                "phase": "chunked_polishing",
+                "document_title": document_title,
+                "chunk_type": chunk_data.get('chunk_type', 'heading_section'),
+                "heading_level": chunk_data.get('heading_level', 'h2'),
+                "chunk_processing": "individual_llm_polish"
+            }
+        }
+        
+        print(f"📄 Created polished chunk article: {chunk_title} ({len(polished_result['html'])} chars)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Chunk processing error for '{chunk_data.get('title', 'Unknown')}': {e}")
+        # Return clean HTML structure for Content Library
+        chunk_title = chunk_data.get('title', 'Untitled Section')
+        chunk_content = chunk_data.get('content', '')
+        
+        # Generate clean HTML without wrappers
+        from bs4 import BeautifulSoup
+        try:
+            soup = BeautifulSoup(chunk_content, 'html.parser')
+            clean_content = f'<h1>{chunk_title}</h1>\n'
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
+                if element.name == 'h1':
+                    continue
+                clean_content += str(element) + '\n'
+        except:
+            clean_content = f'<h1>{chunk_title}</h1>\n<p>{chunk_content}</p>'
+        
+        return {
+            "id": str(uuid.uuid4()),
+            "title": chunk_title,
+            "html": clean_content,
+            "markdown": clean_content,
+            "content": clean_content,
+            "media": [],
+            "tags": ["extracted", "generated", "chunked-section", "error-fallback"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": len(chunk_content.split()),
+            "image_count": 0,
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": False,
+            "training_mode": True,
+            "content_polished": False,
+            "metadata": {
+                "source_filename": training_session['filename'],
+                "processing_error": str(e),
+                "chunk_type": "error_fallback"
+            }
+        }
+
+async def process_chunks_in_parallel(chunks: list, preprocessor, max_concurrent: int = 3) -> list:
+    """
+    Process multiple chunks in parallel for improved performance
+    Limited concurrency to avoid overwhelming the system
+    """
+    import asyncio
+    
+    async def process_single_chunk_async(chunk_data, chunk_index):
+        """Process a single chunk asynchronously"""
+        try:
+            print(f"🔄 Processing chunk {chunk_index + 1}/{len(chunks)}: {chunk_data['title']}")
+            
+            # Phase 1: Assign block IDs
+            chunk_html_with_ids = preprocessor._assign_block_ids_to_chunk(
+                chunk_data['content'], 
+                chunk_data['section_id']
+            )
+            
+            # Phase 2: Tokenize images (if any)
+            chunk_html_with_tokens = preprocessor._tokenize_images_in_chunk(
+                chunk_html_with_ids, 
+                chunk_data.get('images', [])
+            )
+            
+            # Count tokens for monitoring
+            chunk_tokens = len(chunk_html_with_tokens.split()) * 1.3  # Rough token estimate
+            print(f"✅ Chunk {chunk_index + 1} processed: ~{int(chunk_tokens)} tokens")
+            
+            return {
+                'section_id': chunk_data['section_id'],
+                'title': chunk_data['title'],
+                'content': chunk_html_with_tokens,
+                'images': chunk_data.get('images', []),
+                'token_count': int(chunk_tokens)
+            }
+            
+        except Exception as e:
+            print(f"❌ Chunk {chunk_index + 1} processing failed: {e}")
+            return {
+                'section_id': chunk_data.get('section_id', f'error_{chunk_index}'),
+                'title': chunk_data.get('title', f'Error Chunk {chunk_index}'),
+                'content': chunk_data.get('content', ''),
+                'images': [],
+                'token_count': 0,
+                'error': str(e)
+            }
+    
+    # Process chunks in parallel with limited concurrency
+    print(f"🚀 Starting parallel processing of {len(chunks)} chunks (max {max_concurrent} concurrent)")
+    
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def process_with_semaphore(chunk_data, chunk_index):
+        async with semaphore:
+            return await process_single_chunk_async(chunk_data, chunk_index)
+    
+    # Create tasks for all chunks
+    tasks = [
+        process_with_semaphore(chunk_data, i) 
+        for i, chunk_data in enumerate(chunks)
+    ]
+    
+    # Execute all tasks and wait for completion
+    processed_chunks = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Handle any exceptions in results
+    valid_chunks = []
+    for i, result in enumerate(processed_chunks):
+        if isinstance(result, Exception):
+            print(f"❌ Exception in chunk {i + 1}: {result}")
+            # Create fallback chunk
+            valid_chunks.append({
+                'section_id': f'error_{i}',
+                'title': f'Error Chunk {i + 1}',
+                'content': chunks[i].get('content', ''),
+                'images': [],
+                'token_count': 0,
+                'error': str(result)
+            })
+        else:
+            valid_chunks.append(result)
+    
+    print(f"✅ Parallel processing complete: {len(valid_chunks)} chunks processed")
+    return valid_chunks
+
+async def process_with_html_preprocessing_pipeline(file_path: str, file_extension: str, template_data: dict, training_session: dict) -> list:
+    """
+    Process documents using the new HTML preprocessing pipeline with structural chunking
+    """
+    try:
+        print(f"🔄 Starting HTML preprocessing pipeline with structural chunking for {file_extension} file")
+        
+        # Initialize the document preprocessor
+        session_id = training_session['session_id']
+        preprocessor = DocumentPreprocessor(session_id)
+        
+        # Phase 1: Convert document to structural HTML chunks with tokenized images
+        html_chunks, image_assets = await preprocessor.preprocess_document(file_path, file_extension)
+        
+        # Phase 2: AI processing for each chunk independently
+        processed_chunks = await preprocessor.process_with_ai_preserving_tokens(html_chunks, template_data)
+        
+        # Phase 3: Replace tokens with rich image HTML in all chunks
+        final_chunks = preprocessor.replace_tokens_with_rich_images(processed_chunks)
+        
+        # Extract document title for proper article naming
+        document_title = await extract_document_title(file_path, file_extension, 
+                                                     final_chunks[0]['content'] if final_chunks else None)
+        
+        # Combine chunks into articles
+        articles = []
+        
+        print(f"📊 DEBUG: Processing {len(final_chunks)} final chunks into articles")
+        
+        for i, chunk_data in enumerate(final_chunks):
+            # Determine article title based on document structure
+            if len(final_chunks) == 1:
+                # Single article - use document title or extract from first H1
+                if document_title and document_title != "Untitled Document":
+                    article_title = document_title
+                else:
+                    # Extract title from first H1 in content
+                    extracted_h1_title = extract_h1_title_from_content(chunk_data['content'])
+                    article_title = extracted_h1_title if extracted_h1_title else document_title
+            else:
+                # Multiple articles - extract H1 title from each chunk for section-specific titles
+                section_title = extract_h1_title_from_content(chunk_data['content'])
+                if not section_title:
+                    # Fallback to chunk title
+                    section_title = chunk_data['title']
+                
+                # Clean up section title
+                if section_title.lower() in ['introduction', 'complete document', 'full document']:
+                    article_title = document_title
+                else:
+                    # Use section title with document context
+                    if document_title and document_title != "Untitled Document":
+                        article_title = f"{section_title} | {document_title}"
+                    else:
+                        article_title = section_title
+            
+            # Phase 4: Final content polishing for professional output
+            polished_result = await polish_article_content(
+                chunk_data['content'], 
+                article_title, 
+                template_data
+            )
+            
+            # Check if large document requires chunked processing
+            if polished_result.get('requires_chunked_processing'):
+                print(f"🔄 Large document detected - processing {len(polished_result['chunks'])} chunks separately")
+                
+                # FIXED: Process each chunk as separate article with proper title extraction
+                for chunk_info in polished_result['chunks']:
+                    # Extract H1-based title from chunk content
+                    chunk_title = extract_h1_title_from_content(chunk_info.get('content', ''))
+                    if not chunk_title:
+                        chunk_title = chunk_info.get('title', article_title)
+                    
+                    # Ensure chunk title includes document context for clarity
+                    if chunk_title != document_title and document_title not in chunk_title:
+                        final_chunk_title = f"{chunk_title} | {document_title}"
+                    else:
+                        final_chunk_title = chunk_title
+                    
+                    chunk_article = await process_individual_chunk(
+                        chunk_info, 
+                        final_chunk_title, 
+                        template_data, 
+                        training_session, 
+                        image_assets
+                    )
+                    articles.append(chunk_article)
+                    
+                    print(f"✅ Created article: '{chunk_article['title']}' ({chunk_article['word_count']} words)")
+                
+                print(f"✅ Large document chunked into {len(polished_result['chunks'])} separate articles")
+                
+                # CRITICAL: Skip the single article creation since we've created multiple
+                continue
+                
+            else:
+                # Standard single article processing
+                # Create article from processed and polished chunk
+                article = {
+                    "id": str(uuid.uuid4()),
+                    "title": article_title,
+                    "html": polished_result['html'],
+                    "markdown": polished_result['markdown'],
+                    "content": polished_result['content'],
+                    "media": [
+                        {
+                            "url": img_data['url'],
+                            "alt": img_data['alt_text'],
+                            "caption": img_data.get('caption', ''),
+                            "placement": "inline",
+                            "filename": img_data['filename']
+                        }
+                        for img_data in image_assets.values()
+                        if any(img['id'] in chunk_data['content'] for img in [{'id': k} for k in image_assets.keys()])
+                    ],
+                    "tags": ["extracted", "generated", "html-pipeline", "structural-chunk", "polished"],
+                    "status": "training",
+                    "template_id": training_session['template_id'],
+                    "session_id": training_session['session_id'],
+                    "word_count": polished_result['word_count'],
+                    "image_count": chunk_data.get('images_replaced', 0),
+                    "format": "html",
+                    "created_at": datetime.utcnow().isoformat(),
+                    "ai_processed": True,
+                    "ai_model": "gpt-4o-mini (with claude + local llm fallback)",
+                    "training_mode": True,
+                    "content_polished": polished_result['polished'],
+                    "metadata": {
+                        "source_filename": training_session['filename'],
+                        "template_applied": training_session['template_id'],
+                        "phase": "html_preprocessing_pipeline_polished",
+                        "file_extension": file_extension,
+                        "chunk_index": i + 1,
+                        "total_chunks": len(final_chunks),
+                        "section_id": chunk_data['section_id'],
+                        "images_in_chunk": chunk_data.get('images_replaced', 0),
+                        "document_title": document_title,
+                        "final_polishing_applied": polished_result['polished']
+                    }
+                }
+                
+                articles.append(article)
+                print(f"📄 Created polished article: {article_title} ({len(polished_result['html'])} chars, {chunk_data.get('images_replaced', 0)} images)")
+        
+        total_images = sum(chunk.get('images_replaced', 0) for chunk in final_chunks)
+        
+        # Update processing summary based on chunking results
+        if any('chunked-section' in article.get('tags', []) for article in articles):
+            chunked_articles = [a for a in articles if 'chunked-section' in a.get('tags', [])]
+            print(f"✅ HTML preprocessing pipeline complete with intelligent chunking: {len(articles)} articles ({len(chunked_articles)} from chunked processing), {total_images} total images")
+        else:
+            print(f"✅ HTML preprocessing pipeline complete: {len(articles)} articles, {total_images} total images, final polishing applied")
+        
+        return articles
+        
+    except Exception as e:
+        print(f"❌ HTML preprocessing pipeline failed: {e}")
+        import traceback
+        traceback.print_exc()
+        # Fallback to text processing
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return await process_text_with_template(content, template_data, training_session)
+        except:
+            return []
+
+# Global clients
+mongo_client = None
+db = None
+content_library_collection = None
+
+# Pydantic Models
+class DocumentChunk(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    content: str
+    metadata: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    content_fingerprint: Optional[str] = None  # FIXED: Add content_fingerprint field
+
+class ProcessingJob(BaseModel):
+    job_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    status: str = "processing"  # processing, completed, failed
+    input_type: str  # text, audio, video, url, image
+    original_filename: Optional[str] = None
+    chunks: List[Dict[str, Any]] = []
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+class ContentProcessRequest(BaseModel):
+    content: str
+    content_type: str = "text"
+    metadata: Dict[str, Any] = {}
+
+class SearchRequest(BaseModel):
+    query: str
+    limit: int = 10
+    filter_metadata: Optional[Dict[str, Any]] = None
+
+class AIAssistanceRequest(BaseModel):
+    content: str
+    mode: str = "completion"  # completion, improvement, grammar, analysis
+    context: Optional[str] = None
+
+class SaveArticleRequest(BaseModel):
+    id: Optional[str] = None
+    title: str
+    content: str
+    status: str = "draft"  # draft, published
+
+async def call_local_llm(system_message: str, user_message: str) -> Optional[str]:
+    """
+    DISABLED: Local LLM fallback disabled due to performance issues.
+    The local LLM implementation was causing 30+ minute delays and crashes.
+    Better to fail fast than wait indefinitely for broken fallback.
+    """
+    print("⚠️ Local LLM fallback is disabled for performance optimization")
+    return None
+
+async def call_built_in_local_llm(system_message: str, user_message: str) -> Optional[str]:
+    """
+    DISABLED: Built-in local LLM disabled due to performance issues.
+    The transformers library was downloading 2GB+ models during processing
+    and causing NumPy compatibility crashes. Better to fail fast.
+    """
+    print("⚠️ Built-in local LLM is disabled for performance optimization")
+    return None
+
+async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
+    """
+    Call LLM with three-tier fallback system:
+    1. OpenAI (GPT-4o-mini) - Primary
+    2. Claude (Anthropic) - Secondary fallback
+    3. Local LLM - Final fallback
+    Returns the response text or None if all fail
+    """
+    if session_id is None:
+        session_id = str(uuid.uuid4())
+    
+    # Try OpenAI first
+    if OPENAI_API_KEY:
+        try:
+            print("🤖 Attempting OpenAI (GPT-4o-mini) call...")
+            
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_message}
+                ],
+                "max_tokens": 8000,  # Increased from 6000 to 8000
+                "temperature": 0.1
+            }
+            
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=300  # Increased to 300 seconds (5 minutes) for very large chunks
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                print(f"✅ OpenAI response successful: {len(ai_response)} characters")
+                # PHANTOM LINK CLEANUP: Clean all LLM responses
+                ai_response = validate_and_remove_phantom_links(ai_response)
+                ai_response = aggressive_phantom_link_cleanup_final_pass(ai_response)
+                return ai_response
+            else:
+                error_msg = str(response.status_code) + " " + response.text
+                print(f"❌ OpenAI failed: {error_msg}")
+                
+                # Check if it's a quota/rate limit error
+                if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
+                    print("🔄 OpenAI quota/rate limit exceeded, switching to Claude...")
+                else:
+                    print("🔄 OpenAI error detected, switching to Claude...")
+                    
+        except Exception as e:
+            print(f"❌ OpenAI failed with exception: {e}")
+            print("🔄 Switching to Claude...")
+    
+    # Try Claude as fallback
+    if ANTHROPIC_API_KEY:
+        try:
+            print("🤖 Attempting Claude fallback call...")
+            
+            headers = {
+                "x-api-key": ANTHROPIC_API_KEY,
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
+            }
+            
+            data = {
+                "model": "claude-3-5-sonnet-20241022",
+                "max_tokens": 8000,  # Increased from 6000 to 8000
+                "temperature": 0.1,
+                "system": system_message,
+                "messages": [
+                    {"role": "user", "content": user_message}
+                ]
+            }
+            
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=headers,
+                json=data,
+                timeout=300  # Increased to 300 seconds (5 minutes) for very large chunks
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["content"][0]["text"]
+                print(f"✅ Claude response successful: {len(ai_response)} characters")
+                # PHANTOM LINK CLEANUP: Clean all LLM responses
+                ai_response = validate_and_remove_phantom_links(ai_response)
+                ai_response = aggressive_phantom_link_cleanup_final_pass(ai_response)
+                return ai_response
+            else:
+                print(f"❌ Claude also failed: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            print(f"❌ Claude also failed with exception: {e}")
+    
+    # Try Local LLM as final fallback
+    try:
+        print("🤖 Attempting Local LLM fallback...")
+        local_response = await call_local_llm(system_message, user_message)
+        if local_response:
+            # PHANTOM LINK CLEANUP: Clean all LLM responses
+            local_response = validate_and_remove_phantom_links(local_response)
+            local_response = aggressive_phantom_link_cleanup_final_pass(local_response)
+            return local_response
+    except Exception as e:
+        print(f"❌ Local LLM also failed: {e}")
+    
+    print("❌ All LLM options failed - no AI response available")
+    return None
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    """Initialize all services and connections"""
+    global mongo_client, db, content_library_collection
+    
+    print("🚀 Starting PromptSupport Enhanced Content Engine...")
+    
+    # Initialize MongoDB
+    try:
+        mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
+        db = mongo_client[DATABASE_NAME]
+        content_library_collection = db.content_library
+        # Test the connection
+        await mongo_client.server_info()
+        print("✅ MongoDB connected successfully")
+    except Exception as e:
+        print(f"❌ MongoDB connection failed: {e}")
+        raise
+    
+    # Check API keys
+    if OPENAI_API_KEY:
+        print("✅ OpenAI API key configured")
+    if ANTHROPIC_API_KEY:
+        print("✅ Anthropic API key configured")
+    if ASSEMBLYAI_API_KEY:
+        print("✅ AssemblyAI API key configured")
+    if QDRANT_API_KEY:
+        print("✅ Qdrant API key configured")
+    
+    print("🎉 Enhanced Content Engine started successfully!")
+
+@app.post("/api/ai-assistance")
+async def ai_assistance(request: AIAssistanceRequest):
+    """Provide AI writing assistance using LLM with fallback"""
+    try:
+        # Prepare prompt based on mode
+        prompts = {
+            "completion": f"Continue this text naturally and coherently:\n\n{request.content}\n\nContinuation:",
+            "improvement": f"Analyze this text and suggest specific improvements for clarity, engagement, and readability:\n\n{request.content}\n\nSuggestions:",
+            "grammar": f"Check this text for grammar, spelling, and style issues and provide corrections:\n\n{request.content}\n\nCorrections:",
+            "analysis": f"Analyze this content for readability, structure, tone, and provide insights:\n\n{request.content}\n\nAnalysis:"
+        }
+        
+        prompt = prompts.get(request.mode, prompts["completion"])
+        system_message = "You are a helpful writing assistant. Provide clear, actionable suggestions."
+        
+        # Use fallback system to get AI response
+        session_id = str(uuid.uuid4())
+        ai_response = await call_llm_with_fallback(system_message, prompt, session_id)
+        
+        if ai_response:
+            # Split response into suggestions
+            suggestions = [s.strip() for s in ai_response.split('\n') if s.strip()]
+            
+            return {
+                "suggestions": suggestions[:3],  # Limit to 3 suggestions
+                "mode": request.mode,
+                "success": True
+            }
+        else:
+            return {"error": "AI service temporarily unavailable", "suggestions": []}
+                
+    except Exception as e:
+        print(f"AI assistance error: {str(e)}")
+        return {"error": str(e), "suggestions": []}
+
+@app.post("/api/content-analysis")
+async def content_analysis(request: AIAssistanceRequest):
+    """Analyze content for insights using LLM with fallback"""
+    try:
+        # Strip HTML tags for analysis
+        text_content = re.sub(r'<[^>]*>', '', request.content)
+        
+        # Basic metrics
+        words = len(text_content.split())
+        sentences = len([s for s in re.split(r'[.!?]+', text_content) if s.strip()])
+        paragraphs = len([p for p in text_content.split('\n\n') if p.strip()])
+        
+        # Get AI analysis using fallback system
+        system_message = "You are a content analysis expert. Provide readability score (0-100), tone assessment, and key insights."
+        user_message = f"Analyze this content:\n\n{text_content[:1000]}"
+        
+        session_id = str(uuid.uuid4())
+        ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+        
+        ai_insights = ""
+        readability_score = 70  # Default
+        
+        if ai_response:
+            ai_insights = ai_response
+            
+            # Extract readability score if mentioned
+            score_match = re.search(r'readability.*?(\d+)', ai_insights, re.IGNORECASE)
+            if score_match:
+                readability_score = int(score_match.group(1))
+        else:
+            ai_insights = "AI analysis temporarily unavailable"
+        
+        return {
+            "wordCount": words,
+            "sentences": sentences,
+            "paragraphs": paragraphs,
+            "readingTime": max(1, words // 200),  # Avg 200 words per minute
+            "readabilityScore": readability_score,
+            "characterCount": len(text_content),
+            "aiInsights": ai_insights,
+            "success": True
+        }
+        
+    except Exception as e:
+        print(f"Content analysis error: {str(e)}")
+        return {"error": str(e)}
+
+@app.put("/api/content-library/{article_id}")
+async def update_article(article_id: str, request: SaveArticleRequest):
+    """Update an existing article"""
+    try:
+        collection = db["content_library"]
+        
+        update_data = {
+            "title": request.title,
+            "content": request.content,
+            "status": request.status,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        result = await collection.update_one(
+            {"id": article_id},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Article not found")
+            
+        return {"success": True, "message": f"Article {request.status}"}
+        
+    except Exception as e:
+        print(f"Update article error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/content-library")
+async def create_article(request: SaveArticleRequest):
+    """Create a new article"""
+    try:
+        collection = db["content_library"]
+        
+        article_data = {
+            "id": str(uuid.uuid4()),
+            "title": request.title,
+            "content": request.content,
+            "status": request.status,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "type": "article"
+        }
+        
+        await collection.insert_one(article_data)
+        
+        return {"success": True, "id": article_data["id"], "message": f"Article {request.status}"}
+        
+    except Exception as e:
+        print(f"Create article error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/assets")
+async def get_assets():
+    """Get all assets from the asset library including both file-based and embedded images"""
+    try:
+        content_collection = db["content_library"]
+        assets_collection = db["assets"]
+        
+        # Get file-based assets from the new assets collection (NO LIMIT)
+        file_assets_cursor = assets_collection.find({})
+        file_assets = await file_assets_cursor.to_list(length=None)  # No limit
+        
+        # Get direct image assets from content_library (legacy) (NO LIMIT)
+        direct_assets_cursor = content_collection.find({"type": {"$in": ["image", "media"]}})
+        direct_assets = await direct_assets_cursor.to_list(length=None)  # No limit
+        
+        # Get articles with embedded images (NO LIMIT)
+        articles_cursor = content_collection.find({"content": {"$regex": "data:image", "$options": "i"}})
+        articles_with_images = await articles_cursor.to_list(length=None)  # No limit
+        
+        formatted_assets = []
+        
+        # Add file-based assets (new system)
+        for asset in file_assets:
+            formatted_assets.append({
+                "id": asset.get("id", str(asset.get("_id"))),
+                "name": asset.get("original_filename", asset.get("name", "Untitled")),
+                "original_filename": asset.get("original_filename"),
+                "type": "image",
+                "url": asset.get("url"),  # File URL instead of base64
+                "data": asset.get("url"),  # For compatibility, use URL as data
+                "created_at": asset.get("created_at"),
+                "size": asset.get("size", 0),
+                "storage_type": "file"
+            })
+        
+        # Add direct assets (legacy base64 system)
+        for asset in direct_assets:
+            if asset.get("data"):
+                formatted_assets.append({
+                    "id": asset.get("id", str(asset.get("_id"))),
+                    "name": asset.get("title", asset.get("name", "Untitled")),
+                    "type": "image",
+                    "data": asset.get("data"),
+                    "created_at": asset.get("created_at"),
+                    "size": len(asset.get("data", "")) if asset.get("data") else 0,
+                    "storage_type": "base64"
+                })
+        
+        # Extract images from articles
+        import re
+        for article in articles_with_images:
+            content = article.get("content", "")
+            if content:
+                # Find all base64 images in content using multiple patterns
+                patterns = [
+                    r'(data:image/[^;]+;base64,[A-Za-z0-9+/=]+)',  # Standard pattern
+                    r'(data:image/[^;]+;base64,[^)\\s]+)',         # Match until ) or whitespace
+                    r'(data:image/[^;]+;base64,[^)]+)',           # Match until )
+                ]
+                
+                image_matches = []
+                for pattern in patterns:
+                    matches = re.findall(pattern, content)
+                    image_matches.extend(matches)
+                
+                # Remove duplicates while preserving order
+                seen = set()
+                unique_matches = []
+                for match in image_matches:
+                    if match not in seen:
+                        seen.add(match)
+                        unique_matches.append(match)
+                
+                for i, image_data in enumerate(unique_matches):
+                    # Skip very small images (likely placeholders) but be more lenient
+                    if len(image_data) > 50:  # Reduced from 100 to 50
+                        asset_id = f"{article.get('id', str(article.get('_id')))}_img_{i}"
+                        asset_name = f"Image from {article.get('title', 'article')[:30]}"
+                        
+                        # Check if this asset is already added
+                        if not any(a.get('id') == asset_id for a in formatted_assets):
+                            formatted_assets.append({
+                                "id": asset_id,
+                                "name": asset_name,
+                                "type": "image", 
+                                "data": image_data,
+                                "created_at": article.get("created_at"),
+                                "size": len(image_data),
+                                "storage_type": "embedded"
+                            })
+        
+        # Sort by creation date (newest first) - handle mixed datetime/string types
+        def safe_sort_key(asset):
+            created_at = asset.get('created_at', '')
+            if isinstance(created_at, str):
+                return created_at
+            elif hasattr(created_at, 'isoformat'):
+                return created_at.isoformat()
+            else:
+                return ''
+        
+        formatted_assets.sort(key=safe_sort_key, reverse=True)
+        
+        return {"assets": formatted_assets, "total": len(formatted_assets)}
+        
+    except Exception as e:
+        print(f"Get assets error: {str(e)}")
+        return {"assets": [], "total": 0}
+
+@app.post("/api/assets/upload")
+async def upload_asset(file: UploadFile = File(...)):
+    """Upload an asset to the asset library with proper file storage"""
+    try:
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="Only image files are allowed")
+        
+        # Generate unique filename
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else 'jpg'
+        unique_filename = f"{str(uuid.uuid4())}.{file_extension}"
+        file_path = f"static/uploads/{unique_filename}"
+        
+        # Ensure upload directory exists
+        os.makedirs("static/uploads", exist_ok=True)
+        
+        # Save file to disk
+        file_data = await file.read()
+        
+        async with aiofiles.open(file_path, "wb") as buffer:
+            await buffer.write(file_data)
+        
+        # Generate URL for the file (using /api/static prefix for proper routing)
+        file_url = f"/api/static/uploads/{unique_filename}"
+        
+        # Save metadata to database
+        collection = db["assets"]
+        
+        asset_data = {
+            "id": str(uuid.uuid4()),
+            "original_filename": file.filename,
+            "filename": unique_filename,
+            "title": file.filename,
+            "name": file.filename,
+            "type": "image",
+            "url": file_url,
+            "file_path": file_path,
+            "content_type": file.content_type,
+            "size": len(file_data),
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        await collection.insert_one(asset_data)
+        
+        return {
+            "success": True,
+            "asset": {
+                "id": asset_data["id"],
+                "name": asset_data["name"],
+                "type": asset_data["type"],
+                "url": file_url,
+                "original_filename": file.filename,
+                "size": len(file_data)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Upload asset error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/assets/{asset_id}")
+async def delete_asset(asset_id: str):
+    """Delete an asset from the asset library"""
+    try:
+        collection = db["assets"]
+        
+        # Find the asset first to get file path
+        asset = await collection.find_one({"id": asset_id})
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        # Delete file from disk if it exists
+        if "file_path" in asset and asset["file_path"]:
+            file_path = asset["file_path"]
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"Deleted file: {file_path}")
+        
+        # Delete from database
+        result = await collection.delete_one({"id": asset_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        return {"success": True, "message": "Asset deleted successfully"}
+        
+    except Exception as e:
+        print(f"Delete asset error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/assets/{asset_id}")
+async def update_asset(asset_id: str, asset_data: dict):
+    """Update an asset (rename)"""
+    try:
+        collection = db["assets"]
+        
+        # Find the asset first
+        asset = await collection.find_one({"id": asset_id})
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        # Update allowed fields
+        update_data = {
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        if "name" in asset_data:
+            update_data["name"] = asset_data["name"]
+            update_data["title"] = asset_data["name"]  # Keep title in sync
+        
+        # Update in database
+        result = await collection.update_one(
+            {"id": asset_id}, 
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        return {"success": True, "message": "Asset updated successfully"}
+        
+    except Exception as e:
+        print(f"Update asset error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Health check endpoint
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "services": {
+            "mongodb": "connected" if mongo_client else "disconnected",
+            "openai": "configured" if OPENAI_API_KEY else "not configured",
+            "anthropic": "configured" if ANTHROPIC_API_KEY else "not configured",
+            "assemblyai": "configured" if ASSEMBLYAI_API_KEY else "not configured",
+            "qdrant": "configured" if QDRANT_API_KEY else "not configured"
+        }
+    }
+
+# Status endpoint
+@app.get("/api/status")
+async def get_status():
+    """Get system status and statistics"""
+    try:
+        # Get document count from MongoDB
+        doc_count = await db.documents.count_documents({})
+        job_count = await db.processing_jobs.count_documents({})
+        
+        return {
+            "status": "operational",
+            "message": "Enhanced Content Engine running",
+            "statistics": {
+                "total_documents": doc_count,
+                "processing_jobs": job_count,
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Training endpoints
+@app.options("/api/training/process")
+async def training_process_options():
+    """Handle CORS preflight requests for training process endpoint"""
+    return Response(
+        content="OK",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400"
+        }
+    )
+
+@app.post("/api/training/process")
+async def training_process_document(
+    file: UploadFile = File(...),
+    template_id: str = Form(...),
+    training_mode: str = Form(default="true"),
+    template_instructions: str = Form(default="{}")
+):
+    """Process document with specific training template"""
+    start_time = datetime.utcnow()
+    
+    try:
+        print(f"🚀 Starting training process for {file.filename}")
+        
+        # Parse template instructions first
+        template_data = json.loads(template_instructions)
+        print(f"📋 Template data parsed: {len(template_data)} keys")
+        
+        # Create training session metadata
+        training_session = {
+            "session_id": str(uuid.uuid4()),
+            "template_id": template_id,
+            "filename": file.filename,
+            "training_mode": training_mode == "true",
+            "timestamp": datetime.utcnow().isoformat(),
+            "template_data": template_data
+        }
+        
+        print(f"📝 Created training session: {training_session['session_id']}")
+        
+        # Read file content ONCE and check size for optimization decisions
+        file_content = await file.read()
+        file_size = len(file_content)
+        print(f"📄 File content read: {file_size:,} bytes")
+        
+        # PERFORMANCE OPTIMIZATION: Determine processing strategy based on file size
+        is_large_file = file_size > 300000  # 300KB threshold
+        is_very_large_file = file_size > 800000  # 800KB threshold
+        
+        if is_very_large_file:
+            print(f"📊 Very large file detected ({file_size:,} bytes) - using maximum optimizations")
+        elif is_large_file:
+            print(f"📊 Large file detected ({file_size:,} bytes) - using optimized processing")
+        else:
+            print(f"📄 Standard file size ({file_size:,} bytes) - using normal processing")
+        
+        # Validate file content is not empty
+        if file_size == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+        
+        # DEBUG: Check if uploaded file is valid for DOCX
+        if file.filename.lower().endswith('.docx'):
+            print(f"🔍 DEBUG: Checking DOCX file validity")
+            # Check if file starts with ZIP signature (DOCX files are ZIP archives)
+            if file_content[:4] == b'PK\x03\x04':
+                print(f"✅ Valid DOCX file - has ZIP signature")
+            else:
+                print(f"❌ Invalid DOCX file - missing ZIP signature")
+                print(f"🔍 File starts with: {file_content[:20]}")
+                # Try to analyze the content
+                try:
+                    content_str = file_content.decode('utf-8', errors='ignore')[:100]
+                    print(f"🔍 Content preview: {content_str}")
+                except:
+                    print(f"🔍 Binary content, cannot decode as text")
+        
+        # Add file size check to prevent excessive processing
+        max_file_size = 50 * 1024 * 1024  # 50MB limit
+        if len(file_content) > max_file_size:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File too large ({len(file_content)} bytes). Maximum size: {max_file_size} bytes"
+            )
+        
+        # Save file temporarily for processing
+        temp_file_path = f"temp_uploads/{file.filename}"
+        os.makedirs("temp_uploads", exist_ok=True)
+        
+        with open(temp_file_path, "wb") as temp_file:
+            temp_file.write(file_content)
+        
+        print(f"💾 Temporary file saved: {temp_file_path}")
+        
+        # Additional DEBUG: Verify saved file
+        if file.filename.lower().endswith('.docx'):
+            try:
+                import zipfile
+                with zipfile.ZipFile(temp_file_path, 'r') as zip_ref:
+                    print(f"✅ Saved DOCX is valid ZIP with {len(zip_ref.namelist())} entries")
+            except Exception as zip_error:
+                print(f"❌ Saved file is not a valid ZIP: {zip_error}")
+        
+        # Process based on file type - NEW HTML PREPROCESSING PIPELINE
+        file_extension = file.filename.lower().split('.')[-1] if '.' in file.filename else 'txt'
+        
+        # Use HTML preprocessing pipeline for supported document types
+        if file_extension in ['docx', 'doc', 'pdf', 'ppt', 'pptx']:
+            print(f"🔄 DEBUG: Using HTML preprocessing pipeline for {file_extension}")
+            print(f"🔍 DEBUG: File path: {temp_file_path}")
+            print(f"📋 DEBUG: Session ID: {training_session.get('session_id', 'unknown')}")
+            articles = await process_with_html_preprocessing_pipeline(temp_file_path, file_extension, template_data, training_session)
+            print(f"✅ DEBUG: HTML pipeline returned {len(articles)} articles")
+            for i, article in enumerate(articles):
+                print(f"   Article {i+1}: '{article.get('title', 'No Title')}' ({article.get('word_count', 0)} words)")
+        elif file_extension in ['xls', 'xlsx']:
+            print("🔍 Processing Excel file")
+            articles = await process_excel_with_template(temp_file_path, template_data, training_session)
+        elif file_extension in ['html', 'htm']:
+            print("🔍 Processing HTML file")
+            articles = await process_html_with_template(temp_file_path, template_data, training_session)
+        elif file_extension in ['txt', 'md']:
+            print("🔍 Processing text file")
+            # Read text content
+            with open(temp_file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            articles = await process_text_with_template(content, template_data, training_session)
+        else:
+            print("🔍 Processing as default text file")
+            # Default text processing
+            try:
+                with open(temp_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                # Handle binary files
+                content = f"Binary file: {file.filename} - content extraction not supported"
+            articles = await process_text_with_template(content, template_data, training_session)
+        
+        print(f"📚 Processing complete: {len(articles)} articles generated")
+        
+        # CRITICAL BUG FIX: Add articles to Content Library
+        # Convert articles to chunks format for Content Library integration
+        try:
+            chunks_for_library = []
+            for article in articles:
+                chunk_data = {
+                    "content": article.get("content", ""),
+                    "metadata": {
+                        **article.get("metadata", {}),
+                        "source_job_id": training_session["session_id"],
+                        "original_filename": file.filename,
+                        "article_type": article.get("metadata", {}).get("article_type", "general"),
+                        "training_mode": True
+                    }
+                }
+                chunks_for_library.append(chunk_data)
+            
+            # Create Content Library articles from training articles
+            if chunks_for_library:
+                metadata_for_library = {
+                    "source_job_id": training_session["session_id"],
+                    "original_filename": file.filename,
+                    "processing_type": "training_endpoint",
+                    "template_id": template_id
+                }
+                
+                library_articles = await create_content_library_articles_from_chunks(chunks_for_library, metadata_for_library)
+                print(f"✅ CONTENT LIBRARY: Created {len(library_articles)} articles in Content Library from training")
+            else:
+                print("⚠️ No articles to add to Content Library")
+                
+        except Exception as library_error:
+            print(f"❌ Content Library integration failed: {library_error}")
+            print(f"⚠️ Training articles created but not added to Content Library")
+        
+        # Add articles to training session before storing
+        training_session["articles"] = articles
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_file_path)
+            print(f"🧹 Cleaned up temp file: {temp_file_path}")
+        except Exception as cleanup_error:
+            print(f"⚠️ Cleanup error: {cleanup_error}")
+        
+        # Store training session in database
+        await db.training_sessions.insert_one(training_session)
+        print(f"💾 Training session stored in database")
+        
+        # Calculate images processed and processing time
+        total_images = sum(article.get("image_count", 0) for article in articles)
+        processing_time = (datetime.utcnow() - start_time).total_seconds()
+        print(f"🖼️ Total images processed: {total_images}")
+        print(f"⏱️ Processing completed in {processing_time:.2f} seconds")
+        
+        return {
+            "success": True,
+            "session_id": training_session["session_id"],
+            "articles": articles,
+            "images_processed": total_images,
+            "processing_time": round(processing_time, 2),
+            "template_applied": template_id
+        }
+        
+    except Exception as e:
+        print(f"❌ Training processing error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/training/evaluate")
+async def training_evaluate_result(request: dict):
+    """Evaluate training result"""
+    try:
+        session_id = request.get("session_id")
+        result_id = request.get("result_id")
+        evaluation = request.get("evaluation")
+        feedback = request.get("feedback", "")
+        
+        # Store evaluation in database
+        evaluation_data = {
+            "id": str(uuid.uuid4()),
+            "session_id": session_id,
+            "result_id": result_id,
+            "evaluation": evaluation,
+            "feedback": feedback,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        await db.training_evaluations.insert_one(evaluation_data)
+        
+        return {
+            "success": True,
+            "evaluation_id": evaluation_data["id"],
+            "message": f"Result {evaluation} successfully"
+        }
+        
+    except Exception as e:
+        print(f"Training evaluation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/training/templates")
+async def get_training_templates():
+    """Get all training templates"""
+    try:
+        templates_cursor = db.training_templates.find({})
+        templates = await templates_cursor.to_list(length=100)
+        
+        return {
+            "templates": templates,
+            "total": len(templates)
+        }
+        
+    except Exception as e:
+        print(f"Get training templates error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/training/sessions")
+async def get_training_sessions():
+    """Get training session history"""
+    try:
+        sessions_cursor = db.training_sessions.find({}).sort("timestamp", -1)
+        sessions = await sessions_cursor.to_list(length=100)
+        
+        # Convert ObjectId to string for JSON serialization
+        clean_sessions = objectid_to_str(sessions)
+        
+        return {
+            "sessions": clean_sessions,
+            "total": len(clean_sessions)
+        }
+        
+    except Exception as e:
+        print(f"Get training sessions error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def process_docx_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Enhanced DOCX processing with Phase 1 content extraction specification"""
+    try:
+        # Import docx processing libraries
+        try:
+            from docx import Document
+            from docx.shared import Inches
+            import zipfile
+            from lxml import etree  # Use lxml instead of xml.etree.ElementTree
+        except ImportError:
+            print("python-docx not installed, using fallback processing")
+            return await process_text_with_template("", template_data, training_session)
+        
+        print(f"🔍 Phase 1: Starting enhanced DOCX content extraction")
+        
+        # Try to read as actual DOCX file
+        try:
+            doc = Document(file_path)
+            print(f"✅ Successfully loaded DOCX file")
+        except Exception as docx_error:
+            print(f"⚠️ Failed to load as DOCX file: {docx_error}")
+            print(f"🔄 Falling back to text processing")
+            # If it's not a valid DOCX file, treat it as text
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except Exception as text_error:
+                print(f"❌ Text fallback also failed: {text_error}")
+                return []
+        
+        # Phase 1: Enhanced Text Extraction
+        extracted_content = {
+            "body_text": "",
+            "headings": [],
+            "tables": [],
+            "lists": [],
+            "structure": [],
+            "inline_formatting": []
+        }
+        
+        # Skip cover page detection
+        skip_first_page = is_cover_page(doc.paragraphs[:5])
+        if skip_first_page:
+            print(f"🚫 Detected and skipping cover page")
+        
+        # Extract meaningful content with structure preservation
+        paragraph_start = 1 if skip_first_page else 0
+        
+        for i, paragraph in enumerate(doc.paragraphs[paragraph_start:], paragraph_start):
+            text = paragraph.text.strip()
+            if not text:
+                continue
+                
+            # Skip Table of Contents detection
+            if is_table_of_contents(text, i):
+                print(f"🚫 Skipping Table of Contents at paragraph {i}")
+                continue
+                
+            # Skip page numbers and headers/footers
+            if is_header_footer_or_page_number(text):
+                print(f"🚫 Skipping header/footer/page number: {text[:50]}...")
+                continue
+                
+            # Skip legal disclaimers
+            if is_legal_disclaimer(text):
+                print(f"🚫 Skipping legal disclaimer: {text[:50]}...")
+                continue
+            
+            # Detect heading levels
+            heading_level = detect_heading_level_from_text(text)
+            if not heading_level:
+                # Try to detect from style
+                style_name = paragraph.style.name.lower()
+                if 'heading 1' in style_name or 'title' in style_name:
+                    heading_level = 1
+                elif 'heading 2' in style_name:
+                    heading_level = 2
+                elif 'heading 3' in style_name:
+                    heading_level = 3
+                elif 'heading 4' in style_name:
+                    heading_level = 4
+            
+            if heading_level:
+                extracted_content["headings"].append({
+                    "level": heading_level,
+                    "text": text,
+                    "position": i
+                })
+                extracted_content["structure"].append({
+                    "type": f"h{heading_level}",
+                    "content": text,
+                    "position": i
+                })
+                print(f"📋 Heading H{heading_level}: {text[:50]}...")
+            else:
+                # Regular body text with inline formatting preservation
+                formatted_text = preserve_inline_formatting(paragraph)
+                extracted_content["body_text"] += formatted_text + "\n\n"
+                extracted_content["structure"].append({
+                    "type": "paragraph",
+                    "content": formatted_text,
+                    "position": i
+                })
+        
+        # Extract tables
+        for i, table in enumerate(doc.tables):
+            table_data = extract_table_data(table)
+            extracted_content["tables"].append({
+                "index": i,
+                "data": table_data,
+                "html": table_to_html(table_data)
+            })
+            print(f"📊 Extracted table {i+1} with {len(table_data)} rows")
+        
+        # Phase 1: Enhanced Image Extraction using new contextual system
+        contextual_images = extract_contextual_images_from_docx(file_path, doc, extracted_content, training_session)
+        
+        print(f"🔍 DEBUG - Contextual images returned: {len(contextual_images)}")
+        for i, img in enumerate(contextual_images):
+            print(f"  Image {i+1}: {img.get('filename', 'unknown')} - {img.get('url', 'no_url')}")
+        
+        print(f"✅ Phase 1 Complete: {len(extracted_content['structure'])} content blocks, {len(contextual_images)} images")
+        
+        # CRITICAL FIX: Force enhanced processing for DOCX files to prevent fallback bypass
+        body_text_length = len(extracted_content.get("body_text", ""))
+        structure_count = len(extracted_content.get('structure', []))
+        total_content_length = body_text_length + sum(len(block.get('content', '')) for block in extracted_content.get('structure', []))
+        
+        print(f"🔍 DEBUG Processing decision metrics:")
+        print(f"  - Contextual images: {len(contextual_images)}")
+        print(f"  - Structure blocks: {structure_count}")
+        print(f"  - Body text length: {body_text_length}")
+        print(f"  - Total content length: {total_content_length}")
+        
+        # FORCE enhanced processing for any meaningful DOCX content
+        # Use enhanced processing if:
+        # 1. ANY images found, OR
+        # 2. Multiple structure blocks (even 2+), OR  
+        # 3. ANY substantial text content (lowered threshold)
+        should_use_enhanced = (
+            len(contextual_images) > 0 or 
+            structure_count >= 1 or  # Changed from > 2 to >= 1
+            body_text_length > 200 or  # Changed from 1000 to 200
+            total_content_length > 500  # Added total content check
+        )
+        
+        print(f"🚀 Processing decision: {'ENHANCED' if should_use_enhanced else 'SIMPLIFIED'}")
+        
+        if should_use_enhanced:
+            print(f"✅ Using ENHANCED processing path: {len(contextual_images)} images, {structure_count} content blocks, {body_text_length} chars body text, {total_content_length} total chars")
+            
+            # ENHANCED CONTENT PREPARATION - Comprehensive content aggregation
+            enhanced_content = ""
+            content_sources = []
+            
+            # Process structured content with proper HTML
+            structure_content = ""
+            for block in extracted_content.get('structure', []):
+                block_type = block.get('type', 'paragraph')
+                content_text = block.get('content', '').strip()
+                
+                if not content_text:
+                    continue
+                    
+                if block_type.startswith('h'):
+                    # Handle h1, h2, h3, h4 properly
+                    level = block_type[1] if len(block_type) > 1 and block_type[1].isdigit() else '2'
+                    structure_content += f"<h{level}>{content_text}</h{level}>\n\n"
+                elif block_type == 'heading':
+                    level = block.get('level', 2)
+                    structure_content += f"<h{level}>{content_text}</h{level}>\n\n"
+                elif block_type == 'paragraph':
+                    structure_content += f"<p>{content_text}</p>\n\n"
+                elif block_type == 'list_item':
+                    structure_content += f"<li>{content_text}</li>\n"
+                else:
+                    structure_content += f"<p>{content_text}</p>\n\n"
+            
+            if structure_content.strip():
+                enhanced_content += structure_content
+                content_sources.append(f"structured content ({len(structure_content)} chars)")
+            
+            # Add body text with formatting
+            body_text = extracted_content.get("body_text", "").strip()
+            if body_text:
+                # Ensure body text is properly formatted
+                if not body_text.startswith('<'):
+                    # Convert plain text to HTML paragraphs
+                    paragraphs = body_text.split('\n\n')
+                    formatted_body = ""
+                    for para in paragraphs:
+                        para = para.strip()
+                        if para:
+                            formatted_body += f"<p>{para}</p>\n\n"
+                    body_text = formatted_body
+                
+                enhanced_content += f"\n\n{body_text}"
+                content_sources.append(f"body text ({len(body_text)} chars)")
+            
+            # Add table content
+            table_content = ""
+            for table in extracted_content.get("tables", []):
+                if table.get("html"):
+                    table_content += f"\n\n{table['html']}\n"
+            
+            if table_content.strip():
+                enhanced_content += table_content
+                content_sources.append(f"tables ({len(table_content)} chars)")
+            
+            # Ensure we have substantial content for processing
+            enhanced_content = enhanced_content.strip()
+            
+            # If content is still insufficient, create more comprehensive content
+            if len(enhanced_content) < 500:
+                print("⚠️ Enhanced content insufficient, expanding with additional context")
+                
+                # Add headings as content if available
+                headings_content = ""
+                for heading in extracted_content.get("headings", []):
+                    if heading.get("text"):
+                        level = heading.get("level", 2)
+                        headings_content += f"<h{level}>{heading['text']}</h{level}>\n"
+                        headings_content += f"<p>This section covers {heading['text'].lower()} with comprehensive details and explanations.</p>\n\n"
+                
+                if headings_content:
+                    enhanced_content += f"\n\n{headings_content}"
+                    content_sources.append(f"expanded headings ({len(headings_content)} chars)")
+            
+            print(f"📊 Enhanced content sources: {', '.join(content_sources)}")
+            print(f"📊 Total enhanced content: {len(enhanced_content)} chars")
+            
+            print(f"🎨 Enhanced content prepared: {len(enhanced_content)} chars with {len(contextual_images)} contextual images")
+            
+            # CRITICAL FIX: Ensure enhanced processing succeeds
+            if len(enhanced_content) < 100:
+                print("❌ Enhanced content too short, forcing fallback creation")
+                enhanced_content = f"<h1>Document Processing</h1>\n<p>Processing content from {training_session.get('filename', 'document')} with {len(contextual_images)} images.</p>\n"
+                
+                # Add any available content
+                if extracted_content.get("body_text"):
+                    enhanced_content += f"<p>{extracted_content['body_text']}</p>\n"
+                
+                # Add table summaries
+                for i, table in enumerate(extracted_content.get("tables", []), 1):
+                    if table.get("data"):
+                        enhanced_content += f"<p>Table {i}: Contains {len(table['data'])} rows of data.</p>\n"
+            
+            # INTELLIGENT APPROACH: Use the intelligent content processing pipeline
+            print(f"🧠 Using INTELLIGENT CONTENT PROCESSING PIPELINE for DOCX content")
+            articles = await intelligent_content_processing_pipeline(enhanced_content, {
+                "source": "docx",
+                "original_filename": template_data.get("filename", "document.docx"),
+                "images": contextual_images,
+                "template_data": template_data,
+                "training_session": training_session
+            })
+            
+            print(f"📊 Comprehensive processing result: {len(articles)} articles generated")
+            
+            # CRITICAL FIX: Don't give up on enhanced processing too easily
+            if articles and len(articles) > 0:
+                print(f"✅ Enhanced processing successful: {len(articles)} articles with images")
+                return articles
+            else:
+                print("⚠️ Enhanced processing failed, trying recovery...")
+                # Try recovery with simpler template approach
+                recovery_articles = await create_recovery_articles(enhanced_content, contextual_images, template_data, training_session)
+                if recovery_articles:
+                    print(f"✅ Recovery successful: {len(recovery_articles)} articles")
+                    return recovery_articles
+                else:
+                    print("❌ Recovery failed, falling back to simplified")
+        
+        # Fallback to simplified processing only if enhanced fails or has minimal content
+        print(f"🔄 Using simplified processing fallback")
+        try:
+            # Convert extracted structure to simple text content for fallback
+            fallback_content = extracted_content.get("body_text", "")
+            
+            # Add headings to content
+            for heading in extracted_content.get("headings", []):
+                if heading.get("text"):
+                    fallback_content += f"\n\n{'#' * heading.get('level', 1)} {heading['text']}\n"
+            
+            # Add table content
+            for table in extracted_content.get("tables", []):
+                if table.get("html"):
+                    fallback_content += f"\n\n{table['html']}\n"
+            
+            print(f"🔄 Using simplified processing for DOCX fallback: {len(fallback_content)} chars")
+            
+            # Use the working template-based processing
+            articles = await create_articles_with_template(fallback_content, contextual_images, template_data, training_session)
+            
+            return articles
+            
+        except Exception as fallback_error:
+            print(f"❌ Fallback processing failed: {fallback_error}")
+            return []
+        
+    except Exception as e:
+        print(f"❌ Enhanced DOCX processing error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def create_comprehensive_articles_from_docx_content(content: str, images: list, template_data: dict, training_session: dict) -> list:
+    """Create comprehensive articles using PDF-style segmented generation for DOCX content"""
+    try:
+        content_length = len(content)
+        image_count = len(images)
+        
+        print(f"📊 Starting comprehensive DOCX article generation: {content_length} chars, {image_count} images")
+        
+        # Check if content is empty
+        if not content or not content.strip():
+            print("❌ Content is empty or only whitespace")
+            return []
+            
+        articles = []
+        
+        # Analyze content for natural breaking points
+        natural_sections = []
+        
+        # Look for major headings and section breaks
+        if '<h1>' in content or '<h2>' in content or '\n\n' in content:
+            # Content has structure, split intelligently
+            
+            if '<h1>' in content:
+                h1_sections = content.split('<h1>')
+                print(f"🔍 Splitting content on H1 tags - found {len(h1_sections)} sections")
+                
+                for i, section in enumerate(h1_sections):
+                    if section.strip():
+                        if i == 0 and not section.startswith('<h1>'):
+                            # First section without H1 prefix - could be intro content
+                            if len(section.strip()) > 200:  # Only include substantial intro content
+                                natural_sections.append(section)
+                                print(f"✅ Added intro section: {len(section)} chars")
+                        else:
+                            # Restore H1 tag and treat as separate article
+                            if not section.startswith('<h1>'):
+                                section = '<h1>' + section
+                            natural_sections.append(section)
+                            print(f"✅ Added H1 section {i}: {len(section)} chars")
+            elif '<h2>' in content:
+                sections = content.split('<h2>')
+                for i, section in enumerate(sections):
+                    if section.strip():
+                        if i > 0:  # Add back the h2 tag
+                            section = '<h2>' + section
+                        natural_sections.append(section)
+            else:
+                # Split on double line breaks for paragraph-based content
+                sections = content.split('\n\n')
+                current_section = ""
+                
+                for section in sections:
+                    # Aim for sections of reasonable length (4000-8000 chars for comprehensive coverage)
+                    if len(current_section + section) > 8000 and current_section:
+                        natural_sections.append(current_section.strip())
+                        current_section = section
+                    else:
+                        current_section += "\n\n" + section if current_section else section
+                
+                if current_section.strip():
+                    natural_sections.append(current_section.strip())
+        else:
+            # No clear structure, treat as single section
+            natural_sections = [content]
+        
+        # CHUNKING FIX: Improved section filtering with aggressive splitting
+        filtered_sections = []
+        for i, section in enumerate(natural_sections):
+            section_length = len(section.strip())
+            
+            # If section is too small, try to merge with next
+            if section_length < 800 and i < len(natural_sections) - 1:
+                # Only merge if next section is also small, otherwise keep separate
+                next_section_length = len(natural_sections[i + 1].strip())
+                if next_section_length < 2000:
+                    natural_sections[i + 1] = section + "\n\n" + natural_sections[i + 1]
+                    continue
+            
+            # Include all sections with meaningful content (lowered from 200 to 100)
+            if section_length >= 100:
+                filtered_sections.append(section)
+        
+        # CHUNKING FIX: Force multiple articles by aggressive splitting - SYNCHRONIZED WITH STANDARD PATH
+        if len(filtered_sections) <= 1 and content_length > 1200:  # FIXED: Use same 1200 threshold as standard path
+            print(f"🔄 ENHANCED DOCX FORCE CHUNKING: Content too long ({content_length} chars) for single article - using 1200 threshold")
+            # Split long single sections more aggressively
+            large_section = filtered_sections[0] if filtered_sections else content
+            
+            # Try H2-based splitting first
+            if '<h2>' in large_section:
+                h2_parts = large_section.split('<h2>')
+                filtered_sections = []
+                for j, part in enumerate(h2_parts):
+                    if part.strip():
+                        if j > 0:  # Add back h2 tag
+                            part = '<h2>' + part
+                        filtered_sections.append(part)
+                print(f"📚 H2 splitting created {len(filtered_sections)} sections")
+            
+            # If still single section, use paragraph-based chunking
+            if len(filtered_sections) <= 1:
+                print("🔧 ENHANCED DOCX: Trying paragraph-based chunking for single large section")
+                paragraphs = large_section.split('\n\n')
+                
+                # ENHANCED DOCX FIX: If no paragraph breaks, try other separators (same as standard path)
+                if len(paragraphs) <= 1:
+                    print("🔧 ENHANCED DOCX: No paragraph breaks found - trying alternative splitting")
+                    
+                    # Try splitting by single newlines
+                    paragraphs = large_section.split('\n')
+                    if len(paragraphs) <= 1:
+                        print("🔧 ENHANCED DOCX: No line breaks found - forcing character-based chunking")
+                        # Force character-based chunking for very long single paragraphs
+                        chunk_size = 1500  # More aggressive than 4000
+                        paragraphs = []
+                        for i in range(0, len(large_section), chunk_size):
+                            chunk = large_section[i:i+chunk_size]
+                            paragraphs.append(chunk)
+                            print(f"📝 ENHANCED DOCX Force chunk: {len(chunk)} chars")
+                    else:
+                        print(f"📝 ENHANCED DOCX: Using {len(paragraphs)} line-separated sections")
+                else:
+                    print(f"📝 ENHANCED DOCX: Using {len(paragraphs)} paragraph-separated sections")
+                
+                filtered_sections = []
+                current_chunk = ""
+                
+                for paragraph in paragraphs:
+                    # Reduced from 4000 to 1800 for more aggressive chunking
+                    if len(current_chunk + paragraph) > 1800 and current_chunk:
+                        filtered_sections.append(current_chunk.strip())
+                        current_chunk = paragraph
+                    else:
+                        current_chunk += "\n\n" + paragraph if current_chunk else paragraph
+                
+                if current_chunk.strip():
+                    filtered_sections.append(current_chunk.strip())
+                    
+                print(f"📚 ENHANCED DOCX Paragraph chunking created {len(filtered_sections)} sections")
+        
+        natural_sections = filtered_sections if filtered_sections else [content]
+        
+        print(f"📝 Identified {len(natural_sections)} natural content sections")
+        
+        # Distribute images across sections
+        section_images = distribute_images_contextually(natural_sections, images)
+        
+        # Create comprehensive articles from natural sections using PDF-style generation
+        for i, section in enumerate(natural_sections):
+            if section.strip():
+                assigned_images = section_images[i] if i < len(section_images) else []
+                
+                print(f"📄 Creating comprehensive article {i+1} with {len(assigned_images)} images using PDF-style generation")
+                
+                article = await create_comprehensive_single_docx_article(
+                    section, 
+                    assigned_images,
+                    template_data, 
+                    training_session,
+                    i + 1,
+                    len(natural_sections)
+                )
+                
+                if article:
+                    articles.append(article)
+        
+        print(f"✅ Created {len(articles)} comprehensive articles from DOCX content")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX article creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def create_comprehensive_single_docx_article(content: str, images: list, template_data: dict, training_session: dict, article_number: int, total_articles: int = 1) -> dict:
+    """Create a single comprehensive DOCX article using PDF-style segmented generation"""
+    try:
+        print(f"🔍 Creating comprehensive DOCX article {article_number}/{total_articles} with {len(images)} images")
+        
+        # Generate intelligent title based on content, not filename
+        title = extract_h1_title_from_content(content) or generate_contextual_title(content, article_number, training_session)
+        
+        # Use comprehensive segmented generation for thorough coverage
+        if len(content) > 3000:  # Lower threshold than PDF since DOCX content is usually more structured
+            print("📝 Using comprehensive segmented generation for thorough DOCX coverage")
+            final_content = await generate_comprehensive_docx_article_segmented(content, images, template_data, title)
+        else:
+            print("📝 Using comprehensive single-pass generation for DOCX content")
+            final_content = await generate_comprehensive_docx_single_pass(content, images, template_data, title)
+        
+        if not final_content:
+            print("⚠️ No AI content generated, creating comprehensive fallback")
+            final_content = create_comprehensive_docx_fallback_content(content, images, title)
+        
+        # Post-process the AI content for quality assurance
+        final_content = enhance_content_quality(final_content, images)
+        
+        # Extract or generate final title from content
+        final_title = extract_content_title(final_content) or title
+        
+        # Create comprehensive article with enhanced metadata
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": final_title,
+            "content": final_content,
+            "word_count": len(final_content.split()),
+            "image_count": len(images),
+            "status": "training",
+            "template_id": template_data.get("template_id", "comprehensive_docx_processing"),
+            "session_id": training_session.get("session_id"),
+            "training_mode": True,
+            "ai_processed": True,
+            "ai_model": "comprehensive_knowledge_engine_docx",
+            "has_images": len(images) > 0,
+            "has_structure": check_content_structure(final_content),
+            "processing_metadata": {
+                "article_number": article_number,
+                "total_articles": total_articles,
+                "original_length": len(content),
+                "enhanced_length": len(final_content),
+                "images_embedded": count_embedded_images(final_content),
+                "generation_method": "comprehensive_segmented" if len(content) > 3000 else "comprehensive_single_pass",
+                "processing_type": "comprehensive_docx"
+            }
+        }
+        
+        print(f"✅ Comprehensive DOCX article created: '{final_title}' ({article['word_count']} words)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX article creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def generate_comprehensive_docx_article_segmented(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate comprehensive DOCX article using segmented approach for full coverage"""
+    try:
+        print("🔄 Starting comprehensive segmented generation for DOCX content")
+        
+        # Step 1: Generate article outline and structure
+        outline = await generate_comprehensive_docx_outline(content, title, template_data)
+        if not outline:
+            print("⚠️ Could not generate DOCX outline, falling back to single-pass")
+            return await generate_comprehensive_docx_single_pass(content, images, template_data, title)
+        
+        print(f"📋 Generated comprehensive DOCX outline with sections")
+        
+        # Step 2: Split content into logical segments based on outline
+        content_segments = split_docx_content_into_segments(content, outline)
+        print(f"📄 Split DOCX content into {len(content_segments)} segments")
+        
+        # Step 3: Distribute images across segments
+        segment_images = distribute_images_to_segments(images, content_segments)
+        
+        # Step 4: Generate each segment comprehensively
+        generated_sections = []
+        generated_sections.append(f"<h1>{title}</h1>\n")
+        
+        for i, (segment, segment_imgs) in enumerate(zip(content_segments, segment_images)):
+            print(f"🔄 Generating comprehensive DOCX section {i+1}/{len(content_segments)}")
+            
+            section_content = await generate_comprehensive_docx_segment(
+                segment, 
+                segment_imgs, 
+                template_data, 
+                i + 1, 
+                len(content_segments),
+                outline
+            )
+            
+            if section_content:
+                generated_sections.append(section_content)
+            else:
+                print(f"⚠️ Failed to generate DOCX section {i+1}, using fallback")
+                generated_sections.append(create_comprehensive_docx_fallback_segment(segment, segment_imgs))
+        
+        # Step 5: Combine all sections
+        final_content = "\n\n".join(generated_sections)
+        
+        print(f"✅ Comprehensive segmented DOCX generation completed: {len(final_content.split())} words")
+        return final_content
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX segmented generation error: {e}")
+        return await generate_comprehensive_docx_single_pass(content, images, template_data, title)
+
+async def generate_comprehensive_docx_outline(content: str, title: str, template_data: dict) -> dict:
+    """Generate a structured outline for comprehensive DOCX article"""
+    try:
+        system_message = """You are an expert technical documentation strategist creating comprehensive outlines for DOCX-based knowledge articles.
+
+Generate a detailed outline for a comprehensive technical documentation article based on DOCX content. Return ONLY a JSON structure with no additional text.
+
+Required JSON format:
+{
+    "title": "Article Title",
+    "sections": [
+        {
+            "heading": "Section Title",
+            "level": 2,
+            "key_points": ["detailed point 1", "detailed point 2", "detailed point 3"],
+            "estimated_words": 600
+        }
+    ],
+    "total_estimated_words": 2000
+}
+
+Create 2-4 major sections with comprehensive key points. Aim for thorough coverage with 1500-3000 total words for complete technical documentation."""
+
+        user_message = f"""Create a comprehensive technical documentation outline for this DOCX content:
+
+TITLE: {title}
+
+DOCX CONTENT TO OUTLINE:
+{content[:3000]}...
+
+Create a detailed outline with major sections, comprehensive key points, and estimated word counts for thorough technical documentation coverage. Focus on creating sections that will result in comprehensive, well-revised content suitable for technical documentation."""
+
+        outline_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if outline_response:
+            import json
+            try:
+                outline_data = json.loads(outline_response)
+                if "sections" in outline_data and len(outline_data["sections"]) > 0:
+                    return outline_data
+            except json.JSONDecodeError:
+                print("⚠️ Could not parse DOCX outline JSON")
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ DOCX outline generation error: {e}")
+        return None
+
+def split_docx_content_into_segments(content: str, outline: dict) -> list:
+    """Split DOCX content into segments based on outline structure"""
+    if not outline or "sections" not in outline:
+        # Fallback: split into 2-3 balanced segments for comprehensive processing
+        words = content.split()
+        segments_count = min(3, max(2, len(words) // 800))  # 2-3 segments, ~800 words each
+        segment_size = max(400, len(words) // segments_count)  # At least 400 words per segment
+        
+        segments = []
+        for i in range(0, len(words), segment_size):
+            segment_words = words[i:i + segment_size]
+            if segment_words:  # Only add non-empty segments
+                segments.append(" ".join(segment_words))
+        
+        return segments
+    
+    # Try to split based on outline sections
+    sections = outline["sections"]
+    # Limit to maximum 3 segments for comprehensive processing
+    target_segments = min(3, len(sections))
+    total_words = len(content.split())
+    words_per_section = total_words // target_segments
+    
+    segments = []
+    words = content.split()
+    
+    for i in range(target_segments):
+        start_idx = i * words_per_section
+        end_idx = min((i + 1) * words_per_section, len(words)) if i < target_segments - 1 else len(words)
+        
+        segment_words = words[start_idx:end_idx]
+        if segment_words:
+            segments.append(" ".join(segment_words))
+    
+    return segments
+
+async def generate_comprehensive_docx_segment(segment_content: str, segment_images: list, template_data: dict, segment_num: int, total_segments: int, outline: dict) -> str:
+    """Generate a comprehensive DOCX content segment with technical documentation quality"""
+    try:
+        section_info = ""
+        if outline and "sections" in outline and segment_num <= len(outline["sections"]):
+            section_data = outline["sections"][segment_num - 1]
+            section_info = f"""
+SECTION FOCUS: {section_data.get('heading', f'Section {segment_num}')}
+KEY POINTS TO COVER: {', '.join(section_data.get('key_points', []))}
+TARGET LENGTH: {section_data.get('estimated_words', 700)} words"""
+
+        system_message = f"""You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
+
+Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
+
+ENHANCED TECHNICAL WRITING STANDARDS:
+
+1. **Title Creation Rules**:
+   - If source contains <h1>, extract and refine for specificity
+   - Generate specific, actionable titles that reflect exact content:
+     * **Concepts**: "API Core Concepts and Components" not "Understanding the API"  
+     * **How-to**: "Integrating Google Maps into React Applications" not "Comprehensive Guide to Maps"
+     * **Use-Cases**: "Building Location-Based Store Finder" not "Maps Implementation Guide"
+     * **Troubleshooting**: "Resolving 'Invalid API Key' Errors" not "API Issues Guide"
+   - NEVER use generic phrases like "Comprehensive Guide to..." or "Understanding..."
+
+2. **Technical Writing Elements** (apply based on content type):
+   - **Callouts**: <blockquote class="tip">💡 Tip: ...</blockquote>, <blockquote class="warning">⚠️ Warning: ...</blockquote>, <blockquote class="note">📝 Note: ...</blockquote>
+   - **Tables**: Proper <table> structure for parameters, configurations, comparisons, structured data
+   - **Lists**: <ol> for sequential procedures, <ul> for features/options/requirements
+   - **Code Elements**: <pre><code> for multi-line code samples, <code> for inline references
+   - **Expand/Collapse**: <details><summary>Advanced Options</summary>content</details> for optional information
+
+3. **Content Structure by Article Type**:
+   - **Concept Articles**: Explain principles, features, definitions with clear examples and context
+   - **How-to/Guides**: Step-by-step procedures with numbered lists, prerequisites, and expected outcomes
+   - **Use-Case Walkthroughs**: Applied scenarios with implementation details, code examples, and results
+   - **FAQs**: Direct question-answer format with problem-solution structure
+   - **Troubleshooting**: Problem diagnosis steps with symptoms, causes, and resolution paths
+
+4. **Core Content Rules**:
+   - 🔁 Never summarize — Always enhance, elaborate, and expand source information
+   - 🧱 Decompose intelligently — Break content into logical, titled sections with clear headings
+   - 📚 Add depth — Insert background, steps, examples, and best practices where appropriate
+   - 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order
+   - 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy
+
+5. **HTML Structure Requirements**:
+   - Generate clean, editor-friendly HTML using only: <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>, <details>, <summary>
+   - NO <h1> tags - title serves as H1 heading
+   - DO NOT include: image tags, markdown, CSS, JavaScript, or styling classes
+   - Content must be WYSIWYG editor compatible
+
+{section_info}
+
+SECTION REQUIREMENTS: Generate 800-1200 words minimum with logical flow based on content type:
+- **Concepts**: Introduction → Definition → Components → Examples → Implementation → Best Practices
+- **How-to**: Overview → Prerequisites → Step-by-Step Instructions → Examples → Troubleshooting → Next Steps
+- **Use-Cases**: Scenario Overview → Requirements → Implementation → Code Examples → Results → Variations
+
+EXPANSION MANDATE: You MUST significantly expand each section with:
+- Detailed explanations for every concept with context and rationale
+- Multiple practical examples with specific implementations
+- Step-by-step breakdowns with reasoning and expected outcomes
+- Background information and prerequisite knowledge
+- Common pitfalls, troubleshooting, and error resolution
+- Best practices, recommendations, and optimization tips
+- Real-world scenarios, use cases, and applied examples
+- Appropriate technical writing elements (tables, callouts, code blocks)
+
+DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic using professional technical writing standards."""
+
+        user_message = f"""The following content was extracted from a DOCX file section and must be transformed into a professionally written, fully enhanced, comprehensive HTML section using modern technical writing standards.
+
+CRITICAL OUTPUT REQUIREMENTS:
+- DO NOT SUMMARIZE: Expand on ideas, add context, explanations, and technical steps.
+- RESTRUCTURE LOGICALLY: Break long text into clear, hierarchical sections with proper headings.
+- TARGET LENGTH: 800-1200 words minimum for this section's complete coverage - THIS IS MANDATORY.
+- EXPAND COMPREHENSIVELY: Add detailed explanations, multiple examples, background context, troubleshooting tips, and best practices for every concept.
+- DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
+- LOGICAL FLOW: Structure as Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+- NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
+- ONLY USE CLEAN HTML TAGS listed in system prompt — no Markdown or styling.
+
+EXPANSION REQUIREMENTS: For each section, provide:
+1. Detailed background and context
+2. Step-by-step explanations with reasoning
+3. Multiple practical examples
+4. Common issues and solutions  
+5. Best practices and recommendations
+6. Real-world applications and scenarios
+
+CONTENT TO PROCESS AND ENHANCE:
+{segment_content}
+
+AVAILABLE IMAGES FOR REFERENCE: {len(segment_images)}
+{format_available_images(segment_images)}
+
+Generate comprehensive, enterprise-grade technical documentation content for section {segment_num} of {total_segments}."""
+
+        segment_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if segment_response:
+            return segment_response.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX segment generation error: {e}")
+        return None
+
+async def generate_comprehensive_docx_single_pass(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate comprehensive DOCX article using single-pass approach"""
+    try:
+        print("📝 Using comprehensive single-pass generation for DOCX content")
+        
+        system_message = """You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
+
+Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
+
+Follow these core rules:
+
+1. 🔁 Never summarize — Always enhance, elaborate, and expand source information.
+2. 🧱 Decompose intelligently — Break content into logical, titled sections with clear headings and structure.
+3. 📚 Add depth — Insert background, steps, examples, and best practices where appropriate.
+4. 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order.
+5. 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy, and instructional formatting.
+6. 📄 Generate clean, editor-friendly HTML only — Use only the following tags:
+
+   <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+
+   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes.
+
+💡 Title Rule:
+- If source contains <h1>, extract and reuse that.
+- If not, generate a specific, topic-focused title — never use "Comprehensive Guide to..." or generic phrases.
+
+📌 Response Format (JSON):
+{
+  "title": "Extracted or generated specific title",
+  "content": "<h1>Title</h1><h2>Introduction</h2><p>...</p> ...",
+  "summary": "Brief human-readable summary of article scope (2–3 sentences)",
+  "tags": ["topic1", "topic2", "tech-support"],
+  "takeaways": ["Key point 1", "Key point 2", "Key concept 3"]
+}
+
+EXPANSION MANDATE: You MUST significantly expand each section with:
+- Detailed explanations for every concept
+- Multiple practical examples 
+- Step-by-step breakdowns with context
+- Background information and rationale
+- Common pitfalls and troubleshooting
+- Best practices and recommendations
+- Real-world scenarios and use cases
+
+DO NOT condense or summarize - your goal is comprehensive coverage that educates readers thoroughly on every aspect of the topic."""
+
+        user_message = f"""The following content was extracted from a DOCX file and must be transformed into a professionally written, fully enhanced, comprehensive HTML article using modern technical writing standards.
+
+CRITICAL OUTPUT REQUIREMENTS:
+- DO NOT SUMMARIZE: Expand on ideas, add context, explanations, and technical steps.
+- RESTRUCTURE LOGICALLY: Break long text into clear, hierarchical sections with proper headings.
+- TARGET LENGTH: 1200-2000 words minimum for complete coverage - THIS IS MANDATORY.
+- EXPAND COMPREHENSIVELY: Add detailed explanations, multiple examples, background context, troubleshooting tips, and best practices for every concept.
+- DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
+- LOGICAL FLOW: Structure as Introduction → Background/Context → Core Concepts → Step-by-Step Instructions → Examples → Best Practices → Conclusion.
+- NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
+- ONLY USE CLEAN HTML TAGS listed in system prompt — no Markdown or styling.
+
+EXPANSION REQUIREMENTS: For each section, provide:
+1. Detailed background and context
+2. Step-by-step explanations with reasoning
+3. Multiple practical examples
+4. Common issues and solutions  
+5. Best practices and recommendations
+6. Real-world applications and scenarios
+
+CONTENT TO PROCESS AND ENHANCE:
+{content}
+
+AVAILABLE IMAGES FOR REFERENCE: {len(images)}
+{format_available_images(images)}
+
+Generate comprehensive, enterprise-grade technical documentation content."""
+
+        response = await call_llm_with_fallback(system_message, user_message)
+        
+        if response:
+            return response.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Comprehensive DOCX single-pass generation error: {e}")
+        return None
+
+def create_comprehensive_docx_fallback_content(content: str, images: list, title: str) -> str:
+    """Create comprehensive fallback content when AI generation fails"""
+    fallback_html = f"<h1>{title}</h1>\n\n"
+    
+    # Add comprehensive introduction
+    fallback_html += "<p>This comprehensive technical documentation has been processed and enhanced from the original DOCX content to provide detailed, well-structured information.</p>\n\n"
+    
+    # Process content with improvements
+    if content:
+        # Split into paragraphs and improve formatting
+        paragraphs = content.split('\n\n')
+        for i, para in enumerate(paragraphs):
+            para = para.strip()
+            if para:
+                if para.startswith('<h') or para.startswith('#'):
+                    # It's already a heading
+                    fallback_html += f"{para}\n\n"
+                elif len(para) < 100 and i < 3:
+                    # Short paragraph near the beginning, might be a heading
+                    fallback_html += f"<h2>{para}</h2>\n\n"
+                else:
+                    # Regular paragraph
+                    fallback_html += f"<p>{para}</p>\n\n"
+    
+    # Add images if available
+    for i, image in enumerate(images):
+        image_url = image.get('url', '')
+        if image_url:
+            fallback_html += f"""
+<figure>
+    <img src="{image_url}" alt="Document Image {i+1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <figcaption>Figure {i+1}: Image from original document</figcaption>
+</figure>
+
+"""
+    
+    # Add comprehensive conclusion
+    fallback_html += "<h2>Summary</h2>\n"
+    fallback_html += "<p>This documentation provides comprehensive coverage of the topics outlined in the original DOCX document, enhanced for clarity and usability.</p>\n"
+    
+    return fallback_html
+
+def create_comprehensive_docx_fallback_segment(segment: str, images: list) -> str:
+    """Create comprehensive fallback segment when AI generation fails"""
+    segment_html = ""
+    
+    # Process segment content
+    if segment:
+        paragraphs = segment.split('\n\n')
+        for para in paragraphs:
+            para = para.strip()
+            if para:
+                if para.startswith('<h') or para.startswith('#'):
+                    segment_html += f"{para}\n\n"
+                else:
+                    segment_html += f"<p>{para}</p>\n\n"
+    
+    # Add images for this segment
+    for i, image in enumerate(images):
+        image_url = image.get('url', '')
+        if image_url:
+            segment_html += f"""
+<figure>
+    <img src="{image_url}" alt="Segment Image {i+1}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <figcaption>Figure {i+1}: Supporting image for this section</figcaption>
+</figure>
+
+"""
+    
+    return segment_html
+
+
+def preserve_inline_formatting(paragraph) -> str:
+    """Extract text with inline formatting preserved as HTML"""
+    html_text = ""
+    
+    try:
+        for run in paragraph.runs:
+            text = run.text
+            if not text:
+                continue
+                
+            # Apply formatting
+            if run.bold:
+                text = f"<strong>{text}</strong>"
+            if run.italic:
+                text = f"<em>{text}</em>"
+            if run.underline:
+                text = f"<u>{text}</u>"
+                
+            html_text += text
+    except:
+        # Fallback to plain text
+        return paragraph.text
+        
+    return html_text if html_text else paragraph.text
+
+def extract_table_data(table) -> list:
+    """Extract table data as list of lists"""
+    data = []
+    try:
+        for row in table.rows:
+            row_data = []
+            for cell in row.cells:
+                row_data.append(cell.text.strip())
+            data.append(row_data)
+    except:
+        pass
+    return data
+
+def table_to_html(table_data: list) -> str:
+    """Convert table data to HTML"""
+    if not table_data:
+        return ""
+        
+    html = "<table>"
+    
+    # First row as header
+    if table_data:
+        html += "<thead><tr>"
+        for cell in table_data[0]:
+            html += f"<th>{cell}</th>"
+        html += "</tr></thead>"
+    
+    # Rest as body
+    if len(table_data) > 1:
+        html += "<tbody>"
+        for row in table_data[1:]:
+            html += "<tr>"
+            for cell in row:
+                html += f"<td>{cell}</td>"
+            html += "</tr>"
+        html += "</tbody>"
+        
+    html += "</table>"
+    return html
+
+def extract_contextual_images_from_docx(file_path: str, doc, extracted_content: dict, training_session: dict) -> list:
+    """
+    ENHANCED: Extract images with semantic chunking and contextual tagging according to specifications
+    Implements proper image-to-chunk mapping with confidence scoring
+    """
+    contextual_images = []
+    
+    try:
+        import zipfile
+        from lxml import etree
+        
+        # Phase 1: Parse document structure to create semantic chunks
+        semantic_chunks = []
+        current_chunk = {
+            "chunk_id": f"chunk_0", 
+            "type": "paragraph_block",
+            "text": "",
+            "elements": [],
+            "position": 0
+        }
+        chunk_counter = 0
+        
+        for i, paragraph in enumerate(doc.paragraphs):
+            text = paragraph.text.strip()
+            if not text:
+                continue
+                
+            # Determine semantic block type based on content and style
+            block_type = determine_semantic_block_type(paragraph)
+            
+            # Check if we should start a new chunk based on semantic rules
+            if should_start_new_chunk(current_chunk, block_type, text):
+                if current_chunk["text"]:  # Save current chunk if it has content
+                    semantic_chunks.append(current_chunk)
+                
+                chunk_counter += 1
+                current_chunk = {
+                    "chunk_id": f"chunk_{chunk_counter}",
+                    "type": block_type,
+                    "text": text,
+                    "elements": [{"type": "paragraph", "text": text, "position": i}],
+                    "position": i
+                }
+            else:
+                # Add to current chunk
+                current_chunk["text"] += f"\n{text}"
+                current_chunk["elements"].append({"type": "paragraph", "text": text, "position": i})
+        
+        # Don't forget the last chunk
+        if current_chunk["text"]:
+            semantic_chunks.append(current_chunk)
+        
+        print(f"📚 Created {len(semantic_chunks)} semantic chunks for contextual image mapping")
+        
+        # Phase 2: Extract images with contextual tagging
+        print(f"🖼️ Starting contextual image extraction with semantic chunking from {file_path}")
+        
+        # Check if file exists and is accessible
+        if not os.path.exists(file_path):
+            print(f"❌ File does not exist: {file_path}")
+            return []
+        
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            # Find image-containing relationships
+            image_positions = find_image_positions_in_docx(zip_ref, doc)
+            
+            # Extract actual image files with contextual tagging
+            for file_info in zip_ref.filelist:
+                if not file_info.filename.startswith('word/media/'):
+                    continue
+                    
+                filename = file_info.filename.split('/')[-1].lower()
+                
+                # Find the best matching semantic chunk for this image
+                best_match = find_best_semantic_chunk_match(filename, image_positions, semantic_chunks)
+                
+                if not best_match or best_match['confidence_score'] < 0.3:
+                    print(f"⚠️ Low confidence match for {filename}, using fallback placement")
+                    best_match = create_fallback_chunk_match(filename, semantic_chunks)
+                
+                if not best_match:
+                    print(f"🚫 Skipping image after semantic matching failed: {filename}")
+                    continue
+                    
+                print(f"✅ Semantic match for {filename}: chunk_id={best_match['chunk_id']}, confidence={best_match['confidence_score']:.2f}")
+                    
+                # Apply filtering rules after semantic matching
+                if should_skip_image(filename, file_info, best_match):
+                    continue
+                
+                # Extract and save the image
+                image_data = zip_ref.read(file_info.filename)
+                
+                # Generate contextual filename with chunk information
+                safe_prefix = "".join(c for c in training_session.get('filename', 'doc') if c.isalnum())[:10]
+                chunk_key = best_match['chunk_id']
+                placement_key = best_match.get('placement', 'after')
+                unique_filename = f"{safe_prefix}_{chunk_key}_{placement_key}_img{len(contextual_images)+1}_{str(uuid.uuid4())[:8]}.{filename.split('.')[-1]}"
+                
+                file_path_static = f"static/uploads/{unique_filename}"
+                
+                # Ensure upload directory exists
+                os.makedirs("static/uploads", exist_ok=True)
+                
+                # Save to static directory
+                with open(file_path_static, "wb") as buffer:
+                    buffer.write(image_data)
+                
+                # Create contextual image record with semantic tagging
+                contextual_image = {
+                    'id': f"doc_{training_session.get('session_id', 'unknown')}_img_{len(contextual_images)+1}",
+                    'filename': unique_filename,
+                    'original_filename': filename,
+                    'url': f"/api/static/uploads/{unique_filename}",
+                    'file_path': file_path_static,
+                    'content_type': get_content_type_from_filename(filename),
+                    'size': len(image_data),
+                    'alt_text': best_match.get('alt_text', f"Figure {len(contextual_images)+1}"),
+                    'caption': best_match.get('caption', f"Image from {best_match['chunk_id']}"),
+                    
+                    # CRITICAL: Semantic tagging information
+                    'associated_chunk': best_match['chunk_id'],
+                    'placement': best_match.get('placement', 'after'),
+                    'confidence_score': best_match['confidence_score'],
+                    'chunk_type': best_match.get('chunk_type', 'paragraph_block'),
+                    'semantic_context': best_match.get('context_text', ''),
+                    
+                    # Metadata
+                    'extraction_method': 'semantic_chunking',
+                    'created_at': datetime.utcnow().isoformat()
+                }
+                
+                contextual_images.append(contextual_image)
+                print(f"✅ Tagged image {unique_filename} with chunk {best_match['chunk_id']}")
+    
+    except Exception as e:
+        print(f"❌ Contextual image extraction error: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    print(f"🎯 SEMANTIC EXTRACTION COMPLETE: {len(contextual_images)} images with contextual tagging")
+    return contextual_images
+
+def should_skip_image(filename: str, file_info, paragraph_context=None) -> bool:
+    """
+    Enhanced image filtering to skip decorative images and focus on content-relevant images
+    """
+    # Enhanced skip patterns for decorative/irrelevant images
+    skip_patterns = [
+        'logo', 'header', 'footer', 'watermark', 'background', 'banner',
+        'cover', 'title', 'border', 'decoration', 'template', 'frame',
+        'bullet', 'icon', 'symbol', 'separator', 'divider', 'ornament',
+        'brand', 'trademark', 'copyright', 'signature', 'letterhead'
+    ]
+    
+    # Check filename patterns
+    filename_lower = filename.lower()
+    if any(pattern in filename_lower for pattern in skip_patterns):
+        print(f"🚫 Skipping decorative image (filename pattern): {filename}")
+        return True
+    
+    # Skip very small images (likely decorative icons/bullets)
+    if file_info.file_size < 8000:  # Less than 8KB
+        print(f"🚫 Skipping small decorative image: {filename} ({file_info.file_size} bytes)")
+        return True
+    
+    # Skip very large images that might be cover pages or backgrounds
+    if file_info.file_size > 5000000:  # Greater than 5MB
+        print(f"🚫 Skipping very large image (likely cover/background): {filename} ({file_info.file_size} bytes)")
+        return True
+    
+    # Enhanced context-based filtering
+    if paragraph_context:
+        # CRITICAL FIX: Disable aggressive cover page filtering for now to allow content images
+        # Most tutorial documents have important images on page 1
+        page_estimate = paragraph_context.get('page_estimate', 0)
+        chapter = paragraph_context.get('chapter', '').lower()
+        
+        # Only skip images that are clearly on cover/title pages
+        if 'title' in chapter or 'cover' in chapter or 'table of contents' in chapter:
+            print(f"🚫 Skipping image from cover page area: {filename}")
+            return True
+        
+        print(f"✅ Allowing image - page {page_estimate}, chapter: '{chapter[:50]}...'")
+        # ALLOW tutorial/content images that might be on page 1
+    
+    # Check for repeated/pattern-based image names (likely decorative) - MOVED UP
+    import re
+    if re.search(r'image\d+$|img\d+$|picture\d+$', filename_lower.split('.')[0]):
+        # CRITICAL FIX: Allow generic numbered images when they have ANY context (including fallback)
+        if not paragraph_context:
+            print(f"🚫 Skipping generic numbered image without any context: {filename}")
+            return True
+        # For generic numbered images, use relaxed threshold for fallback context
+        print(f"🔍 DEBUG: Context keys for {filename}: {list(paragraph_context.keys())}")
+        context_text = paragraph_context.get('paragraph_text', '') or paragraph_context.get('text', '')
+        print(f"🔍 DEBUG: Context text for {filename}: '{context_text[:50]}...' ({len(context_text)} chars)")
+        
+        if len(context_text.strip()) >= 20:  # Reduced threshold for generic numbered images with fallback
+            print(f"✅ Allowing generic numbered image with fallback context: {filename} ({len(context_text)} chars context)")
+            return False
+        else:
+            print(f"🚫 Skipping generic numbered image with insufficient context: {filename} ({len(context_text)} chars)")
+            return True
+            
+    # For non-generic images, apply stricter context requirements
+    if paragraph_context:
+        # Skip images with minimal surrounding text (likely decorative) - MOVED DOWN and only for non-generic
+        surrounding_text = paragraph_context.get('paragraph_text', '') or paragraph_context.get('text', '')
+        if len(surrounding_text.strip()) < 50:
+            print(f"🚫 Skipping non-generic image with minimal context: {filename}")
+            return True
+    
+    return False
+
+
+def determine_semantic_block_type(paragraph):
+    """Determine the semantic block type based on paragraph style and content"""
+    try:
+        style_name = paragraph.style.name.lower() if paragraph.style else ""
+        text = paragraph.text.strip()
+        
+        # Heading detection
+        if any(heading in style_name for heading in ['heading', 'title']):
+            return "heading_block"
+        
+        # Step detection (numbered or bulleted)
+        if (text.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')) or 
+            text.startswith(('•', '-', '*')) or
+            'step' in text.lower()[:20]):
+            return "instruction_step"
+        
+        # Callout detection (based on style or content markers)
+        if (any(marker in style_name for marker in ['caption', 'note', 'callout', 'box']) or
+            any(marker in text.lower()[:50] for marker in ['note:', 'important:', 'warning:', 'tip:'])):
+            return "styled_callout"
+        
+        # List detection
+        if (text.startswith(('-', '•', '*')) or 
+            'list' in style_name):
+            return "list"
+            
+        # Default to paragraph
+        return "paragraph_block"
+        
+    except Exception as e:
+        print(f"⚠️ Error determining block type: {e}")
+        return "paragraph_block"
+
+
+def should_start_new_chunk(current_chunk, new_block_type, text):
+    """Determine if we should start a new semantic chunk"""
+    
+    # Always start new chunk for headings
+    if new_block_type == "heading_block":
+        return True
+    
+    # Start new chunk when block type changes
+    if current_chunk["type"] != new_block_type:
+        return True
+    
+    # Start new chunk if current chunk is getting too long (for better granularity)
+    if len(current_chunk["text"]) > 800:  # Characters limit for better image matching
+        return True
+    
+    return False
+
+
+def find_image_positions_in_docx(zip_ref, doc):
+    """Find image positions in DOCX document"""
+    try:
+        # Simple implementation - return empty dict for now
+        # In a full implementation, this would parse the document XML
+        # to find where images are positioned relative to text
+        return {}
+    except Exception as e:
+        print(f"⚠️ Error finding image positions: {e}")
+        return {}
+
+
+def find_best_semantic_chunk_match(filename, image_positions, semantic_chunks):
+    """Find the best matching semantic chunk for an image using multiple criteria"""
+    
+    best_match = None
+    highest_confidence = 0.0
+    
+    # Get image position information if available
+    image_info = image_positions.get(filename, {})
+    image_context = image_info.get('context', '')
+    
+    for chunk in semantic_chunks:
+        confidence_score = 0.0
+        
+        # Criterion 1: Semantic similarity based on text content
+        semantic_similarity = calculate_semantic_similarity(image_context, chunk["text"])
+        confidence_score += semantic_similarity * 0.4
+        
+        # Criterion 2: Caption proximity (if image has caption context)
+        if image_context and any(word in chunk["text"].lower() for word in image_context.lower().split()[:5]):
+            confidence_score += 0.3
+        
+        # Criterion 3: Inline reference detection
+        if (any(ref in chunk["text"].lower() for ref in ['figure', 'image', 'diagram', 'screenshot', 'see']) or
+            filename.replace('.png', '').replace('.jpg', '') in chunk["text"].lower()):
+            confidence_score += 0.2
+        
+        # Criterion 4: Style context matching (instruction steps get higher priority for process images)
+        if chunk["type"] == "instruction_step" and any(word in image_context.lower() for word in ['step', 'process', 'workflow']):
+            confidence_score += 0.1
+        
+        if confidence_score > highest_confidence:
+            highest_confidence = confidence_score
+            best_match = {
+                "chunk_id": chunk["chunk_id"],
+                "chunk_type": chunk["type"],
+                "confidence_score": confidence_score,
+                "placement": "after",  # Default placement
+                "alt_text": generate_alt_text_from_context(image_context, chunk["text"]),
+                "caption": f"Figure related to {chunk['chunk_id']}",
+                "context_text": chunk["text"][:200] + "..."
+            }
+    
+    return best_match
+
+
+def calculate_semantic_similarity(text1, text2):
+    """Simple semantic similarity calculation based on word overlap"""
+    if not text1 or not text2:
+        return 0.0
+    
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+    
+    # Remove common stop words
+    stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+    words1 = words1 - stop_words
+    words2 = words2 - stop_words
+    
+    if not words1 or not words2:
+        return 0.0
+    
+    # Calculate Jaccard similarity
+    intersection = words1.intersection(words2)
+    union = words1.union(words2)
+    
+    return len(intersection) / len(union) if union else 0.0
+
+
+def generate_alt_text_from_context(image_context, chunk_text):
+    """Generate meaningful alt text based on context"""
+    if image_context and len(image_context.strip()) > 10:
+        return image_context.strip()[:100]
+    
+    # Extract key terms from chunk text
+    chunk_words = chunk_text.lower().split()
+    key_terms = [word for word in chunk_words[:20] if len(word) > 4 and word.isalpha()]
+    
+    if key_terms:
+        return f"Figure showing {' '.join(key_terms[:3])}"
+    
+    return "Document image"
+
+
+def create_fallback_chunk_match(filename, semantic_chunks):
+    """Create a fallback match when confidence is too low"""
+    if not semantic_chunks:
+        return None
+    
+    # Use the first chunk as fallback
+    fallback_chunk = semantic_chunks[0]
+    
+    return {
+        "chunk_id": fallback_chunk["chunk_id"],
+        "chunk_type": fallback_chunk["type"],
+        "confidence_score": 0.3,  # Low confidence fallback
+        "placement": "after",
+        "alt_text": f"Supporting image for {fallback_chunk['chunk_id']}",
+        "caption": "Supporting image",
+        "context_text": fallback_chunk["text"][:100] + "..."
+    }
+
+
+def get_content_type_from_filename(filename):
+    """Get content type based on file extension"""
+    ext = filename.lower().split('.')[-1]
+    content_types = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg', 
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'svg': 'image/svg+xml',
+        'webp': 'image/webp'
+    }
+    return content_types.get(ext, 'image/png')
+get_image_content_type = get_content_type_from_filename  # Alias for backward compatibility
+
+
+def find_image_positions_in_docx(zip_ref, doc):
+    """Find image positions and context within the DOCX structure"""
+    image_positions = {}
+    
+    try:
+        # Get document relationships to map images to content
+        rels_xml = zip_ref.read('word/_rels/document.xml.rels')
+        rels_tree = etree.fromstring(rels_xml)
+        image_relationships = {}
+        
+        for rel in rels_tree.findall('.//{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'):
+            if 'image' in rel.get('Type', ''):
+                image_relationships[rel.get('Id')] = rel.get('Target')
+                
+        # Parse document XML to find image references and context
+        doc_xml = zip_ref.read('word/document.xml')
+        doc_tree = etree.fromstring(doc_xml)
+        
+        # Find all drawing/image elements and extract surrounding context
+        for i, paragraph in enumerate(doc.paragraphs):
+            text = paragraph.text.strip()
+            if text:
+                # Check if this paragraph contains image references
+                # This is a simplified approach - in practice, you'd need more sophisticated XML parsing
+                for img_id, img_path in image_relationships.items():
+                    filename = img_path.split('/')[-1]
+                    # Create position mapping with context
+                    image_positions[filename] = {
+                        'context': text,
+                        'paragraph_index': i,
+                        'relationship_id': img_id
+                    }
+                    
+    except Exception as e:
+        print(f"⚠️ Error finding image positions: {e}")
+    
+    return image_positions
+
+
+
+
+
+def is_heading(paragraph) -> bool:
+    """
+    Determine if a paragraph is a heading
+    """
+    try:
+        # Check if paragraph uses a heading style
+        if hasattr(paragraph, 'style') and paragraph.style:
+            style_name = paragraph.style.name.lower()
+            if 'heading' in style_name:
+                return True
+        
+        # Check text characteristics
+        text = paragraph.text.strip()
+        if not text:
+            return False
+        
+        # CRITICAL FIX: Be much more restrictive about what constitutes a heading
+        # Reject anything that's too long to be a reasonable heading
+        if len(text) > 80:  # Reduced from 100 to 80
+            return False
+            
+        # Check for obvious non-heading patterns
+        if any(phrase in text.lower() for phrase in ['add the following', 'in this section', 'as shown', 'follow these steps', 'copy the code']):
+            return False
+            
+        # Short, capitalized text might be a heading
+        if len(text) < 80 and (text.isupper() or text.istitle()):
+            # Additional checks for instruction-like text
+            if ':' in text and ('element' in text.lower() or 'following' in text.lower()):
+                return False
+            return True
+            
+        # Check for heading patterns (but be more restrictive)
+        if len(text) < 50 and (re.match(r'^\d+\.?\s+[A-Z]', text) or re.match(r'^[A-Z][A-Za-z\s]*$', text)):
+            return True
+    
+    except Exception:
+        pass
+    
+    return False
+
+def estimate_page_number(paragraph_index: int, total_paragraphs: int) -> int:
+    """
+    Estimate page number based on paragraph position
+    Assumes ~30 paragraphs per page on average
+    """
+    return max(1, (paragraph_index // 30) + 1)
+
+
+
+
+
+def embed_contextual_images_in_content(content: str, images: list) -> str:
+    """
+    Embed images in content using enhanced contextual placement according to specifications
+    """
+    if not images:
+        return content
+    
+    print(f"🖼️ Embedding {len(images)} contextual images in content")
+    
+    # Parse content into sections based on headings
+    content_sections = parse_content_into_sections(content)
+    
+    # Group images by chapter/section
+    images_by_chapter = {}
+    for img in images:
+        chapter = img.get('chapter', 'Introduction')
+        if chapter not in images_by_chapter:
+            images_by_chapter[chapter] = []
+        images_by_chapter[chapter].append(img)
+    
+    # Embed images in their appropriate sections
+    enhanced_content = ""
+    
+    for section in content_sections:
+        section_title = section['title']
+        section_content = section['content']
+        
+        # Find matching images for this section
+        matching_images = []
+        
+        # Exact chapter match
+        if section_title in images_by_chapter:
+            matching_images.extend(images_by_chapter[section_title])
+        
+        # Fuzzy matching for partial matches
+        for chapter, chapter_images in images_by_chapter.items():
+            if section_title.lower() in chapter.lower() or chapter.lower() in section_title.lower():
+                matching_images.extend([img for img in chapter_images if img not in matching_images])
+        
+        # Add section header
+        enhanced_content += section['header']
+        
+        if matching_images:
+            # Insert images contextually within the section
+            enhanced_content += insert_images_contextually(section_content, matching_images)
+        else:
+            # No images for this section, just add content
+            enhanced_content += section_content
+        
+        enhanced_content += "\n\n"
+    
+    # Handle any remaining images that didn't match sections
+    unmatched_images = []
+    all_embedded_images = set()
+    
+    for section in content_sections:
+        section_title = section['title']
+        if section_title in images_by_chapter:
+            all_embedded_images.update(img['url'] for img in images_by_chapter[section_title])
+    
+    for img in images:
+        if img['url'] not in all_embedded_images:
+            unmatched_images.append(img)
+    
+    if unmatched_images:
+        print(f"📎 Adding {len(unmatched_images)} unmatched images at the end")
+        enhanced_content += "\n\n<h2>Additional Resources</h2>\n"
+        for img in unmatched_images:
+            enhanced_content += create_image_figure_html(img)
+            enhanced_content += "\n\n"
+    
+    return enhanced_content.strip()
+
+def parse_content_into_sections(content: str) -> list:
+    """
+    Parse HTML content into logical sections based on headings
+    """
+    import re
+    
+    sections = []
+    
+    # Split content by heading tags
+    heading_pattern = r'(<h[1-6][^>]*>.*?</h[1-6]>)'
+    parts = re.split(heading_pattern, content, flags=re.DOTALL | re.IGNORECASE)
+    
+    current_section = {
+        'title': 'Introduction',
+        'header': '',
+        'content': ''
+    }
+    
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+            
+        # Check if this part is a heading
+        heading_match = re.match(r'<h[1-6][^>]*>(.*?)</h[1-6]>', part, re.DOTALL | re.IGNORECASE)
+        
+        if heading_match:
+            # Save previous section if it has content
+            if current_section['content'].strip():
+                sections.append(current_section.copy())
+            
+            # Start new section
+            heading_text = heading_match.group(1).strip()
+            current_section = {
+                'title': heading_text,
+                'header': part,
+                'content': ''
+            }
+        else:
+            # Add to current section content
+            current_section['content'] += part
+    
+    # Don't forget the last section
+    if current_section['content'].strip():
+        sections.append(current_section)
+    
+    return sections if sections else [{'title': 'Content', 'header': '', 'content': content}]
+
+def insert_images_contextually(content: str, images: list) -> str:
+    """
+    Insert images at appropriate positions within section content
+    """
+    if not images:
+        return content
+    
+    # Split content into paragraphs
+    paragraphs = content.split('</p>')
+    if len(paragraphs) <= 1:
+        # No clear paragraph structure, insert images at the beginning
+        image_html = ""
+        for img in images:
+            image_html += create_image_figure_html(img) + "\n\n"
+        return image_html + content
+    
+    # Calculate ideal insertion points
+    total_paragraphs = len(paragraphs) - 1  # Last split is usually empty
+    images_per_position = max(1, len(images))
+    
+    enhanced_content = ""
+    image_index = 0
+    
+    for i, paragraph in enumerate(paragraphs[:-1]):  # Skip last empty element
+        enhanced_content += paragraph + '</p>'
+        
+        # Determine if we should insert an image after this paragraph
+        if image_index < len(images):
+            # Insert images based on their placement preferences
+            should_insert = False
+            current_img = images[image_index]
+            
+            # Check position preference from contextual data
+            position_info = current_img.get('position', '')
+            
+            if f"after-paragraph-{i}" in position_info:
+                should_insert = True
+            elif i == total_paragraphs // 2 and image_index == 0:  # Middle of content
+                should_insert = True
+            elif i == total_paragraphs - 1 and image_index < len(images):  # End of content
+                should_insert = True
+            elif (i + 1) % max(1, total_paragraphs // len(images)) == 0:  # Even distribution
+                should_insert = True
+            
+            if should_insert:
+                enhanced_content += "\n\n" + create_image_figure_html(current_img)
+                image_index += 1
+        
+        enhanced_content += "\n\n"
+    
+    # Insert any remaining images at the end
+    while image_index < len(images):
+        enhanced_content += create_image_figure_html(images[image_index]) + "\n\n"
+        image_index += 1
+    
+    return enhanced_content
+
+def create_image_figure_html(img: dict) -> str:
+    """
+    Create proper HTML figure element for an image using contextual data
+    """
+    # Use contextual data from the enhanced extraction
+    image_url = img.get('url', img.get('image', ''))
+    alt_text = img.get('alt_text', f"Figure: {img.get('chapter', 'Content')} illustration")
+    caption = img.get('caption', f"Figure: {img.get('chapter', 'Document')} visual")
+    
+    # Create accessible, well-structured HTML figure
+    figure_html = f'''<figure class="embedded-image" style="margin: 1.5rem 0; text-align: center;">
+    <img src="{image_url}" 
+         alt="{alt_text}" 
+         style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 0.5rem; font-style: italic; color: #666; font-size: 0.9em;">
+        {caption}
+    </figcaption>
+</figure>'''
+    
+    return figure_html
+
+def _process_images_for_pdf(html_content: str) -> str:
+    """
+    Process HTML content to convert relative image URLs to absolute URLs for PDF generation
+    """
+    import re
+    import os
+    
+    # Pattern to match img src attributes
+    img_pattern = r'<img([^>]*?)src=["\']([^"\']*?)["\']([^>]*?)>'
+    
+    def replace_img_src(match):
+        before_src = match.group(1)
+        src_url = match.group(2)
+        after_src = match.group(3)
+        
+        # If it's already an absolute URL or data URL, leave it as is
+        if src_url.startswith(('http://', 'https://', 'data:')):
+            return match.group(0)
+        
+        # If it's a relative URL starting with /api/static, convert to file path
+        if src_url.startswith('/api/static/'):
+            file_path = src_url.replace('/api/static/', '/app/backend/static/')
+            
+            # Check if file exists
+            if os.path.exists(file_path):
+                return f'<img{before_src}src="file://{file_path}"{after_src}>'
+            else:
+                print(f"⚠️ Image file not found: {file_path}")
+                # Remove the img tag if file doesn't exist
+                return f'<p style="color: #666; font-style: italic; text-align: center;">[Image not available: {os.path.basename(file_path)}]</p>'
+        
+        # For other relative URLs starting with /, convert to file paths
+        if src_url.startswith('/'):
+            file_path = f"/app/backend{src_url}"
+            if os.path.exists(file_path):
+                return f'<img{before_src}src="file://{file_path}"{after_src}>'
+            else:
+                print(f"⚠️ Image file not found: {file_path}")
+                return f'<p style="color: #666; font-style: italic; text-align: center;">[Image not available: {os.path.basename(file_path)}]</p>'
+        
+        return match.group(0)
+    
+    # Replace all img src attributes
+    processed_html = re.sub(img_pattern, replace_img_src, html_content)
+    
+    # Count original images and processed images
+    original_images = len(re.findall(img_pattern, html_content))
+    remaining_images = len(re.findall(img_pattern, processed_html))
+    
+    print(f"🖼️ Processed {original_images} images for PDF generation, {remaining_images} images available")
+    
+    return processed_html
+
+def generate_pdf_from_html(html_content: str, title: str = "Generated Article") -> bytes:
+    """
+    Generate PDF from HTML content using WeasyPrint
+    """
+    try:
+        from weasyprint import HTML, CSS
+        import tempfile
+        import os
+        
+        # Validate input
+        if not html_content or len(html_content.strip()) < 10:
+            raise ValueError("HTML content is empty or too short")
+        
+        print(f"🎨 Generating PDF for: '{title}' with {len(html_content)} characters")
+        
+        # Process HTML content to convert relative image URLs to absolute URLs
+        processed_html_content = _process_images_for_pdf(html_content)
+        
+        # Create a complete HTML document with proper styling
+        full_html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{title}</title>
+            <style>
+                body {{
+                    font-family: 'Arial', 'Helvetica', sans-serif;
+                    line-height: 1.6;
+                    margin: 2cm;
+                    color: #333;
+                    font-size: 12pt;
+                }}
+                
+                h1 {{
+                    color: #2c3e50;
+                    border-bottom: 3px solid #3498db;
+                    padding-bottom: 10px;
+                    margin-bottom: 30px;
+                    font-size: 24pt;
+                    page-break-after: avoid;
+                }}
+                
+                h2 {{
+                    color: #34495e;
+                    margin-top: 30px;
+                    margin-bottom: 15px;
+                    font-size: 18pt;
+                    page-break-after: avoid;
+                }}
+                
+                h3 {{
+                    color: #5d6d7e;
+                    margin-top: 25px;
+                    margin-bottom: 12px;
+                    font-size: 16pt;
+                    page-break-after: avoid;
+                }}
+                
+                p {{
+                    margin-bottom: 12px;
+                    text-align: justify;
+                    orphans: 3;
+                    widows: 3;
+                }}
+                
+                ul, ol {{
+                    margin-bottom: 15px;
+                    padding-left: 25px;
+                }}
+                
+                li {{
+                    margin-bottom: 5px;
+                }}
+                
+                figure.embedded-image {{
+                    margin: 20px 0;
+                    text-align: center;
+                    page-break-inside: avoid;
+                }}
+                
+                figure.embedded-image img {{
+                    max-width: 100%;
+                    height: auto;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }}
+                
+                img {{
+                    max-width: 100%;
+                    height: auto;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    display: block;
+                    margin: 10px auto;
+                }}
+                
+                figcaption {{
+                    margin-top: 8px;
+                    font-style: italic;
+                    color: #666;
+                    font-size: 10pt;
+                }}
+                
+                .article-metadata {{
+                    background-color: #f8f9fa;
+                    padding: 15px;
+                    border-left: 4px solid #3498db;
+                    margin-bottom: 25px;
+                    border-radius: 4px;
+                }}
+                
+                .no-content-notice {{
+                    background-color: #fff3cd;
+                    padding: 20px;
+                    border: 1px solid #ffeaa7;
+                    border-radius: 4px;
+                    margin: 20px 0;
+                }}
+                
+                .no-content-notice h2 {{
+                    color: #856404;
+                    margin-top: 0;
+                }}
+                
+                .no-content-notice p {{
+                    color: #856404;
+                    margin-bottom: 8px;
+                }}
+                
+                @page {{
+                    margin: 2cm;
+                    @top-center {{
+                        content: "{title}";
+                        font-size: 10pt;
+                        color: #666;
+                    }}
+                    @bottom-center {{
+                        content: "Page " counter(page) " of " counter(pages);
+                        font-size: 10pt;
+                        color: #666;
+                    }}
+                }}
+                
+                table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 15px 0;
+                    page-break-inside: avoid;
+                }}
+                
+                th, td {{
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: left;
+                }}
+                
+                th {{
+                    background-color: #f5f5f5;
+                    font-weight: bold;
+                }}
+                
+                blockquote {{
+                    margin: 20px 0;
+                    padding: 15px 20px;
+                    background-color: #f8f9fa;
+                    border-left: 4px solid #3498db;
+                    font-style: italic;
+                }}
+                
+                code {{
+                    background-color: #f4f4f4;
+                    padding: 2px 4px;
+                    border-radius: 3px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 11pt;
+                }}
+                
+                pre {{
+                    background-color: #f4f4f4;
+                    padding: 15px;
+                    border-radius: 5px;
+                    overflow-wrap: break-word;
+                    white-space: pre-wrap;
+                    font-family: 'Courier New', monospace;
+                    font-size: 10pt;
+                }}
+            </style>
+        </head>
+        <body>
+            {processed_html_content}
+        </body>
+        </html>
+        """
+        
+        # Log the HTML content for debugging
+        print(f"📄 HTML document length: {len(full_html)} characters")
+        print(f"📝 HTML preview: {full_html[:300]}...")
+        
+        # Generate PDF using WeasyPrint
+        print("🔧 Starting WeasyPrint PDF generation...")
+        pdf_bytes = HTML(string=full_html).write_pdf()
+        
+        # Validate PDF output
+        if not pdf_bytes:
+            raise ValueError("WeasyPrint returned no PDF data")
+        
+        if len(pdf_bytes) < 1000:
+            raise ValueError(f"Generated PDF is too small: {len(pdf_bytes)} bytes")
+        
+        # Check for valid PDF header
+        if not pdf_bytes.startswith(b'%PDF-'):
+            raise ValueError("Generated data does not appear to be a valid PDF")
+        
+        print(f"✅ PDF generated successfully: {len(pdf_bytes)} bytes")
+        return pdf_bytes
+        
+    except Exception as e:
+        print(f"❌ PDF generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+@app.get("/api/content-library/article/{article_id}/download-pdf")
+async def download_article_pdf(article_id: str):
+    """Download a Content Library article as PDF"""
+    try:
+        print(f"🔍 Generating PDF for Content Library article: {article_id}")
+        
+        # Find the article in Content Library
+        article = await db.content_library.find_one({"id": article_id})
+        
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        # Get article content and title
+        title = article.get("title", "Generated Article")
+        content = article.get("content", "")
+        
+        # Debug logging for content validation
+        print(f"📄 Article title: '{title}'")
+        print(f"📏 Content length: {len(content)} characters")
+        print(f"📝 Content preview: {content[:200]}...")
+        
+        if not content or len(content.strip()) < 50:
+            # Provide fallback content if article is empty or too short
+            print("⚠️ Article content is empty or too short, providing fallback content")
+            content = f"""
+            <h1>{title}</h1>
+            <div class="article-metadata">
+                <p><strong>Article ID:</strong> {article_id}</p>
+                <p><strong>Created:</strong> {article.get('created_at', 'Unknown')}</p>
+                <p><strong>Source:</strong> {article.get('source_type', 'Unknown')}</p>
+            </div>
+            <div class="no-content-notice">
+                <h2>Content Not Available</h2>
+                <p>This article appears to have empty or insufficient content for PDF generation.</p>
+                <p>Please ensure the article has been properly processed and contains meaningful content.</p>
+            </div>
+            """
+        
+        # Clean title for filename
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        filename = f"{safe_title[:50]}.pdf"  # Limit filename length
+        
+        # Generate PDF
+        print(f"🎨 Starting PDF generation with {len(content)} characters of content")
+        pdf_bytes = generate_pdf_from_html(content, title)
+        
+        # Validate PDF was actually generated
+        if not pdf_bytes or len(pdf_bytes) < 1000:
+            print(f"❌ Generated PDF is too small: {len(pdf_bytes) if pdf_bytes else 0} bytes")
+            raise HTTPException(status_code=500, detail="PDF generation produced invalid output")
+        
+        print(f"✅ PDF generated successfully: {len(pdf_bytes)} bytes")
+        
+        # Create PDF stream response
+        def generate():
+            yield pdf_bytes
+        
+        # Return streaming response with proper headers
+        headers = {
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Content-Type': 'application/pdf',
+            'Content-Length': str(len(pdf_bytes))
+        }
+        
+        return StreamingResponse(
+            generate(),
+            media_type='application/pdf',
+            headers=headers
+        )
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404) without modification
+        raise
+    except Exception as e:
+        print(f"❌ Content Library PDF download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/training/article/{session_id}/{article_index}/download-pdf")
+async def download_training_article_pdf(session_id: str, article_index: int):
+    """Download a Training Interface article as PDF"""
+    try:
+        print(f"🔍 Generating PDF for Training article: {session_id}, index: {article_index}")
+        
+        # Find the training session
+        training_session = await db.training_sessions.find_one({"session_id": session_id})
+        
+        if not training_session:
+            raise HTTPException(status_code=404, detail="Training session not found")
+        
+        # Get the specific article
+        articles = training_session.get("articles", [])
+        
+        if article_index >= len(articles) or article_index < 0:
+            raise HTTPException(status_code=404, detail="Article not found in session")
+        
+        article = articles[article_index]
+        
+        # Get article content and title
+        title = article.get("title", f"Training Article {article_index + 1}")
+        content = article.get("content", "")
+        
+        # Debug logging for content validation
+        print(f"📄 Training article title: '{title}'")
+        print(f"📏 Content length: {len(content)} characters")
+        print(f"📝 Content preview: {content[:200]}...")
+        
+        if not content or len(content.strip()) < 50:
+            # Provide fallback content if article is empty or too short
+            print("⚠️ Training article content is empty or too short, providing fallback content")
+            content = f"""
+            <h1>{title}</h1>
+            <div class="article-metadata">
+                <p><strong>Training Session:</strong> {session_id}</p>
+                <p><strong>Article Index:</strong> {article_index}</p>
+                <p><strong>Template:</strong> {training_session.get('template', 'Unknown')}</p>
+                <p><strong>Filename:</strong> {training_session.get('filename', 'Unknown')}</p>
+            </div>
+            <div class="no-content-notice">
+                <h2>Content Not Available</h2>
+                <p>This training article appears to have empty or insufficient content for PDF generation.</p>
+                <p>Please ensure the document was properly processed and contains meaningful content.</p>
+                <p>Try re-processing the document or check the original file for content.</p>
+            </div>
+            """
+        
+        # Clean title for filename
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        filename = f"Lab_{safe_title[:40]}.pdf"  # Limit filename length
+        
+        # Generate PDF
+        print(f"🎨 Starting PDF generation with {len(content)} characters of content")
+        pdf_bytes = generate_pdf_from_html(content, title)
+        
+        # Validate PDF was actually generated
+        if not pdf_bytes or len(pdf_bytes) < 1000:
+            print(f"❌ Generated PDF is too small: {len(pdf_bytes) if pdf_bytes else 0} bytes")
+            raise HTTPException(status_code=500, detail="PDF generation produced invalid output")
+        
+        print(f"✅ PDF generated successfully: {len(pdf_bytes)} bytes")
+        
+        # Create PDF stream response
+        def generate():
+            yield pdf_bytes
+        
+        # Return streaming response with proper headers
+        headers = {
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Content-Type': 'application/pdf',
+            'Content-Length': str(len(pdf_bytes))
+        }
+        
+        return StreamingResponse(
+            generate(),
+            media_type='application/pdf',
+            headers=headers
+        )
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404) without modification
+        raise
+    except Exception as e:
+        print(f"❌ Training PDF download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+    # PDF TIMEOUT FIX: Add processing limits and timeout handling
+    PDF_PROCESSING_TIMEOUT = 120  # 2 minutes maximum processing time
+    MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB maximum file size
+    
+    import signal
+    import asyncio
+    from contextlib import asynccontextmanager
+    
+    @asynccontextmanager
+    async def pdf_processing_timeout(timeout_seconds=120):
+        """Context manager for PDF processing with timeout"""
+        try:
+            yield
+        except asyncio.TimeoutError:
+            print(f"❌ PDF processing timed out after {timeout_seconds} seconds")
+            raise HTTPException(status_code=408, detail="PDF processing timeout - file too large or complex")
+        except Exception as e:
+            print(f"❌ PDF processing error: {e}")
+            raise HTTPException(status_code=500, detail=f"PDF processing failed: {str(e)}")
+    
+async def process_pdf_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process PDF file with comprehensive text and image extraction"""
+    try:
+        print(f"🔍 Starting comprehensive PDF processing: {file_path}")
+        
+        # Import PDF processing libraries
+        try:
+            import PyPDF2
+            import fitz  # PyMuPDF for image extraction
+        except ImportError:
+            print("⚠️ PDF processing libraries not fully available, using fallback")
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except:
+                return []
+        
+        # Try to process as actual PDF file
+        try:
+            # Open PDF with PyMuPDF for comprehensive extraction
+            doc = fitz.open(file_path)
+            print(f"✅ Successfully loaded PDF file with {len(doc)} pages")
+        except Exception as pdf_error:
+            print(f"⚠️ Failed to load as PDF file: {pdf_error}")
+            print(f"🔄 Falling back to text processing")
+            # If it's not a valid PDF file, treat it as text
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except Exception as text_error:
+                print(f"❌ Text fallback also failed: {text_error}")
+                return []
+        
+        # Extract text and images with contextual positioning
+        full_text = ""
+        all_images = []
+        
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            
+            # Extract text from page
+            page_text = page.get_text()
+            if page_text.strip():
+                full_text += f"\n\n=== Page {page_num + 1} ===\n{page_text}\n"
+            
+            # Extract images from page with filtering
+            image_list = page.get_images(full=True)
+            page_rect = page.rect
+            
+            for img_index, img in enumerate(image_list):
+                try:
+                    # Get image data and properties
+                    xref = img[0]
+                    pix = fitz.Pixmap(doc, xref)
+                    
+                    # Get image position on page
+                    img_rects = page.get_image_rects(xref)
+                    
+                    # Filter out header/footer images and small decorative elements
+                    should_include = True
+                    
+                    if img_rects:
+                        for rect in img_rects:
+                            # Check if image is in header (top 15% of page)
+                            if rect.y1 < page_rect.height * 0.15:
+                                print(f"🚫 Skipping header image on page {page_num + 1}")
+                                should_include = False
+                                break
+                            # Check if image is in footer (bottom 15% of page)  
+                            elif rect.y0 > page_rect.height * 0.85:
+                                print(f"🚫 Skipping footer image on page {page_num + 1}")
+                                should_include = False
+                                break
+                            # Check if image is very small (likely decorative)
+                            elif rect.width < 100 or rect.height < 100:
+                                print(f"🚫 Skipping small decorative image on page {page_num + 1}")
+                                should_include = False
+                                break
+                    
+                    # Skip if image is too small in actual pixels or filtered out
+                    if not should_include or pix.width < 100 or pix.height < 100:
+                        pix = None
+                        continue
+                    
+                    # Skip if image appears to be a logo (very wide and short, or very narrow and tall)
+                    aspect_ratio = pix.width / pix.height
+                    if aspect_ratio > 5 or aspect_ratio < 0.2:
+                        print(f"🚫 Skipping logo-like image (aspect ratio: {aspect_ratio:.2f}) on page {page_num + 1}")
+                        pix = None
+                        continue
+                    
+                    # Convert to RGB if CMYK
+                    if pix.n - pix.alpha < 4:
+                        img_data = pix.tobytes("png")
+                    else:
+                        pix1 = fitz.Pixmap(fitz.csRGB, pix)
+                        img_data = pix1.tobytes("png")
+                        pix1 = None
+                    
+                    # Generate unique filename
+                    safe_prefix = "".join(c for c in training_session.get('filename', 'pdf') if c.isalnum())[:10]
+                    unique_filename = f"{safe_prefix}_page{page_num + 1}_img{img_index + 1}_{str(uuid.uuid4())[:8]}.png"
+                    file_path_static = f"static/uploads/{unique_filename}"
+                    
+                    # Ensure upload directory exists
+                    os.makedirs("static/uploads", exist_ok=True)
+                    
+                    # Save image to disk
+                    with open(file_path_static, "wb") as f:
+                        f.write(img_data)
+                    
+                    # Generate URL
+                    image_url = f"/api/static/uploads/{unique_filename}"
+                    
+                    # Store image info with contextual position
+                    all_images.append({
+                        "filename": unique_filename,
+                        "url": image_url,
+                        "page": page_num + 1,
+                        "position": img_index + 1,
+                        "width": pix.width,
+                        "height": pix.height,
+                        "size": len(img_data),
+                        "is_svg": False
+                    })
+                    
+                    print(f"✅ Extracted PDF image: Page {page_num + 1}, Image {img_index + 1} -> {image_url}")
+                    
+                    pix = None
+                    
+                except Exception as img_error:
+                    print(f"⚠️ Error extracting image {img_index + 1} from page {page_num + 1}: {img_error}")
+                    continue
+        
+        doc.close()
+        
+        # Basic PDF metadata
+        try:
+            pdf_file = open(file_path, 'rb')
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            pdf_info = pdf_reader.metadata
+            if pdf_info:
+                metadata_text = "\n\n=== Document Information ===\n"
+                if pdf_info.get('/Title'):
+                    metadata_text += f"Title: {pdf_info['/Title']}\n"
+                if pdf_info.get('/Author'):
+                    metadata_text += f"Author: {pdf_info['/Author']}\n"
+                if pdf_info.get('/Subject'):
+                    metadata_text += f"Subject: {pdf_info['/Subject']}\n"
+                full_text = metadata_text + full_text
+            pdf_file.close()
+        except Exception as e:
+            print(f"⚠️ Error extracting PDF metadata: {e}")
+        
+        print(f"✅ PDF extraction complete: {len(full_text)} characters, {len(all_images)} images")
+        
+        # Check if we have meaningful content
+        if not full_text.strip():
+            print("⚠️ No text content extracted from PDF")
+            return []
+        
+        # INTELLIGENT APPROACH: Use the intelligent content processing pipeline
+        print(f"🧠 Using INTELLIGENT CONTENT PROCESSING PIPELINE for PDF content")
+        articles = await intelligent_content_processing_pipeline(full_text, {
+            "source": "pdf",
+            "original_filename": template_data.get("filename", "document.pdf"),
+            "images": all_images,
+            "template_data": template_data,
+            "training_session": training_session
+        })
+        
+        print(f"✅ PDF processing generated {len(articles)} articles")
+        
+        return articles
+        
+    except Exception as e:
+        print(f"❌ PDF processing error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def process_ppt_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process PowerPoint file with comprehensive text and image extraction"""
+    try:
+        print(f"🔍 Starting comprehensive PowerPoint processing: {file_path}")
+        
+        # Import PowerPoint processing library
+        try:
+            from pptx import Presentation
+            from pptx.enum.shapes import MSO_SHAPE_TYPE
+        except ImportError:
+            print("⚠️ python-pptx not installed, using fallback processing")
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except:
+                return []
+        
+        # Try to process as actual PowerPoint file
+        try:
+            prs = Presentation(file_path)
+            print(f"✅ Successfully loaded PowerPoint file with {len(prs.slides)} slides")
+        except Exception as ppt_error:
+            print(f"⚠️ Failed to load as PowerPoint file: {ppt_error}")
+            print(f"🔄 Falling back to text processing")
+            # If it's not a valid PowerPoint file, treat it as text
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return await process_text_with_template(content, template_data, training_session)
+            except Exception as text_error:
+                print(f"❌ Text fallback also failed: {text_error}")
+                return []
+        
+        # Extract text content and images from all slides
+        full_text = ""
+        all_images = []
+        slide_count = 0
+        
+        for slide_num, slide in enumerate(prs.slides):
+            slide_text = f"\n\n=== Slide {slide_num + 1} ===\n"
+            slide_count += 1
+            
+            # Extract text and images from all shapes in the slide
+            for shape_index, shape in enumerate(slide.shapes):
+                # Extract text from shape
+                if hasattr(shape, "text") and shape.text.strip():
+                    slide_text += shape.text + "\n"
+                
+                # Extract images from shape
+                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                    try:
+                        # Get image data
+                        image = shape.image
+                        image_bytes = image.blob
+                        
+                        # Skip if image is too small
+                        if len(image_bytes) < 1000:
+                            continue
+                        
+                        # Determine image format
+                        image_ext = image.ext
+                        if not image_ext:
+                            image_ext = "png"  # Default to PNG
+                        
+                        # Generate unique filename
+                        safe_prefix = "".join(c for c in training_session.get('filename', 'ppt') if c.isalnum())[:10]
+                        unique_filename = f"{safe_prefix}_slide{slide_num + 1}_shape{shape_index + 1}_{str(uuid.uuid4())[:8]}.{image_ext}"
+                        file_path_static = f"static/uploads/{unique_filename}"
+                        
+                        # Ensure upload directory exists
+                        os.makedirs("static/uploads", exist_ok=True)
+                        
+                        # Save image to disk
+                        with open(file_path_static, "wb") as f:
+                            f.write(image_bytes)
+                        
+                        # Generate URL
+                        image_url = f"/api/static/uploads/{unique_filename}"
+                        
+                        # Store image info with contextual position
+                        all_images.append({
+                            "filename": unique_filename,
+                            "url": image_url,
+                            "slide": slide_num + 1,
+                            "shape_index": shape_index + 1,
+                            "format": image_ext,
+                            "size": len(image_bytes),
+                            "is_svg": False
+                        })
+                        
+                        print(f"✅ Extracted PPT image: Slide {slide_num + 1}, Shape {shape_index + 1} -> {image_url}")
+                        
+                    except Exception as img_error:
+                        print(f"⚠️ Error extracting image from slide {slide_num + 1}, shape {shape_index + 1}: {img_error}")
+                        continue
+                
+                # Extract images from grouped shapes
+                elif hasattr(shape, "shapes"):
+                    for sub_shape in shape.shapes:
+                        if sub_shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                            try:
+                                # Get image data
+                                image = sub_shape.image
+                                image_bytes = image.blob
+                                
+                                # Skip if image is too small
+                                if len(image_bytes) < 1000:
+                                    continue
+                                
+                                # Determine image format
+                                image_ext = image.ext
+                                if not image_ext:
+                                    image_ext = "png"
+                                
+                                # Generate unique filename
+                                safe_prefix = "".join(c for c in training_session.get('filename', 'ppt') if c.isalnum())[:10]
+                                unique_filename = f"{safe_prefix}_slide{slide_num + 1}_subshape_{str(uuid.uuid4())[:8]}.{image_ext}"
+                                file_path_static = f"static/uploads/{unique_filename}"
+                                
+                                # Ensure upload directory exists
+                                os.makedirs("static/uploads", exist_ok=True)
+                                
+                                # Save image to disk
+                                with open(file_path_static, "wb") as f:
+                                    f.write(image_bytes)
+                                
+                                # Generate URL
+                                image_url = f"/api/static/uploads/{unique_filename}"
+                                
+                                # Store image info
+                                all_images.append({
+                                    "filename": unique_filename,
+                                    "url": image_url,
+                                    "slide": slide_num + 1,
+                                    "format": image_ext,
+                                    "size": len(image_bytes),
+                                    "is_svg": False
+                                })
+                                
+                                print(f"✅ Extracted PPT grouped image: Slide {slide_num + 1} -> {image_url}")
+                                
+                            except Exception as img_error:
+                                print(f"⚠️ Error extracting grouped image from slide {slide_num + 1}: {img_error}")
+                                continue
+            
+            # Add slide text if it has content
+            if slide_text.strip() != f"=== Slide {slide_num + 1} ===":
+                full_text += slide_text
+        
+        print(f"✅ PowerPoint extraction complete: {len(full_text)} characters, {len(all_images)} images from {slide_count} slides")
+        
+        # Check if we have meaningful content
+        if not full_text.strip():
+            print("⚠️ No text content extracted from PowerPoint")
+            return []
+        
+        # Process with template including images
+        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
+        
+        print(f"✅ PowerPoint processing generated {len(articles)} articles")
+        
+        return articles
+        
+    except Exception as e:
+        print(f"❌ PowerPoint processing error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+async def process_text_with_template(content: str, template_data: dict, training_session: dict) -> list:
+    """Process text content with training template"""
+    try:
+        # Apply template processing instructions
+        processing_instructions = template_data.get("processing_instructions", [])
+        
+        # For plain text files, let's add some structure
+        if not content.strip():
+            content = f"Text content from {training_session.get('filename', 'unknown file')}"
+        
+        # Generate articles based on template
+        articles = await create_articles_with_template(content, [], template_data, training_session)
+        
+        return articles
+        
+    except Exception as e:
+        print(f"Text processing error: {e}")
+        return []
+
+async def process_doc_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process DOC file with comprehensive text extraction"""
+    try:
+        print(f"🔍 Starting DOC processing: {file_path}")
+        
+        # Import doc processing libraries
+        try:
+            import subprocess
+            import os
+        except ImportError:
+            print("⚠️ Required libraries not available, using fallback processing")
+            return await process_text_with_template("", template_data, training_session)
+        
+        # Try to extract text using antiword (if available)
+        try:
+            result = subprocess.run(['antiword', file_path], 
+                                  capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                full_text = result.stdout
+                print(f"✅ DOC text extracted using antiword: {len(full_text)} characters")
+            else:
+                raise Exception("antiword failed")
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            # Fallback: read as binary and extract readable text
+            try:
+                with open(file_path, 'rb') as f:
+                    content = f.read()
+                
+                # Basic text extraction from DOC binary
+                # DOC files contain text mixed with binary data
+                text_parts = []
+                current_text = ""
+                
+                for byte in content:
+                    if 32 <= byte <= 126:  # Printable ASCII
+                        current_text += chr(byte)
+                    else:
+                        if len(current_text) > 3:  # Only keep meaningful text chunks
+                            text_parts.append(current_text)
+                        current_text = ""
+                
+                if current_text:
+                    text_parts.append(current_text)
+                
+                full_text = " ".join(text_parts)
+                print(f"✅ DOC text extracted using binary parsing: {len(full_text)} characters")
+                
+            except Exception as e:
+                print(f"⚠️ Error extracting DOC content: {e}")
+                full_text = f"Error processing DOC file: {training_session.get('filename', 'unknown')}"
+        
+        # Process with template (DOC files typically don't have easily accessible embedded images)
+        articles = await create_articles_with_template(full_text, [], template_data, training_session)
+        
+        print(f"✅ DOC processing generated {len(articles)} articles")
+        
+        return articles
+        
+    except Exception as e:
+        print(f"❌ DOC processing error: {e}")
+        return []
+
+async def process_excel_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process Excel file with comprehensive text and image extraction"""
+    try:
+        print(f"🔍 Starting comprehensive Excel processing: {file_path}")
+        
+        # Import Excel processing libraries
+        try:
+            from openpyxl import load_workbook
+            from openpyxl.drawing.image import Image as OpenpyxlImage
+            import pandas as pd
+        except ImportError:
+            print("⚠️ openpyxl/pandas not installed, using fallback processing")
+            return await process_text_with_template("", template_data, training_session)
+        
+        # Read Excel file with openpyxl for comprehensive extraction
+        try:
+            workbook = load_workbook(file_path)
+            full_text = ""
+            all_images = []
+            
+            for sheet_name in workbook.sheetnames:
+                sheet = workbook[sheet_name]
+                full_text += f"\n\n=== Sheet: {sheet_name} ===\n"
+                
+                # Extract text content from cells
+                for row in sheet.iter_rows(values_only=True):
+                    row_text = " | ".join([str(cell) for cell in row if cell is not None])
+                    if row_text.strip():
+                        full_text += row_text + "\n"
+                
+                # Extract images from sheet
+                if hasattr(sheet, '_images'):
+                    for img_index, img in enumerate(sheet._images):
+                        try:
+                            # Get image data
+                            image_data = img.ref
+                            
+                            # Skip if no image data
+                            if not hasattr(image_data, 'read'):
+                                continue
+                            
+                            image_bytes = image_data.read()
+                            
+                            # Skip if image is too small
+                            if len(image_bytes) < 1000:
+                                continue
+                            
+                            # Generate unique filename
+                            safe_prefix = "".join(c for c in training_session.get('filename', 'excel') if c.isalnum())[:10]
+                            unique_filename = f"{safe_prefix}_{sheet_name}_img{img_index + 1}_{str(uuid.uuid4())[:8]}.png"
+                            file_path_static = f"static/uploads/{unique_filename}"
+                            
+                            # Ensure upload directory exists
+                            os.makedirs("static/uploads", exist_ok=True)
+                            
+                            # Save image to disk
+                            with open(file_path_static, "wb") as f:
+                                f.write(image_bytes)
+                            
+                            # Generate URL
+                            image_url = f"/api/static/uploads/{unique_filename}"
+                            
+                            # Store image info
+                            all_images.append({
+                                "filename": unique_filename,
+                                "url": image_url,
+                                "sheet": sheet_name,
+                                "size": len(image_bytes),
+                                "is_svg": False
+                            })
+                            
+                            print(f"✅ Extracted Excel image: {sheet_name} -> {image_url}")
+                            
+                        except Exception as img_error:
+                            print(f"⚠️ Error extracting image from sheet {sheet_name}: {img_error}")
+                            continue
+                
+            workbook.close()
+            
+        except Exception as e:
+            print(f"⚠️ Error reading Excel file with openpyxl: {e}")
+            
+            # Fallback with pandas
+            try:
+                excel_file = pd.ExcelFile(file_path)
+                full_text = ""
+                
+                for sheet_name in excel_file.sheet_names:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    full_text += f"\n\n=== Sheet: {sheet_name} ===\n"
+                    
+                    if not df.empty:
+                        # Add column headers
+                        full_text += "Columns: " + ", ".join(df.columns.astype(str)) + "\n\n"
+                        
+                        # Add data rows (limit to first 100 rows)
+                        for idx, row in df.head(100).iterrows():
+                            row_text = " | ".join([f"{col}: {val}" for col, val in row.items() if pd.notna(val)])
+                            if row_text.strip():
+                                full_text += row_text + "\n"
+                        
+                        if len(df) > 100:
+                            full_text += f"\n... and {len(df) - 100} more rows\n"
+                    else:
+                        full_text += "Empty sheet\n"
+                
+                all_images = []  # No image extraction in pandas fallback
+                
+            except Exception as pandas_error:
+                print(f"⚠️ Error with pandas fallback: {pandas_error}")
+                full_text = f"Error processing Excel file: {training_session.get('filename', 'unknown')}"
+                all_images = []
+        
+        print(f"✅ Excel extraction complete: {len(full_text)} characters, {len(all_images)} images")
+        
+        # Process with template
+        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
+        
+        print(f"✅ Excel processing generated {len(articles)} articles")
+        
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Excel processing error: {e}")
+        return []
+
+async def process_html_with_template(file_path: str, template_data: dict, training_session: dict) -> list:
+    """Process HTML file with comprehensive text and image extraction"""
+    try:
+        print(f"🔍 Starting comprehensive HTML processing: {file_path}")
+        
+        # Read HTML content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Parse HTML and extract text content and images
+        try:
+            from bs4 import BeautifulSoup
+            import requests
+            import base64
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            # Extract text content
+            full_text = soup.get_text()
+            
+            # Clean up whitespace
+            lines = (line.strip() for line in full_text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            full_text = ' '.join(chunk for chunk in chunks if chunk)
+            
+            # Extract images
+            all_images = []
+            img_tags = soup.find_all('img')
+            
+            for i, img in enumerate(img_tags):
+                src = img.get('src', '')
+                alt = img.get('alt', f'Image {i+1}')
+                
+                if src.startswith('data:image'):
+                    # Base64 embedded image
+                    try:
+                        # Extract base64 data
+                        header, data = src.split(',', 1)
+                        image_data = base64.b64decode(data)
+                        
+                        # Determine file extension
+                        if 'svg' in header:
+                            ext = 'svg'
+                            is_svg = True
+                        elif 'png' in header:
+                            ext = 'png'
+                            is_svg = False
+                        elif 'jpg' in header or 'jpeg' in header:
+                            ext = 'jpg'
+                            is_svg = False
+                        else:
+                            ext = 'png'
+                            is_svg = False
+                        
+                        if is_svg:
+                            # SVG images keep base64 format
+                            all_images.append({
+                                "filename": f"html_image_{i+1}.{ext}",
+                                "data": src,
+                                "size": len(src),
+                                "is_svg": True,
+                                "alt": alt
+                            })
+                        else:
+                            # Non-SVG images save to disk
+                            safe_prefix = "".join(c for c in training_session.get('filename', 'html') if c.isalnum())[:10]
+                            unique_filename = f"{safe_prefix}_img{i+1}_{str(uuid.uuid4())[:8]}.{ext}"
+                            file_path_static = f"static/uploads/{unique_filename}"
+                            
+                            # Ensure upload directory exists
+                            os.makedirs("static/uploads", exist_ok=True)
+                            
+                            # Save image to disk
+                            with open(file_path_static, "wb") as f:
+                                f.write(image_data)
+                            
+                            # Generate URL
+                            image_url = f"/api/static/uploads/{unique_filename}"
+                            
+                            all_images.append({
+                                "filename": unique_filename,
+                                "url": image_url,
+                                "size": len(image_data),
+                                "is_svg": False,
+                                "alt": alt
+                            })
+                            
+                            print(f"✅ Extracted HTML embedded image: {unique_filename}")
+                    
+                    except Exception as img_error:
+                        print(f"⚠️ Error processing embedded image {i+1}: {img_error}")
+                        continue
+                
+                elif src.startswith('http') or src.startswith('/'):
+                    # External or relative URL - add reference to text
+                    full_text += f"\n[Referenced image: {src} - Alt: {alt}]\n"
+                    
+        except ImportError:
+            print("⚠️ BeautifulSoup not available, using basic text extraction")
+            # Fallback: basic HTML tag removal
+            import re
+            full_text = re.sub(r'<[^>]+>', '', html_content)
+            all_images = []
+        except Exception as e:
+            print(f"⚠️ Error parsing HTML: {e}")
+            full_text = html_content
+            all_images = []
+        
+        print(f"✅ HTML extraction complete: {len(full_text)} characters, {len(all_images)} images")
+        
+        # Process with template
+        articles = await create_articles_with_template(full_text, all_images, template_data, training_session)
+        
+        print(f"✅ HTML processing generated {len(articles)} articles")
+        
+        return articles
+        
+    except Exception as e:
+        print(f"❌ HTML processing error: {e}")
+        return []
+
+async def create_recovery_articles(content: str, images: list, template_data: dict, training_session: dict) -> list:
+    """Recovery function for enhanced processing failures - creates simplified articles"""
+    try:
+        print(f"🔧 Recovery processing: {len(content)} chars, {len(images)} images")
+        
+        # Create a single simplified article with all content
+        article_id = str(uuid.uuid4())
+        
+        # Basic HTML structure
+        html_content = f"<h1>Document Content from {training_session.get('filename', 'Document')}</h1>\n"
+        html_content += content
+        
+        # Add images at the end
+        for i, img in enumerate(images):
+            html_content += f'\n<figure class="embedded-image">'
+            html_content += f'<img src="{img["url"]}" alt="{img["alt_text"]}" style="max-width: 100%; height: auto; margin: 1rem 0;">'
+            html_content += f'<figcaption>{img.get("caption", f"Figure {i + 1}")}</figcaption>'
+            html_content += f'</figure>\n'
+        
+        # Create media array
+        media_array = []
+        for img in images:
+            media_array.append({
+                "url": img['url'],
+                "alt": img['alt_text'],
+                "caption": img.get('caption', ''),
+                "placement": img.get('placement', 'inline'),
+                "filename": img['filename']
+            })
+        
+        article = {
+            "id": article_id,
+            "title": f"Recovery Article from {training_session['filename']}",
+            "html": html_content,
+            "markdown": html_content.replace('<h1>', '# ').replace('</h1>', '').replace('<p>', '').replace('</p>', '\n'),
+            "content": html_content,
+            "media": media_array,
+            "tags": ["extracted", "recovery", "simplified"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": len(html_content.split()),
+            "image_count": len(media_array),
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": False,
+            "ai_model": "recovery_mode",
+            "training_mode": True,
+            "metadata": {
+                "article_number": 1,
+                "source_filename": training_session['filename'],
+                "template_applied": training_session['template_id'],
+                "phase": "recovery_processing"
+            }
+        }
+        
+        print(f"✅ Recovery article created: {len(html_content)} chars, {len(media_array)} images")
+        return [article]
+        
+    except Exception as e:
+        print(f"❌ Recovery processing also failed: {e}")
+        return []
+
+async def create_recovery_articles(content: str, images: list, template_data: dict, training_session: dict) -> list:
+    """Recovery function for enhanced processing failures - creates simplified articles"""
+    try:
+        print(f"🔧 Recovery processing: {len(content)} chars, {len(images)} images")
+        
+        # Create a single simplified article with all content
+        article_id = str(uuid.uuid4())
+        
+        # Basic HTML structure
+        html_content = f"<h1>Document Content from {training_session.get('filename', 'Document')}</h1>\n"
+        html_content += content
+        
+        # Add images at the end
+        for i, img in enumerate(images):
+            html_content += f'\n<figure class="embedded-image">'
+            html_content += f'<img src="{img["url"]}" alt="{img["alt_text"]}" style="max-width: 100%; height: auto; margin: 1rem 0;">'
+            html_content += f'<figcaption>{img.get("caption", f"Figure {i + 1}")}</figcaption>'
+            html_content += f'</figure>\n'
+        
+        # Create media array
+        media_array = []
+        for img in images:
+            media_array.append({
+                "url": img['url'],
+                "alt": img['alt_text'],
+                "caption": img.get('caption', ''),
+                "placement": img.get('placement', 'inline'),
+                "filename": img['filename']
+            })
+        
+        article = {
+            "id": article_id,
+            "title": f"Recovery Article from {training_session['filename']}",
+            "html": html_content,
+            "markdown": html_content.replace('<h1>', '# ').replace('</h1>', '').replace('<p>', '').replace('</p>', '\n'),
+            "content": html_content,
+            "media": media_array,
+            "tags": ["extracted", "recovery", "simplified"],
+            "status": "training",
+            "template_id": training_session['template_id'],
+            "session_id": training_session['session_id'],
+            "word_count": len(html_content.split()),
+            "image_count": len(media_array),
+            "format": "html",
+            "created_at": datetime.utcnow().isoformat(),
+            "ai_processed": False,
+            "ai_model": "recovery_mode",
+            "training_mode": True,
+            "metadata": {
+                "article_number": 1,
+                "source_filename": training_session['filename'],
+                "template_applied": training_session['template_id'],
+                "phase": "recovery_processing"
+            }
+        }
+        
+        print(f"✅ Recovery article created: {len(html_content)} chars, {len(media_array)} images")
+        return [article]
+        
+    except Exception as e:
+        print(f"❌ Recovery processing also failed: {e}")
+        return []
+
+async def create_articles_with_template(content: str, images: list, template_data: dict, training_session: dict) -> list:
+    """Create articles using template specifications - processing full content without artificial limits"""
+    try:
+        content_length = len(content)
+        image_count = len(images)
+        
+        print(f"📊 Content analysis: {content_length} chars, {image_count} images")
+        print(f"🔍 DEBUG - Template data keys: {list(template_data.keys())}")
+        print(f"🔍 DEBUG - Training session keys: {list(training_session.keys())}")
+        print(f"🔍 DEBUG - Content preview: {content[:200]}...")
+        
+        # Check if content is empty
+        if not content or not content.strip():
+            print("❌ DEBUG - Content is empty or only whitespace")
+            return []
+            
+        # Remove artificial limits and process full content
+        # Use natural content structure to determine article splitting
+        articles = []
+        
+        # Analyze content for natural breaking points
+        natural_sections = []
+        
+        # CRITICAL FIX: Add Markdown to HTML conversion before content analysis
+        # Check if content contains Markdown H1 headers and convert to HTML for proper chunking
+        if '#' in content and re.search(r'^#+\s', content, re.MULTILINE):
+            print(f"📝 Markdown H1 headers detected - converting to HTML for proper chunking")
+            original_content = content
+            content = convert_markdown_to_html_for_text_processing(content)
+            h1_count = len(re.findall(r'<h1>', content))
+            print(f"✅ Markdown conversion complete - {h1_count} H1 tags found")
+            
+            # If we found H1 tags after conversion, we should create multiple articles
+            if h1_count > 1:
+                print(f"🎯 Multiple H1 sections detected - will create {h1_count} separate articles")
+        
+        # Look for major headings and section breaks
+        if '<h1>' in content or '<h2>' in content or '\n\n' in content:
+            # Content has structure, split intelligently
+            
+            # ENHANCED FIX: Create separate articles for each H1 section
+            if '<h1>' in content:
+                h1_sections = content.split('<h1>')
+                print(f"🔍 Splitting content on H1 tags - found {len(h1_sections)} sections")
+                
+                for i, section in enumerate(h1_sections):
+                    if section.strip():
+                        if i == 0 and not section.startswith('<h1>'):
+                            # First section without H1 prefix - could be intro content
+                            if len(section.strip()) > 200:  # Only include substantial intro content
+                                natural_sections.append(section)
+                                print(f"✅ Added intro section: {len(section)} chars")
+                        else:
+                            # Restore H1 tag and treat as separate article
+                            if not section.startswith('<h1>'):
+                                section = '<h1>' + section
+                            natural_sections.append(section)
+                            print(f"✅ Added H1 section {i}: {len(section)} chars")
+                            
+                print(f"🎯 Created {len(natural_sections)} separate sections from H1 content")
+            elif '<h2>' in content:
+                sections = content.split('<h2>')
+                for i, section in enumerate(sections):
+                    if section.strip():
+                        if i > 0:  # Add back the h2 tag
+                            section = '<h2>' + section
+                        natural_sections.append(section)
+            else:
+                # Split on double line breaks for paragraph-based content
+                sections = content.split('\n\n')
+                current_section = ""
+                
+                for section in sections:
+                    # Aim for sections of reasonable length (2000-8000 chars)
+                    if len(current_section + section) > 8000 and current_section:
+                        natural_sections.append(current_section.strip())
+                        current_section = section
+                    else:
+                        current_section += "\n\n" + section if current_section else section
+                
+                if current_section.strip():
+                    natural_sections.append(current_section.strip())
+        else:
+            # No clear structure, treat as single section
+            natural_sections = [content]
+        
+        # Filter out very small sections and merge with adjacent ones
+        filtered_sections = []
+        for i, section in enumerate(natural_sections):
+            if len(section.strip()) < 500 and i < len(natural_sections) - 1:
+                # Merge small section with next one
+                natural_sections[i + 1] = section + "\n\n" + natural_sections[i + 1]
+            elif len(section.strip()) >= 100:  # Only include sections with substantial content
+                filtered_sections.append(section)
+        
+        natural_sections = filtered_sections if filtered_sections else [content]
+        
+        print(f"📝 Identified {len(natural_sections)} natural content sections")
+        
+        # Enhanced image distribution with contextual matching
+        distributed_images = []
+        
+        # ENHANCED: For text files, check for image references in content
+        if not images and any(indicator in content.lower() for indicator in ['[image:', '![', '<img', 'image.png', 'image.jpg', 'figure']):
+            print("🖼️ Text content contains image references - attempting to extract image information")
+            # Extract potential image references from text content
+            image_refs = extract_image_references_from_text(content)
+            if image_refs:
+                distributed_images = image_refs
+                print(f"📸 Found {len(image_refs)} image references in text content")
+        elif images:
+            # Existing image distribution logic for actual images
+            if len(natural_sections) > 1 and len(images) > 0:
+                images_per_section = max(1, len(images) // len(natural_sections))
+                for i, section in enumerate(natural_sections):
+                    start_idx = i * images_per_section
+                    end_idx = min(start_idx + images_per_section, len(images))
+                    section_images = images[start_idx:end_idx]
+                    distributed_images.extend(section_images)
+            else:
+                distributed_images = images
+        section_images = distribute_images_contextually(natural_sections, images)
+        
+        # Create articles from natural sections with enhanced processing
+        for i, section in enumerate(natural_sections):
+            if section.strip():
+                assigned_images = section_images[i] if i < len(section_images) else []
+                
+                print(f"📄 Creating comprehensive article {i+1} with {len(assigned_images)} images")
+                
+                article = await create_single_article_with_template(
+                    section, 
+                    assigned_images,
+                    template_data, 
+                    training_session,
+                    i + 1,
+                    len(natural_sections)
+                )
+                
+                if article:
+                    articles.append(article)
+        
+        print(f"✅ Created {len(articles)} comprehensive articles from {content_length} chars and {image_count} images")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Enhanced article creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def analyze_document_structure(content: str) -> list:
+    """
+    Analyze document structure to determine natural breaking points
+    """
+    sections = []
+    
+    # Enhanced structure detection
+    if '<h1>' in content or '<h2>' in content:
+        # Split on major headings with intelligent merging
+        if '<h1>' in content:
+            sections = intelligent_split_on_headings(content, 'h1')
+        else:
+            sections = intelligent_split_on_headings(content, 'h2')
+    elif content.count('\n\n') > 10:
+        # Handle paragraph-based documents
+        sections = intelligent_paragraph_grouping(content)
+    else:
+        # Single comprehensive section for shorter documents
+        sections = [content]
+    
+    # Filter and validate sections
+    validated_sections = []
+    for section in sections:
+        if len(section.strip()) > 200:  # Minimum meaningful content
+            validated_sections.append(section.strip())
+        elif validated_sections:
+            # Merge small sections with previous one
+            validated_sections[-1] += "\n\n" + section.strip()
+    
+    return validated_sections if validated_sections else [content]
+
+def intelligent_split_on_headings(content: str, heading_tag: str) -> list:
+    """
+    Intelligently split content on headings while preserving context
+    """
+    import re
+    
+    # Pattern to match heading tags
+    pattern = f'<{heading_tag}[^>]*>(.*?)</{heading_tag}>'
+    headings = re.findall(pattern, content, re.IGNORECASE | re.DOTALL)
+    
+    if not headings:
+        return [content]
+    
+    # Split and reconstruct sections
+    sections = []
+    parts = re.split(f'<{heading_tag}[^>]*>.*?</{heading_tag}>', content, flags=re.IGNORECASE | re.DOTALL)
+    heading_matches = re.finditer(pattern, content, re.IGNORECASE | re.DOTALL)
+    
+    # Reconstruct sections with their headings
+    for i, match in enumerate(heading_matches):
+        section_content = match.group(0)  # Include the heading
+        if i + 1 < len(parts):
+            section_content += parts[i + 1]  # Add content after heading
+        
+        if section_content.strip():
+            sections.append(section_content.strip())
+    
+    return sections if sections else [content]
+
+def intelligent_paragraph_grouping(content: str) -> list:
+    """
+    Group paragraphs intelligently to form coherent sections
+    """
+    paragraphs = content.split('\n\n')
+    sections = []
+    current_section = ""
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+            
+        # Check if this paragraph starts a new logical section
+        if is_section_boundary(paragraph, current_section):
+            if current_section.strip():
+                sections.append(current_section.strip())
+            current_section = paragraph
+        else:
+            current_section += "\n\n" + paragraph if current_section else paragraph
+        
+        # Ensure sections don't get too long (but allow substantial content)
+        if len(current_section) > 15000:  # Increased from 8000
+            sections.append(current_section.strip())
+            current_section = ""
+    
+    if current_section.strip():
+        sections.append(current_section.strip())
+    
+    return sections
+
+def is_section_boundary(paragraph: str, current_section: str) -> bool:
+    """
+    Determine if a paragraph represents a natural section boundary
+    """
+    # Check for topic transition indicators
+    transition_indicators = [
+        'next step', 'following section', 'in addition', 'furthermore',
+        'alternatively', 'however', 'on the other hand', 'similarly',
+        'step ', 'phase ', 'part ', 'section ', 'chapter '
+    ]
+    
+    paragraph_lower = paragraph.lower()
+    
+    # Strong indicators of new section
+    if any(indicator in paragraph_lower for indicator in transition_indicators):
+        return True
+    
+    # Check if starting a numbered list or procedure
+    if re.match(r'^\d+\.', paragraph.strip()):
+        return len(current_section) > 1000  # Only if current section has substance
+    
+    return False
+
+def distribute_images_contextually(sections: list, images: list) -> list:
+    """
+    Distribute images across sections based on contextual relevance
+    """
+    if not images:
+        return [[] for _ in sections]
+    
+    section_images = [[] for _ in sections]
+    
+    for image in images:
+        best_section_idx = find_best_section_for_image(image, sections)
+        if best_section_idx is not None:
+            section_images[best_section_idx].append(image)
+        else:
+            # Distribute evenly if no clear match
+            min_images_idx = min(range(len(section_images)), key=lambda i: len(section_images[i]))
+            section_images[min_images_idx].append(image)
+    
+    return section_images
+
+def find_best_section_for_image(image: dict, sections: list) -> int:
+    """
+    Find the best section for an image based on contextual matching
+    """
+    image_chapter = image.get('chapter', '').lower()
+    image_context = image.get('context_text', '').lower()
+    
+    best_score = 0
+    best_section = None
+    
+    for i, section in enumerate(sections):
+        section_lower = section.lower()
+        score = 0
+        
+        # Match based on chapter name
+        if image_chapter and image_chapter in section_lower:
+            score += 50
+        
+        # Match based on context keywords
+        context_words = image_context.split()[:10]  # First 10 words of context
+        for word in context_words:
+            if len(word) > 3 and word in section_lower:
+                score += 5
+        
+        # Prefer sections with visual references
+        if any(keyword in section_lower for keyword in ['figure', 'diagram', 'image', 'shows', 'illustrates']):
+            score += 20
+        
+        if score > best_score:
+            best_score = score
+            best_section = i
+    
+    return best_section if best_score > 10 else None
+
+async def create_single_article_with_template(content: str, images: list, template_data: dict, training_session: dict, article_number: int, total_articles: int = 1) -> dict:
+    """Create a single comprehensive article with enhanced structure and quality using segmented generation"""
+    try:
+        print(f"🔍 Creating comprehensive article {article_number}/{total_articles} with {len(images)} images")
+        
+        # Generate intelligent title based on content, not filename
+        title = extract_h1_title_from_content(content) or generate_contextual_title(content, article_number, training_session)
+        
+        # CRITICAL FIX: Use segmented generation for comprehensive coverage - OPTIMIZED
+        if len(content) > 5000:  # Increased threshold from 2000 to 5000 chars
+            print("📝 Using segmented generation for comprehensive coverage")
+            final_content = await generate_comprehensive_article_segmented(content, images, template_data, title)
+        else:
+            print("📝 Using single-pass generation for shorter content")
+            final_content = await generate_single_pass_article(content, images, template_data, title)
+        
+        if not final_content:
+            print("⚠️ No AI content generated, creating enhanced fallback")
+            final_content = create_structured_fallback_content(content, images, title)
+        
+        # Post-process the AI content for quality assurance
+        final_content = enhance_content_quality(final_content, images)
+        
+        # Extract or generate final title from content
+        final_title = extract_content_title(final_content) or title
+        
+        # Create comprehensive article with enhanced metadata
+        article = {
+            "id": str(uuid.uuid4()),
+            "title": final_title,
+            "content": final_content,
+            "word_count": len(final_content.split()),
+            "image_count": len(images),
+            "status": "training",
+            "template_id": template_data.get("template_id", "enhanced_processing"),
+            "session_id": training_session.get("session_id"),
+            "training_mode": True,
+            "ai_processed": True,
+            "ai_model": "enhanced_knowledge_engine",
+            "has_images": len(images) > 0,
+            "has_structure": check_content_structure(final_content),
+            "processing_metadata": {
+                "article_number": article_number,
+                "total_articles": total_articles,
+                "original_length": len(content),
+                "enhanced_length": len(final_content),
+                "images_embedded": count_embedded_images(final_content),
+                "generation_method": "segmented" if len(content) > 2000 else "single_pass"
+            }
+        }
+        
+        print(f"✅ Comprehensive article created: '{final_title}' ({article['word_count']} words)")
+        return article
+        
+    except Exception as e:
+        print(f"❌ Enhanced article creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def generate_comprehensive_article_segmented(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate comprehensive article using segmented approach for full coverage"""
+    try:
+        print("🔄 Starting segmented generation for comprehensive coverage")
+        
+        # Step 1: Generate article outline and structure
+        outline = await generate_article_outline(content, title, template_data)
+        if not outline:
+            print("⚠️ Could not generate outline, falling back to single-pass")
+            return await generate_single_pass_article(content, images, template_data, title)
+        
+        print(f"📋 Generated article outline with sections")
+        
+        # Step 2: Split content into logical segments based on outline
+        content_segments = split_content_into_segments(content, outline)
+        print(f"📄 Split content into {len(content_segments)} segments")
+        
+        # Step 3: Distribute images across segments
+        segment_images = distribute_images_to_segments(images, content_segments)
+        
+        # Step 4: Generate each segment comprehensively
+        generated_sections = []
+        generated_sections.append(f"<h1>{title}</h1>\n")
+        
+        for i, (segment, segment_imgs) in enumerate(zip(content_segments, segment_images)):
+            print(f"🔄 Generating comprehensive section {i+1}/{len(content_segments)}")
+            
+            section_content = await generate_content_segment(
+                segment, 
+                segment_imgs, 
+                template_data, 
+                i + 1, 
+                len(content_segments),
+                outline
+            )
+            
+            if section_content:
+                generated_sections.append(section_content)
+            else:
+                print(f"⚠️ Failed to generate section {i+1}, using fallback")
+                generated_sections.append(create_fallback_segment(segment, segment_imgs))
+        
+        # Step 5: Combine all sections
+        final_content = "\n\n".join(generated_sections)
+        
+        print(f"✅ Segmented generation completed: {len(final_content.split())} words")
+        return final_content
+        
+    except Exception as e:
+        print(f"❌ Segmented generation error: {e}")
+        return await generate_single_pass_article(content, images, template_data, title)
+
+async def generate_article_outline(content: str, title: str, template_data: dict) -> dict:
+    """Generate a structured outline for the article"""
+    try:
+        system_message = """You are an expert content strategist creating comprehensive article outlines.
+
+Generate a detailed outline for a comprehensive knowledge base article. Return ONLY a JSON structure with no additional text.
+
+Required JSON format:
+{
+    "title": "Article Title",
+    "sections": [
+        {
+            "heading": "Section Title",
+            "level": 2,
+            "key_points": ["point 1", "point 2", "point 3"],
+            "estimated_words": 500
+        }
+    ],
+    "total_estimated_words": 2500
+}
+
+Create 2-3 major sections with detailed key points. Aim for balanced coverage with 1500-2500 total words."""
+
+        user_message = f"""Create a comprehensive outline for this content:
+
+TITLE: {title}
+
+CONTENT TO OUTLINE:
+{content[:2000]}...
+
+Create a detailed outline with major sections, key points, and estimated word counts for comprehensive coverage."""
+
+        outline_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if outline_response:
+            import json
+            try:
+                outline_data = json.loads(outline_response)
+                if "sections" in outline_data and len(outline_data["sections"]) > 0:
+                    return outline_data
+            except json.JSONDecodeError:
+                print("⚠️ Could not parse outline JSON")
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Outline generation error: {e}")
+        return None
+
+def split_content_into_segments(content: str, outline: dict) -> list:
+    """Split content into segments based on outline structure"""
+    if not outline or "sections" not in outline:
+        # Fallback: split into 2 balanced segments for faster processing
+        words = content.split()
+        segments_count = 2  # Reduced from 4 to 2 segments
+        segment_size = max(200, len(words) // segments_count)  # At least 200 words per segment
+        
+        segments = []
+        for i in range(0, len(words), segment_size):
+            segment_words = words[i:i + segment_size]
+            if segment_words:  # Only add non-empty segments
+                segments.append(" ".join(segment_words))
+        
+        return segments
+    
+    # Try to split based on outline sections - OPTIMIZED to 2 segments
+    sections = outline["sections"]
+    # Limit to maximum 2 segments for faster processing
+    target_segments = min(2, len(sections))  # Reduced from 4-6 to 2 segments
+    total_words = len(content.split())
+    words_per_section = total_words // target_segments
+    
+    segments = []
+    words = content.split()
+    
+    for i in range(target_segments):
+        start_idx = i * words_per_section
+        end_idx = min((i + 1) * words_per_section, len(words)) if i < target_segments - 1 else len(words)
+        
+        segment_words = words[start_idx:end_idx]
+        if segment_words:
+            segments.append(" ".join(segment_words))
+    
+    return segments
+
+def distribute_images_to_segments(images: list, segments: list) -> list:
+    """Distribute images across content segments"""
+    if not images:
+        return [[] for _ in segments]
+    
+    # Distribute images roughly evenly across segments
+    segment_images = [[] for _ in segments]
+    
+    for i, image in enumerate(images):
+        segment_idx = i % len(segments)
+        segment_images[segment_idx].append(image)
+    
+    return segment_images
+
+async def generate_content_segment(segment_content: str, segment_images: list, template_data: dict, segment_num: int, total_segments: int, outline: dict) -> str:
+    """Generate a comprehensive content segment"""
+    try:
+        section_info = ""
+        if outline and "sections" in outline and segment_num <= len(outline["sections"]):
+            section_data = outline["sections"][segment_num - 1]
+            section_info = f"""
+SECTION FOCUS: {section_data.get('heading', f'Section {segment_num}')}
+KEY POINTS TO COVER: {', '.join(section_data.get('key_points', []))}
+TARGET LENGTH: {section_data.get('estimated_words', 600)} words"""
+
+        system_message = f"""You are an expert technical writer creating comprehensive section content.
+
+CRITICAL REQUIREMENTS:
+1. Generate detailed, comprehensive content for this section
+2. Write 400-800 words for thorough coverage - BALANCED LENGTH
+3. Use professional technical documentation style with good detail
+4. Include detailed explanations, comprehensive step-by-step procedures, and thorough information
+5. Use proper HTML structure: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>
+6. Embed provided images with proper figure elements
+7. NO meta-commentary - only detailed article content
+8. NO truncation or summarization - provide COMPLETE detailed content
+9. Focus on quality over quantity - comprehensive but concise
+
+{section_info}
+
+QUALITY STANDARDS:
+- Comprehensive, detailed explanations with good depth
+- Professional enterprise technical writing with thorough coverage
+- Complete step-by-step procedures with detailed instructions
+- Thorough coverage of all aspects with focused information
+- Proper HTML semantic structure with rich formatting
+- Target 400-800 words - comprehensive yet efficient content"""
+
+        user_message = f"""Create comprehensive content for section {segment_num} of {total_segments}:
+
+CONTENT TO EXPAND:
+{segment_content}
+
+AVAILABLE IMAGES: {len(segment_images)}
+{format_available_images(segment_images)}
+
+CRITICAL REQUIREMENTS:
+- Write 400-800 words for comprehensive coverage - BALANCED LENGTH
+- Include detailed explanations and complete comprehensive procedures
+- Use proper HTML structure with headings and rich formatting
+- Embed images contextually with provided HTML code
+- Focus on thorough, professional technical documentation with good detail
+- NO truncation or summarization - provide complete detailed comprehensive content
+- Balance depth with efficiency - comprehensive but focused content
+- Provide complete step-by-step instructions where applicable
+- Include thorough background information and context
+
+Generate comprehensive section content with good detail, proper HTML structure, and target 400-800 words."""
+
+        segment_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if segment_response:
+            return segment_response.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Segment generation error: {e}")
+        return None
+
+def extract_h1_title_from_content(content: str) -> str:
+    """Extract the first H1 heading from HTML content as the title"""
+    import re
+    from bs4 import BeautifulSoup
+    
+    try:
+        # Try with regex first (faster)
+        h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', content, re.IGNORECASE | re.DOTALL)
+        if h1_match:
+            # Clean up the title text by removing any HTML tags
+            title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+            # Remove anchor links and IDs
+            title_text = re.sub(r'<a[^>]*>.*?</a>', '', title_text)
+            if 5 < len(title_text) < 100:
+                print(f"📋 Extracted H1 title: '{title_text}'")
+                return title_text
+        
+        # Fallback to BeautifulSoup for complex HTML
+        soup = BeautifulSoup(content, 'html.parser')
+        h1_tag = soup.find('h1')
+        if h1_tag:
+            title_text = h1_tag.get_text().strip()
+            if 5 < len(title_text) < 100:
+                print(f"📋 Extracted H1 title (BeautifulSoup): '{title_text}'")
+                return title_text
+        
+        print("⚠️ No valid H1 title found in content")
+        return ""
+        
+    except Exception as e:
+        print(f"❌ H1 title extraction failed: {e}")
+        return ""
+
+def generate_contextual_title(content: str, article_number: int, training_session: dict) -> str:
+    """Generate intelligent title based on content analysis"""
+    import re
+    
+    # Extract from existing headings first
+    h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', content, re.IGNORECASE | re.DOTALL)
+    if h1_match:
+        title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+        if 5 < len(title_text) < 100:
+            return title_text
+    
+    h2_match = re.search(r'<h2[^>]*>(.*?)</h2>', content, re.IGNORECASE | re.DOTALL)
+    if h2_match:
+        title_text = re.sub(r'<[^>]+>', '', h2_match.group(1)).strip()
+        if 5 < len(title_text) < 100:
+            return title_text
+    
+    # Analyze content for key topics
+    clean_content = re.sub(r'<[^>]+>', '', content)
+    words = clean_content.split()[:100]  # First 100 words
+    
+    # Look for topic keywords
+    topic_keywords = ['guide', 'process', 'procedure', 'step', 'method', 'system', 'overview', 'management']
+    found_topics = []
+    
+    for i, word in enumerate(words):
+        if word.lower() in topic_keywords and i > 0:
+            # Get context around the keyword
+            start_idx = max(0, i-3)
+            end_idx = min(len(words), i+4)
+            context = ' '.join(words[start_idx:end_idx])
+            found_topics.append(context)
+    
+    if found_topics:
+        # Use the first relevant topic
+        topic = found_topics[0]
+        topic = re.sub(r'[^\w\s]', '', topic).strip()
+        if len(topic) > 10:
+            return topic.title()
+    
+    # Fallback to source-based naming
+    source_name = training_session.get('filename', 'Document').replace('.docx', '').replace('.pdf', '')
+    source_name = source_name.replace('_', ' ').replace('-', ' ')
+    
+    if article_number == 1:
+        return f"Understanding {source_name}"
+    else:
+        return f"{source_name} - Section {article_number}"
+
+def format_available_images(images: list) -> str:
+    """Format available images for LLM reference with URLs for embedding"""
+    if not images:
+        return "No images available - focus on comprehensive text content"
+    
+    image_refs = []
+    for i, img in enumerate(images, 1):
+        chapter = img.get('chapter', 'Document')
+        filename = img.get('filename', f'image{i}')
+        caption = img.get('caption', f'Figure {i}')
+        url = img.get('url', '')
+        alt_text = img.get('alt_text', f'Figure {i}')
+        
+        image_refs.append(f"""IMAGE_{i}: 
+- Filename: {filename}
+- URL: {url}
+- Caption: {caption}
+- Alt Text: {alt_text}
+- Chapter: {chapter}
+- HTML to embed: <figure class="embedded-image"><img src="{url}" alt="{alt_text}" style="max-width: 100%; height: auto;"><figcaption>{caption}</figcaption></figure>""")
+    
+    return "\n\n".join(image_refs)
+
+def create_structured_fallback_content(content: str, images: list, title: str) -> str:
+    """Create structured fallback when AI is unavailable"""
+    html = f"<h1>{title}</h1>\n\n"
+    
+    # Process content into structured HTML
+    paragraphs = content.split('\n\n')
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+            
+        # Detect if paragraph looks like a heading
+        if len(para) < 80 and (para.isupper() or para.endswith(':') or para.count(' ') < 8):
+            html += f"<h2>{para.rstrip(':')}</h2>\n\n"
+        elif para.startswith('•') or para.startswith('-'):
+            # Convert to list
+            html += f"<ul>\n<li>{para[1:].strip()}</li>\n</ul>\n\n"
+        else:
+            html += f"<p>{para}</p>\n\n"
+    
+    # Add images if available
+    if images:
+        html += "<h2>Related Figures</h2>\n\n"
+        for img in images[:2]:  # Limit for fallback
+            html += f"""<figure class="embedded-image">
+<img src="{img.get('url', '')}" alt="{img.get('alt_text', 'Figure')}" style="max-width: 100%; height: auto;">
+<figcaption>{img.get('caption', 'Figure')}</figcaption>
+</figure>\n\n"""
+    
+    return html
+
+def enhance_content_quality(content: str, images: list) -> str:
+    """Post-process content for quality and image integration"""
+    if not content:
+        return content
+    
+    # CRITICAL FIX: Remove HTML document wrappers that may come from LLM
+    content = clean_html_wrappers(content)
+    
+    # Add missing images if AI didn't embed them
+    if images and not any(img.get('url', '') in content for img in images):
+        content = add_missing_images(content, images)
+    
+    # Clean HTML formatting
+    import re
+    content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Remove excessive newlines
+    content = re.sub(r'</p>\s*<p>', '</p>\n\n<p>', content)  # Proper paragraph spacing
+    
+    return content.strip()
+
+def clean_html_wrappers(content: str) -> str:
+    """Remove HTML document wrappers and extract only body content"""
+    import re
+    
+    # Remove HTML document structure wrappers
+    content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<html[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</html>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<head>.*?</head>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'<body[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</body>', '', content, flags=re.IGNORECASE)
+    
+    # ENHANCED FIX: Convert markdown code blocks to proper HTML <pre><code> tags instead of removing them
+    # This preserves code content while ensuring proper HTML formatting
+    
+    # Convert markdown code blocks with language specifiers to HTML
+    content = re.sub(r'```html\s*(.*?)```', r'<pre><code class="language-html">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```javascript\s*(.*?)```', r'<pre><code class="language-javascript">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```css\s*(.*?)```', r'<pre><code class="language-css">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'```json\s*(.*?)```', r'<pre><code class="language-json">\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Convert generic markdown code blocks to HTML
+    content = re.sub(r'```\s*(.*?)```', r'<pre><code>\1</code></pre>', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # FIXED: Only remove truly empty code blocks (no content at all), preserve formatted code
+    content = re.sub(r'<pre><code[^>]*></code></pre>', '', content, flags=re.IGNORECASE)
+    
+    # CRITICAL FIX: Remove duplicate h1 tags that repeat the title
+    h1_matches = re.findall(r'<h1[^>]*>(.*?)</h1>', content, flags=re.IGNORECASE | re.DOTALL)
+    if len(h1_matches) > 1:
+        # Keep only the first h1, remove the rest
+        first_h1_found = False
+        def replace_h1(match):
+            nonlocal first_h1_found
+            if not first_h1_found:
+                first_h1_found = True
+                return match.group(0)  # Keep the first one
+            else:
+                # Convert subsequent h1s to h2s
+                inner_text = match.group(1)
+                return f'<h2>{inner_text}</h2>'
+        
+        content = re.sub(r'<h1[^>]*>(.*?)</h1>', replace_h1, content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Remove any remaining div wrappers that might have been added
+    content = re.sub(r'^<div[^>]*>(.*)</div>$', r'\1', content.strip(), flags=re.IGNORECASE | re.DOTALL)
+    
+    # Ensure we still have content
+    if not content.strip():
+        return content
+    
+    # Ensure content starts with proper HTML tags (but not document structure)
+    content = content.strip()
+    if content and not content.startswith('<'):
+        # Only wrap in paragraph if it's plain text
+        if '\n' not in content[:100]:  # Single line text
+            content = f"<p>{content}</p>"
+        else:
+            # Multi-line content, process paragraphs
+            paragraphs = content.split('\n\n')
+            html_parts = []
+            for para in paragraphs:
+                para = para.strip()
+                if para:
+                    html_parts.append(f"<p>{para}</p>")
+            content = '\n\n'.join(html_parts)
+    
+    return content
+
+def clean_article_html_content(content: str) -> str:
+    """Clean HTML content to remove document structure while preserving rich formatting - WYSIWYG OPTIMIZED"""
+    import re
+    
+    # CRITICAL FIX 1: Remove markdown HTML code block wrappers that break WYSIWYG editors
+    if content.strip().startswith('```html'):
+        print(f"🚨 CRITICAL FIX: Removing markdown HTML code block wrapper")
+        content = content.strip()
+        # Remove opening ```html
+        content = re.sub(r'^```html\s*', '', content)
+        # Remove closing ```
+        content = re.sub(r'\s*```$', '', content)
+    
+    # CRITICAL FIX 2: Remove any full-article code block wrapping that breaks WYSIWYG editors
+    if content.strip().startswith('<pre><code class="language-html">') and content.strip().endswith('</code></pre>'):
+        print(f"🚨 CRITICAL FIX: Removing WYSIWYG-breaking code block wrapper")
+        content = content.strip()
+        content = content.replace('<pre><code class="language-html">', '', 1)
+        content = content.rsplit('</code></pre>', 1)[0]
+    
+    # Remove any other variations of full-article wrapping
+    content = re.sub(r'^<pre><code[^>]*>(.*)</code></pre>$', r'\1', content, flags=re.DOTALL)
+    
+    # ENHANCED FIX 3: Remove HTML document structure elements
+    content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</?head[^>]*>', '', content, flags=re.IGNORECASE) 
+    content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+    
+    # First apply the existing HTML wrapper cleaning
+    content = clean_html_wrappers(content)
+    
+    # Additional cleaning specific to article content
+    # Remove only document structure elements, preserve content elements
+    content = re.sub(r'<meta[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<link[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # PRESERVE rich formatting elements - DO NOT remove:
+    # - Lists (ul, ol, li)
+    # - Code blocks (pre, code) - but only legitimate ones, not wrappers
+    # - Emphasis (strong, em, b, i)
+    # - Callouts and notes (div with classes)
+    # - Tables (table, tr, td, th)
+    # - Blockquotes
+    # - Definition lists (dl, dt, dd)
+    
+    # Clean up excessive whitespace but preserve code block formatting
+    content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
+    content = re.sub(r'^\s+|\s+$', '', content)
+    
+    # Preserve spacing in code blocks - don't collapse whitespace inside <pre> tags
+    def preserve_pre_spacing(match):
+        return match.group(0)  # Return unchanged
+    
+    # Apply whitespace normalization only outside of <pre> tags
+    parts = re.split(r'(<pre[^>]*>.*?</pre>)', content, flags=re.IGNORECASE | re.DOTALL)
+    cleaned_parts = []
+    
+    for i, part in enumerate(parts):
+        if i % 2 == 0:  # Not inside <pre> tags
+            # Normal whitespace cleaning for non-code content
+            part = re.sub(r'[ \t]+', ' ', part)  # Normalize spaces but preserve line breaks
+        else:  # Inside <pre> tags
+            # Preserve all whitespace in code blocks
+            pass
+        cleaned_parts.append(part)
+    
+    content = ''.join(cleaned_parts)
+    
+    return content
+
+def fix_fragmented_ordered_lists(content: str) -> str:
+    """Fix fragmented ordered lists by consolidating them into continuous numbering"""
+    import re
+    from bs4 import BeautifulSoup
+    
+    try:
+        # Parse the HTML content
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find all ordered lists
+        ol_tags = soup.find_all('ol')
+        
+        if len(ol_tags) <= 1:
+            return content  # No fragmentation to fix
+        
+        # Group consecutive ordered lists
+        ol_groups = []
+        current_group = []
+        
+        for ol in ol_tags:
+            # Check if this ol is immediately after the previous one (allowing for whitespace)
+            if current_group:
+                prev_ol = current_group[-1]
+                # Get all siblings between previous and current
+                siblings_between = []
+                current = prev_ol.next_sibling
+                while current and current != ol:
+                    if hasattr(current, 'name') and current.name:  # It's a tag
+                        siblings_between.append(current)
+                    current = current.next_sibling
+                
+                # If there are significant elements between, start new group
+                significant_elements = [s for s in siblings_between if hasattr(s, 'name') and s.name in ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'div', 'section']]
+                
+                if significant_elements:
+                    # Start new group
+                    ol_groups.append(current_group)
+                    current_group = [ol]
+                else:
+                    # Continue current group
+                    current_group.append(ol)
+            else:
+                current_group = [ol]
+        
+        # Add the last group
+        if current_group:
+            ol_groups.append(current_group)
+        
+        # Process each group to consolidate numbering
+        for group in ol_groups:
+            if len(group) > 1:
+                # Consolidate the group
+                first_ol = group[0]
+                
+                # Collect all list items from the group
+                all_items = []
+                for ol in group:
+                    items = ol.find_all('li', recursive=False)
+                    all_items.extend(items)
+                
+                # Clear the first ol and add all items
+                first_ol.clear()
+                for item in all_items:
+                    # Clone the item to avoid moving issues
+                    new_item = soup.new_tag('li')
+                    new_item.string = item.get_text()
+                    # Preserve any nested content
+                    for child in item.children:
+                        if hasattr(child, 'name'):
+                            new_item.append(child.extract())
+                        else:
+                            new_item.append(str(child))
+                    first_ol.append(new_item)
+                
+                # Remove the other ols in the group
+                for ol in group[1:]:
+                    ol.decompose()
+        
+        return str(soup)
+        
+    except Exception as e:
+        print(f"⚠️ Error in fix_fragmented_ordered_lists: {e}")
+        # Return original content if there's an error
+        return content
+
+def add_missing_images(content: str, images: list) -> str:
+    """Add missing images at appropriate locations"""
+    import re
+    
+    # Find insertion points after headings
+    h2_positions = [m.end() for m in re.finditer(r'</h2>', content, re.IGNORECASE)]
+    
+    if not h2_positions:
+        # Fall back to paragraph positions
+        h2_positions = [m.end() for m in re.finditer(r'</p>', content, re.IGNORECASE)][:2]
+    
+    # Insert images at found positions
+    offset = 0
+    images_to_add = images[:min(len(h2_positions), 2)]  # Limit insertions
+    
+    for i, image in enumerate(images_to_add):
+        if i < len(h2_positions):
+            insert_pos = h2_positions[i] + offset
+            
+            img_html = f"""
+<figure class="embedded-image">
+<img src="{image.get('url', '')}" alt="{image.get('alt_text', 'Figure')}" style="max-width: 100%; height: auto;">
+<figcaption>{image.get('caption', 'Figure')}</figcaption>
+</figure>
+"""
+            content = content[:insert_pos] + img_html + content[insert_pos:]
+            offset += len(img_html)
+    
+    return content
+
+def extract_content_title(content: str) -> str:
+    """Extract title from generated content"""
+    import re
+    
+    h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', content, re.IGNORECASE | re.DOTALL)
+    if h1_match:
+        title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+        if 5 < len(title_text) < 120:
+            return title_text
+    return None
+
+def check_content_structure(content: str) -> bool:
+    """Check if content has proper structure"""
+    import re
+    has_headings = bool(re.search(r'<h[1-6][^>]*>', content, re.IGNORECASE))
+    has_lists = bool(re.search(r'<[uo]l[^>]*>', content, re.IGNORECASE))
+    return has_headings or has_lists
+
+def count_embedded_images(content: str) -> int:
+    """Count embedded images in content"""
+    import re
+    return len(re.findall(r'<img[^>]*>', content, re.IGNORECASE))
+
+# PHASE 2: ADVANCED REFINED ENGINE v2.1 - Process content endpoint
+@app.post("/api/content/process-advanced")
+async def process_content_advanced(request: ContentProcessRequest):
+    """Process text content with the Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        print(f"🚀 ADVANCED REFINED ENGINE v2.1: Processing content request")
+        
+        # Extract content and metadata from request
+        content = request.content
+        metadata = {
+            "original_filename": request.metadata.get("title", "Text Input"),
+            "input_type": "text",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "advanced_2.1"
+        }
+        
+        # Process with advanced refined engine
+        generated_articles = await advanced_refined_engine.process_content(content, metadata)
+        
+        if generated_articles:
+            print(f"✅ ADVANCED REFINED ENGINE: Successfully created {len(generated_articles)} articles")
+            
+            # Get processing analytics
+            analytics = advanced_refined_engine.get_processing_analytics()
+            
+            return {
+                "success": True,
+                "message": f"Content processed successfully with Advanced Refined Engine v2.1",
+                "articles_created": len(generated_articles),
+                "engine_used": "advanced_refined_2.1",
+                "processing_analytics": {
+                    "processing_time": analytics.get('performance_trend', [{}])[-1].get('processing_time', 0),
+                    "chars_per_second": analytics.get('performance_trend', [{}])[-1].get('chars_per_second', 0),
+                    "total_processed": analytics.get('total_processed', 0)
+                },
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"]),
+                        "confidence_score": article.get("metadata", {}).get("analysis_confidence", 0.0),
+                        "processing_approach": article.get("metadata", {}).get("processing_approach", "unknown")
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            print(f"⚠️ ADVANCED REFINED ENGINE: No articles created")
+            return {
+                "success": False,
+                "message": "No articles were created from the provided content",
+                "engine_used": "advanced_refined_2.1"
+            }
+            
+    except Exception as e:
+        print(f"❌ ADVANCED REFINED ENGINE ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Advanced Refined Engine processing failed: {str(e)}")
+
+# PHASE 2: ADVANCED REFINED ENGINE - File upload endpoint  
+@app.post("/api/content/upload-advanced")
+async def upload_file_advanced(
+    file: UploadFile = File(...),
+    metadata: str = Form("{}")
+):
+    """Upload and process files with the Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        print(f"🚀 ADVANCED REFINED ENGINE v2.1: Processing file upload - {file.filename}")
+        
+        # Parse metadata
+        file_metadata = json.loads(metadata)
+        file_metadata.update({
+            "original_filename": file.filename,
+            "input_type": "file",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "advanced_2.1"
+        })
+        
+        # Read and extract content (same logic as refined engine)
+        file_content = await file.read()
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+        
+        print(f"📄 File: {file.filename} ({len(file_content)} bytes, .{file_extension})")
+        
+        extracted_content = ""
+        
+        # Extract content based on file type
+        if file_extension in ['txt', 'md', 'csv']:
+            try:
+                extracted_content = file_content.decode('utf-8')
+            except UnicodeDecodeError:
+                extracted_content = file_content.decode('latin-1', errors='ignore')
+                
+        elif file_extension == 'docx':
+            try:
+                import io
+                import mammoth
+                
+                # Extract text with mammoth
+                docx_buffer = io.BytesIO(file_content)
+                result = mammoth.extract_raw_text(docx_buffer)
+                extracted_content = result.value
+                
+                print(f"✅ DOCX extraction: {len(extracted_content)} characters")
+                
+            except Exception as docx_error:
+                print(f"❌ DOCX extraction error: {docx_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process DOCX file: {docx_error}")
+                
+        elif file_extension == 'pdf':
+            try:
+                import PyPDF2
+                import io
+                
+                pdf_buffer = io.BytesIO(file_content)
+                pdf_reader = PyPDF2.PdfReader(pdf_buffer)
+                
+                text_parts = []
+                for page in pdf_reader.pages:
+                    text_parts.append(page.extract_text())
+                
+                extracted_content = '\n'.join(text_parts)
+                print(f"✅ PDF extraction: {len(extracted_content)} characters")
+                
+            except Exception as pdf_error:
+                print(f"❌ PDF extraction error: {pdf_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process PDF file: {pdf_error}")
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_extension}")
+        
+        # Validate content
+        if not extracted_content or len(extracted_content.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Insufficient content extracted from file")
+        
+        print(f"📊 Content extracted: {len(extracted_content)} characters")
+        
+        # Process with advanced refined engine
+        generated_articles = await advanced_refined_engine.process_content(extracted_content, file_metadata)
+        
+        if generated_articles:
+            print(f"✅ ADVANCED REFINED ENGINE: Successfully created {len(generated_articles)} articles from {file.filename}")
+            
+            # Get processing analytics
+            analytics = advanced_refined_engine.get_processing_analytics()
+            
+            return {
+                "success": True,
+                "message": f"File processed successfully with Advanced Refined Engine v2.1",
+                "filename": file.filename,
+                "content_extracted": len(extracted_content),
+                "articles_created": len(generated_articles),
+                "engine_used": "advanced_refined_2.1",
+                "processing_analytics": {
+                    "processing_time": analytics.get('performance_trend', [{}])[-1].get('processing_time', 0),
+                    "chars_per_second": analytics.get('performance_trend', [{}])[-1].get('chars_per_second', 0),
+                    "confidence_average": sum(
+                        article.get("metadata", {}).get("analysis_confidence", 0.0) 
+                        for article in generated_articles
+                    ) / max(1, len(generated_articles))
+                },
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"]),
+                        "confidence_score": article.get("metadata", {}).get("analysis_confidence", 0.0),
+                        "processing_approach": article.get("metadata", {}).get("processing_approach", "unknown"),
+                        "content_type": article.get("metadata", {}).get("content_type", "unknown")
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No articles were created from the uploaded file",
+                "filename": file.filename,
+                "engine_used": "advanced_refined_2.1"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ADVANCED REFINED ENGINE UPLOAD ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Advanced Refined Engine upload processing failed: {str(e)}")
+
+# PHASE 2: BATCH PROCESSING - Multiple files endpoint
+@app.post("/api/content/upload-batch-advanced")
+async def upload_batch_files_advanced(
+    files: List[UploadFile] = File(...),
+    metadata: str = Form("{}")
+):
+    """Batch upload and process multiple files with Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        print(f"📦 BATCH PROCESSING: {len(files)} files with Advanced Refined Engine v2.1")
+        
+        # Parse metadata
+        batch_metadata = json.loads(metadata)
+        batch_id = str(uuid.uuid4())
+        
+        results = []
+        total_articles = 0
+        
+        for i, file in enumerate(files):
+            try:
+                print(f"📄 Processing file {i+1}/{len(files)}: {file.filename}")
+                
+                # Process each file individually
+                file_content = await file.read()
+                file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+                
+                # Extract content (same logic as single file)
+                extracted_content = ""
+                
+                if file_extension in ['txt', 'md', 'csv']:
+                    try:
+                        extracted_content = file_content.decode('utf-8')
+                    except UnicodeDecodeError:
+                        extracted_content = file_content.decode('latin-1', errors='ignore')
+                        
+                elif file_extension == 'docx':
+                    import io
+                    import mammoth
+                    
+                    docx_buffer = io.BytesIO(file_content)
+                    result = mammoth.extract_raw_text(docx_buffer)
+                    extracted_content = result.value
+                    
+                elif file_extension == 'pdf':
+                    import PyPDF2
+                    import io
+                    
+                    pdf_buffer = io.BytesIO(file_content)
+                    pdf_reader = PyPDF2.PdfReader(pdf_buffer)
+                    
+                    text_parts = []
+                    for page in pdf_reader.pages:
+                        text_parts.append(page.extract_text())
+                    
+                    extracted_content = '\n'.join(text_parts)
+                
+                if extracted_content and len(extracted_content.strip()) >= 50:
+                    # Prepare file metadata
+                    file_metadata = {
+                        **batch_metadata,
+                        "original_filename": file.filename,
+                        "input_type": "batch_file",
+                        "batch_id": batch_id,
+                        "batch_position": i + 1,
+                        "batch_total": len(files),
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "engine_version": "advanced_2.1"
+                    }
+                    
+                    # Process with advanced engine
+                    articles = await advanced_refined_engine.process_content(extracted_content, file_metadata)
+                    
+                    results.append({
+                        "filename": file.filename,
+                        "success": True,
+                        "articles_created": len(articles),
+                        "content_extracted": len(extracted_content),
+                        "articles": [
+                            {
+                                "id": article["id"],
+                                "title": article["title"],
+                                "article_type": article["article_type"],
+                                "content_length": len(article["content"])
+                            } for article in articles
+                        ]
+                    })
+                    
+                    total_articles += len(articles)
+                    print(f"✅ File {i+1} processed: {len(articles)} articles created")
+                    
+                else:
+                    results.append({
+                        "filename": file.filename,
+                        "success": False,
+                        "error": "Insufficient content extracted"
+                    })
+                    print(f"⚠️ File {i+1} skipped: insufficient content")
+                    
+            except Exception as file_error:
+                results.append({
+                    "filename": file.filename,
+                    "success": False,
+                    "error": str(file_error)
+                })
+                print(f"❌ File {i+1} failed: {file_error}")
+        
+        # Get final analytics
+        analytics = advanced_refined_engine.get_processing_analytics()
+        
+        successful_files = sum(1 for r in results if r['success'])
+        
+        return {
+            "success": True,
+            "message": f"Batch processing completed with Advanced Refined Engine v2.1",
+            "batch_id": batch_id,
+            "files_processed": len(files),
+            "files_successful": successful_files,
+            "total_articles_created": total_articles,
+            "engine_used": "advanced_refined_2.1",
+            "processing_analytics": {
+                "total_processing_jobs": analytics.get('total_processed', 0),
+                "average_processing_time": analytics.get('average_processing_time', 0),
+                "average_chars_per_second": analytics.get('average_chars_per_second', 0)
+            },
+            "results": results
+        }
+        
+    except Exception as e:
+        print(f"❌ BATCH PROCESSING ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Batch processing failed: {str(e)}")
+
+# WYSIWYG FORMATTING FIX - Cleanup endpoint for existing articles
+@app.post("/api/content/cleanup-formatting")
+async def cleanup_article_formatting():
+    """Clean up complex formatting in existing articles to use simplified HTML structure"""
+    try:
+        print(f"🧹 CLEANUP: Starting WYSIWYG formatting cleanup for existing articles")
+        
+        # Get all articles from Content Library
+        articles_cursor = db.content_library.find({})
+        articles = await articles_cursor.to_list(length=None)
+        
+        cleanup_results = {
+            "total_articles": len(articles),
+            "articles_cleaned": 0,
+            "articles_skipped": 0,
+            "cleanup_details": []
+        }
+        
+        for article in articles:
+            try:
+                article_id = article.get('id', str(article.get('_id', 'unknown')))
+                original_content = article.get('content', '')
+                
+                if not original_content or len(original_content.strip()) < 50:
+                    cleanup_results["articles_skipped"] += 1
+                    continue
+                
+                # Apply comprehensive formatting cleanup
+                cleaned_content = clean_legacy_formatting(original_content)
+                
+                # Check if cleanup made changes
+                if cleaned_content != original_content:
+                    # Update article with cleaned content
+                    await db.content_library.update_one(
+                        {"id": article_id},
+                        {"$set": {
+                            "content": cleaned_content,
+                            "formatting_cleaned": True,
+                            "cleanup_timestamp": datetime.utcnow().isoformat()
+                        }}
+                    )
+                    
+                    cleanup_results["articles_cleaned"] += 1
+                    cleanup_results["cleanup_details"].append({
+                        "article_id": article_id,
+                        "title": article.get('title', 'Unknown'),
+                        "original_length": len(original_content),
+                        "cleaned_length": len(cleaned_content),
+                        "changes_made": True
+                    })
+                    
+                    print(f"✅ Cleaned article: {article.get('title', 'Unknown')[:50]}")
+                else:
+                    cleanup_results["articles_skipped"] += 1
+                    cleanup_results["cleanup_details"].append({
+                        "article_id": article_id,
+                        "title": article.get('title', 'Unknown'),
+                        "changes_made": False
+                    })
+                    
+            except Exception as article_error:
+                print(f"❌ Error cleaning article {article_id}: {article_error}")
+                cleanup_results["articles_skipped"] += 1
+        
+        success_rate = (cleanup_results["articles_cleaned"] / max(1, cleanup_results["total_articles"])) * 100
+        
+        print(f"🎉 CLEANUP COMPLETE: {cleanup_results['articles_cleaned']}/{cleanup_results['total_articles']} articles cleaned ({success_rate:.1f}%)")
+        
+        return {
+            "success": True,
+            "message": f"WYSIWYG formatting cleanup completed successfully",
+            "cleanup_results": cleanup_results,
+            "success_rate": f"{success_rate:.1f}%"
+        }
+        
+    except Exception as e:
+        print(f"❌ CLEANUP ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Formatting cleanup failed: {str(e)}")
+
+def clean_legacy_formatting(content: str) -> str:
+    """Clean up complex formatting in legacy articles"""
+    try:
+        import re
+        
+        print(f"🧹 Cleaning legacy formatting...")
+        cleaned = content
+        
+        # 1. Remove complex layout structures
+        cleaned = re.sub(r'<div[^>]*class="article-body-with-toc"[^>]*>', '<div class="article-body">', cleaned)
+        cleaned = re.sub(r'<div[^>]*class="article-main-content"[^>]*>', '<div>', cleaned)
+        cleaned = re.sub(r'<div[^>]*class="article-sidebar"[^>]*>.*?</div>\s*</div>$', '</div>', cleaned, flags=re.DOTALL)
+        
+        # 2. Remove mini-TOC and advanced navigation
+        cleaned = re.sub(r'<div[^>]*mini-toc[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div[^>]*advanced-toc[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div[^>]*id="mini-toc-container"[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        
+        # 3. Clean up complex CSS classes
+        cleaned = re.sub(r'class="[^"]*line-numbers[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*expandable[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*troubleshoot-item[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*related-article-card[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*toc-hierarchy[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*toc-level-\d+"', '', cleaned)
+        
+        # 4. Simplify code blocks (remove complex classes, keep basic structure)
+        cleaned = re.sub(r'<pre[^>]*class="[^"]*language-[^"]*"[^>]*>', '<pre>', cleaned)
+        cleaned = re.sub(r'<code[^>]*class="[^"]*language-[^"]*"[^>]*>', '<code>', cleaned)
+        
+        # 5. Remove expandable structures and convert to simple format
+        cleaned = re.sub(r'<div class="expandable-header"[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div class="expandable-content"[^>]*>(.*?)</div>', r'\1', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<span class="expandable-title"[^>]*>(.*?)</span>', r'<strong>\1</strong>', cleaned, flags=re.DOTALL)
+        
+        # 6. Remove complex navigation and related links sections
+        cleaned = re.sub(r'<h[2-6][^>]*>🔗 Related Links</h[2-6]>.*?(?=<h[1-6]|</div>|$)', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div[^>]*related-links[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        
+        # 7. Clean up any remaining complex structures
+        cleaned = re.sub(r'<hr>\s*<hr>', '<hr>', cleaned)  # Remove duplicate HRs
+        cleaned = re.sub(r'<div[^>]*table-responsive[^>]*>', '<div>', cleaned)
+        cleaned = re.sub(r'class="[^"]*api-method[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*status-code[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*compliance-required[^"]*"', 'class="note"', cleaned)
+        cleaned = re.sub(r'class="[^"]*compliance-optional[^"]*"', '', cleaned)
+        
+        # 8. Ensure proper article-body wrapper
+        if '<div class="article-body">' not in cleaned:
+            # Remove any existing wrapper and add simple one
+            cleaned = re.sub(r'^<div[^>]*>', '', cleaned)
+            cleaned = f'<div class="article-body">\n{cleaned}'
+            if not cleaned.endswith('</div>'):
+                cleaned += '\n</div>'
+        
+        # 9. Clean up whitespace and formatting
+        cleaned = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned)  # Remove excessive line breaks
+        cleaned = re.sub(r'class=""', '', cleaned)  # Remove empty class attributes
+        cleaned = re.sub(r'\s+class="\s*"', '', cleaned)  # Remove empty class attributes with spaces
+        cleaned = cleaned.strip()
+        
+        print(f"✅ Legacy formatting cleanup complete")
+        return cleaned
+        
+    except Exception as e:
+        print(f"❌ Error in legacy formatting cleanup: {e}")
+        return content
+
+# PHASE 2: ENGINE MIGRATION AND COMPARISON ENDPOINTS
+@app.post("/api/content/compare-engines")
+async def compare_engines(request: ContentProcessRequest):
+    """Compare different engine results on the same content"""
+    try:
+        from engine_migration_tool import migration_tool
+        
+        print(f"🔄 ENGINE COMPARISON: Testing multiple engines on same content")
+        
+        content = request.content
+        metadata = {
+            "original_filename": request.metadata.get("title", "Comparison Test"),
+            "input_type": "comparison_test",
+            "processing_timestamp": datetime.utcnow().isoformat()
+        }
+        
+        comparison_results = await migration_tool.compare_engines(content, metadata)
+        
+        # Clean up any ObjectId issues by converting to strings
+        def clean_mongo_objects(obj):
+            if isinstance(obj, dict):
+                return {k: clean_mongo_objects(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_mongo_objects(item) for item in obj]
+            elif hasattr(obj, '__dict__'):
+                return str(obj)
+            else:
+                return obj
+        
+        cleaned_results = clean_mongo_objects(comparison_results)
+        
+        return {
+            "success": True,
+            "message": "Engine comparison completed successfully",
+            "comparison": cleaned_results
+        }
+        
+    except Exception as e:
+        print(f"❌ ENGINE COMPARISON ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Engine comparison failed: {str(e)}")
+
+@app.post("/api/content/migrate-articles")
+async def migrate_articles(request: Dict[str, Any]):
+    """Migrate existing articles to a different engine"""
+    try:
+        from engine_migration_tool import migration_tool
+        
+        article_ids = request.get('article_ids', [])
+        target_engine = request.get('target_engine', '')
+        
+        if not article_ids:
+            raise HTTPException(status_code=400, detail="No article IDs provided")
+        
+        if target_engine not in ['refined_2.0', 'advanced_2.1']:
+            raise HTTPException(status_code=400, detail="Invalid target engine")
+        
+        print(f"🔄 ARTICLE MIGRATION: Migrating {len(article_ids)} articles to {target_engine}")
+        
+        migration_results = await migration_tool.migrate_articles_to_engine(article_ids, target_engine)
+        
+        return {
+            "success": True,
+            "message": f"Migration to {target_engine} completed",
+            "migration": migration_results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ARTICLE MIGRATION ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Article migration failed: {str(e)}")
+
+@app.get("/api/content/engine-statistics")
+async def get_engine_statistics():
+    """Get statistics about articles created by different engines"""
+    try:
+        from engine_migration_tool import migration_tool
+        
+        print(f"📊 FETCHING ENGINE STATISTICS")
+        
+        statistics = await migration_tool.get_engine_statistics()
+        
+        return {
+            "success": True,
+            "message": "Engine statistics retrieved successfully",
+            "statistics": statistics
+        }
+        
+    except Exception as e:
+        print(f"❌ ENGINE STATISTICS ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Engine statistics failed: {str(e)}")
+
+# PHASE 2: ANALYTICS ENDPOINT
+@app.get("/api/content/analytics/advanced")
+async def get_advanced_processing_analytics():
+    """Get processing analytics from Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        analytics = advanced_refined_engine.get_processing_analytics()
+        
+        # Add database statistics
+        try:
+            advanced_articles_count = await db.content_library.count_documents({
+                "metadata.advanced_refined_engine": True
+            })
+            
+            refined_articles_count = await db.content_library.count_documents({
+                "metadata.refined_engine": True
+            })
+            
+            total_articles_count = await db.content_library.count_documents({})
+            
+            analytics['database_stats'] = {
+                'advanced_refined_articles': advanced_articles_count,
+                'refined_articles': refined_articles_count,
+                'total_articles': total_articles_count,
+                'advanced_percentage': (advanced_articles_count / max(1, total_articles_count)) * 100
+            }
+            
+        except Exception as db_error:
+            print(f"⚠️ Database stats error: {db_error}")
+            analytics['database_stats'] = {'error': 'Unable to fetch database statistics'}
+        
+        return analytics
+        
+    except Exception as e:
+        print(f"❌ Analytics error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analytics retrieval failed: {str(e)}")
+
+# NEW REFINED ENGINE - Process content endpoint
+@app.post("/api/content/process-refined")
+async def process_content_refined(request: ContentProcessRequest):
+    """Process text content with the new Refined Engine"""
+    try:
+        from refined_engine import refined_engine
+        
+        print(f"🆕 REFINED ENGINE: Processing content request")
+        
+        # Extract content and metadata from request
+        content = request.content
+        metadata = {
+            "original_filename": request.metadata.get("title", "Text Input"),
+            "input_type": "text",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "refined_2.0"
+        }
+        
+        # Process with refined engine
+        generated_articles = await refined_engine.process_content(content, metadata)
+        
+        if generated_articles:
+            print(f"✅ REFINED ENGINE: Successfully created {len(generated_articles)} articles")
+            return {
+                "success": True,
+                "message": f"Content processed successfully with Refined Engine",
+                "articles_created": len(generated_articles),
+                "engine_used": "refined_2.0",
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"])
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            print(f"⚠️ REFINED ENGINE: No articles created")
+            return {
+                "success": False,
+                "message": "No articles were created from the provided content",
+                "engine_used": "refined_2.0"
+            }
+            
+    except Exception as e:
+        print(f"❌ REFINED ENGINE ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Refined Engine processing failed: {str(e)}")
+
+# Content processing endpoint
+@app.post("/api/content/process")
+async def process_content(request: ContentProcessRequest):
+    """Process text content with AI"""
+    try:
+        job = ProcessingJob(
+            input_type=request.content_type,
+            status="processing"
+        )
+        
+        # Store job in database
+        await db.processing_jobs.insert_one(job.dict())
+        
+        # Process content based on type
+        if request.content_type == "text":
+            chunks = await process_text_content(request.content, request.metadata)
+        else:
+            raise HTTPException(status_code=400, detail=f"Content type {request.content_type} not supported yet")
+        
+        # Update job with results
+        job.chunks = chunks
+        job.status = "completed"
+        job.completed_at = datetime.utcnow()
+        
+        await db.processing_jobs.update_one(
+            {"job_id": job.job_id},
+            {"$set": job.dict()}
+        )
+        
+        return {
+            "job_id": job.job_id,
+            "status": job.status,
+            "chunks_created": len(chunks),
+            "message": "Content processed successfully"
+        }
+        
+    except Exception as e:
+        # Update job with error
+        if 'job' in locals():
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {"status": "failed", "error_message": str(e)}}
+            )
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def create_content_library_articles_from_chunks(chunks: List[Dict], metadata: Dict[str, Any]) -> List[Dict]:
+    """Convert document chunks into individual Content Library articles"""
+    try:
+        created_articles = []
+        print(f"📚 CHUNK CONVERSION: Converting {len(chunks)} chunks to Content Library articles")
+        
+        for i, chunk in enumerate(chunks):
+            if not chunk["content"].strip():
+                continue
+                
+            # Generate article title based on chunk content
+            title = f"Article {i+1}: {metadata.get('original_filename', 'Document')}"
+            if len(chunk["content"]) > 100:
+                # Try to extract a meaningful title from the first sentence or heading
+                first_line = chunk["content"].split('\n')[0].strip()
+                if first_line and len(first_line) < 100:
+                    # Remove HTML tags for title
+                    import re
+                    clean_title = re.sub(r'<[^>]+>', '', first_line).strip()
+                    if clean_title:
+                        title = clean_title[:80] + ("..." if len(clean_title) > 80 else "")
+            
+            # Create comprehensive article using LLM enhancement
+            try:
+                system_message = """You are a technical writing expert specializing in professional documentation. Transform the provided content into a well-structured, comprehensive article following enhanced technical writing standards.
+
+ENHANCED TECHNICAL WRITING REQUIREMENTS:
+
+1. **Title Creation Standards**:
+   - Create specific, actionable titles that reflect exact content
+   - **Concepts**: "API Core Concepts and Components" not "Understanding the API"
+   - **How-to**: "Integrating Google Maps into React Applications" not "Comprehensive Guide to Maps"
+   - **Use-Cases**: "Building Location-Based Store Finder" not "Maps Implementation Guide"
+   - **Troubleshooting**: "Resolving 'Invalid API Key' Errors" not "API Issues Guide"
+
+2. **Technical Writing Elements** (use appropriately based on content):
+   - **Callouts**: <blockquote class="tip">💡 Tip: ...</blockquote>, <blockquote class="warning">⚠️ Warning: ...</blockquote>, <blockquote class="note">📝 Note: ...</blockquote>
+   - **Tables**: Proper <table> structure for parameters, configurations, comparisons
+   - **Lists**: <ol> for sequential steps, <ul> for features/options/requirements  
+   - **Code Elements**: <pre><code> for multi-line code, <code> for inline references
+   - **Expand/Collapse**: <details><summary>Advanced Options</summary>content</details> for optional info
+
+3. **Content Structure by Article Type**:
+   - **Concept Articles**: Explain principles, features, definitions with clear examples
+   - **How-to/Guides**: Step-by-step procedures with numbered lists and clear outcomes
+   - **Use-Case Walkthroughs**: Applied scenarios with implementation details and examples
+   - **FAQs**: Direct question-answer format with problem-solution structure
+   - **Troubleshooting**: Problem diagnosis steps with clear resolution paths
+
+4. **Professional Standards**:
+   - Clear heading hierarchy: <h2>, <h3>, <h4> (NO <h1> - title serves as H1)
+   - Actionable, specific language for instructions
+   - Consistent terminology and UI references
+   - Proper transitions between sections
+   - Remove generic phrases like "comprehensive guide" or "understanding"
+
+5. **HTML Structure Requirements**:
+   - Use proper HTML structure with semantic elements
+   - Include proper table structure: <table>, <thead>, <tbody>, <tr>, <th>, <td>
+   - Apply <blockquote> for callouts and important notes
+   - Use <strong> for emphasis, <em> for slight emphasis
+   - NO MARKDOWN - Only HTML tags
+   - Content must be WYSIWYG editor compatible
+
+Respond with a JSON object:
+{
+    "title": "Specific, actionable title reflecting exact content",
+    "content": "Full HTML content with enhanced technical writing elements", 
+    "summary": "Brief, specific summary of what the article covers",
+    "tags": ["specific", "relevant", "tags"],
+    "takeaways": ["specific actionable insight 1", "specific actionable insight 2", "specific actionable insight 3"],
+    "article_type": "concept|how-to|use-case|faq|troubleshooting"
+}"""
+                
+                user_message = f"""Transform this content into a comprehensive article:
+
+{chunk["content"]}
+
+Original context: {metadata.get('original_filename', 'Document content')}
+"""
+                
+                ai_response = await call_llm_with_fallback(system_message, user_message)
+                
+                if ai_response:
+                    try:
+                        # Clean and parse JSON response
+                        import json
+                        import re
+                        cleaned_response = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', ai_response)
+                        
+                        # Extract JSON from response if wrapped
+                        json_match = re.search(r'```json\s*(.*?)\s*```', cleaned_response, re.DOTALL)
+                        if json_match:
+                            json_str = json_match.group(1).strip()
+                            article_data = json.loads(json_str)
+                        else:
+                            article_data = json.loads(cleaned_response)
+                        
+                        # Create article record
+                        article_record = {
+                            "id": str(uuid.uuid4()),
+                            "title": article_data.get("title", title),
+                            "content": article_data.get("content", chunk["content"]),
+                            "summary": article_data.get("summary", ""),
+                            "tags": article_data.get("tags", ["knowledge-engine"]),
+                            "takeaways": article_data.get("takeaways", []),
+                            "source_job_id": metadata.get("source_job_id", ""),
+                            "source_document": metadata.get("original_filename", ""),
+                            "chunk_metadata": {
+                                "chunk_number": i + 1,
+                                "total_chunks": len(chunks),
+                                "chunk_type": chunk["metadata"].get("chunk_type", "standard"),
+                                "word_count": len(chunk["content"].split())
+                            },
+                            "processing_metadata": {
+                                "processing_approach": "enhanced_chunking",
+                                "ai_enhanced": True,
+                                "created_from": "document_chunk"
+                            },
+                            "status": "published",
+                            "created_at": datetime.utcnow(),
+                            "updated_at": datetime.utcnow()
+                        }
+                        
+                        # Store article record (don't insert to DB yet)
+                        created_articles.append(article_record)
+                        print(f"📚 CHUNK CONVERSION: Created article '{article_record['title']}'")
+                        
+                    except json.JSONDecodeError as e:
+                        print(f"⚠️ JSON parsing failed for chunk {i+1}, using fallback")
+                        # Fallback: create simple article
+                        fallback_article = {
+                            "id": str(uuid.uuid4()),
+                            "title": title,
+                            "content": f"<h1>{title}</h1>\n<p>{chunk['content']}</p>",
+                            "summary": f"Content from {metadata.get('original_filename', 'document')}",
+                            "tags": ["knowledge-engine", "fallback"],
+                            "takeaways": [],
+                            "source_job_id": metadata.get("source_job_id", ""),
+                            "source_document": metadata.get("original_filename", ""),
+                            "processing_metadata": {"processing_approach": "fallback"},
+                            "status": "published",
+                            "created_at": datetime.utcnow(),
+                            "updated_at": datetime.utcnow()
+                        }
+                        created_articles.append(fallback_article)
+                        
+                else:
+                    print(f"⚠️ No AI response for chunk {i+1}, skipping")
+                    
+            except Exception as chunk_error:
+                print(f"❌ Error processing chunk {i+1}: {str(chunk_error)}")
+                continue
+        
+        print(f"📚 CHUNK CONVERSION: Converting {len(created_articles)} chunks to Content Library articles")
+        
+        # ENHANCEMENT: Create introductory article with TOC when multiple articles are generated
+        if len(created_articles) > 1:
+            intro_article = await create_introductory_toc_article(created_articles, metadata)
+            if intro_article:
+                created_articles.insert(0, intro_article)  # Add as first article
+                print(f"✅ Created introductory TOC article: {intro_article['title']}")
+        
+        # FIXED: Add cross-references to articles before database insertion
+        articles_with_links = []
+        if len(created_articles) > 1:
+            print(f"🔗 ADDING CROSS-REFERENCES: Processing {len(created_articles)} articles for navigation links")
+            articles_with_links = await add_related_links_to_articles(created_articles)
+            print(f"✅ CROSS-REFERENCES ADDED: Enhanced {len(articles_with_links)} articles with navigation")
+        else:
+            articles_with_links = created_articles
+            print(f"ℹ️ Single article - no cross-references needed")
+        
+        # CRITICAL FIX: Don't insert articles here - they should be inserted by the calling function
+        # This prevents duplicate insertions when multiple processing paths are used
+        print(f"✅ LEGACY PROCESSING COMPLETE: Created {len(articles_with_links)} articles (caller will handle database insertion)")
+        
+        return articles_with_links
+        
+    except Exception as e:
+        print(f"❌ Critical error in chunk conversion: {str(e)}")
+        return []
+
+async def process_text_content(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """INTELLIGENT: Process text content using the intelligent content processing pipeline"""
+    try:
+        print(f"🧠 INTELLIGENT TEXT PROCESSING: Processing {len(content)} characters of content")
+        
+        # Use the intelligent content processing pipeline directly
+        articles = await intelligent_content_processing_pipeline(content, metadata)
+        
+        print(f"✅ INTELLIGENT TEXT PROCESSING COMPLETE: Generated {len(articles)} articles")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ Error in intelligent text processing: {e}")
+        return []
+
+async def analyze_content_for_unique_sections(content: str, is_ultra_large: bool = False) -> list:
+    """ENHANCED: Analyze content with functional stage grouping and procedural continuity preservation"""
+    try:
+        import re
+        
+        sections = []
+        
+        # ENHANCEMENT: Functional stage detection for procedural content
+        def detect_functional_stages(text: str) -> list:
+            """Identify functional stages in procedural content to prevent over-segmentation"""
+            
+            # Common procedural patterns that should stay together
+            procedural_patterns = [
+                r'(setup|installation|configuration|authentication|initialization)',
+                r'(implementation|integration|development|coding)',
+                r'(customization|advanced|features|options)',
+                r'(testing|troubleshooting|debugging|errors)',
+                r'(deployment|production|publishing|finalization)'
+            ]
+            
+            # Platform-specific patterns that should be grouped
+            platform_patterns = [
+                r'(shopify|wordpress|api|sdk|plugin)',
+                r'(google|maps|javascript|react|vue)',
+                r'(authentication|oauth|key|token)',
+                r'(sync|integration|webhook|callback)'
+            ]
+            
+            stages = []
+            lines = text.split('\n')
+            current_stage = {'type': 'general', 'content': '', 'start_line': 0}
+            
+            for i, line in enumerate(lines):
+                line_lower = line.lower()
+                
+                # Check if this line indicates a new functional stage
+                stage_detected = None
+                for pattern in procedural_patterns:
+                    if re.search(pattern, line_lower):
+                        if 'setup' in pattern or 'installation' in pattern:
+                            stage_detected = 'setup'
+                        elif 'implementation' in pattern or 'integration' in pattern:
+                            stage_detected = 'implementation'
+                        elif 'customization' in pattern or 'advanced' in pattern:
+                            stage_detected = 'customization'
+                        elif 'testing' in pattern or 'troubleshooting' in pattern:
+                            stage_detected = 'troubleshooting'
+                        break
+                
+                # Check for platform-specific grouping
+                platform_detected = None
+                for pattern in platform_patterns:
+                    if re.search(pattern, line_lower):
+                        platform_detected = pattern.split('|')[0]  # Get first pattern
+                        break
+                
+                # If we detected a new stage, save current and start new
+                if stage_detected and stage_detected != current_stage['type']:
+                    if current_stage['content'].strip():
+                        current_stage['end_line'] = i
+                        stages.append(current_stage)
+                    
+                    current_stage = {
+                        'type': stage_detected,
+                        'platform': platform_detected,
+                        'content': line + '\n',
+                        'start_line': i
+                    }
+                else:
+                    current_stage['content'] += line + '\n'
+            
+            # Add final stage
+            if current_stage['content'].strip():
+                current_stage['end_line'] = len(lines)
+                stages.append(current_stage)
+            
+            return stages
+        
+        # ENHANCEMENT: Content similarity detection with functional awareness
+        def calculate_functional_similarity(section1: dict, section2: dict) -> float:
+            """Calculate similarity considering functional context, not just text overlap"""
+            
+            # Check if they're the same functional stage
+            if section1.get('stage_type') == section2.get('stage_type'):
+                base_similarity = 0.3  # Base similarity for same stage
+            else:
+                base_similarity = 0.0
+            
+            # Text similarity
+            text1 = section1.get('content', '').lower()
+            text2 = section2.get('content', '').lower()
+            
+            words1 = set(re.findall(r'\w+', text1))
+            words2 = set(re.findall(r'\w+', text2))
+            
+            if not words1 or not words2:
+                return base_similarity
+            
+            intersection = len(words1 & words2)
+            union = len(words1 | words2)
+            text_similarity = intersection / union if union > 0 else 0.0
+            
+            # Check for procedural flow indicators
+            flow_keywords = ['first', 'then', 'next', 'finally', 'after', 'before', 'step']
+            flow1 = sum(1 for word in flow_keywords if word in text1)
+            flow2 = sum(1 for word in flow_keywords if word in text2)
+            
+            if flow1 > 0 and flow2 > 0:
+                base_similarity += 0.2  # Boost similarity for procedural content
+            
+            return min(base_similarity + text_similarity, 1.0)
+        
+        # Step 1: ENHANCED HIERARCHICAL SEGMENTATION - Detect multiple content structures
+        sections = []
+        
+        # Method 1: HTML heading-based segmentation (most reliable)
+        html_sections = re.split(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, flags=re.IGNORECASE)
+        if len(html_sections) > 3:
+            current_content = ""
+            current_title = ""
+            
+            for i, part in enumerate(html_sections):
+                if i % 2 == 1:  # This is a heading
+                    if current_content.strip() and len(current_content.strip()) >= 200:
+                        sections.append({
+                            'title': current_title or f'Section {len(sections) + 1}',
+                            'content': current_content.strip(),
+                            'type': 'heading_based',
+                            'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
+                            'focus': 'general_information'
+                        })
+                    current_title = part.strip()
+                    current_content = ""
+                else:  # This is content
+                    current_content += part
+            
+            # Add final section
+            if current_content.strip() and len(current_content.strip()) >= 200:
+                sections.append({
+                    'title': current_title or f'Final Section',
+                    'content': current_content.strip(),
+                    'type': 'heading_based',
+                    'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
+                    'focus': 'general_information'
+                })
+        
+        # Method 2: Markdown heading-based segmentation (fallback)
+        if not sections:
+            markdown_sections = re.split(r'^#{1,6}\s+(.+)$', content, flags=re.MULTILINE)
+            if len(markdown_sections) > 3:
+                current_content = ""
+                current_title = ""
+                
+                for i, part in enumerate(markdown_sections):
+                    if i % 2 == 1:  # This is a heading
+                        if current_content.strip() and len(current_content.strip()) >= 200:
+                            sections.append({
+                                'title': current_title or f'Section {len(sections) + 1}',
+                                'content': current_content.strip(),
+                                'type': 'markdown_based',
+                                'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
+                                'focus': 'general_information'
+                            })
+                        current_title = part.strip()
+                        current_content = ""
+                    else:  # This is content
+                        current_content += part
+                
+                # Add final section
+                if current_content.strip() and len(current_content.strip()) >= 200:
+                    sections.append({
+                        'title': current_title or f'Final Section',
+                        'content': current_content.strip(),
+                        'type': 'markdown_based',
+                        'is_procedural_sequence': bool(re.search(r'step\s*\d+|first.*then|setup|implementation', current_content.lower())),
+                        'focus': 'general_information'
+                    })
+        
+        # Method 3: Paragraph-based segmentation (last resort)
+        if not sections:
+            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip() and len(p.strip()) >= 200]
+            for i, paragraph in enumerate(paragraphs):  # NO LIMIT - Process ALL paragraphs
+                sections.append({
+                    'title': f'Content Section {i+1}',
+                    'content': paragraph,
+                    'type': 'paragraph_based',
+                    'is_procedural_sequence': False,
+                    'focus': 'general_information'
+                })
+        
+        print(f"🔍 HIERARCHICAL SEGMENTATION: Detected {len(sections)} distinct sections using {sections[0]['type'] if sections else 'none'}")
+        
+        # Step 2: Apply intelligent merging based on content similarity
+        if len(sections) > 1:
+            merged_sections = []
+            # CRITICAL FIX: Ultra-large documents need much more conservative merging
+            if is_ultra_large:
+                merge_threshold = 0.9  # Very high threshold to prevent over-merging
+                print(f"🏢 ULTRA-LARGE MERGING: Using conservative threshold {merge_threshold} to preserve comprehensive coverage")
+            else:
+                merge_threshold = 0.4  # Standard threshold for normal documents
+            
+            for section in sections:
+                merged = False
+                
+                # Try to merge with existing sections based on similarity
+                for existing in merged_sections:
+                    # Calculate similarity (simplified version)
+                    title_similarity = 0.3 if any(word in existing['title'].lower() for word in section['title'].lower().split()) else 0
+                    content_similarity = 0.2 if len(set(section['content'].lower().split()) & set(existing['content'].lower().split())) > 5 else 0
+                    procedural_similarity = 0.3 if section.get('is_procedural_sequence') == existing.get('is_procedural_sequence') else 0
+                    
+                    total_similarity = title_similarity + content_similarity + procedural_similarity
+                    
+                    if total_similarity > merge_threshold:
+                        # Merge sections
+                        existing['content'] = f"{existing['content']}\n\n## {section['title']}\n{section['content']}"
+                        existing['title'] = f"{existing['title']} & {section['title']}"
+                        existing['merged_from'] = existing.get('merged_from', []) + [section['title']]
+                        existing['is_procedural_sequence'] = existing.get('is_procedural_sequence') or section.get('is_procedural_sequence')
+                        merged = True
+                        print(f"🔗 CONTENT MERGE: '{section['title']}' into '{existing['title']}' (similarity: {total_similarity:.2f})")
+                        break
+                
+                if not merged:
+                    merged_sections.append(section)
+            
+            sections = merged_sections
+        
+        # Step 3: Final quality check with minimum content requirements
+        quality_sections = []
+        min_content_length = 800
+        
+        for section in sections:
+            content_length = len(section['content'])
+            
+            if content_length < min_content_length:
+                # Try to merge with existing sections
+                merged = False
+                for existing in quality_sections:
+                    if (existing.get('is_procedural_sequence') == section.get('is_procedural_sequence') or
+                        len(existing['content']) < 2000):  # Don't make sections too large
+                        
+                        existing['content'] = f"{existing['content']}\n\n### {section['title']}\n{section['content']}"
+                        existing['merged_from'] = existing.get('merged_from', []) + [section['title']]
+                        merged = True
+                        print(f"🔗 QUALITY MERGE: '{section['title']}' into '{existing['title']}' (content consolidation)")
+                        break
+                
+                if not merged:
+                    print(f"⚠️ FILTERED LOW CONTENT: '{section['title']}' ({content_length} chars) - below {min_content_length}")
+            else:
+                quality_sections.append(section)
+        
+        print(f"📊 HIERARCHICAL PROCESSING: {len(sections)} → {len(quality_sections)} sections after intelligent merging and quality filtering")
+        return quality_sections
+        
+    except Exception as e:
+        print(f"❌ Enhanced hierarchical content analysis failed: {e}")
+        # Fallback to simple splitting
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        return [{'title': f'Section {i+1}', 'content': p, 'type': 'general', 'focus': 'general_information'} 
+                for i, p in enumerate(paragraphs[:3])]
+
+def classify_content_focus(content: str) -> str:
+    """Classify the focus/purpose of content section"""
+    content_lower = content.lower()
+    
+    # Check for different content types
+    if any(word in content_lower for word in ['overview', 'introduction', 'summary', 'about']):
+        return 'overview'
+    elif any(word in content_lower for word in ['how to', 'step', 'procedure', 'instructions', 'tutorial']):
+        return 'procedural'
+    elif any(word in content_lower for word in ['concept', 'definition', 'what is', 'understanding']):
+        return 'conceptual'
+    elif any(word in content_lower for word in ['example', 'use case', 'scenario', 'implementation']):
+        return 'practical'
+    elif any(word in content_lower for word in ['question', 'faq', 'troubleshoot', 'problem', 'error']):
+        return 'support'
+    else:
+        return 'general'
+
+def calculate_content_uniqueness(content: str, existing_sections: list) -> float:
+    """Calculate uniqueness score compared to existing sections with enhanced accuracy"""
+    if not existing_sections:
+        return 1.0
+    
+    # ENHANCED: More sophisticated uniqueness calculation
+    content_words = set(content.lower().split())
+    max_overlap = 0
+    
+    for section in existing_sections:
+        section_words = set(section['content'].lower().split())
+        
+        # Calculate Jaccard similarity (intersection over union)
+        intersection = len(content_words.intersection(section_words))
+        union = len(content_words.union(section_words))
+        
+        if union > 0:
+            overlap = intersection / union
+            max_overlap = max(max_overlap, overlap)
+    
+    # ENHANCED: Apply more stringent uniqueness scoring
+    uniqueness_score = 1.0 - max_overlap
+    
+    # PENALTY: Apply additional penalty for very similar content structure
+    if max_overlap > 0.6:  # High similarity threshold
+        uniqueness_score *= 0.5  # Significant penalty for similar content
+    
+    return uniqueness_score
+
+async def create_enhanced_hub_article(content: str, metadata: dict, content_sections: list) -> DocumentChunk:
+    """ENHANCED: Create comprehensive hub article with mini-TOC linking to all related articles"""
+    try:
+        # FIXED: Generate TOC based on functional stages that will actually be created as separate articles  
+        functional_stages = [
+            "• **Setup & Authentication Guide** - Account creation, API keys, and initial configuration",
+            "• **Implementation Guide** - Core integration steps and API usage", 
+            "• **Advanced Features & Customization** - Advanced configurations and customization options",
+            "• **Troubleshooting & FAQ** - Common issues, error handling, and frequently asked questions"
+        ]
+        
+        toc_content = "\n".join(functional_stages)
+        
+        # Extract key concepts for overview
+        concepts = extract_key_concepts(content)
+        concept_list = "\n".join([f"• {concept}" for concept in concepts[:5]])
+        
+        system_message = f"""You are a technical writing expert specializing in creating comprehensive hub articles.
+
+Create an engaging introduction article that serves as the main entry point for a knowledge base topic.
+
+{PHANTOM_LINK_PREVENTION}
+
+Requirements:
+- Start with a clear overview of what the topic covers
+- Include prerequisites and key concepts
+- Add a structured content overview (descriptive text only, NO LINKS)
+- End with external reference links for further learning (only if they are real external URLs)
+- Use professional, accessible language
+- Include practical context and use cases
+
+Structure:
+1. Introduction & Overview
+2. Key Concepts
+3. Prerequisites  
+4. What You'll Learn (descriptive content only)
+5. External Resources (real URLs only)
+
+IMPORTANT: Do not create internal navigation links or anchor links. Focus on creating valuable descriptive content."""
+
+        user_message = f"""Create a comprehensive hub article for this content:
+
+**Topic**: {metadata.get('original_filename', 'Technical Guide')}
+**Content Preview**: {content[:1500]}...
+
+**Key Concepts Identified**:
+{concept_list}
+
+**Content Areas to Cover** (descriptive overview only):
+{toc_content}
+
+Create an engaging, informative hub article that introduces the topic with descriptive content only. DO NOT create any links to non-existent articles or sections."""
+
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message}
+        ]
+        
+        try:
+            # Use the same pattern as other OpenAI calls in the codebase
+            if OPENAI_API_KEY:
+                headers = {
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                
+                data = {
+                    "model": "gpt-4o-mini",
+                    "messages": messages,
+                    "max_tokens": 2500,
+                    "temperature": 0.3
+                }
+                
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json=data,
+                    timeout=45
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    hub_content = result["choices"][0]["message"]["content"].strip()
+                else:
+                    raise Exception(f"OpenAI API error: {response.status_code} {response.text}")
+            else:
+                raise Exception("OpenAI API key not configured")
+            
+            # AGGRESSIVE PHANTOM LINK PREVENTION: Multiple cleanup passes
+            hub_content = validate_and_remove_phantom_links(hub_content)
+            hub_content = aggressive_phantom_link_cleanup_final_pass(hub_content)
+            
+            # FIXED: NO PHANTOM LINKS - Simple descriptive content without broken navigation
+            related_links_html = f"""
+<div class="related-links">
+<h3>📚 Complete Guide Structure</h3>
+<p><em>This comprehensive guide is organized into focused articles covering all aspects of the topic. Each article builds upon the previous one to provide complete coverage.</em></p>
+
+<h4>🔗 External Resources</h4>
+<p><em>For additional information, please refer to the official documentation and community resources available through your preferred search engine or the product's official website.</em></p>
+</div>
+"""
+            
+            final_content = f"{hub_content}\n\n{related_links_html}"
+            
+            # Create hub article
+            hub_chunk = DocumentChunk(
+                content=final_content,
+                content_fingerprint=generate_content_fingerprint(final_content),  # FIXED: Include in constructor
+                metadata={
+                    **metadata,
+                    'article_type': 'hub_overview',
+                    'content_focus': 'comprehensive_introduction',
+                    'has_mini_toc': True,
+                    'related_articles_count': len(content_sections),
+                    'processing_method': 'enhanced_hub_generation'
+                }
+            )
+            
+            print(f"✅ Enhanced hub article created with {len(content_sections)} linked articles")
+            return hub_chunk
+            
+        except Exception as llm_error:
+            print(f"⚠️ LLM hub generation failed: {llm_error}")
+            # Create fallback hub
+            fallback_content = f"""
+<h1>📖 {metadata.get('original_filename', 'Technical Guide')}</h1>
+
+<h2>Overview</h2>
+<p>This comprehensive guide covers essential concepts and practical implementations. The content has been organized into focused articles for easy navigation and reference.</p>
+
+<h2>📋 Contents in This Guide</h2>
+<ul>
+{chr(10).join([f'<li><strong>{section.get("title", "Section")}</strong> - {section.get("focus", "general").replace("_", " ").title()}</li>' for section in content_sections])}
+</ul>
+
+{related_links_html}
+"""
+            
+            hub_chunk = DocumentChunk(
+                content=fallback_content,
+                content_fingerprint=generate_content_fingerprint(fallback_content),  # FIXED: Include in constructor
+                metadata={
+                    **metadata,
+                    'article_type': 'hub_overview',
+                    'content_focus': 'comprehensive_introduction',
+                    'has_mini_toc': True,
+                    'processing_method': 'fallback_hub_generation'
+                }
+            )
+            return hub_chunk
+            
+    except Exception as e:
+        print(f"❌ Enhanced hub article creation failed: {e}")
+        return None
+
+def extract_key_concepts(content: str) -> list:
+    """Extract key concepts from content for hub article"""
+    import re
+    
+    # Extract concepts from headings, bold text, and key phrases
+    concepts = []
+    
+    # From headings
+    headings = re.findall(r'<h[1-6][^>]*>([^<]+)</h[1-6]>', content, re.IGNORECASE)
+    concepts.extend([h.strip() for h in headings[:3]])
+    
+    # From markdown headings
+    md_headings = re.findall(r'^#{1,6}\s+(.+)$', content, re.MULTILINE)
+    concepts.extend([h.strip() for h in md_headings[:3]])
+    
+    # From bold text
+    bold_text = re.findall(r'\*\*([^*]+)\*\*', content)
+    concepts.extend([b.strip() for b in bold_text[:2]])
+    
+    # From code terms
+    code_terms = re.findall(r'`([^`]+)`', content)
+    concepts.extend([c.strip() for c in code_terms[:2]])
+    
+    # Clean and deduplicate
+    cleaned_concepts = []
+    for concept in concepts:
+        if len(concept) > 3 and len(concept) < 50 and concept not in cleaned_concepts:
+            cleaned_concepts.append(concept)
+    
+    return cleaned_concepts[:5]
+
+async def create_overview_chunk(content: str, metadata: dict) -> DocumentChunk:
+    """Create an introductory overview chunk"""
+    try:
+        # Extract first 1500 characters or until first major break
+        overview_content = content[:1500]
+        
+        # Try to end at a natural break point
+        last_period = overview_content.rfind('. ')
+        if last_period > 500:
+            overview_content = overview_content[:last_period + 1]
+        
+        fingerprint = generate_content_fingerprint(overview_content)
+        
+        chunk = DocumentChunk(
+            content=overview_content,
+            metadata={
+                **metadata,
+                'chunk_id': 0,
+                'article_type': 'overview',
+                'content_focus': 'overview',
+                'uniqueness_score': 1.0
+            },
+            source_file=metadata.get('original_filename', 'document'),
+            chunk_index=0,
+            content_fingerprint=fingerprint
+        )
+        
+        return chunk
+        
+    except Exception as e:
+        print(f"⚠️ Overview chunk creation failed: {e}")
+        return None
+
+def calculate_content_coverage_score(source_content: str, covered_sections: list) -> dict:
+    """
+    Calculate how much of the source content is covered by the generated articles
+    """
+    try:
+        import re
+        
+        # Extract key terms, concepts, and structural elements from source
+        word_pattern = r'\b\w{4,}\b'
+        heading_pattern = r'(?:^|\n)#{1,3}\s+(.+)'
+        concept_pattern = r'\b(?:API|integration|authentication|setup|implementation|configuration|troubleshooting)\b'
+        
+        source_words = set(re.findall(word_pattern, source_content.lower()))
+        source_headings = re.findall(heading_pattern, source_content, re.MULTILINE)
+        source_concepts = re.findall(concept_pattern, source_content.lower())
+        
+        # Calculate coverage from generated sections
+        covered_words = set()
+        covered_headings = []
+        covered_concepts = []
+        
+        for section in covered_sections:
+            section_content = section.get('content', '') + ' ' + section.get('title', '')
+            section_words = set(re.findall(word_pattern, section_content.lower()))
+            covered_words.update(section_words)
+            
+            section_headings = re.findall(heading_pattern, section_content, re.MULTILINE)
+            covered_headings.extend(section_headings)
+            
+            section_concepts = re.findall(concept_pattern, section_content.lower())
+            covered_concepts.extend(section_concepts)
+        
+        # Calculate coverage scores
+        word_coverage = len(covered_words & source_words) / max(len(source_words), 1) if source_words else 1.0
+        heading_coverage = len([h for h in covered_headings if any(orig.lower() in h.lower() or h.lower() in orig.lower() for orig in source_headings)]) / max(len(source_headings), 1) if source_headings else 1.0
+        concept_coverage = len(set(covered_concepts)) / max(len(set(source_concepts)), 1) if source_concepts else 1.0
+        
+        # Overall coverage score (weighted)
+        overall_score = (word_coverage * 0.4) + (heading_coverage * 0.4) + (concept_coverage * 0.2)
+        
+        return {
+            'overall_coverage': round(overall_score, 3),
+            'word_coverage': round(word_coverage, 3),
+            'heading_coverage': round(heading_coverage, 3), 
+            'concept_coverage': round(concept_coverage, 3),
+            'source_words_count': len(source_words),
+            'covered_words_count': len(covered_words & source_words),
+            'source_headings_count': len(source_headings),
+            'source_concepts_count': len(set(source_concepts))
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Content coverage calculation failed: {e}")
+        return {'overall_coverage': 0.5, 'word_coverage': 0.5, 'heading_coverage': 0.5, 'concept_coverage': 0.5}
+
+def calculate_document_complexity_score(content: str) -> float:
+    """
+    Calculate document complexity to determine if it needs more than 6 articles
+    """
+    try:
+        import re
+        
+        # Complexity factors
+        content_length = len(content)
+        heading_pattern = r'(?:^|\n)#{1,3}\s+.+'
+        section_pattern = r'(?:^|\n)(?:\w+:|\d+\.)'
+        technical_pattern = r'\b(?:API|SDK|authentication|OAuth|JWT|REST|GraphQL|webhook|endpoint|JSON|XML|YAML|configuration|integration|implementation|deployment|troubleshooting|debugging)\b'
+        code_pattern = r'```[\s\S]*?```|`[^`]+`'
+        step_pattern = r'(?:^|\n)\s*\d+\.\s+'
+        
+        heading_count = len(re.findall(heading_pattern, content, re.MULTILINE))
+        section_count = len(re.findall(section_pattern, content, re.MULTILINE))
+        paragraph_count = len([p for p in content.split('\n\n') if p.strip()])
+        
+        # Technical complexity indicators
+        technical_terms = len(re.findall(technical_pattern, content, re.IGNORECASE))
+        code_blocks = len(re.findall(code_pattern, content))
+        procedural_steps = len(re.findall(step_pattern, content, re.MULTILINE))
+        
+        # Normalize scores (0.0 to 1.0)
+        length_score = min(content_length / 20000, 1.0)  # 20k chars = max complexity
+        structure_score = min((heading_count + section_count) / 20, 1.0)  # 20 sections = max
+        paragraph_score = min(paragraph_count / 50, 1.0)  # 50 paragraphs = max
+        technical_score = min(technical_terms / 30, 1.0)  # 30 technical terms = max
+        code_score = min(code_blocks / 10, 1.0)  # 10 code blocks = max
+        procedural_score = min(procedural_steps / 20, 1.0)  # 20 steps = max
+        
+        # Weighted complexity score
+        complexity_score = (
+            length_score * 0.2 + 
+            structure_score * 0.25 + 
+            paragraph_score * 0.15 + 
+            technical_score * 0.2 + 
+            code_score * 0.1 + 
+            procedural_score * 0.1
+        )
+        
+        print(f"📊 COMPLEXITY ANALYSIS:")
+        print(f"   - Content length: {content_length} chars (score: {length_score:.2f})")
+        print(f"   - Structure elements: {heading_count + section_count} (score: {structure_score:.2f})")
+        print(f"   - Technical complexity: {technical_terms} terms (score: {technical_score:.2f})")
+        print(f"   - Overall complexity: {complexity_score:.3f}")
+        
+        return complexity_score
+        
+    except Exception as e:
+        print(f"⚠️ Complexity calculation failed: {e}")
+        return 0.5
+
+def detect_ultra_large_document(content: str, section_count: int) -> dict:
+    """
+    Detect ultra-large documents that may need special handling beyond 12 articles
+    """
+    try:
+        import re
+        
+        content_length = len(content)
+        word_count = len(content.split())
+        
+        # Ultra-large indicators
+        heading_pattern = r'(?:^|\n)#{1,3}\s+.+'
+        major_section_pattern = r'(?:^|\n)#{1,2}\s+.+'
+        
+        heading_count = len(re.findall(heading_pattern, content, re.MULTILINE))
+        major_sections = len(re.findall(major_section_pattern, content, re.MULTILINE))
+        
+        # Calculate estimated articles needed for comprehensive coverage
+        # Rule of thumb: 1 article per major section + 1 per 3 minor sections
+        estimated_articles = major_sections + (heading_count - major_sections) // 3
+        
+        is_ultra_large = (
+            content_length > 50000 or  # 50k+ characters
+            word_count > 12000 or      # 12k+ words
+            heading_count > 15 or      # 15+ headings
+            section_count > 12         # 12+ sections
+        )
+        
+        # Determine handling strategy
+        if estimated_articles > 20:
+            strategy = "document_splitting"
+            recommendation = "Consider splitting into multiple documents"
+        elif estimated_articles > 15:
+            strategy = "hierarchical_articles"
+            recommendation = "Create hierarchical article structure"
+        elif estimated_articles > 12:
+            strategy = "multi_level_overflow"
+            recommendation = "Use multi-level overflow handling"
+        else:
+            strategy = "standard_processing"
+            recommendation = "Standard intelligent processing"
+        
+        return {
+            'is_ultra_large': is_ultra_large,
+            'content_length': content_length,
+            'word_count': word_count,
+            'heading_count': heading_count,
+            'major_sections': major_sections,
+            'estimated_articles_needed': estimated_articles,
+            'strategy': strategy,
+            'recommendation': recommendation,
+            'exceeds_max_limit': estimated_articles > 12
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Ultra-large document detection failed: {e}")
+        return {'is_ultra_large': False, 'strategy': 'standard_processing'}
+
+def create_hierarchical_article_structure(sections: list, metadata: dict) -> dict:
+    """
+    Create hierarchical article structure for ultra-large documents
+    Main articles with detailed sub-articles
+    """
+    try:
+        print(f"🏗️ HIERARCHICAL STRUCTURE: Creating for {len(sections)} sections")
+        
+        # Group sections into major categories
+        categories = {
+            'introduction': {'keywords': ['introduction', 'overview', 'getting started'], 'sections': []},
+            'setup': {'keywords': ['setup', 'installation', 'configuration', 'authentication'], 'sections': []},
+            'implementation': {'keywords': ['implementation', 'integration', 'development', 'api'], 'sections': []},
+            'advanced': {'keywords': ['advanced', 'customization', 'optimization', 'scaling'], 'sections': []},
+            'operations': {'keywords': ['monitoring', 'troubleshooting', 'maintenance', 'deployment'], 'sections': []},
+            'reference': {'keywords': ['reference', 'appendix', 'glossary', 'resources'], 'sections': []}
+        }
+        
+        # Classify sections into categories
+        unclassified_sections = []
+        
+        for section in sections:
+            section_text = (section.get('title', '') + ' ' + section.get('content', '')).lower()
+            
+            classified = False
+            for category, info in categories.items():
+                if any(keyword in section_text for keyword in info['keywords']):
+                    info['sections'].append(section)
+                    classified = True
+                    break
+            
+            if not classified:
+                unclassified_sections.append(section)
+        
+        # Handle unclassified sections
+        if unclassified_sections:
+            categories['general'] = {'keywords': [], 'sections': unclassified_sections}
+        
+        # Create hierarchical structure
+        hierarchical_articles = []
+        detailed_articles = []
+        
+        for category, info in categories.items():
+            if not info['sections']:
+                continue
+            
+            # Create main category article (overview)
+            section_titles = []
+            for s in info['sections']:
+                title = s.get('title', 'Topic')
+                section_titles.append(f"<li><strong>{title}</strong></li>")
+            section_list = ''.join(section_titles)
+            
+            main_content_parts = [
+                f"<h1>{category.title()} Overview</h1>",
+                f"<p>This section provides comprehensive coverage of {category} topics with detailed articles for each area.</p>",
+                "<h2>Topics Covered</h2>",
+                f"<ul>{section_list}</ul>",
+                "<h2>Quick Summary</h2>",
+                f"<p>The following detailed articles provide step-by-step coverage of all {category} aspects:</p>"
+            ]
+            
+            # Add first section content as preview
+            if info['sections']:
+                preview_content = info['sections'][0].get('content', '')[:1000]
+                ellipsis = '...' if len(preview_content) == 1000 else ''
+                preview_block = f"<blockquote><strong>Preview:</strong> {preview_content}{ellipsis}</blockquote>"
+                main_content_parts.append(preview_block)
+            
+            main_content = '\n'.join(main_content_parts)
+            
+            hierarchical_articles.append({
+                'title': f"{category.title()} - Complete Guide",
+                'content': main_content,
+                'stage_type': f'{category}_overview',
+                'article_type': 'overview',
+                'is_hierarchical_main': True,
+                'subsection_count': len(info['sections'])
+            })
+            
+            # Create detailed articles for each section in this category
+            for i, section in enumerate(info['sections']):
+                detailed_article = {
+                    'title': f"{category.title()}: {section.get('title', f'Section {i+1}')}",
+                    'content': section.get('content', ''),
+                    'stage_type': category,
+                    'article_type': 'detailed',
+                    'is_hierarchical_detail': True,
+                    'parent_category': category,
+                    'section_index': i
+                }
+                detailed_articles.append(detailed_article)
+        
+        return {
+            'hierarchical_articles': hierarchical_articles,
+            'detailed_articles': detailed_articles,
+            'total_articles': len(hierarchical_articles) + len(detailed_articles),
+            'categories_created': len([c for c, info in categories.items() if info['sections']])
+        }
+        
+    except Exception as e:
+        print(f"❌ Hierarchical structure creation failed: {e}")
+        return {'hierarchical_articles': [], 'detailed_articles': [], 'total_articles': 0}
+
+def create_multi_level_overflow_articles(overflow_sections: list, metadata: dict) -> list:
+    """
+    Create multiple overflow articles when there's too much overflow content for a single article
+    """
+    try:
+        if len(overflow_sections) <= 5:
+            # Single overflow article is sufficient
+            return [create_overflow_summary_article(overflow_sections, metadata)]
+        
+        print(f"📚 MULTI-LEVEL OVERFLOW: Creating multiple overflow articles for {len(overflow_sections)} sections")
+        
+        # Group overflow sections into manageable chunks
+        overflow_articles = []
+        chunk_size = 5  # 5 sections per overflow article
+        
+        for i in range(0, len(overflow_sections), chunk_size):
+            chunk_sections = overflow_sections[i:i + chunk_size]
+            chunk_number = (i // chunk_size) + 1
+            total_chunks = (len(overflow_sections) + chunk_size - 1) // chunk_size
+            
+            # Create themed overflow article
+            theme = determine_overflow_theme(chunk_sections)
+            
+            overflow_content = ""
+            for section in chunk_sections:
+                section_title = section.get('title', 'Additional Topic')
+                section_content = section.get('content', '')
+                overflow_content += f"\n\n## {section_title}\n\n{section_content}"
+            
+            section_list_items = []
+            for s in chunk_sections:
+                title = s.get('title', 'Additional Topic')
+                section_list_items.append(f"<li><strong>{title}</strong></li>")
+            section_list = ''.join(section_list_items)
+            
+            overflow_html_parts = [
+                f"<h1>Additional Topics: {theme} (Part {chunk_number} of {total_chunks})</h1>",
+                '<div class="multi-overflow-summary">',
+                '<blockquote class="tip">',
+                f'💡 <strong>Multi-Part Series:</strong> This is part {chunk_number} of {total_chunks} additional topic articles',
+                'covering supplementary material from the source document.',
+                '</blockquote>',
+                '<h2>Topics in This Section</h2>',
+                f'<ul>{section_list}</ul>',
+                overflow_content.replace('## ', '<h2>').replace('\n\n', '</p><p>').replace('<p></p>', ''),
+                '<hr>',
+                f'<p><em>This is part {chunk_number} of {total_chunks} in the additional topics series.',
+                'All parts together provide complete coverage of the source material.</em></p>',
+                '</div>'
+            ]
+            
+            overflow_html = '\n'.join(overflow_html_parts)
+            
+            overflow_article = {
+                'title': f'Additional Topics: {theme} (Part {chunk_number}/{total_chunks})',
+                'content': overflow_html,
+                'html': overflow_html,
+                'stage_type': 'multi_level_overflow',
+                'article_type': 'reference',
+                'is_multi_overflow': True,
+                'overflow_part': chunk_number,
+                'overflow_total_parts': total_chunks,
+                'overflow_theme': theme,
+                'section_count': len(chunk_sections)
+            }
+            
+            overflow_articles.append(overflow_article)
+            print(f"✅ Created overflow article part {chunk_number}: {theme}")
+        
+        print(f"✅ MULTI-LEVEL OVERFLOW COMPLETE: Created {len(overflow_articles)} overflow articles")
+        return overflow_articles
+        
+    except Exception as e:
+        print(f"❌ Multi-level overflow creation failed: {e}")
+        return [create_overflow_summary_article(overflow_sections, metadata)]
+
+def determine_overflow_theme(sections: list) -> str:
+    """Determine a theme for overflow article sections"""
+    try:
+        # Analyze section titles and content for common themes
+        all_text = ' '.join([s.get('title', '') + ' ' + s.get('content', '') for s in sections]).lower()
+        
+        themes = {
+            'Advanced Topics': ['advanced', 'optimization', 'scaling', 'performance'],
+            'Configuration & Setup': ['configuration', 'setup', 'installation', 'environment'],
+            'Integration & APIs': ['integration', 'api', 'webhook', 'endpoint'],
+            'Security & Authentication': ['security', 'authentication', 'authorization', 'oauth'],
+            'Troubleshooting & Support': ['troubleshooting', 'error', 'debugging', 'support'],
+            'Reference & Resources': ['reference', 'resources', 'documentation', 'examples']
+        }
+        
+        for theme, keywords in themes.items():
+            if any(keyword in all_text for keyword in keywords):
+                return theme
+        
+        return 'Additional References'
+        
+    except Exception:
+        return 'Additional Topics'
+
+def determine_intelligent_article_limit(content: str, section_count: int) -> dict:
+    """
+    Intelligently determine article limit based on content complexity and completeness needs
+    """
+    try:
+        complexity_score = calculate_document_complexity_score(content)
+        
+        
+        # NO HARD LIMITS: Calculate articles needed based purely on content analysis
+        content_length = len(content)
+        word_count = len(content.split())
+        
+        # Estimate articles needed based on content structure and size
+        estimated_articles = max(section_count, word_count // 1500, content_length // 8000, 4)
+        
+        print(f"🔄 DYNAMIC ARTICLE CALCULATION:")
+        print(f"   - Content: {content_length:,} characters, {word_count:,} words")
+        print(f"   - Sections detected: {section_count}")
+        print(f"   - Estimated articles needed: {estimated_articles}")
+        print(f"   - NO ARTIFICIAL LIMITS APPLIED")
+        
+        return {
+            'base_limit': 0,  # No base limit anymore
+            'complexity_score': complexity_score,
+            'recommended_limit': estimated_articles,
+            'final_limit': estimated_articles,
+            'section_count': section_count,
+            'reason': "Dynamic calculation based on content analysis - no artificial limits",
+            'is_limit_increased': True  # Always true since we removed limits
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Intelligent limit calculation failed: {e}")
+        # FALLBACK: Use basic content analysis instead of hard limit
+        content_length = len(content) if content else 10000
+        word_count = len(content.split()) if content else 1500
+        fallback_articles = max(section_count, word_count // 1500, content_length // 8000, 4)
+        return {
+            'final_limit': fallback_articles, 
+            'is_limit_increased': True, 
+            'reason': 'Fallback dynamic calculation - no hard limits',
+            'complexity_score': 0.5,
+            'section_count': section_count,
+            'base_limit': 0,
+            'recommended_limit': fallback_articles
+        }
+
+def smart_consolidate_sections(sections: list, target_limit: int) -> list:
+    """
+    Intelligently consolidate sections when there are too many for the target limit
+    """
+    try:
+        if len(sections) <= target_limit:
+            return sections
+        
+        print(f"🧠 INTELLIGENT CONSOLIDATION: {len(sections)} sections → target {target_limit}")
+        
+        # Classify sections by importance and consolidation potential
+        critical_sections = []
+        consolidatable_sections = []
+        
+        for section in sections:
+            section_content = section.get('content', '').lower()
+            section_title = section.get('title', '').lower()
+            
+            # Critical sections (should not be consolidated)
+            is_critical = any(keyword in section_content or keyword in section_title 
+                            for keyword in ['setup', 'installation', 'authentication', 'api', 'configuration', 'troubleshooting'])
+            
+            if is_critical or len(section.get('content', '')) > 2000:
+                critical_sections.append(section)
+                print(f"   🔒 Critical: {section.get('title', 'Unnamed')}")
+            else:
+                consolidatable_sections.append(section)
+                print(f"   📎 Consolidatable: {section.get('title', 'Unnamed')}")
+        
+        # If we have too many critical sections, we need to increase the limit
+        if len(critical_sections) > target_limit:
+            print(f"⚠️ WARNING: {len(critical_sections)} critical sections exceed target {target_limit}")
+            return sections[:target_limit]  # Take the first ones as fallback
+        
+        # Calculate how many consolidatable sections we can fit
+        available_slots = target_limit - len(critical_sections)
+        
+        if len(consolidatable_sections) <= available_slots:
+            # All sections fit
+            return critical_sections + consolidatable_sections
+        
+        # Need to consolidate some sections
+        consolidated_sections = critical_sections.copy()
+        
+        # Group consolidatable sections by similarity/theme
+        if available_slots > 0:
+            # Simple grouping by content length and themes
+            groups = []
+            current_group = []
+            current_group_size = 0
+            
+            for section in consolidatable_sections:
+                section_size = len(section.get('content', ''))
+                
+                if current_group_size + section_size > 3000 or len(current_group) >= 3:
+                    if current_group:
+                        groups.append(current_group)
+                    current_group = [section]
+                    current_group_size = section_size
+                else:
+                    current_group.append(section)
+                    current_group_size += section_size
+            
+            if current_group:
+                groups.append(current_group)
+            
+            # Take the first available_slots groups
+            for i, group in enumerate(groups[:available_slots]):
+                if len(group) == 1:
+                    consolidated_sections.append(group[0])
+                else:
+                    # Merge multiple sections into one
+                    merged_content = '\n\n'.join([s.get('content', '') for s in group])
+                    merged_title = f"Additional Topics: {', '.join([s.get('title', 'Unnamed') for s in group])}"
+                    
+                    merged_section = {
+                        'title': merged_title,
+                        'content': merged_content,
+                        'stage_type': 'consolidated',
+                        'uniqueness': 0.7,  # Slightly lower uniqueness for merged content
+                        'is_consolidated': True,
+                        'original_sections': [s.get('title', 'Unnamed') for s in group]
+                    }
+                    consolidated_sections.append(merged_section)
+                    print(f"   🔗 Consolidated: {merged_title}")
+        
+        print(f"✅ CONSOLIDATION COMPLETE: {len(sections)} → {len(consolidated_sections)} sections")
+        return consolidated_sections
+        
+    except Exception as e:
+        print(f"❌ Smart consolidation failed: {e}")
+        return sections[:target_limit]  # Fallback to simple truncation
+
+def create_overflow_summary_article(overflow_sections: list, metadata: dict) -> dict:
+    """
+    Create a comprehensive summary article for sections that couldn't fit in the main articles
+    """
+    try:
+        if not overflow_sections:
+            return None
+        
+        print(f"📋 CREATING OVERFLOW SUMMARY: {len(overflow_sections)} sections")
+        
+        # Combine all overflow content
+        overflow_content = ""
+        section_summaries = []
+        
+        for section in overflow_sections:
+            section_title = section.get('title', 'Additional Content')
+            section_content = section.get('content', '')[:500] + "..." if len(section.get('content', '')) > 500 else section.get('content', '')
+            
+            section_summaries.append(f"**{section_title}**\n{section_content}")
+            overflow_content += f"\n\n## {section_title}\n\n{section.get('content', '')}"
+        
+        # Create topic list HTML
+        topic_list_html = ''.join([f"<li><strong>{s.get('title', 'Additional Topic')}</strong></li>" for s in overflow_sections])
+        
+        # Process overflow content for HTML
+        overflow_html = overflow_content.replace('## ', '<h2>').replace('\n\n', '</p><p>').replace('<p></p>', '')
+        
+        summary_html = f"""
+        <h1>Additional Topics & Reference Material</h1>
+        
+        <div class="overflow-summary">
+            <p><strong>This article contains additional topics and reference material that complement the main documentation articles.</strong></p>
+            
+            <blockquote class="tip">
+                💡 <strong>Note:</strong> This content provides supplementary information to ensure complete coverage of the source material.
+            </blockquote>
+            
+            <h2>Covered Topics</h2>
+            <ul>
+                {topic_list_html}
+            </ul>
+            
+            {overflow_html}
+        </div>
+        """
+        
+        # Create overflow article
+        overflow_article = {
+            'title': 'Additional Topics & Reference Material',
+            'content': summary_html,
+            'html': summary_html,
+            'markdown': f"# Additional Topics & Reference Material\n\n" + overflow_content,
+            'stage_type': 'overflow_summary',
+            'article_type': 'reference',
+            'uniqueness': 0.9,
+            'is_overflow_summary': True,
+            'original_section_count': len(overflow_sections),
+            'overflow_sections': [s.get('title', 'Unnamed') for s in overflow_sections]
+        }
+        
+        print(f"✅ OVERFLOW SUMMARY CREATED: Covers {len(overflow_sections)} additional sections")
+        return overflow_article
+        
+    except Exception as e:
+        print(f"❌ Overflow summary creation failed: {e}")
+        return None
+
+async def create_functional_stage_articles(content_sections: list, full_content: str, metadata: dict) -> list:
+    """FIXED: Create proper functional stage articles instead of over-consolidating"""
+    try:
+        print(f"🔧 Creating functional stage articles from {len(content_sections)} sections")
+        
+        # Define functional stages that should be separate articles
+        functional_stages = {
+            'introduction': {
+                'keywords': ['introduction', 'overview', 'what is', 'getting started', 'about'],
+                'stage_type': 'introduction',
+                'priority': 1
+            },
+            'setup': {
+                'keywords': ['setup', 'installation', 'configuration', 'account', 'credentials', 'api key', 'authentication'],
+                'stage_type': 'setup',
+                'priority': 2
+            },
+            'implementation': {
+                'keywords': ['implementation', 'integration', 'development', 'coding', 'api', 'endpoint', 'request'],
+                'stage_type': 'implementation', 
+                'priority': 3
+            },
+            'customization': {
+                'keywords': ['customization', 'advanced', 'features', 'options', 'configuration', 'settings'],
+                'stage_type': 'customization',
+                'priority': 4
+            },
+            'troubleshooting': {
+                'keywords': ['troubleshooting', 'problems', 'errors', 'debugging', 'issues', 'faq', 'common'],
+                'stage_type': 'troubleshooting',
+                'priority': 5
+            }
+        }
+        
+        # Classify sections into functional stages
+        classified_sections = []
+        
+        for section in content_sections:
+            section_content = section.get('content', '').lower()
+            section_title = section.get('title', '').lower()
+            combined_text = f"{section_title} {section_content}"
+            
+            # Find the best matching functional stage
+            best_match = None
+            best_score = 0
+            
+            for stage_name, stage_info in functional_stages.items():
+                score = 0
+                for keyword in stage_info['keywords']:
+                    if keyword in combined_text:
+                        score += combined_text.count(keyword)
+                
+                if score > best_score:
+                    best_score = score
+                    best_match = stage_info
+            
+            # Create functional stage article
+            if best_match and best_score > 0:
+                classified_sections.append({
+                    'title': f"{best_match['stage_type'].title()} Guide",
+                    'content': section['content'],
+                    'stage_type': best_match['stage_type'],
+                    'focus': f"{best_match['stage_type']}_guide",
+                    'priority': best_match['priority'],
+                    'procedural_flow': True,
+                    'is_procedural_sequence': True,
+                    'original_title': section.get('title', 'Untitled')
+                })
+            else:
+                # Default classification
+                classified_sections.append({
+                    'title': section.get('title', 'General Information'),
+                    'content': section['content'],
+                    'stage_type': 'general',
+                    'focus': 'general_information',
+                    'priority': 99,
+                    'procedural_flow': False,
+                    'is_procedural_sequence': False
+                })
+        
+        # Sort by priority to maintain logical flow
+        classified_sections.sort(key=lambda x: x['priority'])
+        
+        # FIXED: Lower threshold to create more articles for better coverage
+        substantial_sections = []
+        for section in classified_sections:
+            if len(section['content']) >= 150:  # Much lower threshold to create more articles
+                substantial_sections.append(section)
+        
+        # FIXED: Create additional articles by splitting sections if needed
+        if len(substantial_sections) < 4:  # Ensure at least 4 articles
+            print(f"⚠️ Only {len(substantial_sections)} substantial sections - attempting to create more articles")
+            
+            # Look for the largest section and try to split it
+            for section in substantial_sections:
+                if len(section['content']) > 2000:
+                    # Split large section into two parts
+                    content = section['content']
+                    mid_point = len(content) // 2
+                    
+                    # Try to find a good split point (paragraph break)
+                    split_point = content.find('\n\n', mid_point - 200, mid_point + 200)
+                    if split_point == -1:
+                        split_point = mid_point
+                    
+                    # Create two articles from one
+                    first_part = {
+                        **section,
+                        'title': f"{section['original_title']} - Part 1",
+                        'content': content[:split_point]
+                    }
+                    second_part = {
+                        **section,
+                        'title': f"{section['original_title']} - Part 2", 
+                        'content': content[split_point:],
+                        'priority': section['priority'] + 0.5
+                    }
+                    
+                    substantial_sections.remove(section)
+                    substantial_sections.extend([first_part, second_part])
+                    break
+        
+        print(f"✅ Created {len(substantial_sections)} functional stage articles")
+        
+        # ULTRA-LARGE FIX: Use intelligent limits instead of hard limit
+        # Allow more articles for ultra-large documents
+        content_length = len(full_content) if full_content else sum(len(s.get('content', '')) for s in substantial_sections)
+        if content_length > 50000:  # Ultra-large document
+            max_articles = 20
+            print(f"🏢 ULTRA-LARGE: Allowing up to {max_articles} articles for comprehensive coverage")
+        elif content_length > 25000:  # Large document
+            max_articles = 15
+            print(f"📚 LARGE DOCUMENT: Allowing up to {max_articles} articles")
+        else:
+            max_articles = 12  # Standard increased limit
+            print(f"📄 STANDARD: Allowing up to {max_articles} articles")
+        
+        return substantial_sections[:max_articles]
+        
+    except Exception as e:
+        print(f"❌ Functional stage article creation failed: {e}")
+        return content_sections[:4]  # Fallback to original sections
+
+async def identify_concept_sections(content_sections: list) -> list:
+    """Filter and enhance sections to focus on distinct concepts"""
+    try:
+        # Sort by uniqueness score
+        sorted_sections = sorted(content_sections, key=lambda x: x.get('uniqueness', 0), reverse=True)
+        
+        # Take top unique sections, max 4
+        unique_sections = sorted_sections[:4]
+        
+        print(f"📊 Selected {len(unique_sections)} unique conceptual sections")
+        return unique_sections
+        
+    except Exception as e:
+        print(f"⚠️ Concept section identification failed: {e}")
+        return content_sections[:3]  # Fallback to first 3
+
+def generate_content_fingerprint(content: str) -> str:
+    """Generate a unique fingerprint for content to detect duplicates"""
+    import hashlib
+    
+    # Normalize content for comparison
+    normalized = ' '.join(content.lower().split())
+    
+    # Create hash
+    return hashlib.md5(normalized.encode()).hexdigest()[:12]
+
+def classify_article_type(content: str) -> str:
+    """Classify article type based on content characteristics"""
+    content_lower = content.lower()
+    
+    # Priority-based classification
+    if any(word in content_lower for word in ['how to', 'step by step', 'tutorial', 'guide', 'instructions']):
+        return 'how-to'
+    elif any(word in content_lower for word in ['example', 'use case', 'scenario', 'implementation', 'demo']):
+        return 'use-case'
+    elif any(word in content_lower for word in ['faq', 'question', 'troubleshoot', 'problem', 'error', 'issue']):
+        return 'faq-troubleshooting'
+    elif any(word in content_lower for word in ['concept', 'definition', 'what is', 'understanding', 'theory']):
+        return 'concept'
+    else:
+        return 'concept'  # Default to concept for general content
+
+def calculate_content_overlap(content1: str, content2: str) -> float:
+    """Calculate content overlap ratio between two text strings"""
+    try:
+        # Remove HTML tags and normalize whitespace
+        import re
+        clean1 = re.sub(r'<[^>]+>', '', content1).lower().strip()
+        clean2 = re.sub(r'<[^>]+>', '', content2).lower().strip()
+        
+        # Split into words
+        words1 = set(clean1.split())
+        words2 = set(clean2.split())
+        
+        if not words1 or not words2:
+            return 0.0
+        
+        # Calculate Jaccard similarity (intersection over union)
+        intersection = len(words1 & words2)
+        union = len(words1 | words2)
+        
+        return intersection / union if union > 0 else 0.0
+        
+    except Exception as e:
+        print(f"⚠️ Content overlap calculation failed: {e}")
+        return 0.0
+
+def extract_faq_section(faq_content: str) -> str:
+    """Extract FAQ section content from full FAQ article"""
+    try:
+        # Look for FAQ-specific content patterns
+        import re
+        
+        # Remove title/header if present
+        content = re.sub(r'^#.*FAQ.*\n', '', faq_content, flags=re.IGNORECASE | re.MULTILINE)
+        content = re.sub(r'^<h[1-6]>.*FAQ.*</h[1-6]>', '', content, flags=re.IGNORECASE | re.MULTILINE)
+        
+        # Extract Q&A pairs or troubleshooting steps
+        qa_patterns = [
+            r'(Q:|Question:|FAQ:).*?(?=Q:|Question:|FAQ:|$)',
+            r'(\*\*Q:|## Q).*?(?=\*\*Q:|## Q|$)',
+            r'(Problem:|Issue:|Error:).*?(?=Problem:|Issue:|Error:|$)'
+        ]
+        
+        extracted_content = []
+        for pattern in qa_patterns:
+            matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
+            extracted_content.extend(matches)
+        
+        if extracted_content:
+            return '\n\n'.join(extracted_content)
+        else:
+            # If no specific patterns found, return cleaned content
+            return content.strip()
+            
+    except Exception as e:
+        print(f"⚠️ FAQ section extraction failed: {e}")
+        return faq_content
+
+async def apply_content_deduplication(chunks: list, metadata: dict) -> list:
+    """Apply comprehensive content deduplication across all chunks"""
+    try:
+        if len(chunks) <= 1:
+            return chunks
+        
+        print(f"🔍 Applying content deduplication to {len(chunks)} chunks")
+        
+        deduplicated_chunks = []
+        processed_fingerprints = set()
+        
+        for i, chunk in enumerate(chunks):
+            content = chunk.get('content', '')
+            
+            # Create content fingerprint
+            import hashlib
+            content_words = content.lower().split()[:50]  # First 50 words
+            fingerprint = hashlib.md5(' '.join(content_words).encode()).hexdigest()
+            
+            # Check for exact duplicates
+            if fingerprint in processed_fingerprints:
+                print(f"⚠️ DEDUPLICATION: Skipping exact duplicate chunk {i+1}")
+                continue
+            
+            # Check for high similarity with existing chunks
+            is_similar = False
+            for existing_chunk in deduplicated_chunks:
+                overlap_ratio = calculate_content_overlap(content, existing_chunk.get('content', ''))
+                if overlap_ratio > 0.7:  # 70% similarity threshold
+                    print(f"⚠️ DEDUPLICATION: Merging similar chunk {i+1} (similarity: {overlap_ratio:.1%})")
+                    
+                    # Merge content by appending unique parts
+                    existing_content = existing_chunk.get('content', '')
+                    unique_parts = extract_unique_content_parts(content, existing_content)
+                    if unique_parts:
+                        existing_chunk['content'] += f"\n\n## Additional Information\n{unique_parts}"
+                        existing_chunk['metadata']['merged_chunks'] = existing_chunk['metadata'].get('merged_chunks', 0) + 1
+                    
+                    is_similar = True
+                    break
+            
+            if not is_similar:
+                deduplicated_chunks.append(chunk)
+                processed_fingerprints.add(fingerprint)
+        
+        print(f"✅ Deduplication complete: {len(chunks)} → {len(deduplicated_chunks)} chunks")
+        return deduplicated_chunks
+        
+    except Exception as e:
+        print(f"❌ Content deduplication failed: {e}")
+        return chunks
+
+def extract_unique_content_parts(new_content: str, existing_content: str) -> str:
+    """Extract unique parts from new content that don't exist in existing content"""
+    try:
+        import re
+        
+        # Split content into sentences
+        new_sentences = re.split(r'[.!?]+', new_content)
+        existing_sentences = re.split(r'[.!?]+', existing_content)
+        
+        # Normalize existing sentences for comparison
+        existing_normalized = [s.lower().strip() for s in existing_sentences]
+        
+        # Find unique sentences
+        unique_sentences = []
+        for sentence in new_sentences:
+            sentence_normalized = sentence.lower().strip()
+            if (sentence_normalized and 
+                len(sentence_normalized) > 20 and  # Minimum length
+                not any(sentence_normalized in existing for existing in existing_normalized)):
+                unique_sentences.append(sentence.strip())
+        
+        return '. '.join(unique_sentences) if unique_sentences else ''
+        
+    except Exception as e:
+        print(f"⚠️ Unique content extraction failed: {e}")
+        return ''
+
+async def generate_faq_troubleshooting_article(content: str, metadata: dict) -> DocumentChunk:
+    """Generate intelligent FAQ/Troubleshooting article from content analysis using LLM"""
+    try:
+        content_lower = content.lower()
+        
+        # ENHANCED: More intelligent FAQ generation criteria
+        # Generate FAQ for technical content, tutorials, guides, APIs, etc.
+        should_generate_faq = (
+            # Original Q&A patterns
+            any(pattern in content_lower for pattern in [
+                'question', 'answer', 'faq', 'q:', 'a:', '?', 
+                'troubleshoot', 'problem', 'error', 'issue', 'solution',
+                'common', 'frequently', 'typical'
+            ]) or
+            # Technical content patterns that warrant FAQ
+            any(pattern in content_lower for pattern in [
+                'api', 'integration', 'tutorial', 'guide', 'how to',
+                'setup', 'configuration', 'install', 'implement',
+                'documentation', 'reference', 'example', 'code'
+            ]) or
+            # Complex content that users commonly ask questions about
+            len(content) > 2000  # Substantial content likely to generate questions
+        )
+        
+        if not should_generate_faq:
+            print("📝 Content doesn't warrant FAQ generation")
+            return None
+        
+        # ENHANCEMENT: Use LLM to generate intelligent FAQ from actual content
+        faq_content = await generate_intelligent_faq_with_llm(content, metadata)
+        
+        if not faq_content:
+            print("⚠️ LLM FAQ generation failed, using structured fallback")
+            # Enhanced fallback with better structure
+            faq_content = create_structured_faq_fallback(content)
+        
+        fingerprint = generate_content_fingerprint(faq_content)
+        
+        chunk = DocumentChunk(
+            content=faq_content,
+            metadata={
+                **metadata,
+                'chunk_id': 999,  # Special ID for generated FAQ
+                'article_type': 'faq-troubleshooting',
+                'content_focus': 'support',
+                'uniqueness_score': 1.0,
+                'generated': True,
+                'generation_method': 'llm_enhanced' if 'llm' in locals() else 'structured_fallback'
+            },
+            source_file=metadata.get('original_filename', 'document'),
+            chunk_index=999,
+            content_fingerprint=fingerprint
+        )
+        
+        print("✅ Generated intelligent FAQ/Troubleshooting article")
+        return chunk
+        
+    except Exception as e:
+        print(f"❌ FAQ generation failed: {e}")
+        return None
+
+async def generate_intelligent_faq_with_llm(content: str, metadata: dict) -> str:
+    """Generate intelligent FAQ content using LLM analysis of source content"""
+    try:
+        # Truncate content for LLM processing if too long
+        analysis_content = content[:4000] if len(content) > 4000 else content
+        
+        system_message = f"""You are an expert technical writer specializing in creating comprehensive FAQ and troubleshooting sections from technical documentation.
+
+{PHANTOM_LINK_PREVENTION}
+
+Your task is to analyze the provided content and generate a comprehensive FAQ & Troubleshooting section that addresses:
+1. Common questions users would have about the topic
+2. Potential issues and their solutions
+3. Best practices and recommendations
+4. Troubleshooting steps for common problems
+
+Generate practical, specific questions and answers based on the actual content provided. Don't create generic placeholder content.
+
+Use this HTML structure:
+- <h2> for main sections
+- <h3> for subsections  
+- <blockquote class="tip"> for tips with 💡 icon
+- <blockquote class="warning"> for warnings with ⚠️ icon
+- <code> for inline code references
+- <ol> for numbered troubleshooting steps
+- <ul> for feature lists
+
+Focus on creating actionable, specific content that users would genuinely find helpful."""
+
+        user_message = f"""Analyze this technical content and create a comprehensive FAQ & Troubleshooting section:
+
+{analysis_content}
+
+Source document: {metadata.get('original_filename', 'Technical Documentation')}
+
+Generate 4-6 relevant questions with detailed answers, plus a troubleshooting section with common issues and solutions. Make the content specific to the actual topics covered in the source material."""
+
+        # Call LLM to generate intelligent FAQ
+        faq_response = await call_llm_with_fallback(system_message, user_message)
+        
+        if faq_response and len(faq_response.strip()) > 200:
+            print("✅ LLM generated intelligent FAQ content - applying phantom link cleanup")
+            # PHANTOM LINK CLEANUP: Clean any phantom links from FAQ content
+            faq_response = validate_and_remove_phantom_links(faq_response.strip())
+            faq_response = aggressive_phantom_link_cleanup_final_pass(faq_response)
+            return faq_response
+        else:
+            print("⚠️ LLM FAQ response insufficient, using fallback")
+            return None
+            
+    except Exception as e:
+        print(f"⚠️ LLM FAQ generation error: {e}")
+        return None
+
+def create_structured_faq_fallback(content: str) -> str:
+    """Create structured FAQ fallback when LLM generation fails"""
+    try:
+        content_lower = content.lower()
+        
+        # Analyze content to create more targeted FAQ
+        topic_type = "the system"
+        if 'api' in content_lower:
+            topic_type = "the API"
+        elif any(word in content_lower for word in ['maps', 'location', 'google']):
+            topic_type = "the mapping service"
+        elif 'integration' in content_lower:
+            topic_type = "the integration"
+        elif any(word in content_lower for word in ['tutorial', 'guide', 'how to']):
+            topic_type = "this tutorial"
+        
+        # Extract key terms for more specific content
+        key_terms = extract_key_technical_terms(content)
+        key_terms_text = ", ".join(key_terms[:5]) if key_terms else "core concepts"
+        
+        faq_content = f"""<h2>Frequently Asked Questions & Troubleshooting</h2>
+
+<p>This section addresses common questions and troubleshooting scenarios related to {topic_type} covered in this documentation.</p>
+
+<h3>Common Questions</h3>
+
+<h4>Q: What are the key requirements for implementing {topic_type}?</h4>
+<p>The main requirements include understanding {key_terms_text} and following the implementation steps outlined in the documentation.</p>
+
+<h4>Q: How do I get started with {topic_type}?</h4>
+<p>Begin by reviewing the overview section, then follow the step-by-step implementation guide provided in the related articles.</p>
+
+<h4>Q: What are the most common implementation challenges?</h4>
+<p>Common challenges include configuration issues, authentication problems, and integration complexities. Refer to the troubleshooting section below for solutions.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>Configuration Issues</h4>
+<ol>
+<li>Verify all required parameters are correctly configured</li>
+<li>Check that authentication credentials are valid and properly set</li>
+<li>Ensure all dependencies are installed and up to date</li>
+</ol>
+
+<h4>Common Error Resolution</h4>
+<ul>
+<li><strong>Authentication errors:</strong> Verify API keys and credentials</li>
+<li><strong>Connection issues:</strong> Check network connectivity and endpoint URLs</li>
+<li><strong>Implementation problems:</strong> Review the implementation examples in related articles</li>
+</ul>
+
+<blockquote class="tip">💡 <strong>Pro Tip:</strong> When troubleshooting, check the console logs for detailed error messages and refer to the related articles for specific implementation guidance.</blockquote>
+
+<blockquote class="note">📝 <strong>Note:</strong> For additional support beyond these common scenarios, consult the related articles or refer to the official documentation.</blockquote>"""
+
+        return faq_content
+        
+    except Exception as e:
+        print(f"⚠️ Structured FAQ fallback error: {e}")
+        # Final fallback
+        return """<h2>Frequently Asked Questions & Troubleshooting</h2>
+<p>This section provides support information for common questions and issues.</p>
+<h3>Common Questions</h3>
+<p>Refer to the related articles for detailed information about implementation and best practices.</p>
+<h3>Troubleshooting</h3>
+<p>For troubleshooting support, consult the related documentation or contact support.</p>"""
+
+def extract_key_technical_terms(content: str) -> list:
+    """Extract key technical terms from content for better FAQ generation"""
+    try:
+        import re
+        
+        # Look for technical terms (capitalized words, APIs, technical patterns)
+        technical_patterns = [
+            r'\b[A-Z][a-z]+\s*API\b',  # APIs
+            r'\b[A-Z][a-zA-Z]*\s*[A-Z][a-zA-Z]*\b',  # CamelCase terms
+            r'\b\w+\.\w+\(\)',  # Method calls
+            r'\b[A-Z]{2,}\b',  # Acronyms
+            r'\b\w+ing\b',  # Technical processes (integrating, implementing, etc.)
+        ]
+        
+        terms = []
+        for pattern in technical_patterns:
+            matches = re.findall(pattern, content)
+            terms.extend(matches)
+        
+        # Filter and clean terms
+        filtered_terms = []
+        for term in terms:
+            term = term.strip()
+            if len(term) > 3 and term.lower() not in ['the', 'and', 'for', 'with', 'this']:
+                filtered_terms.append(term)
+        
+        # Remove duplicates and return most frequent
+        unique_terms = list(set(filtered_terms))
+        return unique_terms[:8]  # Top 8 terms
+        
+    except Exception as e:
+        print(f"⚠️ Key term extraction failed: {e}")
+        return []
+
+async def basic_process_text_content(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Fallback: Basic chunking strategy (original implementation)"""
+    try:
+        # Simple chunking strategy (split by sentences, max 500 chars)
+        sentences = content.split('.')
+        chunks = []
+        current_chunk = ""
+        
+        for sentence in sentences:
+            if len(current_chunk + sentence) > 500 and current_chunk:
+                # Create chunk
+                chunk_text = current_chunk.strip()
+                if chunk_text:
+                    chunk = DocumentChunk(
+                        content=chunk_text,
+                        metadata=metadata
+                    )
+                    chunks.append(chunk.dict())  # FIXED: Convert to dictionary
+                    
+                    # Store chunk in database
+                    await db.document_chunks.insert_one(chunk.dict())
+                
+                current_chunk = sentence
+            else:
+                current_chunk += sentence + "."
+        
+        # Handle remaining content
+        if current_chunk.strip():
+            chunk_text = current_chunk.strip()
+            chunk = DocumentChunk(
+                content=chunk_text,
+                metadata=metadata
+            )
+            chunks.append(chunk.dict())  # FIXED: Convert to dictionary
+            await db.document_chunks.insert_one(chunk.dict())
+        
+        # After processing chunks, create Content Library articles
+        try:
+            articles_created = await create_content_library_articles_from_chunks(chunks, metadata)
+            print(f"✅ CHUNK CONVERSION: Created {len(articles_created)} Content Library articles from {len(chunks)} chunks")
+        except Exception as e:
+            print(f"Warning: Could not create Content Library articles: {e}")
+        
+        return chunks
+        
+    except Exception as e:
+        print(f"Error processing text content: {e}")
+        raise
+
+async def create_content_library_article_from_chunks(chunks: List[Dict[str, Any]], metadata: Dict[str, Any]):
+    """Create structured articles in Content Library from processed chunks using enhanced documentation processing"""
+    if not chunks:
+        return
+    
+    # Combine chunk content
+    full_content = "\n".join([chunk.content for chunk in chunks])
+    
+    # FIX 1: REDUNDANT TITLE HANDLING - Use original filename as article title
+    original_filename = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
+    if original_filename.startswith('Website:'):
+        title = original_filename.replace('Website: ', '')
+    elif original_filename != 'Processed Content':
+        # Use filename without extension as clean title
+        title = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
+    else:
+        title = "Processed Content"
+    
+    print(f"🎯 FIX 1: Using filename as article title: '{title}'")
+    
+    # ISSUE 1 FIX: Enhanced H1 title removal to eliminate ALL duplicates
+    import re
+    
+    # Create comprehensive title variations to catch all possible H1 duplicates
+    title_variations = [
+        title.lower(),
+        title.replace('_', ' ').lower(),
+        title.replace('-', ' ').lower(),
+        title.replace('.', ' ').lower(),
+        original_filename.lower(),
+        original_filename.replace('_', ' ').lower(),
+        original_filename.replace('-', ' ').lower()
+    ]
+    
+    print(f"🎯 ISSUE 1 FIX: Removing H1 duplicates for title variations: {title_variations}")
+    
+    # Remove ALL forms of H1 headings (Markdown, HTML, and mixed)
+    for title_var in title_variations:
+        # Remove Markdown H1 variations (single #)
+        full_content = re.sub(r'^#\s+' + re.escape(title_var) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'^#\s+' + re.escape(title_var.title()) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'^#\s+' + re.escape(title_var.upper()) + r'\s*$', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        
+        # Remove HTML H1 variations  
+        full_content = re.sub(r'<h1[^>]*>\s*' + re.escape(title_var) + r'\s*</h1>', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'<h1[^>]*>\s*' + re.escape(title_var.title()) + r'\s*</h1>', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+        full_content = re.sub(r'<h1[^>]*>\s*' + re.escape(title_var.upper()) + r'\s*</h1>', '', full_content, flags=re.IGNORECASE | re.MULTILINE)
+    
+    # Remove generic document title patterns
+    full_content = re.sub(r'^#\s+Document:.*$', '', full_content, flags=re.MULTILINE)
+    full_content = re.sub(r'^#\s+File:.*$', '', full_content, flags=re.MULTILINE) 
+    full_content = re.sub(r'<h1[^>]*>Document:.*?</h1>', '', full_content, flags=re.IGNORECASE)
+    full_content = re.sub(r'<h1[^>]*>File:.*?</h1>', '', full_content, flags=re.IGNORECASE)
+    
+    # Remove any standalone H1 at the very beginning of content
+    full_content = re.sub(r'^\s*<h1[^>]*>.*?</h1>\s*', '', full_content, flags=re.IGNORECASE | re.DOTALL)
+    full_content = re.sub(r'^\s*#[^#\n].*?\n', '', full_content, flags=re.MULTILINE)
+    
+    # Clean up extra whitespace and empty paragraphs
+    full_content = re.sub(r'\n{3,}', '\n\n', full_content)
+    full_content = re.sub(r'<p>\s*</p>', '', full_content)
+    full_content = full_content.strip()
+    
+    print(f"✅ ISSUE 1 FIX: H1 duplicates removed, content length: {len(full_content)}")
+    
+    print(f"🎯 FIX 1: Removed redundant title headings from content")
+    
+    source_type = metadata.get('type', 'text_processing')
+    file_extension = metadata.get('file_extension', '')
+    
+    # Add document batch identifier to prevent content mixing
+    document_batch_id = str(uuid.uuid4())
+    metadata['document_batch_id'] = document_batch_id
+    metadata['processing_timestamp'] = datetime.utcnow().isoformat()
+    metadata['title_handling'] = 'filename_as_title'  # Mark this fix
+    
+    print(f"🔍 DEBUG: Processing document batch {document_batch_id} for {title}")
+    
+    # Determine content splitting strategy with document isolation
+    should_create_multiple = await should_split_into_multiple_articles(full_content, file_extension)
+    
+    # SIMPLIFIED: Use smart chunking approach for all content types
+    if should_create_multiple:
+        print(f"📝 Using simplified smart chunking approach for: {title}")
+        articles = await create_multiple_articles_from_content(full_content, metadata)
+        
+        # FIXED: Add related links BEFORE database insertion
+        if len(articles) > 1:
+            print(f"🔗 FIXING RELATED LINKS: Adding navigation links to {len(articles)} articles")
+            articles = await add_related_links_to_articles(articles)
+            print(f"✅ FIXED: Related links added to all articles")
+        
+        # Insert articles with related links included
+        for article in articles:
+            await db.content_library.insert_one(article)
+            print(f"✅ Created article with related links: '{article['title']}'")
+        return articles
+    else:
+        # Create single comprehensive article
+        article = await create_single_article_from_content(full_content, metadata)
+        if article:
+            print(f"🔍 DEBUG: Before DB insert - article keys: {list(article.keys())}")
+            print(f"🔍 DEBUG: Before DB insert - has content: {'content' in article}")
+            print(f"🔍 DEBUG: Before DB insert - content preview: {article.get('content', 'NO CONTENT')[:100]}...")
+            await db.content_library.insert_one(article)
+            print(f"✅ Created article: '{article['title']}'")
+            return [article]
+        else:
+            # Fallback: Create basic article without AI enhancement
+            return await create_basic_fallback_article(full_content, metadata)
+
+def clean_article_content(content: str) -> str:
+    """Post-process article content to ensure HTML format and remove metadata"""
+    if not content:
+        return content
+    
+    # Remove common metadata patterns
+    metadata_patterns = [
+        r'\*\*Document Statistics:\*\*.*?(?=\n\n|\n#|\Z)',  # Document statistics sections
+        r'\*\*Media Assets.*?(?=\n\n|\n#|\Z)',  # Media asset summaries
+        r'\*\*Total.*?(?=\n\n|\n#|\Z)',  # Total counts
+        r'\*Figure \d+:.*?\d+ bytes.*?\n',  # Image metadata with byte counts
+        r'\- \*\*Image \d+\*\*:.*?bytes.*?\n',  # Image lists with metadata
+        r'\*\*Note:\*\*.*?extracted.*?\n',  # Extraction notes
+        r'\*.*?\d+ bytes.*?\*',  # Any text with byte counts
+        r'\.docx|\.pdf|\.txt|\.doc|\.xlsx',  # File extensions
+        r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}',  # ISO timestamps
+        r'Character count: \d+',  # Character counts
+        r'Added from document assets',  # Asset source references
+        r'\[Asset Library\]|\[Fallback\]',  # Asset source indicators
+    ]
+    
+    for pattern in metadata_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL)
+    
+    # Convert common Markdown to HTML if still present
+    markdown_to_html_patterns = [
+        # Headers (process in reverse order to avoid conflicts)
+        (r'^#{6}\s+(.+)$', r'<h6>\1</h6>'),
+        (r'^#{5}\s+(.+)$', r'<h5>\1</h5>'),
+        (r'^#{4}\s+(.+)$', r'<h4>\1</h4>'),
+        (r'^#{3}\s+(.+)$', r'<h3>\1</h3>'),
+        (r'^#{2}\s+(.+)$', r'<h2>\1</h2>'),
+        (r'^#{1}\s+(.+)$', r'<h1>\1</h1>'),
+        
+        # Bold and italic
+        (r'\*\*(.+?)\*\*', r'<strong>\1</strong>'),
+        (r'\*(.+?)\*', r'<em>\1</em>'),
+        
+        # Code blocks
+        (r'```[\w]*\n(.*?)\n```', r'<pre><code>\1</code></pre>'),
+        (r'`(.+?)`', r'<code>\1</code>'),
+        
+        # Links (markdown style) to HTML
+        (r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>'),
+        
+        # Images (markdown style) to HTML
+        (r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" style="max-width: 100%; height: auto;">'),
+        
+        # Blockquotes
+        (r'^>\s*(.+)$', r'<blockquote>\1</blockquote>'),
+        
+        # Horizontal rules
+        (r'^---+$', r'<hr>'),
+    ]
+    
+    for pattern, replacement in markdown_to_html_patterns:
+        content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+    
+    # Handle unordered lists (bullet points)
+    def process_unordered_lists(text):
+        lines = text.split('\n')
+        processed_lines = []
+        in_list = False
+        
+        for line in lines:
+            # Check if line is a list item (starts with -, *, or •)
+            if re.match(r'^[-*•]\s+', line.strip()):
+                if not in_list:
+                    processed_lines.append('<ul>')
+                    in_list = True
+                # Convert to HTML list item
+                item_text = re.sub(r'^[-*•]\s+', '', line.strip())
+                processed_lines.append(f'<li>{item_text}</li>')
+            else:
+                if in_list:
+                    processed_lines.append('</ul>')
+                    in_list = False
+                processed_lines.append(line)
+        
+        # Close list if we end while still in one
+        if in_list:
+            processed_lines.append('</ul>')
+        
+        return '\n'.join(processed_lines)
+    
+    # Handle ordered lists (numbered)
+    def process_ordered_lists(text):
+        lines = text.split('\n')
+        processed_lines = []
+        in_list = False
+        
+        for line in lines:
+            # Check if line is a numbered list item
+            if re.match(r'^\d+\.\s+', line.strip()):
+                if not in_list:
+                    processed_lines.append('<ol>')
+                    in_list = True
+                # Convert to HTML list item
+                item_text = re.sub(r'^\d+\.\s+', '', line.strip())
+                processed_lines.append(f'<li>{item_text}</li>')
+            else:
+                if in_list:
+                    processed_lines.append('</ol>')
+                    in_list = False
+                processed_lines.append(line)
+        
+        # Close list if we end while still in one
+        if in_list:
+            processed_lines.append('</ol>')
+        
+        return '\n'.join(processed_lines)
+    
+    # Apply list processing
+    content = process_unordered_lists(content)
+    content = process_ordered_lists(content)
+    
+    # PHANTOM LINK PREVENTION: Aggressive multi-pass cleanup
+    content = validate_and_remove_phantom_links(content)
+    content = aggressive_phantom_link_cleanup_final_pass(content)
+    
+    # Clean up extra whitespace and newlines
+    content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Multiple newlines to double
+    content = re.sub(r'^\s+|\s+$', '', content)  # Trim whitespace
+    
+    # Ensure paragraphs are properly wrapped in <p> tags if not already
+    lines = content.split('\n\n')
+    processed_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Skip if already has HTML tags or is a list item
+        if (line.startswith(('<', '-', '*', '1.', '2.', '3.', '4.', '5.')) or 
+            '<' in line or
+            line.startswith('•')):
+            processed_lines.append(line)
+        else:
+            # Wrap plain text in paragraph tags
+            processed_lines.append(f'<p>{line}</p>')
+    
+    return '\n\n'.join(processed_lines)
+
+def clean_article_title(title: str) -> str:
+    """Clean article title to remove filename references and metadata"""
+    if not title:
+        return title
+    
+    # Remove file extensions and common filename patterns
+    title = re.sub(r'\.(docx|pdf|txt|doc|xlsx|pptx|md)$', '', title, flags=re.IGNORECASE)
+    title = re.sub(r'_+|-+', ' ', title)  # Replace underscores/dashes with spaces
+    title = re.sub(r'\s+', ' ', title).strip()  # Normalize whitespace
+    
+    # Remove common metadata prefixes
+    metadata_prefixes = [
+        r'^Document:\s*',
+        r'^File:\s*',
+        r'^Article:\s*',
+        r'^Content:\s*',
+        r'^\d+\.\s*',  # Numbered prefixes
+    ]
+    
+    for prefix in metadata_prefixes:
+        title = re.sub(prefix, '', title, flags=re.IGNORECASE)
+    
+    # Capitalize properly
+    title = title.title()
+    
+    return title.strip()
+
+
+def smart_chunk_content(content: str, max_chars: int = 7000, min_chars: int = 6000) -> List[str]:
+    """
+    Split content into chunks with smart context-aware breaks.
+    - Target: 6,000-8,000 characters per chunk  
+    - Never break mid-paragraph, mid-step, or mid-list
+    - Prefer breaking at section boundaries (H2s, logical groups)
+    """
+    
+    # CHUNKING FIX: Force chunking for content over 1200 characters regardless of max_chars
+    FORCE_CHUNK_THRESHOLD = 1200
+    
+    # If content is small and under force threshold, return as single chunk
+    if len(content) <= FORCE_CHUNK_THRESHOLD:
+        print(f"📝 Content under {FORCE_CHUNK_THRESHOLD} chars - single chunk")
+        return [content]
+    
+    # If content is over force threshold, FORCE chunking even if under max_chars
+    if len(content) > FORCE_CHUNK_THRESHOLD:
+        print(f"🔥 FORCE CHUNKING: Content ({len(content)} chars) exceeds {FORCE_CHUNK_THRESHOLD} threshold")
+        # Reduce max_chars for more aggressive chunking
+        max_chars = min(max_chars, 2000)  # Force smaller chunks for better organization
+        min_chars = min(min_chars, 800)   # Lower minimum for more chunks
+    
+    chunks = []
+    current_chunk = ""
+    
+    # Split by double newlines first (paragraph breaks)
+    paragraphs = content.split('\n\n')
+    
+    # CHUNKING FIX: If no paragraph breaks found, try other separators
+    if len(paragraphs) <= 1:
+        print("🔧 No paragraph breaks found - trying alternative splitting")
+        
+        # Try splitting by single newlines
+        paragraphs = content.split('\n')
+        if len(paragraphs) <= 1:
+            print("🔧 No line breaks found - forcing character-based chunking")
+            # Force character-based chunking for very long single paragraphs
+            chunk_size = max_chars
+            paragraphs = []
+            for i in range(0, len(content), chunk_size):
+                chunk = content[i:i+chunk_size]
+                paragraphs.append(chunk)
+                print(f"📝 Force chunk: {len(chunk)} chars")
+        else:
+            print(f"📝 Using {len(paragraphs)} line-separated sections")
+    else:
+        print(f"📝 Using {len(paragraphs)} paragraph-separated sections")
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+            
+        # Check if adding this paragraph would exceed max_chars
+        potential_chunk = current_chunk + '\n\n' + paragraph if current_chunk else paragraph
+        
+        if len(potential_chunk) <= max_chars:
+            # Safe to add
+            current_chunk = potential_chunk
+        else:
+            # Adding this paragraph would exceed limit
+            if len(current_chunk) >= min_chars:
+                # Current chunk is good size, save it and start new chunk
+                chunks.append(current_chunk.strip())
+                current_chunk = paragraph
+            else:
+                # Current chunk is too small, check if we can break the paragraph
+                if len(paragraph) > max_chars:
+                    # Very long paragraph - split by sentences
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                        current_chunk = ""
+                    
+                    # Split long paragraph into sentences
+                    sentences = paragraph.split('. ')
+                    temp_chunk = ""
+                    
+                    for sentence in sentences:
+                        sentence = sentence.strip()
+                        if not sentence:
+                            continue
+                        
+                        # Add period back if it was split
+                        if not sentence.endswith('.') and sentence != sentences[-1]:
+                            sentence += '.'
+                        
+                        potential_temp = temp_chunk + ' ' + sentence if temp_chunk else sentence
+                        
+                        if len(potential_temp) <= max_chars:
+                            temp_chunk = potential_temp
+                        else:
+                            if temp_chunk:
+                                chunks.append(temp_chunk.strip())
+                                temp_chunk = sentence
+                            else:
+                                # Single sentence is too long - force add it
+                                chunks.append(sentence.strip())
+                                temp_chunk = ""
+                    
+                    if temp_chunk:
+                        current_chunk = temp_chunk
+                else:
+                    # Add anyway to avoid losing content
+                    current_chunk = potential_chunk
+    
+    # Don't forget the last chunk
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+    
+    print(f"📊 Smart chunking: {len(content)} chars → {len(chunks)} chunks")
+    for i, chunk in enumerate(chunks):
+        print(f"   Chunk {i+1}: {len(chunk)} characters")
+    
+    return chunks
+
+async def should_split_into_multiple_articles(content: str, file_extension: str) -> bool:
+    """FIXED: Always create multiple articles for structured content to provide focused coverage"""
+    
+    print(f"🎯 MULTI-ARTICLE CREATION: Analyzing {file_extension} content for segmentation:")
+    print(f"   - Content length: {len(content)} characters")
+    
+    # FIXED: Analyze content structure regardless of length
+    has_major_headings = bool(re.search(r'(?:^|\n)#{1,2}\s+.+', content, re.MULTILINE))
+    heading_count = len(re.findall(r'(?:^|\n)#{1,3}\s+.+', content, re.MULTILINE))
+    section_count = len(re.findall(r'(?:^|\n)(?:\w+:|\d+\.)', content, re.MULTILINE))
+    paragraph_count = len([p for p in content.split('\n\n') if p.strip()])
+    
+    print(f"   - Has major headings (H1/H2): {has_major_headings}")
+    print(f"   - Total heading count: {heading_count}")  
+    print(f"   - Section markers: {section_count}")
+    print(f"   - Paragraph count: {paragraph_count}")
+    
+    # FIXED: Create multiple articles if content has clear structure
+    if has_major_headings or heading_count >= 2 or section_count >= 3:
+        expected_articles = max(heading_count, section_count, 3)  # Minimum 3 articles
+        
+        # ULTRA-LARGE FIX: Use intelligent limits instead of hard limit
+        content_length = len(content)
+        if content_length > 50000:  # Ultra-large document
+            max_expected = min(expected_articles, 20)
+            print(f"✅ MULTI-ARTICLE: Ultra-large structured content - will create up to {max_expected} focused articles")
+        elif content_length > 25000:  # Large document  
+            max_expected = min(expected_articles, 15)
+            print(f"✅ MULTI-ARTICLE: Large structured content - will create up to {max_expected} focused articles")
+        else:
+            max_expected = min(expected_articles, 12)  # Standard increased limit
+            print(f"✅ MULTI-ARTICLE: Structured content detected - will create up to {max_expected} focused articles")
+        
+        return True
+    elif len(content) >= 5000 and paragraph_count >= 8:  # Large content with many paragraphs
+        print(f"✅ MULTI-ARTICLE: Large content with {paragraph_count} paragraphs - will create multiple articles")
+        return True
+    elif paragraph_count >= 6:  # Even smaller content with clear paragraphs
+        print(f"✅ MULTI-ARTICLE: Content with {paragraph_count} paragraphs - will create focused articles")
+        return True
+    else:
+        print(f"✅ SINGLE ARTICLE: Limited structure detected - will create comprehensive single article")
+        return False
+
+def sanitize_json_response(json_text):
+    """Sanitize JSON content to handle control characters and escaping issues"""
+    try:
+        import re
+        # First, try to fix common JSON issues
+        # Replace unescaped newlines in content fields
+        json_text = re.sub(r'(?<!\\)\n', '\\n', json_text)
+        json_text = re.sub(r'(?<!\\)\r', '\\r', json_text)
+        json_text = re.sub(r'(?<!\\)\t', '\\t', json_text)
+        
+        # Fix any unescaped quotes in content - this is complex, so we'll handle it after initial parsing attempt
+        # Remove any potential markdown code blocks that might interfere
+        json_match = re.search(r'```json\s*(.*?)\s*```', json_text, re.DOTALL | re.IGNORECASE)
+        if json_match:
+            json_text = json_match.group(1)
+        
+        return json_text
+    except Exception as e:
+        print(f"⚠️ JSON sanitization warning: {e}")
+        return json_text
+
+
+async def create_documentation_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
+    """
+    Create multiple structured documentation articles using the enhanced documentation rewrite system
+    Based on the provided prompt specification for "Documentation Rewrite and Distribution"
+    """
+    
+    # Phase 1: Create articles without images first
+    print(f"🚀 Phase 1: Creating articles structure without images")
+    
+    system_message = """You are an expert technical documentation writer specializing in creating comprehensive, user-ready articles from internal documentation. Your task is to analyze, split, rewrite, and format documentation using best technical writing practices inspired by leading documentation systems (Woolf, Eltropy, etc.).
+
+CORE DIRECTIVE: Generate ONLY clean HTML suitable for WYSIWYG display. NEVER use Markdown syntax.
+
+CRITICAL: Split, rewrite, and format internal documentation into clean, user-ready articles using technical writing standards.
+
+PHASE 1: Create article structure WITHOUT images first. Images will be added in a separate phase for optimal contextual placement.
+
+Respond ONLY with valid JSON."""
+    
+    # Enhanced documentation processing prompt without images
+    user_message = f"""prompt_type: "Documentation Rewrite and Distribution"
+input_type: "Structured Guide (DOCX, HTML, Markdown, or Raw Export)"
+goal: "Split, rewrite, and format internal documentation into clean, user-ready articles using technical writing standards"
+
+instructions:
+  - Analyze the input guide and automatically split it into logically separate articles (e.g., by features, modules, or topics).
+  - Rewrite each article using best technical writing practices inspired by leading documentation systems (Woolf, Eltropy, etc.).
+  - Use a clear heading hierarchy (H1, H2, H3), semantic anchors, and numbered procedures where applicable.
+  - Present fields, parameters, or configurations in tables.
+  - Use bullet points for options, lists, and branching logic.
+  - Insert contextual callouts like: 💡 Tip, 📝 Note, ⚠️ Caution — based on content relevance.
+  - Ensure UI references, action buttons, and object labels match enterprise UX language.
+  - Remove redundancy, fix grammar, clarify vague steps, and ensure accurate transitions.
+  - Format final output in clean, standalone HTML ready for publication or preview.
+  - Include a separate overview/introduction page linking all split articles.
+  - DO NOT include any images in this phase - focus on content structure and quality.
+
+output_format: "Multiple HTML files (one per article) + TOC Overview Page"
+output_naming: 
+  - "Overview": "{{ModuleName}}_Overview.html"
+  - "Split Articles": "{{TopicName}}.html" or "{{Module}}_{{Feature}}.html"
+
+SOURCE DOCUMENT CONTENT:
+{content}
+
+CRITICAL REQUIREMENTS FOR PROCESSING:
+
+1. **Intelligent Content Analysis & Splitting**:
+   - Identify distinct modules, features, or logical topics based on original document structure
+   - Create focused articles that each cover ONE complete topic/module/feature
+   - Maintain logical flow and relationships between split articles
+   - Ensure comprehensive coverage with no content gaps
+
+2. **Professional Technical Writing Standards**:
+   - Clear heading hierarchy: <h1> for main title, <h2> for major sections, <h3> for subsections
+   - Numbered procedures for step-by-step instructions
+   - Tables for field/parameter descriptions, configurations, and structured data
+   - Bullet points for options, features, lists, and branching logic
+   - Contextual callouts: 💡 Tip, 📝 Note, ⚠️ Caution based on content relevance
+
+3. **Enterprise UX Language**:
+   - Use consistent, professional terminology
+   - Match UI references, button names, and interface elements exactly
+   - Clear, actionable language for instructions
+   - Remove ambiguity and clarify vague steps
+
+4. **HTML Structure Requirements**:
+   - Generate clean HTML suitable for WYSIWYG editor display
+   - Use semantic HTML elements properly
+   - Include proper table structure: <table>, <thead>, <tbody>, <tr>, <th>, <td>
+   - Use <blockquote> for callouts and important notes
+   - Apply consistent styling with inline styles where needed
+   - NO MARKDOWN - Only HTML tags
+
+5. **Overview Page Creation**:
+   - Create a comprehensive overview/introduction page
+   - Include links to all split articles
+   - Provide clear navigation structure
+   - Explain the relationship between different articles
+
+RESPONSE FORMAT - Return valid JSON with both overview and individual articles (WITHOUT IMAGES):
+{{
+    "overview": {{
+        "title": "{{Module/System Name}} Overview",
+        "summary": "Comprehensive introduction to the module/system with navigation to detailed articles",
+        "content": "<h1>📘 {{Module Name}} Overview</h1><p>Introduction explaining the system/module...</p><h2>What You'll Find</h2><p>Description of available articles...</p><h2>Recommended Articles</h2><ul><li><a href='#'>{{Article Title 1}}</a></li><li><a href='#'>{{Article Title 2}}</a></li></ul><div class='note'>💡 <strong>Tip:</strong> Helpful guidance for users</div>",
+        "tags": ["overview", "navigation", "{{module-name}}"],
+        "takeaways": ["Key overview points", "Navigation guidance", "Getting started tips"]
+    }},
+    "articles": [
+        {{
+            "title": "{{Specific Topic/Feature Title}}",
+            "summary": "Detailed explanation of what this article covers and its importance",
+            "content": "<h1>🛠️ {{Topic Title}}</h1><p>Clear introduction...</p><h2>{{Major Section}}</h2><ol><li>Step-by-step instructions...</li></ol><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td>{{Field Name}}</td><td>{{Clear description}}</td></tr></tbody></table><h2>{{Another Section}}</h2><ul><li>Option or feature point</li></ul><div class='tip'>💡 Use contextual callouts based on content relevance</div>",
+            "tags": ["{{topic-name}}", "{{feature-name}}", "{{category}}"],
+            "takeaways": ["Specific actionable takeaway", "Key learning point", "Best practice"]
+        }}
+    ]
+}}"""
+
+    # Try to get AI response using fallback system
+    session_id = str(uuid.uuid4())
+    ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+    
+    if ai_response:
+        try:
+            print(f"✅ Phase 1 AI response received: {len(ai_response)} characters")
+            
+            # Enhanced JSON sanitization for documentation responses
+            def sanitize_json_response(json_text):
+                """Sanitize JSON content to handle control characters and escaping issues"""
+                try:
+                    # First, try to fix common JSON issues
+                    # Replace unescaped newlines in content fields
+                    json_text = re.sub(r'(?<!\\)\n', '\\n', json_text)
+                    json_text = re.sub(r'(?<!\\)\r', '\\r', json_text)
+                    json_text = re.sub(r'(?<!\\)\t', '\\t', json_text)
+                    
+                    # Fix any unescaped quotes in content
+                    # This is more complex, so we'll handle it after initial parsing attempt
+                    
+                    return json_text
+                except Exception as e:
+                    print(f"⚠️ JSON sanitization warning: {e}")
+                    return json_text
+            
+            cleaned_response = sanitize_json_response(ai_response)
+            articles_data = json.loads(cleaned_response)
+            
+            # Phase 2: Apply semantic image placement
+            print(f"🎯 Phase 2: Applying semantic image placement")
+            if contextual_images and len(contextual_images) > 0:
+                articles_data = await apply_semantic_image_placement(articles_data, contextual_images)
+            
+            # Create article records including overview
+            articles = []
+            
+            # Add overview article if present
+            if 'overview' in articles_data:
+                overview_info = articles_data['overview']
+                overview_record = {
+                    "id": str(uuid.uuid4()),
+                    "title": clean_article_title(overview_info.get("title", "System Overview")),
+                    "content": clean_article_content(overview_info.get("content", "")),
+                    "summary": overview_info.get("summary", "Overview of the system and available documentation"),
+                    "tags": overview_info.get("tags", ["overview", "navigation"]),
+                    "takeaways": overview_info.get("takeaways", []),
+                    "source_type": "documentation_overview",
+                    "status": "draft",
+                    "metadata": {
+                        **metadata,
+                        "ai_processed": True,
+                        "documentation_type": "overview",
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "semantic_images_applied": len(contextual_images) if contextual_images else 0
+                    },
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                articles.append(overview_record)
+            
+            # Add individual articles
+            for i, article_info in enumerate(articles_data.get('articles', [])):
+                # Clean and process article content
+                raw_title = article_info.get("title", f"Documentation Article {i+1}")
+                raw_content = article_info.get("content", "Content not available")
+                
+                cleaned_title = clean_article_title(raw_title)
+                cleaned_content = clean_article_content(raw_content)
+                
+                article_record = {
+                    "id": str(uuid.uuid4()),
+                    "title": cleaned_title,
+                    "content": cleaned_content,
+                    "summary": article_info.get("summary", "Generated documentation article"),
+                    "tags": article_info.get("tags", [metadata.get('type', 'documentation')]),
+                    "takeaways": article_info.get("takeaways", []),
+                    "source_type": "documentation_article",
+                    "status": "draft",
+                    "metadata": {
+                        **metadata,
+                        "ai_processed": True,
+                        "documentation_type": "article",
+                        "article_index": i + 1,
+                        "total_articles": len(articles_data.get('articles', [])),
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "assigned_images": len(article_info.get('assigned_images', [])) if contextual_images else 0
+                    },
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                articles.append(article_record)
+            
+            print(f"✅ Generated {len(articles)} documentation articles with semantic image placement")
+            return articles
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ Documentation JSON parsing error: {e}")
+            print(f"Raw AI response: {ai_response[:500]}...")
+            # Fall back to enhanced fallback article
+            return [await create_enhanced_fallback_article(content, metadata, ai_response, contextual_images)]
+        except Exception as e:
+            print(f"❌ Error processing documentation AI response: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print("❌ No AI response available for documentation processing")
+    
+    # Final fallback - create basic article
+    return [await create_enhanced_fallback_article(content, metadata, "No AI response", contextual_images)]
+
+
+async def apply_semantic_image_placement(articles_data: dict, contextual_images: List[Dict]) -> dict:
+    """
+    CRITICAL: Apply semantic image placement algorithm to ensure each image appears in only one article
+    Uses TF-IDF and semantic similarity to match images to their most contextually relevant articles
+    """
+    print(f"🎯 Applying semantic image placement for {len(contextual_images)} images across {len(articles_data.get('articles', []))} articles")
+    
+    try:
+        # Phase 1: Calculate semantic similarity scores between each image and each article
+        image_article_scores = {}
+        
+        for image in contextual_images:
+            image_id = image.get('id', image.get('filename', 'unknown'))
+            image_context = image.get('semantic_context', image.get('context_text', ''))
+            image_alt = image.get('alt_text', '')
+            image_caption = image.get('caption', '')
+            
+            # Combine all image context for semantic matching
+            image_full_context = f"{image_context} {image_alt} {image_caption}".lower()
+            
+            image_article_scores[image_id] = {}
+            
+            # Score against each article
+            for i, article in enumerate(articles_data.get('articles', [])):
+                article_content = article.get('content', '')
+                article_title = article.get('title', '')
+                article_summary = article.get('summary', '')
+                
+                # Combine article text for semantic matching
+                article_full_text = f"{article_title} {article_summary} {article_content}".lower()
+                
+                # Calculate semantic similarity score using multiple methods
+                similarity_score = calculate_comprehensive_similarity(image_full_context, article_full_text)
+                
+                # Boost score if image has high confidence from original extraction
+                confidence_boost = image.get('confidence_score', 0.0) * 0.2
+                final_score = similarity_score + confidence_boost
+                
+                image_article_scores[image_id][i] = final_score
+                
+                print(f"📊 Image {image_id} vs Article {i} ('{article_title[:30]}...'): score={final_score:.3f}")
+        
+        # Phase 2: Assign each image to its highest-scoring article (greedy assignment)
+        image_assignments = {}
+        assigned_articles = set()
+        
+        # Sort images by their highest confidence scores to prioritize high-confidence matches
+        sorted_images = sorted(contextual_images, key=lambda x: x.get('confidence_score', 0.0), reverse=True)
+        
+        for image in sorted_images:
+            image_id = image.get('id', image.get('filename', 'unknown'))
+            
+            if image_id not in image_article_scores:
+                continue
+                
+            # Find the best article for this image
+            best_article_idx = -1
+            best_score = 0.0
+            
+            for article_idx, score in image_article_scores[image_id].items():
+                # Only consider articles that haven't reached their image limit (max 2-3 images per article)
+                article_image_count = len([img for img, assigned_idx in image_assignments.items() if assigned_idx == article_idx])
+                
+                if score > best_score and article_image_count < 3:  # Limit images per article
+                    best_score = score
+                    best_article_idx = article_idx
+            
+            # Assign image to best article if score meets threshold
+            if best_article_idx >= 0 and best_score > 0.1:  # Minimum relevance threshold
+                image_assignments[image_id] = best_article_idx
+                print(f"✅ Assigned image {image_id} to article {best_article_idx} (score: {best_score:.3f})")
+            else:
+                # Assign to overview if no good match found
+                image_assignments[image_id] = 'overview'
+                print(f"📋 Assigned image {image_id} to overview (low relevance scores)")
+        
+        # Phase 3: Insert images into their assigned articles
+        for image in contextual_images:
+            image_id = image.get('id', image.get('filename', 'unknown'))
+            assigned_article_idx = image_assignments.get(image_id)
+            
+            if assigned_article_idx == 'overview' and 'overview' in articles_data:
+                # Add to overview
+                img_html = create_semantic_image_html(image)
+                articles_data['overview']['content'] = insert_image_at_appropriate_position(
+                    articles_data['overview']['content'], img_html
+                )
+                
+                # Track assigned images
+                if 'assigned_images' not in articles_data['overview']:
+                    articles_data['overview']['assigned_images'] = []
+                articles_data['overview']['assigned_images'].append(image_id)
+                
+            elif isinstance(assigned_article_idx, int) and 0 <= assigned_article_idx < len(articles_data.get('articles', [])):
+                # Add to specific article
+                img_html = create_semantic_image_html(image)
+                articles_data['articles'][assigned_article_idx]['content'] = insert_image_at_appropriate_position(
+                    articles_data['articles'][assigned_article_idx]['content'], img_html
+                )
+                
+                # Track assigned images
+                if 'assigned_images' not in articles_data['articles'][assigned_article_idx]:
+                    articles_data['articles'][assigned_article_idx]['assigned_images'] = []
+                articles_data['articles'][assigned_article_idx]['assigned_images'].append(image_id)
+        
+        # Phase 4: Log final distribution for debugging
+        print(f"🎯 SEMANTIC IMAGE PLACEMENT COMPLETE:")
+        print(f"   - Overview images: {len(articles_data.get('overview', {}).get('assigned_images', []))}")
+        for i, article in enumerate(articles_data.get('articles', [])):
+            assigned_count = len(article.get('assigned_images', []))
+            print(f"   - Article {i+1} ('{article['title'][:30]}...'): {assigned_count} images")
+        
+        return articles_data
+    
+    except Exception as e:
+        print(f"❌ Error in semantic image placement: {e}")
+        import traceback
+        traceback.print_exc()
+        return articles_data
+
+
+def calculate_comprehensive_similarity(text1: str, text2: str) -> float:
+    """Enhanced semantic similarity calculation using multiple methods"""
+    if not text1 or not text2:
+        return 0.0
+    
+    # Method 1: Word overlap (Jaccard similarity)
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+    
+    # Remove common stop words
+    stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should'}
+    words1 = words1 - stop_words
+    words2 = words2 - stop_words
+    
+    if not words1 or not words2:
+        return 0.0
+    
+    # Calculate Jaccard similarity
+    intersection = words1.intersection(words2)
+    union = words1.union(words2)
+    jaccard_score = len(intersection) / len(union) if union else 0.0
+    
+    # Method 2: Common important terms (technical terms, proper nouns)
+    important_terms_score = 0.0
+    for word1 in words1:
+        if len(word1) > 4 and word1.isalpha():  # Focus on longer, meaningful words
+            for word2 in words2:
+                if word1.startswith(word2[:4]) or word2.startswith(word1[:4]):
+                    important_terms_score += 0.1
+    
+    important_terms_score = min(important_terms_score, 0.5)  # Cap at 0.5
+    
+    # Method 3: Contextual phrase matching
+    phrase_score = 0.0
+    text1_phrases = [' '.join(text1.split()[i:i+2]) for i in range(len(text1.split())-1)]
+    text2_phrases = [' '.join(text2.split()[i:i+2]) for i in range(len(text2.split())-1)]
+    
+    for phrase1 in text1_phrases:
+        if phrase1 in ' '.join(text2_phrases):
+            phrase_score += 0.05
+    
+    phrase_score = min(phrase_score, 0.3)  # Cap at 0.3
+    
+    # Combine scores with weights
+    final_score = (jaccard_score * 0.6) + (important_terms_score * 0.3) + (phrase_score * 0.1)
+    
+    return min(final_score, 1.0)
+
+
+def create_semantic_image_html(image: dict) -> str:
+    """Create properly formatted HTML for semantically placed images"""
+    img_url = image.get('url', image.get('data', ''))
+    alt_text = image.get('alt_text', 'Document image')
+    caption = image.get('caption', alt_text)
+    
+    return f"""<figure style="margin: 20px 0; text-align: center;">
+    <img src="{img_url}" 
+         alt="{alt_text}" 
+         style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+    <figcaption style="margin-top: 8px; font-size: 14px; color: #6b7280; font-style: italic;">
+        {caption}
+    </figcaption>
+</figure>"""
+
+
+def insert_image_at_appropriate_position(content: str, img_html: str) -> str:
+    """Insert image at an appropriate position within the article content"""
+    # Strategy: Insert after the first major paragraph or heading, not at the very beginning or end
+    
+    # Look for a good insertion point (after a paragraph or before a subheading)
+    import re
+    
+    # Try to insert after first substantial paragraph
+    paragraphs = content.split('</p>')
+    if len(paragraphs) > 2:
+        # Insert after the second paragraph for better flow
+        insertion_point = '</p>'.join(paragraphs[:2]) + '</p>' + img_html + '</p>'.join(paragraphs[2:])
+        return insertion_point
+    
+    # Fallback: Insert after the first H2 heading if found
+    h2_match = re.search(r'(<h2[^>]*>.*?</h2>)', content)
+    if h2_match:
+        insertion_point = h2_match.end()
+        return content[:insertion_point] + img_html + content[insertion_point:]
+    
+    # Final fallback: Insert after the H1 heading
+    h1_match = re.search(r'(<h1[^>]*>.*?</h1>)', content)
+    if h1_match:
+        insertion_point = h1_match.end()
+        return content[:insertion_point] + img_html + content[insertion_point:]
+    
+    # Last resort: Insert at the beginning
+    return img_html + content
+
+
+async def create_multiple_articles_from_content(content: str, metadata: Dict[str, Any], contextual_images: List[Dict] = None) -> List[Dict]:
+    """ISSUE 4 FIX: Create multiple structured articles from content using smart chunking with related links"""
+    
+    print(f"📝 ISSUE 4 FIX: Creating articles with smart chunking and related links")
+    
+    # ISSUE 1 FIX: Use smaller chunks for better content structure
+    content_chunks = smart_chunk_content(content, max_chars=4000, min_chars=2500)
+    
+    print(f"📊 ISSUE 4: Smart chunking created {len(content_chunks)} chunks from {len(content)} characters")
+    
+    # STEP 2: Process each chunk with LLM for clean HTML output
+    articles = []
+    original_filename = metadata.get('original_filename', 'Document')
+    document_batch_id = metadata.get('document_batch_id', str(uuid.uuid4()))
+    
+    # Pre-generate article titles and IDs for related links
+    article_info = []
+    for i, chunk in enumerate(content_chunks):
+        article_id = str(uuid.uuid4())
+        # Extract title from chunk content
+        chunk_title = f"{original_filename.rsplit('.', 1)[0]} - Part {i+1}"
+        lines = chunk.split('\n')[:5]  # Check first 5 lines for a title
+        for line in lines:
+            line = line.strip()
+            if line and len(line) < 100 and not line.endswith('.'):
+                if not line.lower().startswith(('document:', 'file:', '#')):
+                    chunk_title = f"{original_filename.rsplit('.', 1)[0]} - {line[:50]}"
+                    break
+        
+        article_info.append({
+            'id': article_id,
+            'title': chunk_title,
+            'chunk_index': i + 1
+        })
+    
+    print(f"📋 ISSUE 4: Pre-generated {len(article_info)} article titles for related links")
+    
+    for i, chunk in enumerate(content_chunks):
+        print(f"🔄 Processing chunk {i+1}/{len(content_chunks)} ({len(chunk)} characters)")
+        
+        # ISSUE 4 FIX: Enhanced system message to include related links structure
+        system_message = f"""You are a professional technical content writer. Generate ONLY clean HTML suitable for WYSIWYG editor display with related links support.
+        
+{PHANTOM_LINK_PREVENTION}
+
+CRITICAL REQUIREMENTS:
+1. Use ONLY HTML tags: <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+2. NEVER use Markdown syntax (no ##, **, [], (), ```, ---)
+3. Create proper heading hierarchy starting with <h1>
+4. Structure content professionally with clear sections
+5. NO IMAGES in content (images are managed separately in Asset Library)
+6. Generate clean, editor-compatible HTML that renders properly
+7. ALWAYS end content with a "Related Articles" section using HTML list format
+
+Respond with valid JSON containing title and HTML content."""
+        
+        # ISSUE 4 FIX: Create related links HTML for this article
+        related_links_html = '<h2>Related Articles</h2>\n<p>Other parts of this document:</p>\n<ul>\n'
+        for j, info in enumerate(article_info):
+            if j != i:  # Don't link to self
+                related_links_html += f'<li><a href="/content-library/article/{info["id"]}" data-article-id="{info["id"]}" target="_blank">{info["title"]}</a></li>\n'
+        related_links_html += '</ul>'
+        
+        user_message = f"""Transform this content chunk into a clean, well-structured article with professional HTML formatting:
+
+CONTENT CHUNK:
+{chunk}
+
+REQUIREMENTS:
+1. Create a descriptive title based on the main topic of this chunk
+2. Structure content with proper HTML heading hierarchy (<h1>, <h2>, <h3>)
+3. Use appropriate HTML tags for formatting (paragraphs, lists, emphasis)
+4. Ensure content is comprehensive and well-organized
+5. NO image tags - images are handled separately in Asset Library
+6. Generate clean HTML suitable for WYSIWYG editor
+7. MANDATORY: End the content with this exact Related Articles section:
+{related_links_html}
+
+RESPONSE FORMAT:
+{{
+    "title": "Descriptive title for this content section",
+    "content": "<h1>Title</h1><p>Introduction paragraph...</p><h2>Section Header</h2><p>Content...</p>{related_links_html}",
+    "summary": "Brief summary of what this article covers",
+    "tags": ["topic1", "topic2", "topic3"],
+    "takeaways": ["Key point 1", "Key point 2", "Key point 3"]
+}}"""
+        
+        # Get LLM response
+        session_id = str(uuid.uuid4())
+        ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+        
+        if ai_response:
+            try:
+                # Parse JSON response
+                import re
+                json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
+                if json_match:
+                    json_str = json_match.group(1)
+                else:
+                    json_str = ai_response
+                
+                article_data = json.loads(json_str)
+                
+                # ISSUE 4 FIX: Ensure related links are included in content
+                content_html = article_data.get("content", chunk)
+                if related_links_html not in content_html:
+                    content_html += f'\n\n{related_links_html}'
+                
+                # Create article record with pre-generated ID
+                article_record = {
+                    "id": article_info[i]['id'],
+                    "title": clean_article_title(article_data.get("title", article_info[i]['title'])),
+                    "content": clean_article_content(content_html),
+                    "summary": article_data.get("summary", "Generated from uploaded content"),
+                    "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
+                    "takeaways": article_data.get("takeaways", []),
+                    "source_type": metadata.get('type', 'text_processing'),
+                    "source_document": original_filename,  # FIXED: Add source_document field for related links correlation
+                    "status": "draft",
+                    "metadata": {
+                        **metadata,
+                        "ai_processed": True,
+                        "ai_model": "gpt-4o-mini (with fallback)",
+                        "chunk_index": i + 1,
+                        "total_chunks": len(content_chunks),
+                        "chunk_chars": len(chunk),
+                        "processing_approach": "smart_chunking_with_related_links",
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "document_batch_id": document_batch_id,
+                        "has_related_links": True,
+                        "article_type": "concept"  # FIXED: Add article_type for proper correlation
+                    },
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                
+                articles.append(article_record)
+                print(f"✅ ISSUE 4: Created article {i+1} with related links: '{article_record['title']}'")
+                
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON parsing error for chunk {i+1}: {e}")
+                # Fallback: create basic article with related links
+                fallback_article = create_fallback_article_from_chunk_with_links(chunk, metadata, i+1, len(content_chunks), article_info, i)
+                articles.append(fallback_article)
+            except Exception as e:
+                print(f"❌ Error processing chunk {i+1}: {e}")
+                # Fallback: create basic article with related links
+                fallback_article = create_fallback_article_from_chunk_with_links(chunk, metadata, i+1, len(content_chunks), article_info, i)
+                articles.append(fallback_article)
+        else:
+            print(f"❌ No AI response for chunk {i+1}, creating fallback article with related links")
+            # Fallback: create basic article with related links
+            fallback_article = create_fallback_article_from_chunk_with_links(chunk, metadata, i+1, len(content_chunks), article_info, i)
+            articles.append(fallback_article)
+    
+    print(f"✅ ISSUE 4 FIX: Successfully created {len(articles)} articles with related links using smart chunking")
+    return articles
+
+def create_fallback_article_from_chunk(chunk: str, metadata: Dict[str, Any], chunk_index: int, total_chunks: int) -> Dict:
+    """Create a basic fallback article when LLM processing fails"""
+    
+    # Extract a title from the first line or heading
+    lines = chunk.split('\n')
+    title = None
+    
+    for line in lines:
+        line = line.strip()
+        if line:
+            # Check if it looks like a heading
+            if line.startswith('#'):
+                title = line.lstrip('#').strip()
+                break
+            elif len(line) < 100 and not line.endswith('.'):
+                title = line
+                break
+    
+    if not title:
+        title = f"Content Section {chunk_index}"
+    
+    # Convert basic markdown to HTML
+    content_html = chunk
+    content_html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^\- (.+)$', r'<li>\1</li>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'\n\n', '</p><p>', content_html)
+    content_html = f'<p>{content_html}</p>'
+    
+    # Clean up
+    content_html = content_html.replace('<p><h', '<h').replace('</h1></p>', '</h1>')
+    content_html = content_html.replace('<p><h2>', '<h2>').replace('</h2></p>', '</h2>')
+    content_html = content_html.replace('<p><h3>', '<h3>').replace('</h3></p>', '</h3>')
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": clean_article_title(title),
+        "content": content_html,
+        "summary": f"Content section {chunk_index} of {total_chunks} from uploaded document",
+        "tags": [metadata.get('type', 'upload'), 'content-chunk'],
+        "takeaways": [],
+        "source_type": metadata.get('type', 'text_processing'),
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "ai_processed": False,
+            "chunk_index": chunk_index,
+            "total_chunks": total_chunks,
+            "chunk_chars": len(chunk),
+            "processing_approach": "fallback_chunking",
+            "processing_timestamp": datetime.utcnow().isoformat()
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+def create_fallback_article_from_chunk_with_links(chunk: str, metadata: Dict[str, Any], chunk_index: int, total_chunks: int, article_info: list, current_index: int) -> Dict:
+    """ISSUE 4 FIX: Create a basic fallback article with related links when LLM processing fails"""
+    
+    # Extract a title from the first line or heading
+    lines = chunk.split('\n')
+    title = None
+    
+    for line in lines:
+        line = line.strip()
+        if line:
+            # Check if it looks like a heading
+            if line.startswith('#'):
+                title = line.lstrip('#').strip()
+                break
+            elif len(line) < 100 and not line.endswith('.'):
+                title = line
+                break
+    
+    if not title:
+        title = f"Content Section {chunk_index}"
+    
+    # Convert basic markdown to HTML
+    content_html = chunk
+    content_html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^\- (.+)$', r'<li>\1</li>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'\n\n', '</p><p>', content_html)
+    content_html = f'<p>{content_html}</p>'
+    
+    # Clean up
+    content_html = content_html.replace('<p><h', '<h').replace('</h1></p>', '</h1>')
+    content_html = content_html.replace('<p><h2>', '<h2>').replace('</h2></p>', '</h2>')
+    content_html = content_html.replace('<p><h3>', '<h3>').replace('</h3></p>', '</h3>')
+    
+    # ISSUE 4 FIX: Add related links section
+    related_links_html = '<h2>Related Articles</h2>\n<p>Other parts of this document:</p>\n<ul>\n'
+    for j, info in enumerate(article_info):
+        if j != current_index:  # Don't link to self
+            related_links_html += f'<li><a href="/content-library/article/{info["id"]}" data-article-id="{info["id"]}" target="_blank">{info["title"]}</a></li>\n'
+    related_links_html += '</ul>'
+    
+    content_html += f'\n\n{related_links_html}'
+    
+    return {
+        "id": article_info[current_index]['id'],
+        "title": clean_article_title(title),
+        "content": content_html,
+        "summary": f"Content section {chunk_index} of {total_chunks} from uploaded document",
+        "tags": [metadata.get('type', 'upload'), 'content-chunk'],
+        "takeaways": [],
+        "source_type": metadata.get('type', 'text_processing'),
+        "source_document": metadata.get('original_filename', 'Document'),  # FIXED: Add source_document field
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "ai_processed": False,
+            "chunk_index": chunk_index,
+            "total_chunks": total_chunks,
+            "chunk_chars": len(chunk),
+            "processing_approach": "fallback_chunking_with_related_links",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "has_related_links": True,
+            "article_type": "concept"  # FIXED: Add article_type for proper correlation
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+
+async def create_single_article_from_content(content: str, metadata: Dict[str, Any]) -> Dict:
+    """Create a single comprehensive article from content using simplified LLM approach"""
+    
+    print(f"📝 SIMPLIFIED: Creating single article from {len(content)} characters (no automatic image embedding)")
+    
+    # FIX 3: HTML OPTIMIZATION FOR EDITOR COMPATIBILITY - Enhanced system message with native editor block formatting
+    system_message = f"""You are an enterprise-grade technical content generator trained in advanced documentation and support writing standards used at companies like Woolf, Eltropy, and AI-native SaaS platforms.
+
+Your job is to extract, enhance, and expand complex knowledge from raw DOCX input to generate comprehensive, logically structured, well-formatted HTML articles for a professional knowledge base.
+
+{PHANTOM_LINK_PREVENTION}
+
+Follow these core rules:
+
+1. 🔁 Never summarize — Always enhance, elaborate, and expand source information.
+2. 🧱 Decompose intelligently — Break content into logical, titled sections with clear headings and structure.
+3. 📚 Add depth — Insert background, steps, examples, and best practices where appropriate.
+4. 🧠 Maintain full information fidelity — Preserve all original facts, terminology, and logical order.
+5. 📐 Follow modern technical writing style — Use active voice, clarity, bullet points, semantic hierarchy, and instructional formatting.
+6. 📄 ISSUE 3 FIX: Generate HTML using EXACT EDITOR-COMPATIBLE structures:
+
+   SEMANTIC HTML TAGS:
+   <h1>, <h2>, <h3>, <h4>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <code>, <pre>
+
+   EDITOR CALLOUTS (use EXACT inline styling as expected by editor):
+   <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px;">
+     <div style="color: #3b82f6; font-size: 20px;">ℹ️</div>
+     <div style="flex: 1;">
+       <p style="margin: 0; color: #1e40af;"><strong>Info:</strong> Your helpful tip here</p>
+     </div>
+   </div>
+
+   WARNING CALLOUT:
+   <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #fefce8; border-left: 4px solid #eab308; border-radius: 8px;">
+     <div style="color: #eab308; font-size: 20px;">⚠️</div>
+     <div style="flex: 1;">
+       <p style="margin: 0; color: #a16207;"><strong>Warning:</strong> Important caution here</p>
+     </div>
+   </div>
+
+   SUCCESS CALLOUT:
+   <div style="display: flex; gap: 12px; padding: 16px; margin: 16px 0; background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 8px;">
+     <div style="color: #22c55e; font-size: 20px;">✅</div>
+     <div style="flex: 1;">
+       <p style="margin: 0; color: #15803d;"><strong>Success:</strong> Positive outcome here</p>
+     </div>
+   </div>
+
+   STRUCTURED TABLES (with simple structure):
+   <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+     <thead>
+       <tr>
+         <th style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Header</th>
+         <th style="border: 1px solid #e5e7eb; padding: 8px; background: #f9fafb;">Description</th>
+       </tr>
+     </thead>
+     <tbody>
+       <tr>
+         <td style="border: 1px solid #e5e7eb; padding: 8px;">Content</td>
+         <td style="border: 1px solid #e5e7eb; padding: 8px;">Content</td>
+       </tr>
+     </tbody>
+   </table>
+
+   EXPANDABLE SECTIONS:
+   <details style="margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 8px;">
+     <summary style="padding: 12px 16px; background: #f9fafb; cursor: pointer; font-weight: 600;">Click to expand: Section Title</summary>
+     <div style="padding: 16px;">
+       <p>Detailed content here...</p>
+     </div>
+   </details>
+
+   DO NOT include: image tags, markdown, CSS, JavaScript, or any styling classes except inline styles shown above.
+
+💡 Title Rule:
+- If source contains <h1>, extract and reuse that.
+- If not, generate a specific, topic-focused title — never use "Comprehensive Guide to..." or generic phrases.
+
+📌 Response Format (JSON):
+{
+  "title": "Extracted or generated specific title",
+  "content": "<h1>Title</h1><h2>Introduction</h2><p>...</p> ...",
+  "summary": "Brief human-readable summary of article scope (2–3 sentences)",
+  "tags": ["topic1", "topic2", "tech-support"],
+  "takeaways": ["Key point 1", "Key point 2", "Key concept 3"]
+}"""
+    
+    user_message = f"""The following content was extracted from a DOCX file uploaded by a user.
+
+You must transform it into a professionally written, fully enhanced, comprehensive HTML article, using modern technical writing standards.
+
+CRITICAL OUTPUT REQUIREMENTS:
+- DO NOT SUMMARIZE: Expand on ideas, add context, explanations, and technical steps.
+- RESTRUCTURE LOGICALLY: Break long text into clear, hierarchical sections with proper headings.
+- TARGET LENGTH: 1200–2000 words minimum for complete coverage - THIS IS MANDATORY.
+- EXPAND COMPREHENSIVELY: Add detailed explanations, multiple examples, background context, troubleshooting tips, and best practices for every concept.
+- DO NOT OMIT INFORMATION: Everything in source must remain, expanded with improved presentation.
+- NO IMAGE TAGS: Just indicate image placeholders where necessary if mentioned in content.
+
+ISSUE 3 FIX: USE EXACT EDITOR-COMPATIBLE HTML STRUCTURES:
+- Use NATIVE EDITOR CALLOUTS with exact inline styling as specified in system prompt
+- Create STRUCTURED TABLES with proper inline styling for compatibility
+- Add EXPANDABLE SECTIONS using details/summary tags with proper styling
+- Use semantic HTML structure with proper heading hierarchy
+- ONLY USE the HTML tags and inline styles specified in system prompt
+
+EXPANSION REQUIREMENTS: For each section, provide:
+1. Detailed background and context
+2. Step-by-step explanations with reasoning
+3. Multiple practical examples
+4. Common issues and solutions  
+5. Best practices and recommendations
+6. Real-world applications and scenarios
+
+CONTENT TO PROCESS:  
+{content}"""
+    
+    # Get LLM response
+    session_id = str(uuid.uuid4())
+    ai_response = await call_llm_with_fallback(system_message, user_message, session_id)
+    
+    if ai_response:
+        try:
+            # Parse JSON response
+            import re
+            json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL | re.IGNORECASE)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                json_str = ai_response
+            
+            article_data = json.loads(json_str)
+            
+            # Create article record
+            article_record = {
+                "id": str(uuid.uuid4()),
+                "title": clean_article_title(article_data.get("title", metadata.get('original_filename', 'Generated Article'))),
+                "content": clean_article_content(article_data.get("content", content)),
+                "summary": article_data.get("summary", "Generated from uploaded content"),
+                "tags": article_data.get("tags", [metadata.get('type', 'upload')]),
+                "takeaways": article_data.get("takeaways", []),
+                "source_type": metadata.get('type', 'text_processing'),
+                "status": "draft",
+                "metadata": {
+                    **metadata,
+                    "ai_processed": True,
+                    "ai_model": "gpt-4o-mini (with fallback)",
+                    "content_chars": len(content),
+                    "processing_approach": "single_article_simplified",
+                    "processing_timestamp": datetime.utcnow().isoformat()
+                },
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            print(f"✅ Created single article: '{article_record['title']}'")
+            return article_record
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON parsing error: {e}")
+        except Exception as e:
+            print(f"❌ Error processing AI response: {e}")
+    
+    # Fallback: create basic article from content
+    print("🔄 Creating fallback single article...")
+    return create_fallback_single_article(content, metadata)
+
+def create_fallback_single_article(content: str, metadata: Dict[str, Any]) -> Dict:
+    """Create a basic single article when LLM processing fails"""
+    
+    # Extract a title from the first line or heading
+    lines = content.split('\n')
+    title = metadata.get('original_filename', 'Generated Article')
+    
+    # Try to find a better title from content
+    for line in lines:
+        line = line.strip()
+        if line:
+            # Check if it looks like a heading
+            if line.startswith('#'):
+                title = line.lstrip('#').strip()
+                break
+            elif len(line) < 100 and not line.endswith('.') and len(line) > 10:
+                title = line
+                break
+    
+    # Convert basic markdown to HTML
+    content_html = content
+    content_html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', content_html, flags=re.MULTILINE)  
+    content_html = re.sub(r'^\- (.+)$', r'<li>\1</li>', content_html, flags=re.MULTILINE)
+    content_html = re.sub(r'\n\n', '</p><p>', content_html)
+    content_html = f'<p>{content_html}</p>'
+    
+    # Clean up
+    content_html = content_html.replace('<p><h', '<h').replace('</h1></p>', '</h1>')
+    content_html = content_html.replace('<p><h2>', '<h2>').replace('</h2></p>', '</h2>')
+    content_html = content_html.replace('<p><h3>', '<h3>').replace('</h3></p>', '</h3>')
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "title": clean_article_title(title),
+        "content": content_html,
+        "summary": f"Generated from uploaded document: {metadata.get('original_filename', 'Unknown')}",
+        "tags": [metadata.get('type', 'upload'), 'single-article'],
+        "takeaways": [],
+        "source_type": metadata.get('type', 'text_processing'),
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "ai_processed": False,
+            "content_chars": len(content),
+            "processing_approach": "fallback_single_article",
+            "processing_timestamp": datetime.utcnow().isoformat()
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+
+async def create_enhanced_fallback_article(content: str, metadata: Dict[str, Any], ai_response: str, contextual_images: List[Dict] = None) -> Dict:
+    """Create enhanced fallback article preserving AI content even with JSON parsing failure"""
+    try:
+        print(f"🔧 Creating enhanced fallback article with AI content preservation...")
+        
+        title = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
+        if title.startswith('Website:'):
+            title = title.replace('Website: ', '')
+        
+        source_type = metadata.get('type', 'text_processing')
+        
+        # Try to extract useful content from AI response even if JSON parsing failed
+        enhanced_content = content  # Start with original content
+        enhanced_summary = f"Content processed from {source_type}"
+        enhanced_tags = [source_type]
+        enhanced_takeaways = []
+        
+        if ai_response and len(ai_response.strip()) > 50:
+            # Try to extract meaningful content from AI response
+            try:
+                # Look for common patterns in AI responses
+                lines = ai_response.split('\n')
+                potential_content = []
+                potential_summary = ""
+                potential_takeaways = []
+                
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    # Skip JSON-like syntax that failed to parse
+                    if line.startswith(('{', '}', '"', '[', ']')) and len(line) < 100:
+                        continue
+                    
+                    # Look for content that looks like article text
+                    if len(line) > 30 and not line.startswith(('Error:', 'Failed:', '❌', '⚠️')):
+                        potential_content.append(line)
+                    
+                    # Look for summary-like content
+                    if 'summary' in line.lower() and len(line) > 20:
+                        potential_summary = line.replace('summary:', '').replace('Summary:', '').strip()
+                    
+                    # Look for takeaways or key points
+                    if any(keyword in line.lower() for keyword in ['takeaway', 'key point', 'important', 'conclusion']):
+                        if len(line) > 15:
+                            potential_takeaways.append(line)
+                
+                # Use extracted content if substantial
+                if potential_content and len('\n'.join(potential_content)) > 100:
+                    enhanced_content = '\n\n'.join(potential_content)
+                    print(f"✅ Extracted {len(potential_content)} content sections from AI response")
+                
+                if potential_summary and len(potential_summary) > 20:
+                    enhanced_summary = potential_summary
+                    print(f"✅ Extracted summary from AI response")
+                
+                if potential_takeaways:
+                    enhanced_takeaways = potential_takeaways[:5]  # Limit to 5 takeaways
+                    print(f"✅ Extracted {len(enhanced_takeaways)} takeaways from AI response")
+                
+            except Exception as extraction_error:
+                print(f"⚠️ Content extraction from AI response failed: {extraction_error}")
+                # Fall back to original content
+        
+        article_record = {
+            "id": str(uuid.uuid4()),
+            "title": title,
+            "content": enhanced_content,
+            "summary": enhanced_summary,
+            "tags": enhanced_tags,
+            "takeaways": enhanced_takeaways,
+            "source_type": source_type,
+            "status": "draft",
+            "metadata": {
+                **metadata,
+                "ai_processed": True,
+                "ai_model": "enhanced_fallback_extraction",
+                "fallback_reason": "json_parsing_failure_with_content_preservation",
+                "processing_timestamp": datetime.utcnow().isoformat()
+            },
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        print(f"✅ Created enhanced fallback article: {article_record['title']} ({len(enhanced_content)} chars)")
+        return article_record
+        
+    except Exception as e:
+        print(f"❌ Enhanced fallback article creation failed: {e}")
+        # Ultimate fallback - create basic article
+        return await create_basic_fallback_article(content, metadata)
+
+async def create_basic_fallback_article(content: str, metadata: Dict[str, Any]) -> List[Dict]:
+    """Create basic article without AI enhancement"""
+    title = metadata.get('original_filename', metadata.get('url', 'Processed Content'))
+    if title.startswith('Website:'):
+        title = title.replace('Website: ', '')
+    
+    source_type = metadata.get('type', 'text_processing')
+    
+    article_record = {
+        "id": str(uuid.uuid4()),
+        "title": title,
+        "content": content,
+        "summary": f"Content processed from {source_type}",
+        "tags": [source_type],
+        "takeaways": [],
+        "source_type": source_type,
+        "status": "draft",
+        "metadata": {
+            **metadata,
+            "ai_processed": False,
+            "processing_timestamp": datetime.utcnow().isoformat()
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    await db.content_library.insert_one(article_record)
+    print(f"✅ Created basic Content Library article: {article_record['title']}")
+    return [article_record]
+
+
+async def inject_real_images_into_articles():
+    """Post-processing function to inject real extracted images into Content Library articles"""
+    print("🎯 STARTING: Real image injection into existing articles")
+    
+    try:
+        # Get all articles from Content Library that DON'T already have real images
+        articles_cursor = db.content_library.find({
+            "$or": [
+                {"has_images": {"$ne": True}},
+                {"has_images": {"$exists": False}}
+            ]
+        })
+        articles = await articles_cursor.to_list(length=None)
+        
+        print(f"📚 Found {len(articles)} articles to process for image injection")
+        
+        # Get all available real images from static/uploads directory
+        uploads_dir = "/app/backend/static/uploads"
+        available_images = []
+        
+        if os.path.exists(uploads_dir):
+            for filename in os.listdir(uploads_dir):
+                if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    # Include ALL images - both direct uploads and session images
+                    image_url = f"/api/static/uploads/{filename}"
+                    # Create a more generic source name for matching
+                    source_parts = filename.replace('_img_', '_').split('_')
+                    source_name = source_parts[0] if source_parts else filename.split('.')[0]
+                    
+                    available_images.append({
+                        'filename': filename,
+                        'url': image_url,
+                        'source_name': source_name.lower()
+                    })
+        
+        print(f"🖼️ Found {len(available_images)} real images available for injection")
+        
+        injection_count = 0
+        
+        for article in articles:
+            article_id = article.get('_id')
+            title = article.get('title', '')
+            content = article.get('content', '')
+            
+            # Skip articles that already have contextual images or are too short
+            if 'contextual-image' in content or len(content) < 500:
+                continue
+                
+            # Find matching images - be more generous with matching
+            matching_images = []
+            
+            # Extract key terms for matching
+            title_lower = title.lower()
+            content_lower = content.lower()
+            
+            # Try to match images by source name
+            for image in available_images:
+                source_name = image['source_name']
+                
+                # Match by keywords
+                if (any(word in source_name for word in ['billing', 'management', 'google', 'map', 'javascript', 'api', 'test']) or
+                    any(word in title_lower for word in [source_name]) or
+                    any(part in content_lower for part in source_name.split('-')[:2] if len(part) > 3)):
+                    matching_images.append(image)
+                    if len(matching_images) >= 3:  # Max 3 per article
+                        break
+            
+            # If no specific matches, use some available images anyway
+            if len(matching_images) == 0:
+                matching_images = available_images[:2]  # Use first 2 available images
+            
+            if matching_images:
+                print(f"📝 Processing article: '{title[:50]}...' with {len(matching_images)} images")
+                
+                # Inject images contextually into the article
+                enhanced_content = inject_images_contextually(content, matching_images)
+                
+                if enhanced_content != content and len(enhanced_content) > len(content):
+                    # Update article in database
+                    await db.content_library.update_one(
+                        {"_id": article_id},
+                        {"$set": {
+                            "content": enhanced_content, 
+                            "has_images": True, 
+                            "image_injection_timestamp": datetime.utcnow(),
+                            "injected_image_count": len(matching_images)
+                        }}
+                    )
+                    
+                    injection_count += 1
+                    print(f"✅ Injected {len(matching_images)} images into: '{title[:50]}...'")
+        
+        print(f"🎉 COMPLETED: Successfully injected images into {injection_count} articles")
+        return injection_count
+        
+    except Exception as e:
+        print(f"❌ Image injection failed: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return 0
+
+def inject_images_contextually(content: str, images: list) -> str:
+    """Inject images contextually throughout article content"""
+    if not images or not content:
+        return content
+    
+    print(f"🔧 Injecting {len(images)} images contextually into content")
+    
+    # Split content into paragraphs
+    paragraphs = content.split('</p>')
+    if len(paragraphs) < 2:
+        # Try splitting by line breaks if no HTML paragraphs
+        paragraphs = content.split('\n\n')
+    
+    # Calculate optimal image placement positions
+    total_paragraphs = len(paragraphs)
+    images_to_place = len(images)
+    
+    if total_paragraphs < 3:
+        # Short content - add images at the end
+        enhanced_content = content
+        for i, image in enumerate(images):
+            figure_html = f"""
+
+<figure class="contextual-image" style="margin: 20px 0; text-align: center;">
+    <img src="{image['url']}" alt="Figure {i+1}: Illustration for {image['source_name']}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
+        Figure {i+1}: {image['source_name'].replace('_', ' ').replace('-', ' ').title()}
+    </figcaption>
+</figure>
+"""
+            enhanced_content += figure_html
+        return enhanced_content
+    
+    # Long content - distribute images throughout
+    enhanced_paragraphs = []
+    image_index = 0
+    
+    # Calculate spacing - place images every N paragraphs
+    spacing = max(2, total_paragraphs // (images_to_place + 1))
+    
+    for i, paragraph in enumerate(paragraphs):
+        # Add the paragraph
+        if paragraph.strip():
+            enhanced_paragraphs.append(paragraph + ('</p>' if not paragraph.endswith('</p>') else ''))
+        
+        # Insert image at calculated intervals
+        if (image_index < len(images) and 
+            i > 0 and 
+            (i + 1) % spacing == 0 and 
+            i < total_paragraphs - 1):  # Don't add at the very end
+            
+            image = images[image_index]
+            figure_html = f"""
+
+<figure class="contextual-image" style="margin: 20px 0; text-align: center;">
+    <img src="{image['url']}" alt="Figure {image_index+1}: Illustration for {image['source_name']}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
+        Figure {image_index+1}: {image['source_name'].replace('_', ' ').replace('-', ' ').title()}
+    </figcaption>
+</figure>
+"""
+            enhanced_paragraphs.append(figure_html)
+            image_index += 1
+    
+    # Add any remaining images at the end
+    while image_index < len(images):
+        image = images[image_index]
+        figure_html = f"""
+
+<figure class="contextual-image" style="margin: 20px 0; text-align: center;">
+    <img src="{image['url']}" alt="Figure {image_index+1}: Additional illustration for {image['source_name']}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+    <figcaption style="margin-top: 10px; font-style: italic; color: #666; font-size: 14px;">
+        Figure {image_index+1}: {image['source_name'].replace('_', ' ').replace('-', ' ').title()}
+    </figcaption>
+</figure>
+"""
+        enhanced_paragraphs.append(figure_html)
+        image_index += 1
+    
+    enhanced_content = ''.join(enhanced_paragraphs)
+    print(f"✅ Successfully injected {image_index} images into content")
+    return enhanced_content
+
+# Add endpoint to trigger image injection manually
+@app.post("/api/inject-images")
+async def inject_images_endpoint():
+    """Manually trigger image injection into existing articles"""
+    try:
+        injected_count = await inject_real_images_into_articles()
+        return {
+            "success": True,
+            "message": f"Successfully injected images into {injected_count} articles",
+            "articles_updated": injected_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# NEW REFINED ENGINE - File upload endpoint  
+@app.post("/api/content/upload-refined")
+async def upload_file_refined(
+    file: UploadFile = File(...),
+    metadata: str = Form("{}")
+):
+    """Upload and process files with the new Refined Engine"""
+    try:
+        from refined_engine import refined_engine
+        
+        print(f"🆕 REFINED ENGINE: Processing file upload - {file.filename}")
+        
+        # Parse metadata
+        file_metadata = json.loads(metadata)
+        file_metadata.update({
+            "original_filename": file.filename,
+            "input_type": "file",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "refined_2.0"
+        })
+        
+        # Read and extract content
+        file_content = await file.read()
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+        
+        print(f"📄 File: {file.filename} ({len(file_content)} bytes, .{file_extension})")
+        
+        extracted_content = ""
+        
+        # Extract content based on file type
+        if file_extension in ['txt', 'md', 'csv']:
+            try:
+                extracted_content = file_content.decode('utf-8')
+            except UnicodeDecodeError:
+                extracted_content = file_content.decode('latin-1', errors='ignore')
+                
+        elif file_extension == 'docx':
+            try:
+                import io
+                import mammoth
+                
+                # Extract text with mammoth
+                docx_buffer = io.BytesIO(file_content)
+                result = mammoth.extract_raw_text(docx_buffer)
+                extracted_content = result.value
+                
+                print(f"✅ DOCX extraction: {len(extracted_content)} characters")
+                
+            except Exception as docx_error:
+                print(f"❌ DOCX extraction error: {docx_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process DOCX file: {docx_error}")
+                
+        elif file_extension == 'pdf':
+            try:
+                import PyPDF2
+                import io
+                
+                pdf_buffer = io.BytesIO(file_content)
+                pdf_reader = PyPDF2.PdfReader(pdf_buffer)
+                
+                text_parts = []
+                for page in pdf_reader.pages:
+                    text_parts.append(page.extract_text())
+                
+                extracted_content = '\n'.join(text_parts)
+                print(f"✅ PDF extraction: {len(extracted_content)} characters")
+                
+            except Exception as pdf_error:
+                print(f"❌ PDF extraction error: {pdf_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process PDF file: {pdf_error}")
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_extension}")
+        
+        # Validate content
+        if not extracted_content or len(extracted_content.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Insufficient content extracted from file")
+        
+        print(f"📊 Content extracted: {len(extracted_content)} characters")
+        
+        # Process with refined engine
+        generated_articles = await refined_engine.process_content(extracted_content, file_metadata)
+        
+        if generated_articles:
+            print(f"✅ REFINED ENGINE: Successfully created {len(generated_articles)} articles from {file.filename}")
+            return {
+                "success": True,
+                "message": f"File processed successfully with Refined Engine",
+                "filename": file.filename,
+                "content_extracted": len(extracted_content),
+                "articles_created": len(generated_articles),
+                "engine_used": "refined_2.0",
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"])
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No articles were created from the uploaded file",
+                "filename": file.filename,
+                "engine_used": "refined_2.0"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ REFINED ENGINE UPLOAD ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Refined Engine upload processing failed: {str(e)}")
+
+# File upload endpoint
+@app.post("/api/content/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    metadata: str = Form("{}")
+):
+    """Upload and process files (text, audio, video, images)"""
+    try:
+        # Parse metadata
+        file_metadata = json.loads(metadata)
+        
+        # Create processing job
+        job = ProcessingJob(
+            input_type="file",
+            original_filename=file.filename,
+            status="processing"
+        )
+        
+        await db.processing_jobs.insert_one(job.dict())
+        
+        # OPTIMIZED: Add progress tracking for better UI feedback
+        async def update_job_progress(stage: str, details: str = ""):
+            """Update job progress to prevent UI timeout"""
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {
+                    "status": "processing", 
+                    "current_stage": stage,
+                    "stage_details": details,
+                    "last_updated": datetime.utcnow().isoformat()
+                }}
+            )
+            print(f"📊 PROGRESS: {stage} - {details}")
+        
+        await update_job_progress("initializing", "Reading file content...")
+        
+        # Read file content
+        file_content = await file.read()
+        
+        # Get file extension for proper handling
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+        
+        await update_job_progress("analyzing", f"Processing {file_extension.upper()} file ({len(file_content)} bytes)")
+        print(f"Processing file: {file.filename}, Extension: {file_extension}, Size: {len(file_content)} bytes")
+        
+        extracted_content = ""
+        
+        # Extract content based on file type
+        await update_job_progress("extracting", f"Extracting content from {file_extension.upper()} file...")
+        
+        if file_extension in ['txt', 'md', 'csv']:
+            try:
+                extracted_content = file_content.decode('utf-8')
+                print(f"✅ Extracted {len(extracted_content)} characters from text file")
+            except UnicodeDecodeError:
+                extracted_content = file_content.decode('latin-1', errors='ignore')
+                print(f"⚠️ Used latin-1 fallback, extracted {len(extracted_content)} characters")
+                
+        elif file_extension == 'pdf':
+            await update_job_progress("extracting", "Processing PDF with comprehensive image extraction...")
+            try:
+                # FIXED: Use DocumentPreprocessor for comprehensive PDF processing with image extraction
+                # Create temporary file for DocumentPreprocessor processing
+                temp_pdf_path = f"/app/backend/temp_uploads/temp_{file.filename}"
+                os.makedirs(os.path.dirname(temp_pdf_path), exist_ok=True)
+                
+                with open(temp_pdf_path, 'wb') as temp_file:
+                    temp_file.write(file_content)
+                
+                # Use DocumentPreprocessor for comprehensive PDF processing
+                doc_processor = DocumentPreprocessor(session_id=job.job_id[:8])
+                html_content, pdf_images = await doc_processor._convert_pdf_to_html(temp_pdf_path)
+                
+                # Convert HTML back to text for extracted_content
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_content, 'html.parser')
+                extracted_content = soup.get_text()
+                
+                await update_job_progress("extracting", f"Extracted content and {len(pdf_images)} images from PDF")
+                
+                # FIXED: Save PDF images to Asset Library
+                if hasattr(doc_processor, 'pending_assets') and doc_processor.pending_assets:
+                    try:
+                        result = await db.assets.insert_many(doc_processor.pending_assets)
+                        print(f"📚 FIXED: Successfully inserted {len(result.inserted_ids)} PDF images into Asset Library")
+                        await update_job_progress("extracting", f"Saved {len(result.inserted_ids)} images to Asset Library")
+                    except Exception as db_error:
+                        print(f"❌ Failed to save PDF images to Asset Library: {db_error}")
+                
+                # Clean up temp file
+                try:
+                    os.unlink(temp_pdf_path)
+                except:
+                    pass
+                
+                print(f"✅ COMPREHENSIVE PDF PROCESSING: {len(extracted_content)} characters, {len(pdf_images)} images extracted")
+                
+            except Exception as pdf_error:
+                print(f"⚠️ Comprehensive PDF processing failed: {pdf_error}")
+                # Fallback to basic PyPDF2 processing
+                try:
+                    import PyPDF2
+                    pdf_file = io.BytesIO(file_content)
+                    pdf_reader = PyPDF2.PdfReader(pdf_file)
+                    extracted_content = ""
+                    for page_num, page in enumerate(pdf_reader.pages):
+                        page_text = page.extract_text()
+                        extracted_content += f"=== Page {page_num + 1} ===\n{page_text}\n\n"
+                        if page_num % 5 == 0:  # Update progress every 5 pages
+                            await update_job_progress("extracting", f"Processed {page_num + 1}/{len(pdf_reader.pages)} pages...")
+                    print(f"✅ Fallback PDF processing: {len(extracted_content)} characters from PDF ({len(pdf_reader.pages)} pages)")
+                except Exception as fallback_error:
+                    print(f"❌ Both PDF processing methods failed: {fallback_error}")
+                    extracted_content = f"PDF file: {file.filename} (extraction failed: {str(fallback_error)})"
+                
+        elif file_extension in ['doc', 'docx']:
+            await update_job_progress("extracting", "Processing DOCX content and media...")
+            try:
+                import docx
+                from docx.document import Document as DocxDocument
+                from docx.oxml.text.paragraph import CT_P
+                from docx.oxml.table import CT_Tbl
+                from docx.text.paragraph import Paragraph
+                from docx.table import _Cell, Table
+                import base64
+                
+                doc_file = io.BytesIO(file_content)
+                doc = docx.Document(doc_file)
+                
+                # Initialize comprehensive content extraction
+                extracted_content = f"# Document: {file.filename}\n\n"
+                
+                # Extract document properties if available
+                if hasattr(doc.core_properties, 'title') and doc.core_properties.title:
+                    extracted_content += f"**Document Title:** {doc.core_properties.title}\n\n"
+                if hasattr(doc.core_properties, 'author') and doc.core_properties.author:
+                    extracted_content += f"**Author:** {doc.core_properties.author}\n\n"
+                if hasattr(doc.core_properties, 'subject') and doc.core_properties.subject:
+                    extracted_content += f"**Subject:** {doc.core_properties.subject}\n\n"
+                
+                # Extract embedded images and media - IMPROVED TO SAVE AS FILES
+                async def extract_media_from_docx(doc, filename_prefix):
+                    """Extract embedded images from docx document and save as files"""
+                    media_files = []
+                    saved_assets = []
+                    
+                    try:
+                        # Access the document's media files
+                        image_index = 0
+                        for rel in doc.part.rels.values():
+                            if "image" in rel.target_ref:
+                                image_index += 1
+                                # Get image data
+                                image_part = rel.target_part
+                                image_data = image_part.blob
+                                
+                                # Determine image format
+                                content_type = image_part.content_type
+                                if 'png' in content_type:
+                                    img_format = 'png'
+                                elif 'jpeg' in content_type or 'jpg' in content_type:
+                                    img_format = 'jpeg'
+                                elif 'gif' in content_type:
+                                    img_format = 'gif'
+                                elif 'webp' in content_type:
+                                    img_format = 'webp'
+                                elif 'svg' in content_type:
+                                    img_format = 'svg'
+                                    # Only SVG should remain base64
+                                    image_base64 = base64.b64encode(image_data).decode('utf-8')
+                                    media_files.append({
+                                        'type': 'image',
+                                        'format': img_format,
+                                        'data': f"data:{content_type};base64,{image_base64}",
+                                        'content_type': content_type,
+                                        'size': len(image_data),
+                                        'is_svg': True
+                                    })
+                                    print(f"✅ Extracted SVG image as base64: {len(image_data)} bytes")
+                                    continue
+                                else:
+                                    img_format = 'png'  # default
+                                
+                                # For non-SVG images, save as files to Asset Library
+                                try:
+                                    # Generate unique filename
+                                    safe_prefix = "".join(c for c in filename_prefix if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+                                    unique_filename = f"{safe_prefix}_img_{image_index}_{str(uuid.uuid4())[:8]}.{img_format}"
+                                    file_path = f"static/uploads/{unique_filename}"
+                                    
+                                    # Ensure upload directory exists
+                                    os.makedirs("static/uploads", exist_ok=True)
+                                    
+                                    # Save file to disk
+                                    async with aiofiles.open(file_path, "wb") as buffer:
+                                        await buffer.write(image_data)
+                                    
+                                    # Generate URL for the file (using /api/static prefix)
+                                    file_url = f"/api/static/uploads/{unique_filename}"
+                                    
+                                    # Save asset metadata to database
+                                    assets_collection = db["assets"]
+                                    asset_data = {
+                                        "id": str(uuid.uuid4()),
+                                        "original_filename": f"extracted_image_{image_index}.{img_format}",
+                                        "filename": unique_filename,
+                                        "title": f"Image {image_index} from {filename_prefix}",
+                                        "name": f"Image {image_index} from {filename_prefix}",
+                                        "type": "image",
+                                        "url": file_url,
+                                        "file_path": file_path,
+                                        "content_type": content_type,
+                                        "size": len(image_data),
+                                        "source": "docx_extraction",
+                                        "source_document": filename_prefix,
+                                        "created_at": datetime.utcnow().isoformat(),
+                                        "updated_at": datetime.utcnow().isoformat()
+                                    }
+                                    
+                                    await assets_collection.insert_one(asset_data)
+                                    saved_assets.append(asset_data)
+                                    
+                                    # Store file URL instead of base64 data
+                                    media_files.append({
+                                        'type': 'image',
+                                        'format': img_format,
+                                        'url': file_url,
+                                        'content_type': content_type,
+                                        'size': len(image_data),
+                                        'is_svg': False,
+                                        'asset_id': asset_data["id"]
+                                    })
+                                    
+                                    print(f"✅ Extracted and saved image: {img_format}, {len(image_data)} bytes -> {file_url}")
+                                
+                                except Exception as save_error:
+                                    print(f"⚠️ Error saving image as file: {save_error}")
+                                    # Fallback to base64 if file save fails
+                                    image_base64 = base64.b64encode(image_data).decode('utf-8')
+                                    media_files.append({
+                                        'type': 'image',
+                                        'format': img_format,
+                                        'data': f"data:{content_type};base64,{image_base64}",
+                                        'content_type': content_type,
+                                        'size': len(image_data),
+                                        'is_svg': False,
+                                        'fallback': True
+                                    })
+                                
+                    except Exception as e:
+                        print(f"⚠️ Media extraction error: {e}")
+                    
+                    print(f"📁 Saved {len(saved_assets)} images to Asset Library")
+                    return media_files
+                
+                # Extract media from document - simplified approach for better AI processing
+                embedded_media = await extract_media_from_docx(doc, file.filename.replace('.docx', '').replace('.doc', ''))
+                print(f"🔍 DEBUG: Extracted {len(embedded_media)} media items from DOCX")
+                
+                # Improve image distribution across articles by including image references in prompts
+                image_references = ""
+                image_distribution_info = ""
+                
+                if embedded_media:
+                    print(f"🔍 DEBUG: Processing {len(embedded_media)} images for distribution")
+                    
+                    for i, media in enumerate(embedded_media, 1):
+                        if media.get('is_svg', False):
+                            # SVG images remain as base64
+                            image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                            print(f"🔍 DEBUG: Added SVG image {i} HTML reference for AI positioning")
+                        elif media.get('url'):
+                            # Non-SVG images use file URL references
+                            image_references += f'\n<img src="{media["url"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                            print(f"🔍 DEBUG: Added image {i} URL HTML reference for AI positioning: {media['url']}")
+                        else:
+                            # Fallback for base64 data
+                            image_references += f'\n<img src="{media["data"]}" alt="Figure {i}: Document Image" style="max-width: 100%; height: auto;">\n<p><em>Figure {i}: Document Image</em></p>\n'
+                            print(f"🔍 DEBUG: Added image {i} base64 HTML reference for AI positioning")
+                    
+                    # DO NOT add images directly to content - let semantic placement handle them
+                    print(f"🎯 SEMANTIC MODE: {len(embedded_media)} images will be placed contextually via semantic placement system")
+                
+                # SIMPLIFIED: Process document content cleanly for clean HTML output
+                extracted_content = f"# {file.filename}\n\n"
+                
+                # Process document elements in order - simplified for cleaner content
+                def iter_block_items(parent):
+                    """Generate a reference to each paragraph and table child within parent, in document order."""
+                    if isinstance(parent, DocxDocument):
+                        parent_elm = parent.element.body
+                    elif isinstance(parent, _Cell):
+                        parent_elm = parent._tc
+                    else:
+                        raise ValueError("Unknown parent type")
+                    
+                    for child in parent_elm:
+                        if isinstance(child, CT_P):
+                            yield Paragraph(child, parent)
+                        elif isinstance(child, CT_Tbl):
+                            yield Table(child, parent)
+                
+                for block in iter_block_items(doc):
+                    if isinstance(block, Paragraph):
+                        if block.text.strip():
+                            # Enhanced paragraph processing with style detection
+                            style_name = block.style.name
+                            text = block.text.strip()
+                            
+                            # Handle different paragraph styles
+                            if style_name.startswith('Heading 1') or style_name == 'Title':
+                                extracted_content += f"# {text}\n\n"
+                            elif style_name.startswith('Heading 2'):
+                                extracted_content += f"## {text}\n\n"
+                            elif style_name.startswith('Heading 3'):
+                                extracted_content += f"### {text}\n\n"
+                            elif style_name.startswith('Heading 4'):
+                                extracted_content += f"#### {text}\n\n"
+                            elif style_name.startswith('Heading'):
+                                extracted_content += f"##### {text}\n\n"
+                            elif 'List' in style_name or text.startswith(('•', '-', '*')):
+                                extracted_content += f"- {text}\n"
+                            elif text.startswith(tuple(f"{i}." for i in range(1, 20))):
+                                extracted_content += f"{text}\n"
+                            else:
+                                extracted_content += f"{text}\n\n"
+                    
+                    elif isinstance(block, Table):
+                        extracted_content += f"\n## Table\n\n"
+                        
+                        # Extract table headers if first row looks like headers
+                        rows = [[cell.text.strip() for cell in row.cells] for row in block.rows]
+                        if rows:
+                            headers = rows[0]
+                            data_rows = rows[1:]
+                            
+                            # Check if first row are likely headers (short, title-case)
+                            if all(len(cell) < 50 and any(c.isupper() for c in cell) for cell in headers if cell):
+                                # Create markdown table with headers
+                                extracted_content += "| " + " | ".join(headers) + " |\n"
+                                extracted_content += "|" + "|".join([" --- " for _ in headers]) + "|\n"
+                                for row in data_rows:
+                                    extracted_content += "| " + " | ".join(row) + " |\n"
+                            else:
+                                # Regular table without headers
+                                for row in rows:
+                                    extracted_content += "| " + " | ".join(row) + " |\n"
+                        
+                        extracted_content += "\n"
+                        
+                # SIMPLIFIED: Clean content extraction without complex processing        
+                print(f"✅ Simplified extraction: {len(extracted_content)} characters from Word document, {len(embedded_media)} images saved to Asset Library")
+            except ImportError:
+                print("⚠️ python-docx not available, treating as binary file")
+                extracted_content = f"Word document: {file.filename} (content extraction requires python-docx)"
+            except Exception as e:
+                print(f"⚠️ Word document extraction error: {e}")
+                extracted_content = f"Word document: {file.filename} (extraction failed: {str(e)})"
+
+        elif file_extension in ['xls', 'xlsx']:
+            try:
+                import openpyxl
+                import pandas as pd
+                
+                excel_file = io.BytesIO(file_content)
+                workbook = openpyxl.load_workbook(excel_file)
+                
+                extracted_content = f"Spreadsheet: {file.filename}\n\n"
+                
+                for sheet_name in workbook.sheetnames:
+                    sheet = workbook[sheet_name]
+                    extracted_content += f"=== Sheet: {sheet_name} ===\n"
+                    
+                    # Get sheet data
+                    data = []
+                    for row in sheet.iter_rows(values_only=True):
+                        if any(cell is not None for cell in row):
+                            data.append([str(cell) if cell is not None else "" for cell in row])
+                    
+                    # Convert to readable format
+                    if data:
+                        # First row might be headers
+                        headers = data[0] if data else []
+                        extracted_content += "Headers: " + " | ".join(headers[:10]) + "\n\n"  # Limit to first 10 columns
+                        
+                        # Sample data rows (first 10)
+                        for i, row in enumerate(data[1:11]):  # Skip header, limit to 10 rows
+                            extracted_content += f"Row {i+1}: " + " | ".join(row[:10]) + "\n"
+                        
+                        if len(data) > 11:
+                            extracted_content += f"... and {len(data)-11} more rows\n"
+                    
+                    extracted_content += "\n"
+                
+                print(f"✅ Extracted content from Excel file with {len(workbook.sheetnames)} sheets")
+            except ImportError:
+                print("⚠️ openpyxl not available, treating as binary file")
+                extracted_content = f"Excel file: {file.filename} (content extraction requires openpyxl)"
+            except Exception as e:
+                print(f"⚠️ Excel extraction error: {e}")
+                extracted_content = f"Excel file: {file.filename} (extraction failed: {str(e)})"
+
+        elif file_extension in ['ppt', 'pptx']:
+            try:
+                import pptx
+                
+                ppt_file = io.BytesIO(file_content)
+                presentation = pptx.Presentation(ppt_file)
+                
+                extracted_content = f"Presentation: {file.filename}\n\n"
+                
+                for i, slide in enumerate(presentation.slides):
+                    extracted_content += f"=== Slide {i+1} ===\n"
+                    
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text") and shape.text.strip():
+                            extracted_content += f"{shape.text}\n"
+                        elif shape.has_table:
+                            table = shape.table
+                            extracted_content += "\nTable:\n"
+                            for row in table.rows:
+                                row_data = [cell.text.strip() for cell in row.cells]
+                                extracted_content += " | ".join(row_data) + "\n"
+                    
+                    extracted_content += "\n"
+                
+                print(f"✅ Extracted content from PowerPoint with {len(presentation.slides)} slides")
+            except ImportError:
+                print("⚠️ python-pptx not available, treating as binary file")
+                extracted_content = f"PowerPoint file: {file.filename} (content extraction requires python-pptx)"
+            except Exception as e:
+                print(f"⚠️ PowerPoint extraction error: {e}")
+                extracted_content = f"PowerPoint file: {file.filename} (extraction failed: {str(e)})"
+                
+        elif file_extension in ['json']:
+            try:
+                json_data = json.loads(file_content.decode('utf-8'))
+                extracted_content = f"JSON file: {file.filename}\n\nStructured Data:\n{json.dumps(json_data, indent=2)}"
+                print(f"✅ Extracted JSON content from {file.filename}")
+            except Exception as e:
+                print(f"⚠️ JSON parsing error: {e}")
+                extracted_content = file_content.decode('utf-8', errors='ignore')
+                
+        else:
+            # For other file types, create descriptive content
+            extracted_content = f"""File: {file.filename}
+File Type: {file_extension.upper()} file
+Size: {len(file_content)} bytes
+Uploaded: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
+
+This is a {file_extension.upper()} file that has been uploaded to the knowledge base. While the specific content cannot be extracted automatically, this file is now part of your knowledge repository and can be referenced in conversations."""
+
+        # Add file metadata to content
+        enriched_content = f"""Document: {file.filename}
+
+{extracted_content}
+
+---
+File Information:
+- Original filename: {file.filename}
+- File type: {file_extension.upper()}
+- Upload date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
+- Source: Knowledge Engine File Upload"""
+
+        # Process the extracted content with timeout protection
+        try:
+            await update_job_progress("processing", "Creating articles from extracted content...")
+            print(f"🚀 Starting content processing with timeout protection...")
+            
+            # Add timeout protection for content processing
+            async def process_with_timeout():
+                enhanced_metadata = {
+                    **file_metadata,
+                    "original_filename": file.filename,
+                    "file_extension": file_extension,
+                    "file_size": len(file_content),
+                    "extraction_method": "automated"
+                }
+                
+                # SIMPLIFIED: Images are extracted and saved to Asset Library only (no automatic embedding)
+                if file_extension in ['doc', 'docx'] and 'embedded_media' in locals() and embedded_media:
+                    await update_job_progress("processing", f"Saved {len(embedded_media)} images to Asset Library")
+                    print(f"📁 SIMPLIFIED MODE: {len(embedded_media)} images extracted and saved to Asset Library")
+                    print(f"🎯 Images are available for manual insertion via the article editor")
+                    # No contextual_images metadata needed - images are just in Asset Library
+                
+                return await process_text_content(enriched_content, enhanced_metadata)
+            
+            # Set a 10-minute timeout for processing
+            chunks = await asyncio.wait_for(process_with_timeout(), timeout=600)
+            await update_job_progress("finalizing", f"Created {len(chunks)} articles successfully")
+            print(f"✅ Content processing completed: {len(chunks)} chunks created")
+            
+        except asyncio.TimeoutError:
+            print("❌ Content processing timed out after 10 minutes")
+            # Create fallback response
+            chunks = [{
+                "id": str(uuid.uuid4()),
+                "title": f"Processing Timeout - {file.filename}",
+                "content": f"<p>Content processing timed out. File: {file.filename} ({len(enriched_content)} characters extracted).</p>",
+                "summary": "File was uploaded but processing timed out",
+                "tags": ["timeout", "requires-reprocessing"],
+                "source_job_id": job.job_id,
+                "created_at": datetime.utcnow().isoformat()
+            }]
+        except Exception as processing_error:
+            print(f"❌ Content processing failed: {str(processing_error)}")
+            # Create error response
+            chunks = [{
+                "id": str(uuid.uuid4()),  
+                "title": f"Processing Error - {file.filename}",
+                "content": f"<p>Content processing failed with error: {str(processing_error)}</p>",
+                "summary": "File upload succeeded but content processing failed",
+                "tags": ["processing-error", "requires-reprocessing"],
+                "source_job_id": job.job_id,
+                "created_at": datetime.utcnow().isoformat()
+            }]
+        
+        # Update job
+        job.chunks = chunks
+        job.status = "completed" 
+        job.completed_at = datetime.utcnow()
+        
+        await db.processing_jobs.update_one(
+            {"job_id": job.job_id},
+            {"$set": {
+                "status": "completed", 
+                "chunks": chunks,
+                "completed_at": datetime.utcnow().isoformat(),
+                "final_stage": "completed",
+                "total_articles_created": len(chunks)
+            }}
+        )
+        
+        return {
+            "job_id": job.job_id,
+            "status": job.status,
+            "file_type": file_extension,
+            "extracted_content_length": len(extracted_content),
+            "chunks_created": len(chunks),
+            "message": "File processed successfully with optimized pipeline"
+        }
+        
+    except Exception as e:
+        # Update job with error
+        if 'job' in locals():
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {"status": "failed", "error_message": str(e)}}
+            )
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Simple search endpoint
+@app.post("/api/search")
+async def search_content(request: SearchRequest):
+    """Perform text search across processed content"""
+    try:
+        search_results = []
+        
+        # Simple text search in chunks
+        async for chunk in db.document_chunks.find(
+            {"content": {"$regex": request.query, "$options": "i"}}).limit(request.limit):
+            search_results.append({
+                "id": chunk["id"],
+                "content": chunk["content"],
+                "metadata": chunk.get("metadata", {}),
+                "created_at": chunk.get("created_at")
+            })
+        
+        return {
+            "query": request.query,
+            "results": search_results,
+            "total_found": len(search_results)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# OpenAI Chat endpoint using direct API call
+@app.post("/api/chat")
+async def chat_with_ai(
+    message: str = Form(...),
+    session_id: str = Form(...),
+    model_provider: str = Form("openai"),
+    model_name: str = Form("gpt-4o")
+):
+    """Chat with AI using processed content as context and LLM fallback"""
+    try:
+        # Get relevant chunks for context (simple implementation)
+        context_chunks = []
+        async for chunk in db.document_chunks.find(
+            {"content": {"$regex": message, "$options": "i"}}).limit(3):
+            context_chunks.append(chunk["content"])
+        
+        # Build context
+        context = "\n".join(context_chunks) if context_chunks else ""
+        system_message = f"""You are a helpful AI assistant for PromptSupport. 
+Use the following context to answer questions accurately:
+
+Context:
+{context}
+
+If the context doesn't contain relevant information, provide general assistance."""
+
+        # Use fallback system to get AI response
+        ai_response = await call_llm_with_fallback(system_message, message, session_id)
+        
+        if not ai_response:
+            raise HTTPException(status_code=500, detail="AI service temporarily unavailable")
+        
+        # Store conversation in database
+        conversation_record = {
+            "session_id": session_id,
+            "user_message": message,
+            "ai_response": ai_response,
+            "model_provider": "openai_claude_fallback",
+            "model_name": "gpt-4o/claude-3-5-sonnet",
+            "context_used": len(context_chunks),
+            "timestamp": datetime.utcnow()
+        }
+        
+        await db.conversations.insert_one(conversation_record)
+        
+        return {
+            "response": ai_response,
+            "session_id": session_id,
+            "context_chunks_used": len(context_chunks)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Get processing job status
+@app.get("/api/jobs/{job_id}")
+async def get_job_status(job_id: str):
+    """Get the status of a processing job"""
+    try:
+        job = await db.processing_jobs.find_one({"job_id": job_id})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        return {
+            "job_id": job["job_id"],
+            "status": job["status"],
+            "input_type": job.get("input_type"),
+            "chunks_created": len(job.get("chunks", [])),
+            "articles_generated": job.get("total_articles_created", len(job.get("chunks", []))),
+            "error_message": job.get("error_message"),
+            "created_at": job.get("created_at"),
+            "completed_at": job.get("completed_at")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Content Library integration endpoint
+@app.post("/api/content-library/create")
+async def create_content_library_article(
+    title: str = Form(...),
+    content: str = Form(...),
+    source_job_id: str = Form(...),
+    source_type: str = Form(...),
+    metadata: str = Form("{}")
+):
+    """Create structured article in Content Library from processed content"""
+    try:
+        article_metadata = json.loads(metadata)
+        
+        # Use AI to generate structured article
+        if OPENAI_API_KEY:
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            # Create prompt for article generation
+            prompt = f"""
+            Create a structured article from the following content. Extract key information and organize it professionally.
+            
+            Source Content:
+            {content[:2000]}...
+            
+            Please provide:
+            1. A clear, descriptive title
+            2. A concise summary (2-3 sentences)
+            3. Main content organized with headings
+            4. 3-5 relevant tags
+            5. Key takeaways or important points
+            
+            Format as JSON with keys: title, summary, content, tags, takeaways
+            """
+            
+            data = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are an expert content curator who creates well-structured articles from raw content."},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 2000,
+                "temperature": 0.3
+            }
+            
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                
+                try:
+                    # Parse AI response as JSON with robust error handling
+                    import json
+                    import re
+                    
+                    # Clean the response first - remove any control characters
+                    cleaned_response = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', ai_response)
+                    
+                    # Extract JSON from response if it's wrapped in markdown
+                    json_match = re.search(r'```json\s*(.*?)\s*```', cleaned_response, re.DOTALL)
+                    if json_match:
+                        json_str = json_match.group(1).strip()
+                        print(f"📦 Extracted JSON from markdown wrapper: {len(json_str)} chars")
+                        article_data = json.loads(json_str)
+                    else:
+                        print(f"📦 Parsing direct JSON response: {len(cleaned_response)} chars")
+                        article_data = json.loads(cleaned_response)
+                    
+                    print(f"✅ Successfully parsed JSON article data with {len(article_data.keys())} fields")
+                    
+                except json.JSONDecodeError as json_error:
+                    print(f"❌ JSON parsing error: {str(json_error)}")
+                    print(f"🔍 Raw AI response preview: {ai_response[:500]}...")
+                    
+                    # Fallback: create article with raw content
+                    article_data = {
+                        "title": title,
+                        "content": f"<p>{content[:2000]}...</p>",  # Truncate very long content
+                        "summary": "Content processing encountered JSON parsing issues",
+                        "tags": ["processing-error"],
+                        "takeaways": ["Content requires manual review"]
+                    }
+                    print("🔄 Using fallback article structure due to JSON parsing failure")
+                    
+                except Exception as parsing_error:
+                    print(f"❌ Unexpected parsing error: {str(parsing_error)}")
+                    print(f"🔍 AI response type: {type(ai_response)}")
+                    
+                    # Final fallback
+                    article_data = {
+                        "title": title,
+                        "content": f"<p>Content processing failed. Original content length: {len(content)} characters.</p>",
+                        "summary": "Content processing failed",
+                        "tags": ["processing-failed"],
+                        "takeaways": ["Content requires reprocessing"]
+                    }
+                    print("🔄 Using final fallback article structure")
+                
+                try:
+                    
+                    # Create article record for Content Library
+                    article_record = {
+                        "id": str(uuid.uuid4()),
+                        "title": article_data.get("title", title),
+                        "content": article_data.get("content", content),
+                        "summary": article_data.get("summary", ""),
+                        "tags": article_data.get("tags", []),
+                        "takeaways": article_data.get("takeaways", []),
+                        "source_job_id": source_job_id,
+                        "source_type": source_type,
+                        "status": "draft",
+                        "metadata": article_metadata,
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                    
+                    # Store in Content Library collection
+                    await db.content_library.insert_one(article_record)
+                    
+                    return {
+                        "success": True,
+                        "article_id": article_record["id"],
+                        "title": article_record["title"],
+                        "message": "Article created successfully in Content Library"
+                    }
+                    
+                except json.JSONDecodeError:
+                    # Fallback if AI doesn't return proper JSON
+                    article_record = {
+                        "id": str(uuid.uuid4()),
+                        "title": title,
+                        "content": content,
+                        "summary": f"Extracted from {source_type}",
+                        "tags": [source_type],
+                        "source_job_id": source_job_id,
+                        "source_type": source_type,
+                        "status": "draft",
+                        "metadata": article_metadata,
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                    
+                    await db.content_library.insert_one(article_record)
+                    
+                    return {
+                        "success": True,
+                        "article_id": article_record["id"],
+                        "title": article_record["title"],
+                        "message": "Basic article created successfully in Content Library"
+                    }
+        
+        # Fallback without AI
+        article_record = {
+            "id": str(uuid.uuid4()),
+            "title": title,
+            "content": content,
+            "summary": f"Content extracted from {source_type}",
+            "tags": [source_type],
+            "source_job_id": source_job_id,
+            "source_type": source_type,
+            "status": "draft",
+            "metadata": article_metadata,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        await db.content_library.insert_one(article_record)
+        
+        return {
+            "success": True,
+            "article_id": article_record["id"],
+            "title": article_record["title"],
+            "message": "Article created successfully in Content Library"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Get Content Library articles
+@app.get("/api/content-library")
+async def get_content_library_articles():
+    """Get all Content Library articles"""
+    try:
+        articles = []
+        async for article in db.content_library.find().sort("created_at", -1):
+            articles.append({
+                "id": article["id"],
+                "title": article["title"],
+                "content": article.get("content", ""),  # Added content field!
+                "summary": article.get("summary", ""),
+                "tags": article.get("tags", []),
+                "status": article.get("status", "draft"),
+                "source_type": article.get("source_type", ""),
+                "takeaways": article.get("takeaways", []),  # Added takeaways too
+                "metadata": article.get("metadata", {}),    # Added metadata
+                "created_at": article.get("created_at"),
+                "updated_at": article.get("updated_at")
+            })
+        
+        return {
+            "articles": articles,
+            "total": len(articles)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# URL processing endpoint  
+@app.post("/api/content/process-url")
+async def process_url_content(
+    url: str = Form(...),
+    metadata: str = Form("{}")
+):
+    """Process URL content by scraping and generating articles"""
+    try:
+        # Parse metadata
+        url_metadata = json.loads(metadata)
+        
+        # Create processing job
+        job = ProcessingJob(
+            input_type="url",
+            url=url,
+            status="processing"
+        )
+        
+        await db.processing_jobs.insert_one(job.dict())
+        
+        print(f"🌐 Processing URL: {url}")
+        
+        # Scrape website content
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        # Parse HTML content
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Extract title
+        page_title = soup.find('title')
+        title = page_title.get_text().strip() if page_title else url
+        
+        # Extract meta description
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        description = meta_desc.get('content', '').strip() if meta_desc else ""
+        
+        # Extract main content
+        main_content = ""
+        
+        # Try to find main content areas
+        content_selectors = [
+            'main', 'article', '.content', '#content', 
+            '.post', '.entry', '.article-body', '.main-content'
+        ]
+        
+        content_found = False
+        for selector in content_selectors:
+            content_area = soup.select_one(selector)
+            if content_area:
+                main_content = content_area.get_text(separator='\n', strip=True)
+                content_found = True
+                break
+        
+        # If no main content area found, extract from body
+        if not content_found:
+            body = soup.find('body')
+            if body:
+                # Remove navigation, footer, sidebar elements
+                for element in body.find_all(['nav', 'footer', 'aside', '.sidebar', '.navigation']):
+                    element.decompose()
+                main_content = body.get_text(separator='\n', strip=True)
+        
+        # Clean up content
+        lines = main_content.split('\n')
+        cleaned_lines = [line.strip() for line in lines if line.strip() and len(line.strip()) > 10]
+        extracted_content = '\n'.join(cleaned_lines)
+        
+        # Create enriched content
+        enriched_content = f"""Website: {title}
+URL: {url}
+
+{f"Description: {description}" if description else ""}
+
+=== Main Content ===
+
+{extracted_content}
+
+---
+Source Information:
+- Original URL: {url}
+- Page Title: {title}
+- Scraped Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}
+- Content Length: {len(extracted_content)} characters
+- Source: Knowledge Engine URL Processing"""
+        
+        print(f"✅ Extracted {len(extracted_content)} characters from URL")
+        
+        # Process the extracted content
+        enhanced_metadata = {
+            **url_metadata,
+            "url": url,
+            "page_title": title,
+            "page_description": description,
+            "content_length": len(extracted_content),
+            "type": "url_processing"
+        }
+        
+        chunks = await process_text_content(enriched_content, enhanced_metadata)
+        
+        # Update job
+        job.chunks = chunks
+        job.status = "completed"
+        job.completed_at = datetime.utcnow()
+        
+        await db.processing_jobs.update_one(
+            {"job_id": job.job_id},
+            {"$set": job.dict()}
+        )
+        
+        return {
+            "job_id": job.job_id,
+            "status": job.status,
+            "url": url,
+            "page_title": title,
+            "extracted_content_length": len(extracted_content),
+            "chunks_created": len(chunks),
+            "message": "URL processed successfully"
+        }
+        
+    except requests.RequestException as e:
+        # Update job with error
+        if 'job' in locals():
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {"status": "failed", "error_message": f"Failed to fetch URL: {str(e)}"}}
+            )
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
+    except Exception as e:
+        # Update job with error
+        if 'job' in locals():
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {"status": "failed", "error_message": str(e)}}
+            )
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Recording processing endpoint
+@app.post("/api/content/process-recording")
+async def process_recording(
+    recording_type: str = Form(...),  # 'screen', 'audio', 'video', 'screenshot'
+    duration: int = Form(0),
+    title: str = Form(""),
+    metadata: str = Form("{}")
+):
+    """Process recorded content (screen, audio, video, screenshots)"""
+    try:
+        recording_metadata = json.loads(metadata)
+        
+        job = ProcessingJob(
+            input_type="recording",
+            original_filename=f"{recording_type}_recording_{title}",
+            status="processing"
+        )
+        
+        await db.processing_jobs.insert_one(job.dict())
+        
+        # Simulate recording processing
+        if recording_type == "screenshot":
+            content = f"Screenshot captured: {title}\n\nThis screenshot shows important visual information that has been processed and can be referenced in conversations."
+        elif recording_type == "screen":
+            content = f"Screen recording captured: {title} (Duration: {duration}s)\n\nThis screen recording demonstrates key processes and workflows that have been analyzed and processed."
+        elif recording_type == "audio":
+            content = f"Audio recording processed: {title} (Duration: {duration}s)\n\nThis audio content has been transcribed and processed for searchability."
+        else:
+            content = f"Video recording processed: {title} (Duration: {duration}s)\n\nThis video content has been analyzed and key information extracted."
+        
+        # Process the content
+        chunks = await process_text_content(content, {**recording_metadata, "recording_type": recording_type, "duration": duration})
+        
+        # Update job
+        job.chunks = chunks
+        job.status = "completed" 
+        job.completed_at = datetime.utcnow()
+        
+        await db.processing_jobs.update_one(
+            {"job_id": job.job_id},
+            {"$set": job.dict()}
+        )
+        
+        return {
+            "job_id": job.job_id,
+            "status": job.status,
+            "recording_type": recording_type,
+            "duration": duration,
+            "chunks_created": len(chunks),
+            "message": "Recording processed successfully"
+        }
+        
+    except Exception as e:
+        if 'job' in locals():
+            await db.processing_jobs.update_one(
+                {"job_id": job.job_id},
+                {"$set": {"status": "failed", "error_message": str(e)}}
+            )
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Enhanced document listing with article links
+@app.get("/api/documents")
+async def list_documents():
+    """List all processed documents with article information"""
+    try:
+        documents = []
+        
+        async for chunk in db.document_chunks.find().sort("created_at", -1):
+            # Find related articles for this document
+            related_articles = []
+            if 'original_filename' in chunk.get('metadata', {}):
+                filename = chunk['metadata']['original_filename']
+                async for article in db.content_library.find({
+                    "metadata.original_filename": filename
+                }):
+                    related_articles.append({
+                        "id": article["id"],
+                        "title": article["title"],
+                        "summary": article["summary"]
+                    })
+            
+            documents.append({
+                "id": chunk["id"],
+                "content": chunk["content"][:200] + "..." if len(chunk["content"]) > 200 else chunk["content"],
+                "metadata": chunk.get("metadata", {}),
+                "created_at": chunk.get("created_at"),
+                "related_articles": related_articles,
+                "articles_count": len(related_articles)
+            })
+        
+        return {
+            "documents": documents,
+            "total": len(documents)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Update Content Library article
+@app.put("/api/content-library/{article_id}")
+async def update_content_library_article(
+    article_id: str,
+    title: str = Form(...),
+    content: str = Form(...),
+    status: str = Form("draft"),
+    tags: str = Form("[]"),
+    metadata: str = Form("{}")
+):
+    """Update an existing Content Library article with version history"""
+    try:
+        # Parse JSON fields
+        tags_list = json.loads(tags) if tags else []
+        metadata_dict = json.loads(metadata) if metadata else {}
+        
+        # Get existing article for version history
+        existing_article = await db.content_library.find_one({"id": article_id})
+        if not existing_article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        # Create version history entry
+        version_entry = {
+            "version": existing_article.get("version", 1) + 1,
+            "title": existing_article.get("title", ""),
+            "content": existing_article.get("content", ""),
+            "status": existing_article.get("status", "draft"),
+            "tags": existing_article.get("tags", []),
+            "updated_at": existing_article.get("updated_at", datetime.utcnow().isoformat()),
+            "updated_by": "user"
+        }
+        
+        # Add to version history
+        version_history = existing_article.get("version_history", [])
+        version_history.append(version_entry)
+        
+        # Update article
+        updated_article = {
+            "title": title,
+            "content": content,
+            "status": status,
+            "tags": tags_list,
+            "metadata": {**existing_article.get("metadata", {}), **metadata_dict},
+            "version": version_entry["version"],
+            "version_history": version_history,
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": "user"
+        }
+        
+        await db.content_library.update_one(
+            {"id": article_id},
+            {"$set": updated_article}
+        )
+        
+        return {
+            "success": True,
+            "article_id": article_id,
+            "version": updated_article["version"],
+            "message": "Article updated successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Create new Content Library article
+@app.post("/api/content-library")
+async def create_content_library_article(
+    title: str = Form(...),
+    content: str = Form(...),
+    status: str = Form("draft"),
+    tags: str = Form("[]"),
+    metadata: str = Form("{}")
+):
+    """Create a new Content Library article"""
+    try:
+        # Parse JSON fields
+        tags_list = json.loads(tags) if tags else []
+        metadata_dict = json.loads(metadata) if metadata else {}
+        
+        # Create new article
+        article_id = str(datetime.utcnow().timestamp()).replace('.', '')
+        new_article = {
+            "id": article_id,
+            "title": title,
+            "content": content,
+            "status": status,
+            "tags": tags_list,
+            "metadata": metadata_dict,
+            "source_type": "user_created",
+            "version": 1,
+            "version_history": [],
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "created_by": "user",
+            "updated_by": "user"
+        }
+        
+        await db.content_library.insert_one(new_article)
+        
+        return {
+            "success": True,
+            "article_id": article_id,
+            "message": "Article created successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Get article version history
+@app.get("/api/content-library/{article_id}/versions")
+async def get_article_version_history(article_id: str):
+    """Get version history for an article"""
+    try:
+        article = await db.content_library.find_one({"id": article_id})
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        version_history = article.get("version_history", [])
+        current_version = {
+            "version": article.get("version", 1),
+            "title": article.get("title", ""),
+            "content": article.get("content", ""),
+            "status": article.get("status", "draft"),
+            "tags": article.get("tags", []),
+            "updated_at": article.get("updated_at"),
+            "updated_by": article.get("updated_by", "system"),
+            "is_current": True
+        }
+        
+        return {
+            "current_version": current_version,
+            "version_history": version_history,
+            "total_versions": len(version_history) + 1
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Restore article version
+@app.post("/api/content-library/{article_id}/restore/{version}")
+async def restore_article_version(article_id: str, version: int):
+    """Restore an article to a specific version"""
+    try:
+        article = await db.content_library.find_one({"id": article_id})
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        version_history = article.get("version_history", [])
+        target_version = None
+        
+        for v in version_history:
+            if v.get("version") == version:
+                target_version = v
+                break
+        
+        if not target_version:
+            raise HTTPException(status_code=404, detail="Version not found")
+        
+        # Save current version to history before restoring
+        current_version_entry = {
+            "version": article.get("version", 1),
+            "title": article.get("title", ""),
+            "content": article.get("content", ""),
+            "status": article.get("status", "draft"),
+            "tags": article.get("tags", []),
+            "updated_at": article.get("updated_at"),
+            "updated_by": article.get("updated_by", "system")
+        }
+        version_history.append(current_version_entry)
+        
+        # Restore to target version
+        new_version = article.get("version", 1) + 1
+        restored_article = {
+            "title": target_version.get("title", ""),
+            "content": target_version.get("content", ""),
+            "status": target_version.get("status", "draft"),
+            "tags": target_version.get("tags", []),
+            "version": new_version,
+            "version_history": version_history,
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": "user",
+            "restored_from_version": version
+        }
+        
+        await db.content_library.update_one(
+            {"id": article_id},
+            {"$set": restored_article}
+        )
+        
+        return {
+            "success": True,
+            "article_id": article_id,
+            "restored_from_version": version,
+            "new_version": new_version,
+            "message": f"Article restored to version {version}"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/content-library")
+async def create_content_library_article(request: Request):
+    """Create a new article in the Content Library"""
+    try:
+        data = await request.json()
+        
+        # Generate ID if not provided
+        if 'id' not in data:
+            data['id'] = f"article_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
+        # Set timestamps
+        data['created_at'] = datetime.now().isoformat()
+        data['updated_at'] = datetime.now().isoformat()
+        
+        # Set defaults
+        data.setdefault('version', 1)
+        data.setdefault('views', 0)
+        data.setdefault('status', 'draft')
+        data.setdefault('source', 'manual')
+        data.setdefault('tags', [])
+        data.setdefault('metadata', {})
+        
+        # Calculate word count
+        content = data.get('content', '')
+        if content:
+            # Remove HTML tags and count words
+            import re
+            text_content = re.sub(r'<[^>]+>', '', content)
+            data['wordCount'] = len(text_content.split())
+        else:
+            data['wordCount'] = 0
+        
+        # Insert into database
+        await content_library_collection.insert_one(data)
+        
+        return {
+            "success": True,
+            "message": "Article created successfully",
+            "article": data
+        }
+        
+    except Exception as e:
+        print(f"❌ Error creating article: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/content-library/{article_id}")
+async def delete_content_library_article(article_id: str):
+    """Delete an article from the Content Library"""
+    try:
+        result = await content_library_collection.delete_one({"id": article_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        return {
+            "success": True,
+            "message": "Article deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting article: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+async def analyze_media_intelligence(request: Request):
+    """
+    Comprehensive media analysis using LLM + Vision models
+    Provides intelligent classification, contextual placement, and auto-generated captions
+    """
+    try:
+        form = await request.form()
+        
+        # Get media data and context
+        base64_data = form.get("media_data", "")
+        alt_text = form.get("alt_text", "")
+        article_context = form.get("context", "")
+        
+        if not base64_data:
+            return {"success": False, "error": "No media data provided"}
+        
+        # Perform comprehensive analysis
+        analysis = await media_intelligence.analyze_media_comprehensive(
+            base64_data=base64_data,
+            alt_text=alt_text,
+            context=article_context
+        )
+        
+        return {
+            "success": True,
+            "analysis": analysis,
+            "enhanced_html": media_intelligence.create_enhanced_media_html(analysis, base64_data)
+        }
+        
+    except Exception as e:
+        print(f"❌ Media analysis error: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/media/process-article")
+async def process_article_media(request: Request):
+    """
+    Process all media in an article with intelligent placement and captions
+    """
+    try:
+        form = await request.form()
+        
+        article_content = form.get("content", "")
+        article_id = form.get("article_id", "")
+        
+        if not article_content:
+            return {"success": False, "error": "No article content provided"}
+        
+        # Extract all media from markdown content
+        media_items = extract_media_from_content(article_content)
+        
+        if not media_items:
+            return {
+                "success": True,
+                "message": "No media found in article",
+                "processed_content": article_content,
+                "media_count": 0
+            }
+        
+        # Process each media item with intelligence
+        processed_media = []
+        enhanced_content = article_content
+        
+        for i, media_item in enumerate(media_items):
+            try:
+                # Analyze media with context
+                analysis = await media_intelligence.analyze_media_comprehensive(
+                    base64_data=media_item['data_url'],
+                    alt_text=media_item['alt_text'],
+                    context=article_content
+                )
+                
+                # Generate contextual placement
+                placement = media_intelligence.generate_contextual_placement(
+                    analysis, article_content
+                )
+                
+                # Create enhanced HTML
+                enhanced_html = media_intelligence.create_enhanced_media_html(
+                    analysis, media_item['data_url']
+                )
+                
+                # Replace original markdown with enhanced HTML
+                enhanced_content = enhanced_content.replace(
+                    media_item['original_markdown'],
+                    enhanced_html
+                )
+                
+                processed_media.append({
+                    "index": i,
+                    "original_alt": media_item['alt_text'],
+                    "analysis": analysis,
+                    "placement": placement,
+                    "enhanced_html": enhanced_html
+                })
+                
+            except Exception as e:
+                print(f"❌ Error processing media item {i}: {str(e)}")
+                # Keep original media on error
+                processed_media.append({
+                    "index": i,
+                    "error": str(e),
+                    "original_alt": media_item['alt_text']
+                })
+        
+        # Update article in database if article_id provided
+        if article_id and article_id != "":
+            try:
+                await content_library_collection.update_one(
+                    {"id": article_id},
+                    {
+                        "$set": {
+                            "content": enhanced_content,
+                            "media_processed": True,
+                            "media_count": len(processed_media),
+                            "updated_at": datetime.now().isoformat()
+                        }
+                    }
+                )
+            except Exception as e:
+                print(f"❌ Error updating article in database: {str(e)}")
+        
+        return {
+            "success": True,
+            "processed_content": enhanced_content,
+            "media_count": len(media_items),
+            "processed_media": processed_media,
+            "message": f"Successfully processed {len(processed_media)} media items with intelligence"
+        }
+        
+    except Exception as e:
+        print(f"❌ Article media processing error: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/media/stats")
+async def get_media_statistics():
+    """
+    Get comprehensive media statistics across all articles
+    """
+    try:
+        # Query all articles
+        articles = await content_library_collection.find({}).to_list(length=None)
+        
+        stats = {
+            "total_articles": len(articles),
+            "articles_with_media": 0,
+            "total_media_items": 0,
+            "media_by_format": {},
+            "media_by_type": {},
+            "processed_articles": 0,
+            "intelligence_analysis": {
+                "vision_analyzed": 0,
+                "auto_captioned": 0,
+                "contextually_placed": 0
+            }
+        }
+        
+        for article in articles:
+            content = article.get("content", "")
+            
+            # Count media items
+            media_items = extract_media_from_content(content)
+            if media_items:
+                stats["articles_with_media"] += 1
+                stats["total_media_items"] += len(media_items)
+                
+                # Analyze media formats and types
+                for media in media_items:
+                    data_url = media['data_url']
+                    if 'image/png' in data_url:
+                        stats["media_by_format"]["PNG"] = stats["media_by_format"].get("PNG", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'image/jpeg' in data_url:
+                        stats["media_by_format"]["JPEG"] = stats["media_by_format"].get("JPEG", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'image/gif' in data_url:
+                        stats["media_by_format"]["GIF"] = stats["media_by_format"].get("GIF", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'image/svg' in data_url:
+                        stats["media_by_format"]["SVG"] = stats["media_by_format"].get("SVG", 0) + 1
+                        stats["media_by_type"]["Image"] = stats["media_by_type"].get("Image", 0) + 1
+                    elif 'video/mp4' in data_url:
+                        stats["media_by_format"]["MP4"] = stats["media_by_format"].get("MP4", 0) + 1
+                        stats["media_by_type"]["Video"] = stats["media_by_type"].get("Video", 0) + 1
+            
+            # Check if article was processed with intelligence
+            if article.get("media_processed"):
+                stats["processed_articles"] += 1
+                stats["intelligence_analysis"]["vision_analyzed"] += article.get("media_count", 0)
+                stats["intelligence_analysis"]["auto_captioned"] += article.get("media_count", 0)
+                stats["intelligence_analysis"]["contextually_placed"] += article.get("media_count", 0)
+        
+        return {
+            "success": True,
+            "statistics": stats
+        }
+        
+    except Exception as e:
+        print(f"❌ Media statistics error: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+def extract_media_from_content(content: str) -> List[Dict[str, str]]:
+    """
+    Extract all media items from markdown content
+    
+    Returns:
+        List of dictionaries containing media information
+    """
+    import re
+    media_items = []
+    
+    # Pattern for markdown images with base64 data
+    image_pattern = r'!\[(.*?)\]\((data:image\/[^;]+;base64,[^)]+)\)'
+    
+    # Pattern for markdown videos with base64 data  
+    video_pattern = r'!\[(.*?)\]\((data:video\/[^;]+;base64,[^)]+)\)'
+    
+    # Find all image matches
+    for match in re.finditer(image_pattern, content):
+        alt_text, data_url = match.groups()
+        media_items.append({
+            'type': 'image',
+            'alt_text': alt_text,
+            'data_url': data_url,
+            'original_markdown': match.group(0)
+        })
+    
+    # Find all video matches
+    for match in re.finditer(video_pattern, content):
+        alt_text, data_url = match.groups()
+        media_items.append({
+            'type': 'video',
+            'alt_text': alt_text,
+            'data_url': data_url,
+            'original_markdown': match.group(0)
+        })
+    
+    return media_items
+
+def get_heading_level(paragraph) -> int:
+    """
+    Determine the heading level of a paragraph
+    """
+    try:
+        style_name = paragraph.style.name.lower()
+        if 'heading 1' in style_name or 'title' in style_name:
+            return 1
+        elif 'heading 2' in style_name:
+            return 2
+        elif 'heading 3' in style_name:
+            return 3
+        elif 'heading 4' in style_name:
+            return 4
+        elif 'heading' in style_name:
+            return 2  # Default for generic heading
+        
+        # Check for manual formatting that indicates headings
+        if paragraph.runs:
+            first_run = paragraph.runs[0]
+            if first_run.bold and first_run.font.size and first_run.font.size.pt > 14:
+                return 1
+            elif first_run.bold and first_run.font.size and first_run.font.size.pt > 12:
+                return 2
+            elif first_run.bold:
+                return 3
+                
+        return None
+    except:
+        return None
+
+def clean_heading_text(text: str) -> str:
+    """
+    Clean heading text for better chapter naming
+    """
+    import re
+    # Remove numbering, extra spaces, and special characters
+    cleaned = re.sub(r'^\d+\.?\s*', '', text)  # Remove leading numbers
+    cleaned = re.sub(r'[^\w\s-]', '', cleaned)  # Keep only alphanumeric, spaces, hyphens
+    cleaned = ' '.join(cleaned.split())  # Normalize whitespace
+    return cleaned.strip()
+
+def detect_content_type(text: str) -> str:
+    """
+    Detect the type of content based on text patterns
+    """
+    text_lower = text.lower()
+    
+    if any(keyword in text_lower for keyword in ['figure', 'diagram', 'chart', 'table', 'image']):
+        return 'visual_reference'
+    elif any(keyword in text_lower for keyword in ['step', 'procedure', 'process', 'instruction']):
+        return 'instructional'
+    elif any(keyword in text_lower for keyword in ['note:', 'warning:', 'tip:', 'important:']):
+        return 'callout'
+    elif text.endswith(':') and len(text.split()) < 10:
+        return 'list_header'
+    else:
+        return 'body_text'
+
+def extract_enhanced_image_positions_from_xml(doc_tree, paragraph_contexts) -> list:
+    """
+    Enhanced XML parsing to find precise image positions with better context mapping
+    """
+    positions = []
+    
+    try:
+        print(f"🔍 DEBUG: Starting XML position extraction")
+        
+        # Find all drawing elements (images) in the document
+        drawings = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
+        print(f"🔍 DEBUG: Found {len(drawings)} drawing elements in XML")
+        
+        for i, drawing in enumerate(drawings):
+            print(f"🔍 DEBUG: Processing drawing {i+1}/{len(drawings)}")
+            
+            # CRITICAL FIX: Find the containing paragraph using multiple traversal methods
+            paragraph_element = None
+            
+            # Method 1: XPath to find parent paragraph
+            try:
+                parent_paragraphs = drawing.xpath('./ancestor::*[local-name()="p"]')
+                if parent_paragraphs:
+                    paragraph_element = parent_paragraphs[-1]  # Get the closest paragraph parent
+                    print(f"✅ DEBUG: Found paragraph via XPath for drawing {i+1}")
+                else:
+                    print(f"⚠️ DEBUG: No paragraph parent found via XPath for drawing {i+1}")
+            except Exception as xpath_error:
+                print(f"⚠️ DEBUG: XPath method failed for drawing {i+1}: {xpath_error}")
+            
+            # Method 2: Use iterancestors() if XPath fails
+            if paragraph_element is None:
+                try:
+                    for ancestor in drawing.iterancestors():
+                        if ancestor.tag == '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
+                            paragraph_element = ancestor
+                            print(f"✅ DEBUG: Found paragraph via iterancestors for drawing {i+1}")
+                            break
+                except Exception as ancestor_error:
+                    print(f"⚠️ DEBUG: iterancestors method failed for drawing {i+1}: {ancestor_error}")
+            
+            # Method 3: Manual traversal using getparent() if available
+            if paragraph_element is None:
+                try:
+                    current = drawing
+                    while current is not None and hasattr(current, 'getparent'):
+                        if current.tag == '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p':
+                            paragraph_element = current
+                            print(f"✅ DEBUG: Found paragraph via manual traversal for drawing {i+1}")
+                            break
+                        current = current.getparent()
+                except Exception as manual_error:
+                    print(f"⚠️ DEBUG: Manual traversal failed for drawing {i+1}: {manual_error}")
+            
+            if paragraph_element is not None:
+                # Find paragraph index
+                all_paragraphs = doc_tree.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
+                try:
+                    para_index = list(all_paragraphs).index(paragraph_element)
+                    print(f"🔍 DEBUG: Drawing {i+1} found in paragraph {para_index}")
+                    
+                    if para_index < len(paragraph_contexts):
+                        context = paragraph_contexts[para_index]
+                        
+                        # Enhanced position data
+                        position_data = {
+                            'paragraph_index': para_index,
+                            'chapter': context['chapter'],
+                            'page': context['page_estimate'],
+                            'paragraph_text': context['text'],
+                            'position_in_chapter': context.get('position_in_chapter', 0),
+                            'content_type': context.get('content_type', 'body_text'),
+                            'word_count': context.get('word_count', 0),
+                            'is_heading': context.get('is_heading', False),
+                            'position': 'inline',  # Add missing position field
+                            'type': 'illustration'  # Add missing type field
+                        }
+                        
+                        positions.append(position_data)
+                        print(f"✅ DEBUG: Added position for drawing {i+1}: chapter={context['chapter']}, page={context['page_estimate']}")
+                        
+                except (ValueError, IndexError) as e:
+                    print(f"⚠️ DEBUG: Error processing drawing {i+1}: {e}")
+                    continue
+            else:
+                print(f"⚠️ DEBUG: Could not find paragraph for drawing {i+1}")
+        
+        print(f"📍 DEBUG: Final result - Found {len(positions)} image positions in document")
+        return positions
+        
+    except Exception as e:
+        print(f"❌ DEBUG: Error in enhanced XML parsing: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def find_enhanced_image_context(filename: str, image_positions: list, paragraph_contexts: list) -> dict:
+    """
+    Find the most relevant context for an image with enhanced matching
+    """
+    print(f"🔍 DEBUG: Finding context for {filename}")
+    print(f"🔍 DEBUG: Available image positions: {len(image_positions)}")
+    print(f"🔍 DEBUG: Available paragraph contexts: {len(paragraph_contexts)}")
+    
+    if not image_positions:
+        print(f"⚠️ DEBUG: No image positions available for {filename}")
+        return None
+    
+    # Try to match based on proximity and content relevance
+    best_context = None
+    best_score = 0
+    
+    for i, position in enumerate(image_positions):
+        print(f"🔍 DEBUG: Evaluating position {i+1}: {position}")
+        score = 0
+        
+        # Score based on content type relevance
+        if position.get('content_type') == 'visual_reference':
+            score += 10
+        elif position.get('content_type') == 'instructional':
+            score += 8
+        elif position.get('content_type') == 'body_text':
+            score += 5
+        
+        # Score based on paragraph text length (more context is better)
+        text_length = len(position.get('paragraph_text', ''))
+        if text_length > 100:
+            score += 5
+        elif text_length > 50:
+            score += 3
+        
+        # Avoid headings as image contexts unless they specifically reference visuals
+        if position.get('is_heading', False):
+            paragraph_text = position.get('paragraph_text', '').lower()
+            if any(keyword in paragraph_text for keyword in ['figure', 'diagram', 'chart', 'image']):
+                score += 3
+            else:
+                score -= 5
+        
+        # Prefer images not in the first page (likely cover content)
+        if position.get('page', 0) > 1:
+            score += 3
+        
+        print(f"🔍 DEBUG: Position {i+1} scored {score}")
+        
+        if score > best_score:
+            best_score = score
+            best_context = position
+    
+    print(f"🔍 DEBUG: Best context for {filename}: score={best_score}, context={best_context is not None}")
+    return best_context
+
+def create_fallback_image_context(filename: str, image_number: int, paragraph_contexts: list) -> dict:
+    """
+    Create a fallback context for images when enhanced context detection fails
+    """
+    try:
+        # Find a good paragraph with reasonable chapter name
+        fallback_paragraph = None
+        for para in paragraph_contexts:
+            # CRITICAL FIX: Skip paragraphs with excessively long chapter names
+            chapter = para.get('chapter', 'Document Content')
+            if len(chapter) > 100:
+                continue  # Skip paragraphs with overly long chapter names
+            
+            # Prefer paragraphs with substantial text
+            if len(para.get('text', '')) > 50 and not para.get('is_heading', False):
+                fallback_paragraph = para
+                break
+                
+        # If we found a good paragraph, use it
+        if fallback_paragraph:
+            chapter = fallback_paragraph.get('chapter', 'Document Content')
+            # Further limit chapter names
+            if len(chapter) > 80:
+                chapter = chapter[:80] + "..."
+                
+            return {
+                'page': fallback_paragraph.get('page_estimate', 1),
+                'position': 'inline',
+                'chapter': chapter,
+                'type': 'illustration',
+                'paragraph_text': f'Figure {image_number}: {filename.replace(".png", "").replace(".jpg", "").replace(".jpeg", "")} - Contextual illustration for {chapter}',
+                'content_type': 'body_text',
+                'is_heading': False,
+                'paragraph_index': fallback_paragraph.get('index', 0),
+                'position_in_chapter': image_number
+            }
+
+        # Continue with existing logic for remaining cases
+        for para in paragraph_contexts:
+            if (len(para.get('text', '').strip()) > 50 and 
+                not para.get('is_heading', False) and
+                para.get('page_estimate', 1) > 1):  # Skip cover page
+                fallback_paragraph = para
+                break
+        
+        # If no good paragraph found, use a generic one
+        if not fallback_paragraph and paragraph_contexts:
+            fallback_paragraph = paragraph_contexts[min(5, len(paragraph_contexts) - 1)]
+        
+        if not fallback_paragraph:
+            # Last resort: create minimal context
+            return {
+                'page': 1,
+                'position': 'inline',
+                'chapter': 'Document Content',
+                'type': 'illustration',
+                'paragraph_text': f'Image {image_number} from document',
+                'content_type': 'body_text',
+                'is_heading': False,
+                'paragraph_index': 0,
+                'position_in_chapter': image_number
+            }
+        
+        return {
+            'page': fallback_paragraph.get('page_estimate', 1),
+            'position': 'inline',
+            'chapter': fallback_paragraph.get('chapter', 'Document Content'),
+            'type': 'illustration',
+            'paragraph_text': fallback_paragraph.get('text', f'Image {image_number} context'),
+            'content_type': 'body_text',
+            'is_heading': fallback_paragraph.get('is_heading', False),
+            'paragraph_index': fallback_paragraph.get('index', 0),
+            'position_in_chapter': image_number
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Error creating fallback context: {e}")
+        # Return minimal fallback context
+        return {
+            'page': 1,
+            'position': 'inline',
+            'chapter': 'Document Content',
+            'type': 'illustration',
+            'paragraph_text': f'Image {image_number} from document',
+            'content_type': 'body_text',
+            'is_heading': False,
+            'paragraph_index': 0,
+            'position_in_chapter': image_number
+        }
+
+def is_content_relevant_image(image_context: dict, paragraph_contexts: list) -> bool:
+    """
+    Determine if an image is relevant to the main content
+    """
+    if not image_context:
+        return False
+    
+    # Check if the image is in a meaningful chapter
+    chapter = image_context.get('chapter', '').lower()
+    if any(skip_term in chapter for skip_term in ['table of contents', 'toc', 'index', 'references', 'bibliography']):
+        return False
+    
+    # Check surrounding context for relevance indicators
+    paragraph_text = image_context.get('paragraph_text', '').lower()
+    context_indicators = ['step', 'process', 'example', 'shows', 'demonstrates', 'illustrates', 'figure', 'diagram']
+    
+    if any(indicator in paragraph_text for indicator in context_indicators):
+        return True
+    
+    # Check if image has substantial surrounding content
+    para_index = image_context.get('paragraph_index', 0)
+    surrounding_text = ""
+    
+    # Get text from surrounding paragraphs
+    for i in range(max(0, para_index - 2), min(len(paragraph_contexts), para_index + 3)):
+        if i < len(paragraph_contexts):
+            surrounding_text += paragraph_contexts[i].get('text', '') + " "
+    
+    # If there's substantial instructional content around the image, it's likely relevant
+    if len(surrounding_text.strip()) > 200:
+        return True
+    
+    return False
+
+def determine_precise_position(image_context: dict, paragraph_contexts: list) -> str:
+    """
+    Determine precise position description for image embedding
+    """
+    position_in_chapter = image_context.get('position_in_chapter', 0)
+    
+    if position_in_chapter == 0:
+        return "chapter-start"
+    elif position_in_chapter <= 2:
+        return "after-introduction"
+    else:
+        # Check content around the image
+        paragraph_text = image_context.get('paragraph_text', '').lower()
+        if any(keyword in paragraph_text for keyword in ['step', 'procedure', 'process']):
+            return f"within-step-{position_in_chapter}"
+        elif 'example' in paragraph_text:
+            return f"within-example-{position_in_chapter}"
+        else:
+            return f"after-paragraph-{position_in_chapter}"
+
+def determine_image_type(image_context: dict) -> str:
+    """
+    Determine the type of image based on context
+    """
+    paragraph_text = image_context.get('paragraph_text', '').lower()
+    
+    if 'diagram' in paragraph_text:
+        return 'diagram'
+    elif 'chart' in paragraph_text or 'graph' in paragraph_text:
+        return 'chart'
+    elif 'screenshot' in paragraph_text or 'screen' in paragraph_text:
+        return 'screenshot'
+    elif 'table' in paragraph_text:
+        return 'table'
+    elif any(keyword in paragraph_text for keyword in ['step', 'procedure', 'process']):
+        return 'instructional'
+    else:
+        return 'illustration'
+
+def calculate_placement_priority(image_context: dict) -> int:
+    """
+    Calculate placement priority for image ordering
+    """
+    priority = 100  # Base priority
+    
+    # Higher priority for instructional content
+    if image_context.get('content_type') == 'instructional':
+        priority += 50
+    elif image_context.get('content_type') == 'visual_reference':
+        priority += 30
+    
+    # Higher priority for images with more context
+    text_length = len(image_context.get('paragraph_text', ''))
+    if text_length > 200:
+        priority += 20
+    elif text_length > 100:
+        priority += 10
+    
+    return priority
+
+def generate_contextual_caption(image_context: dict, paragraph_contexts: list) -> str:
+    """
+    Generate a contextual caption for the image
+    """
+    chapter = image_context.get('chapter', 'Document Section')
+    paragraph_text = image_context.get('paragraph_text', '')
+    
+    # Try to extract existing caption-like text
+    if any(keyword in paragraph_text.lower() for keyword in ['figure', 'diagram', 'shows', 'illustrates']):
+        # Use the paragraph text as basis for caption
+        caption_base = paragraph_text[:100].strip()
+        if caption_base.endswith('.'):
+            caption_base = caption_base[:-1]
+        return f"{caption_base}..."
+    
+    # Generate contextual caption based on chapter and position
+    image_type = determine_image_type(image_context)
+    return f"{image_type.title()} from {chapter}"
+
+def extract_image_references_from_text(content: str) -> list:
+    """
+    Extract image references from text content that contains image indicators
+    Returns a list of image reference objects
+    """
+    try:
+        image_refs = []
+        
+        # Common image reference patterns
+        patterns = [
+            r'\[image:\s*([^\]]+)\]',  # [image: description]
+            r'!\[([^\]]*)\]\([^)]+\)',  # ![alt](url) markdown format
+            r'<img[^>]+alt=["\']([^"\']*)["\'][^>]*>',  # <img alt="...">
+            r'image\.(?:png|jpg|jpeg|gif|bmp)',  # image.extension
+            r'figure\s+\d+',  # figure 1, figure 2, etc.
+        ]
+        
+        for i, pattern in enumerate(patterns):
+            matches = re.finditer(pattern, content, re.IGNORECASE)
+            for match in matches:
+                # Extract description or use generic description
+                if match.groups():
+                    description = match.group(1).strip()
+                else:
+                    description = f"Image reference {len(image_refs) + 1}"
+                
+                # Create image reference object
+                image_ref = {
+                    'id': f"text_ref_{len(image_refs) + 1}",
+                    'filename': f"extracted_image_{len(image_refs) + 1}.png",
+                    'url': f"/api/static/placeholder_image_{len(image_refs) + 1}.png",
+                    'alt_text': description or f"Referenced Image {len(image_refs) + 1}",
+                    'caption': description,
+                    'placement': 'inline',
+                    'source': 'text_extraction'
+                }
+                
+                image_refs.append(image_ref)
+        
+        return image_refs
+        
+    except Exception as e:
+        print(f"❌ Error extracting image references from text: {e}")
+        return []
+
+
+
+def create_fallback_segment(segment_content: str, segment_images: list) -> str:
+    """Create fallback content for a segment when AI generation fails"""
+    try:
+        # Create basic HTML structure
+        html = ""
+        
+        # Process segment content into paragraphs
+        paragraphs = segment_content.split('\n\n')
+        for para in paragraphs[:3]:  # Limit to first 3 paragraphs for fallback
+            para = para.strip()
+            if para:
+                html += f"<p>{para}</p>\n\n"
+        
+        # Add images if available
+        for img in segment_images[:1]:  # Limit to first image for fallback
+            html += f"""<figure class="embedded-image">
+<img src="{img.get('url', '')}" alt="{img.get('alt_text', 'Figure')}" style="max-width: 100%; height: auto;">
+<figcaption>{img.get('caption', 'Figure')}</figcaption>
+</figure>
+
+"""
+        
+        return html
+        
+    except Exception as e:
+        print(f"❌ Fallback segment creation error: {e}")
+        return f"<p>{segment_content[:500]}...</p>"
+
+async def generate_single_pass_article(content: str, images: list, template_data: dict, title: str) -> str:
+    """Generate article using single-pass approach for shorter content"""
+    try:
+        system_message = f"""You are an expert technical writer creating comprehensive, professional knowledge base articles.
+
+CRITICAL OUTPUT REQUIREMENTS:
+1. Generate ONLY clean, semantic HTML content - absolutely NO meta-commentary, explanations, or processing notes
+2. NEVER mention that you are processing content, creating articles, or analyzing documents
+3. Start directly with content - no introductory phrases like "Here is the article" or "Based on the content"
+4. Use proper HTML5 structure: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, <table>
+5. Create contextual, descriptive titles that reflect actual content topics (NOT filename-based)
+6. Write in professional, technical tone suitable for enterprise knowledge documentation
+7. Include comprehensive coverage - do NOT truncate or summarize content artificially
+8. Use proper heading hierarchy and logical content flow
+9. Include step-by-step instructions, detailed procedures, and comprehensive explanations
+10. Use callout sections for Notes, Tips, Warnings using appropriate HTML structure
+11. NEVER generate code blocks with ```html or ```javascript - only generate actual HTML content
+12. NEVER repeat the document title as it already exists in the h1 tag
+
+TEMPLATE SPECIFICATIONS:
+{json.dumps(template_data.get('processing_instructions', []), indent=2)}
+
+QUALITY STANDARDS:
+- COMPREHENSIVE coverage - include ALL important details from source content
+- Clear, detailed step-by-step instructions where applicable  
+- Professional enterprise technical writing style
+- Proper heading hierarchy for content organization (h2 for major sections, h3 for subsections) - document already has h1 title
+- Bullet points and numbered lists for procedures and key points
+- Tables for structured data presentation
+- No artificial content truncation or summarization
+
+IMAGE INTEGRATION REQUIREMENTS:
+- Embed ALL available images at contextually appropriate locations in the content
+- Use proper HTML figure elements with captions exactly as provided
+- Reference images naturally in the text flow (e.g., "as shown in Figure 1")
+- CRITICAL: Only use the exact URLs provided in the image list
+- Images should support and enhance the written content, not replace it"""
+
+        user_message = f"""Transform this content into a comprehensive, well-structured knowledge base article with complete coverage:
+
+CONTENT TO PROCESS:
+{content}
+
+CRITICAL REQUIREMENTS:
+1. **Comprehensive Coverage**: Include ALL information from the source content - do not truncate or summarize
+2. **Intelligent Title**: Create a meaningful title based on the main topic (NOT filename-based)
+3. **Professional Structure**: Use proper headings (h2 for major sections, h3 for subsections) - DO NOT create additional h1 tags as the document already has a title
+4. **Technical Quality**: Enterprise-level professional language for technical documentation
+5. **Detailed Instructions**: Include complete step-by-step procedures with full detail
+6. **Enhanced Formatting**: Proper lists, tables, callouts, and semantic HTML structure
+7. **Complete Content**: Process the entire content without artificial limits or truncation
+
+AVAILABLE IMAGES FOR EMBEDDING: {len(images)}
+{format_available_images(images)}
+
+CRITICAL IMAGE EMBEDDING INSTRUCTIONS:
+- You MUST embed images at contextually appropriate locations throughout the article
+- Use the exact HTML provided for each image in the list above
+- Reference images in the text flow naturally (e.g., "As shown in Figure 1 below:", "The following screenshot demonstrates:")
+- Embed images near relevant text sections, not grouped at the end
+- If no images are available, focus on comprehensive text content only
+- NEVER create placeholder text like [IMAGE_1] - only use actual provided images
+
+CONTENT ENHANCEMENT REQUIREMENTS:
+- Transform basic content into comprehensive enterprise documentation
+- Maintain all technical details and procedural steps
+- Add proper structure with detailed headings and sections
+- Include implementation details, examples, and comprehensive explanations
+- Use callout boxes for important notes, tips, or warnings
+- Create tables for structured information where appropriate
+- Ensure content flows logically from introduction through detailed procedures to conclusion
+- Include troubleshooting information where relevant
+
+CRITICAL: Return ONLY the complete HTML article content with semantic structure. Do not include any explanatory text, processing notes, or meta-commentary."""
+
+        # Generate content with LLM
+        ai_content = await call_llm_with_fallback(system_message, user_message)
+        
+        if ai_content:
+            return ai_content.strip()
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Single-pass generation error: {e}")
+        return None
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)

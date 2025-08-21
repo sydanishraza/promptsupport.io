@@ -286,9 +286,15 @@ ID:block_6 | TYPE:list | CONTENT: • Token-based authentication..."""
             has_validation_metadata = 'validation_metadata' in enhanced_outline
             coverage_percentage = enhanced_outline.get('validation_metadata', {}).get('coverage_percentage', 0)
             
+            # Debug information
+            validation_meta = enhanced_outline.get('validation_metadata', {})
+            total_blocks_meta = validation_meta.get('total_blocks', 0)
+            assigned_blocks_meta = validation_meta.get('assigned_blocks', 0)
+            discarded_blocks_meta = validation_meta.get('discarded_blocks', 0)
+            
             success = coverage_complete and has_validation_metadata and coverage_percentage >= 95.0
             
-            details = f"Coverage: {len(all_blocks)}/6 blocks, Complete: {coverage_complete}, Metadata: {has_validation_metadata}, Percentage: {coverage_percentage}%"
+            details = f"Coverage: {len(all_blocks)}/6 blocks, Complete: {coverage_complete}, Metadata: {has_validation_metadata}, Percentage: {coverage_percentage}%, Meta: total={total_blocks_meta}, assigned={assigned_blocks_meta}, discarded={discarded_blocks_meta}"
             self.log_test("Validate and Enhance Outline (100% Coverage)", success, details)
             return success
             

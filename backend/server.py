@@ -13406,12 +13406,24 @@ async def create_article_from_blocks(blocks, title: str, normalized_doc) -> Dict
         return None
 
 async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """V2 ENGINE: Enhanced text content processing with improved AI pipeline"""
+    """V2 ENGINE: Enhanced text content processing with normalized document extraction"""
     try:
         print(f"🚀 V2 ENGINE: Processing {len(content)} characters of content - engine=v2")
         
-        # V2 ENHANCEMENT: Use enhanced intelligent content processing pipeline
-        articles = await intelligent_content_processing_pipeline(content, metadata)
+        # V2 STEP 2: Use new content extraction & structuring system
+        v2_extractor = V2ContentExtractor()
+        
+        # Extract content into normalized document
+        title = metadata.get('title', metadata.get('original_filename', 'Text Content'))
+        normalized_doc = await v2_extractor.extract_raw_text(content, title)
+        
+        print(f"📋 V2 ENGINE: Extracted {len(normalized_doc.blocks)} blocks, {len(normalized_doc.media)} media - engine=v2")
+        
+        # Store normalized document in database
+        await store_normalized_document(normalized_doc)
+        
+        # V2 ENHANCEMENT: Convert normalized document back to legacy articles format for compatibility
+        articles = await convert_normalized_doc_to_articles(normalized_doc)
         
         # V2 ENHANCEMENT: Add engine metadata to all articles
         for article in articles:
@@ -13419,13 +13431,30 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
                 article.setdefault('metadata', {})
                 article['metadata']['engine'] = 'v2'
                 article['metadata']['processing_version'] = '2.0'
+                article['metadata']['normalized_doc_id'] = normalized_doc.doc_id
         
-        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles - engine=v2")
+        print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles from normalized doc - engine=v2")
         return articles
         
     except Exception as e:
         print(f"❌ V2 ENGINE: Error in text processing - {e} - engine=v2")
-        return []
+        # Fallback to legacy processing
+        try:
+            print(f"🔄 V2 ENGINE: Falling back to legacy processing - engine=v2")
+            articles = await intelligent_content_processing_pipeline(content, metadata)
+            
+            # Still add V2 metadata even in fallback
+            for article in articles:
+                if isinstance(article, dict):
+                    article.setdefault('metadata', {})
+                    article['metadata']['engine'] = 'v2'
+                    article['metadata']['processing_version'] = '2.0'
+                    article['metadata']['fallback'] = True
+            
+            return articles
+        except Exception as fallback_error:
+            print(f"❌ V2 ENGINE: Fallback also failed - {fallback_error} - engine=v2")
+            return []
 
 async def analyze_content_for_unique_sections(content: str, is_ultra_large: bool = False) -> list:
     """ENHANCED: Analyze content with functional stage grouping and procedural continuity preservation"""

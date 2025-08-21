@@ -11778,7 +11778,8 @@ def count_embedded_images(content: str) -> int:
 # PHASE 2: ADVANCED REFINED ENGINE v2.1 - Process content endpoint
 @app.post("/api/content/process")
 async def process_content(request: ContentProcessRequest):
-    """Process text content with AI"""
+    """V2 ENGINE: Process text content with AI"""
+    print(f"🚀 V2 ENGINE: Processing text content - engine=v2")
     try:
         job = ProcessingJob(
             input_type=request.content_type,
@@ -11787,10 +11788,11 @@ async def process_content(request: ContentProcessRequest):
         
         # Store job in database
         await db.processing_jobs.insert_one(job.dict())
+        print(f"📊 V2 ENGINE: Job created - {job.job_id} - engine=v2")
         
-        # Process content based on type
+        # V2 PROCESSING: Route to V2 text processor
         if request.content_type == "text":
-            chunks = await process_text_content(request.content, request.metadata)
+            chunks = await process_text_content_v2(request.content, request.metadata)
         else:
             raise HTTPException(status_code=400, detail=f"Content type {request.content_type} not supported yet")
         
@@ -11804,11 +11806,13 @@ async def process_content(request: ContentProcessRequest):
             {"$set": job.dict()}
         )
         
+        print(f"✅ V2 ENGINE: Processing complete - {len(chunks)} chunks created - engine=v2")
         return {
             "job_id": job.job_id,
             "status": job.status,
             "chunks_created": len(chunks),
-            "message": "Content processed successfully"
+            "message": "V2 Engine: Content processed successfully",
+            "engine": "v2"
         }
         
     except Exception as e:

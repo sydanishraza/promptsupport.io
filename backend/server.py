@@ -3826,6 +3826,39 @@ Return ONLY JSON in this exact format:
         except Exception as e:
             print(f"❌ V2 ARTICLE GEN: Error retrieving generated articles - {e} - engine=v2")
             return None
+    
+    def _extract_title_from_html(self, html_content: str, fallback_title: str = 'Generated Article') -> str:
+        """Extract title from HTML content, with fallback to provided title"""
+        import re
+        
+        try:
+            # Try to extract from h1 tag first
+            h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', html_content, re.IGNORECASE | re.DOTALL)
+            if h1_match:
+                title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+                if 5 < len(title_text) < 120:
+                    return title_text
+            
+            # Try to extract from h2 tag as fallback
+            h2_match = re.search(r'<h2[^>]*>(.*?)</h2>', html_content, re.IGNORECASE | re.DOTALL)
+            if h2_match:
+                title_text = re.sub(r'<[^>]+>', '', h2_match.group(1)).strip()
+                if 5 < len(title_text) < 120:
+                    return title_text
+            
+            # Try to extract from title tag
+            title_match = re.search(r'<title[^>]*>(.*?)</title>', html_content, re.IGNORECASE | re.DOTALL)
+            if title_match:
+                title_text = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+                if 5 < len(title_text) < 120:
+                    return title_text
+            
+            # If no suitable title found, return fallback
+            return fallback_title
+            
+        except Exception as e:
+            print(f"⚠️ V2 ARTICLE GEN: Error extracting title from HTML - {e}")
+            return fallback_title
 
 # Global V2 Article Generator instance
 v2_article_generator = V2ArticleGenerator()

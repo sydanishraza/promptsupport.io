@@ -14056,6 +14056,100 @@ async def convert_normalized_doc_to_articles(normalized_doc) -> List[Dict[str, A
         print(f"❌ V2 ENGINE: Error converting normalized doc to articles - {e} - engine=v2")
         return []
 
+async def convert_normalized_doc_to_articles_with_analysis(normalized_doc, analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Convert normalized document to articles using multi-dimensional analysis results"""
+    try:
+        articles = []
+        
+        # Use analysis to determine article structure
+        audience = analysis.get('audience', 'end_user')
+        granularity = analysis.get('granularity', 'shallow')
+        content_type = analysis.get('content_type', 'guide')
+        
+        # Adjust article creation strategy based on analysis
+        if granularity == 'shallow' or content_type == 'tutorial':
+            # Create fewer, more comprehensive articles
+            current_article_blocks = []
+            current_title = normalized_doc.title
+            
+            for block in normalized_doc.blocks:
+                if block.block_type == 'heading' and block.level == 1 and len(current_article_blocks) > 20:
+                    # Only split on major headings if we have substantial content
+                    article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                    if article:
+                        articles.append(article)
+                    
+                    current_article_blocks = [block]
+                    current_title = block.content
+                else:
+                    current_article_blocks.append(block)
+            
+            # Create final article
+            if current_article_blocks:
+                article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                if article:
+                    articles.append(article)
+        
+        elif granularity == 'deep':
+            # Create more granular articles
+            current_article_blocks = []
+            current_title = normalized_doc.title
+            
+            for block in normalized_doc.blocks:
+                if block.block_type == 'heading' and (block.level == 1 or (block.level == 2 and len(current_article_blocks) > 5)):
+                    # Split on both H1 and substantial H2 sections
+                    if current_article_blocks:
+                        article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                        if article:
+                            articles.append(article)
+                    
+                    current_article_blocks = [block]
+                    current_title = block.content
+                else:
+                    current_article_blocks.append(block)
+            
+            # Create final article
+            if current_article_blocks:
+                article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                if article:
+                    articles.append(article)
+        
+        else:  # moderate granularity
+            # Default behavior - split on H1 headings
+            current_article_blocks = []
+            current_title = normalized_doc.title
+            
+            for block in normalized_doc.blocks:
+                if block.block_type == 'heading' and block.level == 1 and current_article_blocks:
+                    article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                    if article:
+                        articles.append(article)
+                    
+                    current_article_blocks = [block]
+                    current_title = block.content
+                else:
+                    current_article_blocks.append(block)
+            
+            # Create final article
+            if current_article_blocks:
+                article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                if article:
+                    articles.append(article)
+        
+        # If no articles created, create one from all content
+        if not articles:
+            article = await create_article_from_blocks(normalized_doc.blocks, normalized_doc.title, normalized_doc)
+            if article:
+                articles.append(article)
+        
+        print(f"✅ V2 ENGINE: Converted normalized doc to {len(articles)} articles using {granularity} granularity for {audience} audience - engine=v2")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ V2 ENGINE: Error converting normalized doc to articles with analysis - {e} - engine=v2")
+        # Fallback to basic conversion
+        return await convert_normalized_doc_to_articles(normalized_doc)
+
 async def convert_normalized_doc_to_articles(normalized_doc) -> List[Dict[str, Any]]:
     """V2 ENGINE: Convert normalized document to legacy articles format with media references (no embedding)"""
     try:

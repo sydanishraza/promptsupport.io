@@ -15482,6 +15482,123 @@ async def inject_images_endpoint():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# NEW REFINED ENGINE - File upload endpoint  
+@app.post("/api/content/upload-refined")
+async def upload_file_refined(
+    file: UploadFile = File(...),
+    metadata: str = Form("{}")
+):
+    """Upload and process files with the new Refined Engine"""
+    try:
+        from refined_engine import refined_engine
+        
+        print(f"🆕 REFINED ENGINE: Processing file upload - {file.filename}")
+        
+        # Parse metadata
+        file_metadata = json.loads(metadata)
+        file_metadata.update({
+            "original_filename": file.filename,
+            "input_type": "file",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "refined_2.0"
+        })
+        
+        # Read and extract content
+        file_content = await file.read()
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+        
+        print(f"📄 File: {file.filename} ({len(file_content)} bytes, .{file_extension})")
+        
+        extracted_content = ""
+        
+        # Extract content based on file type
+        if file_extension in ['txt', 'md', 'csv']:
+            try:
+                extracted_content = file_content.decode('utf-8')
+            except UnicodeDecodeError:
+                extracted_content = file_content.decode('latin-1', errors='ignore')
+                
+        elif file_extension == 'docx':
+            try:
+                import io
+                import mammoth
+                
+                # Extract text with mammoth
+                docx_buffer = io.BytesIO(file_content)
+                result = mammoth.extract_raw_text(docx_buffer)
+                extracted_content = result.value
+                
+                print(f"✅ DOCX extraction: {len(extracted_content)} characters")
+                
+            except Exception as docx_error:
+                print(f"❌ DOCX extraction error: {docx_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process DOCX file: {docx_error}")
+                
+        elif file_extension == 'pdf':
+            try:
+                import PyPDF2
+                import io
+                
+                pdf_buffer = io.BytesIO(file_content)
+                pdf_reader = PyPDF2.PdfReader(pdf_buffer)
+                
+                text_parts = []
+                for page in pdf_reader.pages:
+                    text_parts.append(page.extract_text())
+                
+                extracted_content = '\n'.join(text_parts)
+                print(f"✅ PDF extraction: {len(extracted_content)} characters")
+                
+            except Exception as pdf_error:
+                print(f"❌ PDF extraction error: {pdf_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process PDF file: {pdf_error}")
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_extension}")
+        
+        # Validate content
+        if not extracted_content or len(extracted_content.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Insufficient content extracted from file")
+        
+        print(f"📊 Content extracted: {len(extracted_content)} characters")
+        
+        # Process with refined engine
+        generated_articles = await refined_engine.process_content(extracted_content, file_metadata)
+        
+        if generated_articles:
+            print(f"✅ REFINED ENGINE: Successfully created {len(generated_articles)} articles from {file.filename}")
+            return {
+                "success": True,
+                "message": f"File processed successfully with Refined Engine",
+                "filename": file.filename,
+                "content_extracted": len(extracted_content),
+                "articles_created": len(generated_articles),
+                "engine_used": "refined_2.0",
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"])
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No articles were created from the uploaded file",
+                "filename": file.filename,
+                "engine_used": "refined_2.0"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ REFINED ENGINE UPLOAD ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Refined Engine upload processing failed: {str(e)}")
+
 # File upload endpoint
 @app.post("/api/content/upload")
 async def upload_file(

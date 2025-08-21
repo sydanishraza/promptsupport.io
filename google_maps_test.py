@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://content-engine-6.preview.emergentagent.com"
+BACKEND_URL = "https://content-pipeline-4.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test(message, level="INFO"):

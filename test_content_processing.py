@@ -7,7 +7,7 @@ import requests
 import json
 import time
 
-BACKEND_URL = "https://content-engine-6.preview.emergentagent.com"
+BACKEND_URL = "https://content-pipeline-4.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def test_content_processing():

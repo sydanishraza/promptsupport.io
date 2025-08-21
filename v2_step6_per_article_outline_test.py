@@ -17,7 +17,7 @@ import os
 sys.path.append('/app/backend')
 
 # Test configuration
-BACKEND_URL = "https://None.preview.emergentagent.com/api"
+BACKEND_URL = "https://content-pipeline-4.preview.emergentagent.com/api"
 
 class V2Step6PerArticleOutlineTest:
     def __init__(self):

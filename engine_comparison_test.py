@@ -19,7 +19,7 @@ import io
 import base64
 
 # Get backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-engine-6.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-pipeline-4.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class EngineComparisonTest:

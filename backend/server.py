@@ -18285,21 +18285,36 @@ File Information:
             # Store normalized document in database
             await store_normalized_document(normalized_doc)
             
-            # Convert to legacy articles format for compatibility
-            chunks = await convert_normalized_doc_to_articles(normalized_doc)
+            # V2 STEP 4: Perform multi-dimensional analysis
+            run_id = f"run_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
+            analysis_result = await v2_analyzer.analyze_normalized_document(normalized_doc, run_id)
             
-            # Add V2 metadata
+            # Extract analysis for use in processing
+            analysis = analysis_result.get('analysis', {}) if analysis_result else {}
+            audience = analysis.get('audience', 'end_user')
+            granularity = analysis.get('granularity', 'shallow')
+            
+            print(f"🎯 V2 ENGINE: Analysis complete - {analysis.get('content_type', 'unknown')} content for {audience} audience with {granularity} granularity - engine=v2")
+            
+            # V2 STEP 4: Use analysis results for intelligent article generation
+            chunks = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, analysis)
+            
+            # Add comprehensive V2 metadata
             for chunk in chunks:
                 if isinstance(chunk, dict):
                     chunk.setdefault('metadata', {})
                     chunk['metadata']['engine'] = 'v2'
                     chunk['metadata']['processing_version'] = '2.0'
                     chunk['metadata']['normalized_doc_id'] = normalized_doc.doc_id
+                    chunk['metadata']['run_id'] = run_id
+                    chunk['metadata']['analysis'] = analysis
+                    chunk['metadata']['audience'] = audience
+                    chunk['metadata']['granularity'] = granularity
                     chunk['metadata']['extraction_method'] = 'v2_direct_file_extraction'
                     chunk['metadata']['file_type'] = file_extension
             
-            await update_job_progress("finalizing", f"V2 Engine: Created {len(chunks)} articles with full structure preservation")
-            print(f"✅ V2 ENGINE: File processing completed: {len(chunks)} chunks created from normalized document - engine=v2")
+            await update_job_progress("finalizing", f"V2 Engine: Created {len(chunks)} articles using {granularity} granularity for {audience} audience")
+            print(f"✅ V2 ENGINE: File processing completed: {len(chunks)} chunks created using {granularity} granularity for {audience} audience - engine=v2")
             
         except Exception as v2_error:
             print(f"⚠️ V2 ENGINE: Direct extraction failed, falling back to legacy text processing - {v2_error} - engine=v2")

@@ -165,11 +165,14 @@ def execute_formatting_cleanup():
             log_test_result("✅ Formatting cleanup executed successfully", "SUCCESS")
             log_test_result(f"📊 CLEANUP RESULTS:")
             
-            # Extract cleanup metrics
-            total_processed = cleanup_data.get('total_processed', 0)
-            successful_cleanups = cleanup_data.get('successful_cleanups', 0)
-            failed_cleanups = cleanup_data.get('failed_cleanups', 0)
-            success_rate = cleanup_data.get('success_rate', 0)
+            # Extract cleanup metrics from the actual response structure
+            cleanup_results = cleanup_data.get('cleanup_results', {})
+            total_processed = cleanup_results.get('total_articles', 0)
+            successful_cleanups = cleanup_results.get('articles_cleaned', 0)
+            failed_cleanups = cleanup_results.get('articles_skipped', 0)
+            success_rate_str = cleanup_data.get('success_rate', '0%')
+            # Parse success rate from string format like "85.5%"
+            success_rate = float(success_rate_str.replace('%', '')) if success_rate_str else 0
             
             log_test_result(f"   Total Articles Processed: {total_processed}")
             log_test_result(f"   Successful Cleanups: {successful_cleanups}")

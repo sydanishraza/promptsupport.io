@@ -7285,6 +7285,228 @@ class V2ContentExtractor:
                 mime_type=mime_type,
                 extraction_metadata={"error": str(e), "status": "failed"}
             )
+
+    async def _extract_text(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from plain text files"""
+        try:
+            text_content = file_content.decode('utf-8', errors='ignore')
+            return await self.extract_raw_text(text_content, filename)
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+    
+    async def _extract_markdown(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from Markdown files with enhanced structure detection"""
+        try:
+            text_content = file_content.decode('utf-8', errors='ignore')
+            blocks = []
+            media = []
+            
+            lines = text_content.split('\n')
+            current_block = ""
+            block_type = "paragraph"
+            in_code_block = False
+            code_lang = None
+            
+            for i, line in enumerate(lines):
+                line_stripped = line.strip()
+                
+                # Handle code blocks
+                if line_stripped.startswith('```'):
+                    if in_code_block:
+                        # End code block
+                        if current_block.strip():
+                            blocks.append(ContentBlock(
+                                block_type='code',
+                                content=current_block.strip(),
+                                language=code_lang,
+                                source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i-len(current_block.split('\n'))+1, line_end=i)
+                            ))
+                        current_block = ""
+                        in_code_block = False
+                        code_lang = None
+                    else:
+                        # Start code block
+                        if current_block.strip():
+                            blocks.append(ContentBlock(
+                                block_type=block_type,
+                                content=current_block.strip(),
+                                source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i-len(current_block.split('\n'))+1, line_end=i-1)
+                            ))
+                        current_block = ""
+                        in_code_block = True
+                        code_lang = line_stripped[3:].strip() if len(line_stripped) > 3 else None
+                    continue
+                
+                if in_code_block:
+                    current_block += line + '\n'
+                    continue
+                
+                # Handle different markdown elements
+                if line_stripped.startswith('#'):
+                    # Save previous block
+                    if current_block.strip():
+                        blocks.append(ContentBlock(
+                            block_type=block_type,
+                            content=current_block.strip(),
+                            source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i-len(current_block.split('\n'))+1, line_end=i-1)
+                        ))
+                    
+                    # Start new heading
+                    level = len(line_stripped) - len(line_stripped.lstrip('#'))
+                    content = line_stripped[level:].strip()
+                    blocks.append(ContentBlock(
+                        block_type='heading',
+                        content=content,
+                        level=level,
+                        source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i, line_end=i)
+                    ))
+                    current_block = ""
+                    block_type = "paragraph"
+                    
+                elif line_stripped.startswith(('- ', '* ', '+ ')) or (line_stripped and line_stripped[0].isdigit() and '. ' in line_stripped):
+                    # List item
+                    if block_type != "list":
+                        if current_block.strip():
+                            blocks.append(ContentBlock(
+                                block_type=block_type,
+                                content=current_block.strip(),
+                                source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i-len(current_block.split('\n'))+1, line_end=i-1)
+                            ))
+                        current_block = ""
+                        block_type = "list"
+                    current_block += line + '\n'
+                    
+                elif line_stripped.startswith('>'):
+                    # Quote
+                    if block_type != "quote":
+                        if current_block.strip():
+                            blocks.append(ContentBlock(
+                                block_type=block_type,
+                                content=current_block.strip(),
+                                source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i-len(current_block.split('\n'))+1, line_end=i-1)
+                            ))
+                        current_block = ""
+                        block_type = "quote"
+                    current_block += line_stripped[1:].strip() + '\n'
+                    
+                elif '![' in line_stripped and '](' in line_stripped:
+                    # Image reference
+                    import re
+                    img_matches = re.findall(r'!\[([^\]]*)\]\(([^)]+)\)', line_stripped)
+                    for alt_text, img_url in img_matches:
+                        media.append(MediaRecord(
+                            media_type='image',
+                            url=img_url,
+                            alt_text=alt_text,
+                            source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i, line_end=i)
+                        ))
+                    current_block += line + '\n'
+                    
+                elif line_stripped == "":
+                    # Empty line - end current block
+                    if current_block.strip():
+                        blocks.append(ContentBlock(
+                            block_type=block_type,
+                            content=current_block.strip(),
+                            source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i-len(current_block.split('\n'))+1, line_end=i-1)
+                        ))
+                        current_block = ""
+                        block_type = "paragraph"
+                else:
+                    # Regular content
+                    current_block += line + '\n'
+            
+            # Handle final block
+            if current_block.strip():
+                blocks.append(ContentBlock(
+                    block_type=block_type,
+                    content=current_block.strip(),
+                    source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=len(lines)-len(current_block.split('\n'))+1, line_end=len(lines))
+                ))
+            
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=filename,
+                original_filename=filename,
+                file_id=file_id,
+                mime_type=mime_type,
+                word_count=len(text_content.split()),
+                blocks=blocks,
+                media=media,
+                extraction_metadata={
+                    "status": "success",
+                    "blocks_extracted": len(blocks),
+                    "media_extracted": len(media)
+                }
+            )
+            
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+
+    async def _extract_csv(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from CSV files"""
+        try:
+            import csv
+            import io
+            
+            text_content = file_content.decode('utf-8', errors='ignore')
+            csv_reader = csv.reader(io.StringIO(text_content))
+            
+            blocks = []
+            rows = list(csv_reader)
+            
+            if not rows:
+                return NormalizedDocument(doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type)
+            
+            # First row as header
+            headers = rows[0] if rows else []
+            table_content = f"Headers: {' | '.join(headers)}\n\n"
+            
+            # Add data rows
+            for i, row in enumerate(rows[1:], 1):
+                if len(row) == len(headers):
+                    row_content = ' | '.join([f"{headers[j]}: {cell}" for j, cell in enumerate(row)])
+                else:
+                    row_content = ' | '.join(row)
+                table_content += f"Row {i}: {row_content}\n"
+            
+            blocks.append(ContentBlock(
+                block_type='table',
+                content=table_content,
+                metadata={
+                    "headers": headers,
+                    "row_count": len(rows) - 1,
+                    "column_count": len(headers)
+                },
+                source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=0, line_end=len(rows))
+            ))
+            
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=filename,
+                original_filename=filename,
+                file_id=file_id,
+                mime_type=mime_type,
+                word_count=len(table_content.split()),
+                blocks=blocks,
+                extraction_metadata={
+                    "status": "success",
+                    "blocks_extracted": len(blocks),
+                    "rows_processed": len(rows)
+                }
+            )
+            
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
     
     async def extract_url_content(self, url: str, html_content: str) -> NormalizedDocument:
         """V2 Engine: Extract content from scraped URL"""

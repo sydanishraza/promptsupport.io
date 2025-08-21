@@ -15943,7 +15943,7 @@ File Information:
                     print(f"🎯 Images are available for manual insertion via the article editor")
                     # No contextual_images metadata needed - images are just in Asset Library
                 
-                return await process_text_content(enriched_content, enhanced_metadata)
+                return await process_text_content_v2(enriched_content, enhanced_metadata)
             
             # Set a 10-minute timeout for processing
             chunks = await asyncio.wait_for(process_with_timeout(), timeout=600)

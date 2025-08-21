@@ -17,7 +17,7 @@ import os
 sys.path.append('/app/backend')
 
 # Test configuration
-BACKEND_URL = "https://None.preview.emergentagent.com/api"
+BACKEND_URL = "http://localhost:8001/api"
 
 class V2EngineStep4Tester:
     """Comprehensive tester for V2 Engine Step 4 Multi-Dimensional Analysis"""

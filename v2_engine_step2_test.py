@@ -53,7 +53,7 @@ class V2EngineStep2Tester:
                     return
                 
                 # Check V2 features
-                v2_features = data.get('v2_features', [])
+                v2_features = data.get('features', [])  # Changed from 'v2_features' to 'features'
                 expected_features = [
                     'multi_dimensional_analysis',
                     'adaptive_granularity', 

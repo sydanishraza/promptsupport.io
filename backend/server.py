@@ -15992,13 +15992,15 @@ File Information:
             }}
         )
         
+        print(f"✅ V2 ENGINE: File processing complete - {len(chunks)} chunks created - engine=v2")
         return {
             "job_id": job.job_id,
             "status": job.status,
             "file_type": file_extension,
             "extracted_content_length": len(extracted_content),
             "chunks_created": len(chunks),
-            "message": "File processed successfully with optimized pipeline"
+            "message": "V2 Engine: File processed successfully with optimized pipeline",
+            "engine": "v2"
         }
         
     except Exception as e:

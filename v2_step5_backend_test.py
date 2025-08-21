@@ -13,7 +13,7 @@ import requests
 import time
 
 # Test configuration
-BACKEND_URL = "https://None.preview.emergentagent.com/api"
+BACKEND_URL = "http://localhost:8001/api"
 
 class MockNormalizedDocument:
     """Mock normalized document for testing"""

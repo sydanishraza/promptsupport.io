@@ -16524,13 +16524,15 @@ async def process_recording(
             {"$set": job.dict()}
         )
         
+        print(f"✅ V2 ENGINE: Recording processing complete - {len(chunks)} chunks created - engine=v2")
         return {
             "job_id": job.job_id,
             "status": job.status,
             "recording_type": recording_type,
             "duration": duration,
             "chunks_created": len(chunks),
-            "message": "Recording processed successfully"
+            "message": "V2 Engine: Recording processed successfully",
+            "engine": "v2"
         }
         
     except Exception as e:

@@ -13471,11 +13471,15 @@ Original context: {metadata.get('original_filename', 'Document content')}
                         else:
                             article_data = json.loads(cleaned_response)
                         
+                        # V2 MEDIA: Ensure no image embedding in generated content
+                        content = article_data.get("content", chunk["content"])
+                        content = ensure_no_media_embedding(content)
+                        
                         # Create article record
                         article_record = {
                             "id": str(uuid.uuid4()),
                             "title": article_data.get("title", title),
-                            "content": article_data.get("content", chunk["content"]),
+                            "content": content,
                             "summary": article_data.get("summary", ""),
                             "tags": article_data.get("tags", ["knowledge-engine"]),
                             "takeaways": article_data.get("takeaways", []),

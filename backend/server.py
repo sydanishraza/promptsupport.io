@@ -16090,15 +16090,52 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"📋 V2 ENGINE: Per-article outlines created - {len(per_article_outlines)} detailed outlines - engine=v2")
         
-        # V2 STEP 6: Use analysis results with global outline and per-article outlines for intelligent article generation
-        # Enhance analysis with outline information
-        enhanced_analysis = analysis.copy()
-        enhanced_analysis['global_outline'] = outline
-        enhanced_analysis['article_outlines'] = article_outlines
-        enhanced_analysis['discarded_blocks'] = discarded_blocks
-        enhanced_analysis['per_article_outlines'] = per_article_outlines
+        # V2 STEP 7: Generate final articles with strict format and audience-aware styling
+        print(f"🎯 V2 ENGINE: Starting Step 7 - Final article generation with V2ArticleGenerator - engine=v2")
         
-        articles = await convert_normalized_doc_to_articles_with_analysis(normalized_doc, enhanced_analysis)
+        # Use V2ArticleGenerator for final article generation
+        generated_articles_result = await v2_article_generator.generate_final_articles(
+            normalized_doc, 
+            per_article_outlines, 
+            analysis, 
+            run_id
+        )
+        
+        # Convert V2ArticleGenerator output to expected format
+        articles = []
+        if generated_articles_result and 'generated_articles' in generated_articles_result:
+            for generated_article in generated_articles_result['generated_articles']:
+                article_data = generated_article.get('article_data', {})
+                if article_data:
+                    # Create article in expected format for content library storage
+                    article = {
+                        "id": str(uuid.uuid4()),
+                        "title": article_data.get('title', 'Generated Article'),
+                        "content": article_data.get('html', ''),
+                        "summary": article_data.get('summary', ''),
+                        "status": "draft",
+                        "created_at": datetime.utcnow().isoformat(),
+                        "updated_at": datetime.utcnow().isoformat(),
+                        "source_content": f"V2 Engine processed content from {normalized_doc.title}",
+                        "source_type": "v2_generated",
+                        "markdown": article_data.get('markdown', ''),
+                        "takeaways": [],
+                        "metadata": {
+                            "engine": "v2",
+                            "processing_version": "2.0",
+                            "normalized_doc_id": normalized_doc.doc_id,
+                            "run_id": run_id,
+                            "analysis": analysis,
+                            "audience": analysis.get('audience', 'end_user'),
+                            "granularity": analysis.get('granularity', 'shallow'),
+                            "article_id": generated_article.get('article_id', 'unknown'),
+                            "validation_metadata": article_data.get('validation_metadata', {}),
+                            "generated_by": "v2_article_generator"
+                        }
+                    }
+                    articles.append(article)
+        
+        print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(articles)} final articles with strict format - engine=v2")
         
         # V2 ENHANCEMENT: Add comprehensive metadata to all articles including per-article outlines
         for article in articles:

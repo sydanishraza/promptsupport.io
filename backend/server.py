@@ -14545,9 +14545,64 @@ async def convert_normalized_doc_to_articles(normalized_doc) -> List[Dict[str, A
         return []
 
 async def convert_normalized_doc_to_articles_with_analysis(normalized_doc, analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Convert normalized document to articles using multi-dimensional analysis results"""
+    """Convert normalized document to articles using multi-dimensional analysis results and global outline"""
     try:
         articles = []
+        
+        # Check if global outline is available (V2 STEP 5 enhancement)
+        global_outline = analysis.get('global_outline', {})
+        article_outlines = analysis.get('article_outlines', [])
+        discarded_blocks = analysis.get('discarded_blocks', [])
+        
+        if global_outline and article_outlines:
+            print(f"📋 V2 ENGINE: Using global outline to create {len(article_outlines)} articles - engine=v2")
+            
+            # V2 STEP 5: Use global outline for precise article creation
+            discarded_block_ids = set(block['block_id'] for block in discarded_blocks)
+            
+            for article_outline in article_outlines:
+                article_id = article_outline.get('article_id', 'unknown')
+                proposed_title = article_outline.get('proposed_title', 'Untitled Article')
+                scope_summary = article_outline.get('scope_summary', '')
+                block_ids = article_outline.get('block_ids', [])
+                
+                if not block_ids:
+                    continue
+                
+                # Get actual blocks for this article
+                article_blocks = []
+                for block_id in block_ids:
+                    # Extract block index from block_id (format: block_1, block_2, etc.)
+                    try:
+                        block_index = int(block_id.split('_')[1]) - 1
+                        if 0 <= block_index < len(normalized_doc.blocks):
+                            article_blocks.append(normalized_doc.blocks[block_index])
+                    except (IndexError, ValueError):
+                        print(f"⚠️ V2 ENGINE: Invalid block_id {block_id} in outline - engine=v2")
+                        continue
+                
+                if article_blocks:
+                    # Create article using global outline information
+                    article = await create_article_from_blocks_v2_with_outline(
+                        article_blocks, 
+                        proposed_title, 
+                        normalized_doc,
+                        {
+                            "article_id": article_id,
+                            "scope_summary": scope_summary,
+                            "block_count": len(article_blocks),
+                            "outline_source": "global_outline_v2"
+                        }
+                    )
+                    if article:
+                        articles.append(article)
+                        print(f"📄 V2 ENGINE: Created article '{proposed_title}' with {len(article_blocks)} blocks - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Created {len(articles)} articles using global outline, {len(discarded_block_ids)} blocks discarded - engine=v2")
+            return articles
+        
+        # Fallback to analysis-based article creation (original logic)
+        print(f"🔄 V2 ENGINE: No global outline available, using analysis-based article creation - engine=v2")
         
         # Use analysis to determine article structure
         audience = analysis.get('audience', 'end_user')
@@ -14563,7 +14618,7 @@ async def convert_normalized_doc_to_articles_with_analysis(normalized_doc, analy
             for block in normalized_doc.blocks:
                 if block.block_type == 'heading' and block.level == 1 and len(current_article_blocks) > 20:
                     # Only split on major headings if we have substantial content
-                    article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                    article = await create_article_from_blocks_v2(current_article_blocks, current_title, normalized_doc)
                     if article:
                         articles.append(article)
                     
@@ -14574,7 +14629,7 @@ async def convert_normalized_doc_to_articles_with_analysis(normalized_doc, analy
             
             # Create final article
             if current_article_blocks:
-                article = await create_article_from_blocks(current_article_blocks, current_title, normalized_doc)
+                article = await create_article_from_blocks_v2(current_article_blocks, current_title, normalized_doc)
                 if article:
                     articles.append(article)
         

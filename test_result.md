@@ -42,6 +42,18 @@ TESTING NEEDED:
 - Test HTML to Markdown conversion
 - Verify no media embedding occurs
 backend:
+  - task: "V2 ENGINE STEP 7 IMPLEMENTATION - Generate Articles (strict format + audience-aware)"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "🎯 V2 ENGINE STEP 7 IMPLEMENTATION COMPLETED: Successfully implemented Step 7 of V2 Engine plan. CHANGES MADE: 1) ✅ INTEGRATION COMPLETED - Replaced convert_normalized_doc_to_articles_with_analysis calls with v2_article_generator.generate_final_articles in 3 processing functions (text, file upload, URL processing), 2) ✅ V2ARTICLEGENERATOR CLASS ENHANCED - Added _extract_title_from_html method for better title extraction from HTML content, 3) ✅ ARTICLE FORMAT COMPLIANCE - All generated articles follow strict format: H1 Title → Intro → Mini-TOC → Main Body → FAQs → Related Links, 4) ✅ AUDIENCE-AWARE STYLING - System adapts content style based on analysis.audience (developer/business/admin/end_user), 5) ✅ CONTENT LIBRARY INTEGRATION - Articles properly formatted for storage with metadata including validation_metadata, generated_by marker, and article_id tracking. TECHNICAL IMPLEMENTATION: V2ArticleGenerator uses LLM with fallback to rule-based generation, ensures 100% block coverage, prevents media embedding, provides HTML to Markdown conversion, includes comprehensive validation and enhancement. READY FOR TESTING: All 3 V2 processing pipelines now use Step 7 article generation with strict format compliance."
+
   - task: "V2 ENGINE STEP 1 IMPLEMENTATION TESTING"
     implemented: true
     working: true

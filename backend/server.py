@@ -12103,6 +12103,155 @@ async def upload_batch_files_advanced(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Batch processing failed: {str(e)}")
 
+# WYSIWYG FORMATTING FIX - Cleanup endpoint for existing articles
+@app.post("/api/content/cleanup-formatting")
+async def cleanup_article_formatting():
+    """Clean up complex formatting in existing articles to use simplified HTML structure"""
+    try:
+        print(f"🧹 CLEANUP: Starting WYSIWYG formatting cleanup for existing articles")
+        
+        # Get all articles from Content Library
+        articles_cursor = db.content_library.find({})
+        articles = await articles_cursor.to_list(length=None)
+        
+        cleanup_results = {
+            "total_articles": len(articles),
+            "articles_cleaned": 0,
+            "articles_skipped": 0,
+            "cleanup_details": []
+        }
+        
+        for article in articles:
+            try:
+                article_id = article.get('id', str(article.get('_id', 'unknown')))
+                original_content = article.get('content', '')
+                
+                if not original_content or len(original_content.strip()) < 50:
+                    cleanup_results["articles_skipped"] += 1
+                    continue
+                
+                # Apply comprehensive formatting cleanup
+                cleaned_content = clean_legacy_formatting(original_content)
+                
+                # Check if cleanup made changes
+                if cleaned_content != original_content:
+                    # Update article with cleaned content
+                    await db.content_library.update_one(
+                        {"id": article_id},
+                        {"$set": {
+                            "content": cleaned_content,
+                            "formatting_cleaned": True,
+                            "cleanup_timestamp": datetime.utcnow().isoformat()
+                        }}
+                    )
+                    
+                    cleanup_results["articles_cleaned"] += 1
+                    cleanup_results["cleanup_details"].append({
+                        "article_id": article_id,
+                        "title": article.get('title', 'Unknown'),
+                        "original_length": len(original_content),
+                        "cleaned_length": len(cleaned_content),
+                        "changes_made": True
+                    })
+                    
+                    print(f"✅ Cleaned article: {article.get('title', 'Unknown')[:50]}")
+                else:
+                    cleanup_results["articles_skipped"] += 1
+                    cleanup_results["cleanup_details"].append({
+                        "article_id": article_id,
+                        "title": article.get('title', 'Unknown'),
+                        "changes_made": False
+                    })
+                    
+            except Exception as article_error:
+                print(f"❌ Error cleaning article {article_id}: {article_error}")
+                cleanup_results["articles_skipped"] += 1
+        
+        success_rate = (cleanup_results["articles_cleaned"] / max(1, cleanup_results["total_articles"])) * 100
+        
+        print(f"🎉 CLEANUP COMPLETE: {cleanup_results['articles_cleaned']}/{cleanup_results['total_articles']} articles cleaned ({success_rate:.1f}%)")
+        
+        return {
+            "success": True,
+            "message": f"WYSIWYG formatting cleanup completed successfully",
+            "cleanup_results": cleanup_results,
+            "success_rate": f"{success_rate:.1f}%"
+        }
+        
+    except Exception as e:
+        print(f"❌ CLEANUP ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Formatting cleanup failed: {str(e)}")
+
+def clean_legacy_formatting(content: str) -> str:
+    """Clean up complex formatting in legacy articles"""
+    try:
+        import re
+        
+        print(f"🧹 Cleaning legacy formatting...")
+        cleaned = content
+        
+        # 1. Remove complex layout structures
+        cleaned = re.sub(r'<div[^>]*class="article-body-with-toc"[^>]*>', '<div class="article-body">', cleaned)
+        cleaned = re.sub(r'<div[^>]*class="article-main-content"[^>]*>', '<div>', cleaned)
+        cleaned = re.sub(r'<div[^>]*class="article-sidebar"[^>]*>.*?</div>\s*</div>$', '</div>', cleaned, flags=re.DOTALL)
+        
+        # 2. Remove mini-TOC and advanced navigation
+        cleaned = re.sub(r'<div[^>]*mini-toc[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div[^>]*advanced-toc[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div[^>]*id="mini-toc-container"[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        
+        # 3. Clean up complex CSS classes
+        cleaned = re.sub(r'class="[^"]*line-numbers[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*expandable[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*troubleshoot-item[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*related-article-card[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*toc-hierarchy[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*toc-level-\d+"', '', cleaned)
+        
+        # 4. Simplify code blocks (remove complex classes, keep basic structure)
+        cleaned = re.sub(r'<pre[^>]*class="[^"]*language-[^"]*"[^>]*>', '<pre>', cleaned)
+        cleaned = re.sub(r'<code[^>]*class="[^"]*language-[^"]*"[^>]*>', '<code>', cleaned)
+        
+        # 5. Remove expandable structures and convert to simple format
+        cleaned = re.sub(r'<div class="expandable-header"[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div class="expandable-content"[^>]*>(.*?)</div>', r'\1', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<span class="expandable-title"[^>]*>(.*?)</span>', r'<strong>\1</strong>', cleaned, flags=re.DOTALL)
+        
+        # 6. Remove complex navigation and related links sections
+        cleaned = re.sub(r'<h[2-6][^>]*>🔗 Related Links</h[2-6]>.*?(?=<h[1-6]|</div>|$)', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<div[^>]*related-links[^>]*>.*?</div>', '', cleaned, flags=re.DOTALL)
+        
+        # 7. Clean up any remaining complex structures
+        cleaned = re.sub(r'<hr>\s*<hr>', '<hr>', cleaned)  # Remove duplicate HRs
+        cleaned = re.sub(r'<div[^>]*table-responsive[^>]*>', '<div>', cleaned)
+        cleaned = re.sub(r'class="[^"]*api-method[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*status-code[^"]*"', '', cleaned)
+        cleaned = re.sub(r'class="[^"]*compliance-required[^"]*"', 'class="note"', cleaned)
+        cleaned = re.sub(r'class="[^"]*compliance-optional[^"]*"', '', cleaned)
+        
+        # 8. Ensure proper article-body wrapper
+        if '<div class="article-body">' not in cleaned:
+            # Remove any existing wrapper and add simple one
+            cleaned = re.sub(r'^<div[^>]*>', '', cleaned)
+            cleaned = f'<div class="article-body">\n{cleaned}'
+            if not cleaned.endswith('</div>'):
+                cleaned += '\n</div>'
+        
+        # 9. Clean up whitespace and formatting
+        cleaned = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned)  # Remove excessive line breaks
+        cleaned = re.sub(r'class=""', '', cleaned)  # Remove empty class attributes
+        cleaned = re.sub(r'\s+class="\s*"', '', cleaned)  # Remove empty class attributes with spaces
+        cleaned = cleaned.strip()
+        
+        print(f"✅ Legacy formatting cleanup complete")
+        return cleaned
+        
+    except Exception as e:
+        print(f"❌ Error in legacy formatting cleanup: {e}")
+        return content
+
 # PHASE 2: ENGINE MIGRATION AND COMPARISON ENDPOINTS
 @app.post("/api/content/compare-engines")
 async def compare_engines(request: ContentProcessRequest):

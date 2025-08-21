@@ -404,15 +404,17 @@ SOURCE CONTENT:
             
             # 2. Generate mini-TOC only if source has multiple sections
             heading_count = len(re.findall(r'<h[2-6][^>]*>', enhanced))
-            if heading_count >= 3 and 'mini-toc-container' not in enhanced:
+            if heading_count >= 3:
                 toc_html = self.generate_mini_toc(enhanced)
                 if toc_html:
-                    # Insert after first paragraph or at beginning
-                    if '<p>' in enhanced:
-                        enhanced = enhanced.replace('<p>', f'{toc_html}\n<hr>\n<p>', 1)
-                    else:
-                        enhanced = enhanced.replace('<div class="article-body">', f'<div class="article-body">\n{toc_html}\n<hr>')
-                    print(f"✅ Added mini-TOC with {heading_count} sections")
+                    # Create proper layout structure with TOC on the right
+                    enhanced = enhanced.replace('<div class="article-body">', 
+                        '''<div class="article-body-with-toc">
+<div class="article-main-content">''')
+                    enhanced = enhanced.replace('</div>', f'''</div>
+{toc_html}
+</div>''')
+                    print(f"✅ Added right-aligned mini-TOC with {heading_count} sections")
             
             # 3. Enhance code blocks with line numbers
             code_pattern = r'<pre[^>]*><code[^>]*>(.*?)</code></pre>'

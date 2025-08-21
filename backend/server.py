@@ -2739,6 +2739,520 @@ Return ONLY JSON in this exact format:
 # Global V2 Global Outline Planner instance
 v2_global_planner = V2GlobalOutlinePlanner()
 
+# ========================================
+# V2 ENGINE: PER-ARTICLE OUTLINE PLANNER SYSTEM
+# ========================================
+
+class V2PerArticleOutlinePlanner:
+    """V2 Engine: Detailed per-article outline planning with sections, subsections, FAQs, and related links"""
+    
+    def __init__(self):
+        self.min_sections = 3
+        self.max_sections = 7
+        self.min_faqs = 3
+        
+    async def create_per_article_outlines(self, normalized_doc, global_outline: dict, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: Create detailed outlines for each article from global outline"""
+        try:
+            print(f"📋 V2 ARTICLE OUTLINE: Creating per-article outlines - engine=v2")
+            
+            article_outlines = global_outline.get('articles', [])
+            per_article_outlines = []
+            
+            for article_outline in article_outlines:
+                article_id = article_outline.get('article_id', 'unknown')
+                proposed_title = article_outline.get('proposed_title', 'Untitled Article')
+                block_ids = article_outline.get('block_ids', [])
+                
+                if not block_ids:
+                    continue
+                
+                print(f"🔍 V2 ARTICLE OUTLINE: Creating outline for article '{proposed_title}' with {len(block_ids)} blocks - engine=v2")
+                
+                # Create detailed per-article outline
+                detailed_outline = await self._create_detailed_article_outline(
+                    normalized_doc, 
+                    article_id, 
+                    proposed_title, 
+                    block_ids, 
+                    analysis
+                )
+                
+                if detailed_outline:
+                    per_article_outlines.append({
+                        "article_id": article_id,
+                        "outline": detailed_outline
+                    })
+            
+            # Store per-article outlines
+            stored_outlines = await self._store_per_article_outlines(per_article_outlines, run_id, normalized_doc.doc_id)
+            
+            print(f"✅ V2 ARTICLE OUTLINE: Created {len(per_article_outlines)} detailed article outlines - engine=v2")
+            return stored_outlines
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error creating per-article outlines - {e} - engine=v2")
+            return {"per_article_outlines": [], "run_id": run_id, "doc_id": normalized_doc.doc_id}
+    
+    async def _create_detailed_article_outline(self, normalized_doc, article_id: str, title: str, block_ids: list, analysis: dict) -> dict:
+        """Create detailed outline for a single article"""
+        try:
+            # Get actual blocks for this article
+            article_blocks = []
+            for block_id in block_ids:
+                try:
+                    block_index = int(block_id.split('_')[1]) - 1
+                    if 0 <= block_index < len(normalized_doc.blocks):
+                        article_blocks.append({
+                            "block_id": block_id,
+                            "block": normalized_doc.blocks[block_index]
+                        })
+                except (IndexError, ValueError):
+                    print(f"⚠️ V2 ARTICLE OUTLINE: Invalid block_id {block_id} - engine=v2")
+                    continue
+            
+            if not article_blocks:
+                return None
+            
+            # Create detailed blocks preview for LLM
+            blocks_preview = self._create_blocks_for_article_preview(article_blocks, title, analysis)
+            
+            # Perform LLM-based detailed outline creation
+            detailed_outline = await self._perform_llm_article_outline(blocks_preview, title, block_ids, analysis)
+            
+            if detailed_outline:
+                # Validate and enhance the outline
+                validated_outline = await self._validate_and_enhance_article_outline(
+                    detailed_outline, article_blocks, block_ids
+                )
+                return validated_outline
+            else:
+                # Fallback to rule-based article outline
+                print(f"🔄 V2 ARTICLE OUTLINE: LLM failed, using rule-based fallback for '{title}' - engine=v2")
+                return await self._rule_based_article_outline(article_blocks, title, block_ids)
+                
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error creating detailed outline for '{title}' - {e} - engine=v2")
+            return None
+    
+    def _create_blocks_for_article_preview(self, article_blocks: list, title: str, analysis: dict) -> str:
+        """Create detailed blocks preview for LLM article outline planning"""
+        try:
+            preview_parts = []
+            
+            # Article metadata
+            preview_parts.append(f"ARTICLE_TITLE: {title}")
+            preview_parts.append(f"TOTAL_BLOCKS: {len(article_blocks)}")
+            preview_parts.append(f"CONTENT_TYPE: {analysis.get('content_type', 'conceptual')}")
+            preview_parts.append(f"AUDIENCE: {analysis.get('audience', 'end_user')}")
+            
+            # Detailed block information
+            preview_parts.append("\nBLOCKS_FOR_ARTICLE (all must be used):")
+            
+            for item in article_blocks:
+                block_id = item['block_id']
+                block = item['block']
+                
+                # Create detailed block description
+                block_info = f"ID:{block_id} | TYPE:{block.block_type}"
+                
+                if hasattr(block, 'level') and block.level:
+                    block_info += f" | LEVEL:{block.level}"
+                
+                if hasattr(block, 'language') and block.language:
+                    block_info += f" | LANG:{block.language}"
+                
+                # Content preview (first 200 chars)
+                content_preview = block.content[:200] + "..." if len(block.content) > 200 else block.content
+                block_info += f" | CONTENT: {content_preview}"
+                
+                preview_parts.append(block_info)
+            
+            # Content structure analysis
+            block_types = {}
+            heading_levels = {}
+            
+            for item in article_blocks:
+                block = item['block']
+                block_type = block.block_type
+                block_types[block_type] = block_types.get(block_type, 0) + 1
+                
+                if block_type == 'heading' and hasattr(block, 'level') and block.level:
+                    heading_levels[block.level] = heading_levels.get(block.level, 0) + 1
+            
+            preview_parts.append(f"\nSTRUCTURE_ANALYSIS:")
+            preview_parts.append(f"Block Types: {dict(block_types)}")
+            if heading_levels:
+                preview_parts.append(f"Heading Levels: {dict(heading_levels)}")
+            
+            return "\n".join(preview_parts)
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error creating blocks preview - {e}")
+            return f"ARTICLE_TITLE: {title}\nTOTAL_BLOCKS: {len(article_blocks)}\nERROR: Could not create preview"
+    
+    async def _perform_llm_article_outline(self, blocks_preview: str, title: str, block_ids: list, analysis: dict) -> dict:
+        """Perform LLM-based detailed article outline creation"""
+        try:
+            system_message = """You are a documentation architect. Create a detailed outline for one article.
+
+Your task is to organize the assigned blocks into a comprehensive, well-structured article outline with sections, subsections, FAQs, and related links.
+
+CRITICAL REQUIREMENTS:
+1. Use ALL block_ids assigned to this article - every block must be placed in a section or subsection
+2. Create 3-7 main sections with logical organization
+3. Use subsections when appropriate for better organization
+4. Generate at least 3 grounded FAQs based on the actual content in blocks
+5. Suggest internal cross-references and only external links present in source content
+6. Ensure logical content flow and reader comprehension
+
+SECTION ORGANIZATION STRATEGY:
+- Group related blocks by topic, function, or logical sequence
+- Use headings from blocks as section/subsection titles when appropriate
+- Ensure balanced content distribution across sections
+- Maintain document flow and reader progression
+
+FAQ GENERATION RULES:
+- Questions must be answerable from the content in the blocks
+- Answers should be grounded in actual block content
+- Focus on common questions readers would have about the topic
+- Provide practical, actionable answers
+
+RELATED LINKS GUIDELINES:
+- Internal cross-references to other sections or related topics
+- Only include external URLs that are actually present in the source blocks
+- Use descriptive labels that indicate link purpose"""
+
+            user_message = f"""Create a detailed outline for this article using all assigned blocks.
+
+<blocks_for_article>
+{blocks_preview}
+</blocks_for_article>
+
+Requirements:
+- Use **all** block_ids assigned to this article
+- Produce 3–7 sections with optional subsections  
+- Generate grounded FAQs and related link suggestions
+- Return JSON only
+
+Return ONLY JSON in this exact format:
+{{
+  "title": "Specific descriptive article title",
+  "sections": [
+    {{
+      "heading": "Section heading",
+      "subsections": [
+        {{
+          "heading": "Subsection heading",
+          "block_ids": ["block_1", "block_2"]
+        }}
+      ]
+    }}
+  ],
+  "faq_suggestions": [
+    {{
+      "q": "Relevant question based on content",
+      "a": "Answer grounded in the blocks"
+    }}
+  ],
+  "related_link_suggestions": [
+    {{
+      "label": "Descriptive link label", 
+      "url": "internal_reference or external_url_from_source"
+    }}
+  ]
+}}"""
+
+            print(f"🤖 V2 ARTICLE OUTLINE: Sending article outline request to LLM - {title} - engine=v2")
+            
+            # Use existing LLM system
+            ai_response = await call_llm_with_fallback(system_message, user_message)
+            
+            if ai_response:
+                # Parse JSON response
+                import json
+                import re
+                
+                # Clean response and extract JSON
+                cleaned_response = re.sub(r'[-\x1f\x7f-\x9f]', '', ai_response)
+                
+                # Try to extract JSON from response
+                json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    outline_data = json.loads(json_str)
+                    
+                    # Validate required fields
+                    required_fields = ['title', 'sections', 'faq_suggestions', 'related_link_suggestions']
+                    if all(field in outline_data for field in required_fields):
+                        sections_count = len(outline_data.get('sections', []))
+                        faqs_count = len(outline_data.get('faq_suggestions', []))
+                        
+                        print(f"🎯 V2 ARTICLE OUTLINE: LLM outline successful - {sections_count} sections, {faqs_count} FAQs - engine=v2")
+                        return outline_data
+                    else:
+                        print(f"⚠️ V2 ARTICLE OUTLINE: Missing required fields in LLM response - engine=v2")
+                        return None
+                else:
+                    print(f"⚠️ V2 ARTICLE OUTLINE: No JSON found in LLM response - engine=v2")
+                    return None
+            else:
+                print(f"❌ V2 ARTICLE OUTLINE: No response from LLM - engine=v2")
+                return None
+                
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error in LLM article outline - {e} - engine=v2")
+            return None
+    
+    async def _validate_and_enhance_article_outline(self, llm_outline: dict, article_blocks: list, assigned_block_ids: list) -> dict:
+        """Validate and enhance LLM article outline ensuring all blocks are used"""
+        try:
+            enhanced_outline = llm_outline.copy()
+            
+            # Track which blocks are assigned in sections
+            assigned_in_sections = set()
+            
+            for section in enhanced_outline.get('sections', []):
+                for subsection in section.get('subsections', []):
+                    for block_id in subsection.get('block_ids', []):
+                        assigned_in_sections.add(block_id)
+            
+            # Find unassigned blocks
+            assigned_block_ids_set = set(assigned_block_ids)
+            unassigned_blocks = assigned_block_ids_set - assigned_in_sections
+            
+            # Assign missing blocks
+            if unassigned_blocks:
+                print(f"⚠️ V2 ARTICLE OUTLINE: Found {len(unassigned_blocks)} unassigned blocks, assigning them - engine=v2")
+                
+                sections = enhanced_outline.get('sections', [])
+                if not sections:
+                    # Create a default section if none exist
+                    sections = [{
+                        "heading": "Content",
+                        "subsections": [{
+                            "heading": "Main Content",
+                            "block_ids": []
+                        }]
+                    }]
+                    enhanced_outline['sections'] = sections
+                
+                # Assign unassigned blocks to the first subsection
+                if sections and sections[0].get('subsections'):
+                    sections[0]['subsections'][0]['block_ids'].extend(list(unassigned_blocks))
+                
+                print(f"✅ V2 ARTICLE OUTLINE: Assigned {len(unassigned_blocks)} missing blocks - engine=v2")
+            
+            # Validate section count (3-7 sections)
+            sections_count = len(enhanced_outline.get('sections', []))
+            if sections_count < self.min_sections:
+                print(f"⚠️ V2 ARTICLE OUTLINE: Only {sections_count} sections, less than minimum {self.min_sections} - engine=v2")
+            elif sections_count > self.max_sections:
+                print(f"⚠️ V2 ARTICLE OUTLINE: {sections_count} sections, more than maximum {self.max_sections} - engine=v2")
+            
+            # Validate FAQ count
+            faqs_count = len(enhanced_outline.get('faq_suggestions', []))
+            if faqs_count < self.min_faqs:
+                print(f"⚠️ V2 ARTICLE OUTLINE: Only {faqs_count} FAQs, less than minimum {self.min_faqs} - engine=v2")
+                
+                # Add default FAQs if needed
+                while len(enhanced_outline.get('faq_suggestions', [])) < self.min_faqs:
+                    enhanced_outline.setdefault('faq_suggestions', []).append({
+                        "q": "What are the key concepts covered in this article?",
+                        "a": "This article covers the essential concepts and practical implementation details."
+                    })
+            
+            # Add validation metadata
+            enhanced_outline['validation_metadata'] = {
+                "total_assigned_blocks": len(assigned_block_ids),
+                "blocks_in_sections": len(assigned_in_sections),
+                "unassigned_blocks_found": len(unassigned_blocks),
+                "sections_count": sections_count,
+                "faqs_count": len(enhanced_outline.get('faq_suggestions', [])),
+                "related_links_count": len(enhanced_outline.get('related_link_suggestions', [])),
+                "coverage_percentage": (len(assigned_in_sections) / len(assigned_block_ids)) * 100 if assigned_block_ids else 0,
+                "validation_method": "llm_enhanced",
+                "engine": "v2"
+            }
+            
+            return enhanced_outline
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error validating article outline - {e} - engine=v2")
+            return llm_outline
+    
+    async def _rule_based_article_outline(self, article_blocks: list, title: str, assigned_block_ids: list) -> dict:
+        """Fallback rule-based article outline creation"""
+        try:
+            print(f"🔧 V2 ARTICLE OUTLINE: Creating rule-based outline for '{title}' - engine=v2")
+            
+            sections = []
+            current_section = None
+            current_subsection = None
+            
+            # Group blocks by headings and content type
+            for item in article_blocks:
+                block_id = item['block_id']
+                block = item['block']
+                
+                if block.block_type == 'heading':
+                    # Create new section or subsection based on heading level
+                    if hasattr(block, 'level') and block.level == 1:
+                        # H1 creates new section
+                        if current_section:
+                            sections.append(current_section)
+                        
+                        current_section = {
+                            "heading": block.content,
+                            "subsections": []
+                        }
+                        current_subsection = None
+                        
+                    elif hasattr(block, 'level') and block.level >= 2:
+                        # H2+ creates subsection
+                        if not current_section:
+                            current_section = {
+                                "heading": "Introduction",
+                                "subsections": []
+                            }
+                        
+                        if current_subsection:
+                            current_section['subsections'].append(current_subsection)
+                        
+                        current_subsection = {
+                            "heading": block.content,
+                            "block_ids": [block_id]
+                        }
+                    else:
+                        # Heading without level
+                        if not current_section:
+                            current_section = {
+                                "heading": block.content,
+                                "subsections": []
+                            }
+                        else:
+                            if current_subsection:
+                                current_section['subsections'].append(current_subsection)
+                            
+                            current_subsection = {
+                                "heading": block.content,
+                                "block_ids": [block_id]
+                            }
+                else:
+                    # Non-heading blocks go to current subsection
+                    if not current_section:
+                        current_section = {
+                            "heading": "Content",
+                            "subsections": []
+                        }
+                    
+                    if not current_subsection:
+                        current_subsection = {
+                            "heading": "Main Content",
+                            "block_ids": []
+                        }
+                    
+                    current_subsection['block_ids'].append(block_id)
+            
+            # Add final subsection and section
+            if current_subsection:
+                current_section['subsections'].append(current_subsection)
+            if current_section:
+                sections.append(current_section)
+            
+            # Ensure minimum sections
+            while len(sections) < self.min_sections:
+                sections.append({
+                    "heading": f"Section {len(sections) + 1}",
+                    "subsections": [{
+                        "heading": "Content",
+                        "block_ids": []
+                    }]
+                })
+            
+            # Generate basic FAQs
+            faq_suggestions = [
+                {
+                    "q": "What is covered in this article?",
+                    "a": "This article provides comprehensive information on the topic with practical examples and guidance."
+                },
+                {
+                    "q": "Who is the target audience for this content?",
+                    "a": "This content is designed for users who need detailed information and implementation guidance."
+                },
+                {
+                    "q": "What are the key takeaways?",
+                    "a": "The key takeaways include understanding the concepts and applying them effectively in practice."
+                }
+            ]
+            
+            outline = {
+                "title": title,
+                "sections": sections,
+                "faq_suggestions": faq_suggestions,
+                "related_link_suggestions": [],
+                "validation_metadata": {
+                    "total_assigned_blocks": len(assigned_block_ids),
+                    "sections_count": len(sections),
+                    "faqs_count": len(faq_suggestions),
+                    "analysis_method": "rule_based_fallback",
+                    "engine": "v2"
+                }
+            }
+            
+            print(f"🎯 V2 ARTICLE OUTLINE: Rule-based outline complete - {len(sections)} sections, {len(faq_suggestions)} FAQs - engine=v2")
+            return outline
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error in rule-based outline - {e} - engine=v2")
+            return {
+                "title": title,
+                "sections": [],
+                "faq_suggestions": [],
+                "related_link_suggestions": []
+            }
+    
+    async def _store_per_article_outlines(self, per_article_outlines: list, run_id: str, doc_id: str) -> dict:
+        """Store per-article outlines with processing run"""
+        try:
+            # Create comprehensive outlines record
+            outlines_record = {
+                "outlines_id": str(uuid.uuid4()),
+                "run_id": run_id,
+                "doc_id": doc_id,
+                "per_article_outlines": per_article_outlines,
+                "total_articles": len(per_article_outlines),
+                "created_at": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                "version": "2.0"
+            }
+            
+            # Store in per-article outlines collection
+            await db.v2_per_article_outlines.insert_one(outlines_record)
+            
+            print(f"📊 V2 ARTICLE OUTLINE: Per-article outlines stored with run {run_id} - engine=v2")
+            return outlines_record
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error storing per-article outlines - {e} - engine=v2")
+            return {"per_article_outlines": per_article_outlines, "run_id": run_id, "doc_id": doc_id}
+    
+    async def get_per_article_outlines_for_run(self, run_id: str) -> dict:
+        """Retrieve stored per-article outlines for a processing run"""
+        try:
+            outlines_record = await db.v2_per_article_outlines.find_one({"run_id": run_id})
+            if outlines_record:
+                return outlines_record
+            else:
+                print(f"⚠️ V2 ARTICLE OUTLINE: No per-article outlines found for run {run_id} - engine=v2")
+                return None
+        except Exception as e:
+            print(f"❌ V2 ARTICLE OUTLINE: Error retrieving per-article outlines - {e} - engine=v2")
+            return None
+
+# Global V2 Per-Article Outline Planner instance
+v2_article_planner = V2PerArticleOutlinePlanner()
+
 # Placeholder functions for Phase 6 features - to be implemented
 
 async def create_high_quality_article_content(content: str, article_type: str, metadata: Dict[str, Any]) -> str:

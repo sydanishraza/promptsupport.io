@@ -8676,6 +8676,39 @@ class V2MediaManager:
 # Global V2 Media Manager instance
 v2_media_manager = V2MediaManager()
 
+def ensure_no_media_embedding(content: str) -> str:
+    """
+    V2 MEDIA: Ensure no image embedding in generated content
+    Removes any embedded images, base64 data URIs, and inline media
+    """
+    try:
+        import re
+        
+        # Remove base64 data URIs (data:image/...)
+        content = re.sub(r'<img[^>]*src="data:image/[^"]*"[^>]*>', '', content, flags=re.IGNORECASE)
+        
+        # Remove any remaining embedded image tags with data URIs
+        content = re.sub(r'data:image/[^;]+;base64,[A-Za-z0-9+/=]+', '', content)
+        
+        # Remove figure tags with embedded images
+        content = re.sub(r'<figure[^>]*>.*?<img[^>]*src="data:image/[^"]*"[^>]*>.*?</figure>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Clean up any empty figure tags
+        content = re.sub(r'<figure[^>]*>\s*</figure>', '', content, flags=re.IGNORECASE)
+        
+        # Remove any orphaned figcaption tags
+        content = re.sub(r'<figcaption[^>]*>.*?</figcaption>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Clean up multiple consecutive whitespace/newlines
+        content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
+        content = re.sub(r'  +', ' ', content)
+        
+        return content.strip()
+        
+    except Exception as e:
+        print(f"⚠️ V2 MEDIA: Error in ensure_no_media_embedding - {e}")
+        return content
+
 @app.put("/api/content-library/{article_id}")
 async def update_article(article_id: str, request: SaveArticleRequest):
     """Update an existing article"""

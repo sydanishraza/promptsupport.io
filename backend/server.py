@@ -8428,6 +8428,235 @@ class V2ContentExtractor:
                 extraction_metadata={"error": str(e), "status": "failed"}
             )
 
+# ========================================
+# V2 ENGINE: MEDIA HANDLING (SAVE ONLY) SYSTEM
+# ========================================
+
+class V2MediaManager:
+    """V2 Engine: Advanced media handling with save-only approach and comprehensive metadata"""
+    
+    def __init__(self):
+        self.media_library_path = "/app/backend/static/uploads"
+        self.supported_formats = {
+            'image': ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'tiff'],
+            'video': ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'],
+            'audio': ['mp3', 'wav', 'ogg', 'aac', 'flac']
+        }
+        # Ensure media directory exists
+        import os
+        os.makedirs(self.media_library_path, exist_ok=True)
+    
+    def generate_media_filename(self, run_id: str, doc_id: str, context: str, original_filename: str) -> str:
+        """Generate standardized media filename: <runId>_<docId>_<context>.ext"""
+        try:
+            # Extract extension from original filename
+            extension = original_filename.split('.')[-1].lower() if '.' in original_filename else 'png'
+            
+            # Clean context for filename (remove special characters)
+            clean_context = re.sub(r'[^\w\-_]', '', context.replace(' ', '-').lower())
+            if not clean_context:
+                clean_context = 'media'
+            
+            # Generate filename with V2 naming convention
+            filename = f"{run_id}_{doc_id}_{clean_context}.{extension}"
+            
+            print(f"📁 V2 MEDIA: Generated filename - {filename} - engine=v2")
+            return filename
+            
+        except Exception as e:
+            print(f"❌ V2 MEDIA: Error generating filename - {e} - engine=v2")
+            # Fallback filename
+            return f"{run_id}_{doc_id}_media.png"
+    
+    async def save_media_asset(self, 
+                             media_data: bytes, 
+                             original_filename: str,
+                             run_id: str,
+                             doc_id: str, 
+                             context: str,
+                             source_pointer: dict,
+                             metadata: dict = None) -> dict:
+        """Save media asset with V2 save-only approach and comprehensive metadata"""
+        try:
+            print(f"💾 V2 MEDIA: Saving media asset - {original_filename} - engine=v2")
+            
+            # Generate standardized filename
+            media_filename = self.generate_media_filename(run_id, doc_id, context, original_filename)
+            media_path = os.path.join(self.media_library_path, media_filename)
+            
+            # Save media file
+            with open(media_path, 'wb') as f:
+                f.write(media_data)
+            
+            # Detect media type and format
+            media_type = self._detect_media_type(original_filename)
+            file_format = original_filename.split('.')[-1].lower() if '.' in original_filename else 'unknown'
+            
+            # Generate OCR text if it's an image
+            ocr_text = ""
+            if media_type == 'image':
+                ocr_text = await self._extract_ocr_text(media_path)
+            
+            # Generate alt text and caption
+            alt_text = await self._generate_alt_text(media_path, context, metadata or {})
+            detected_caption = await self._generate_caption(media_path, context, metadata or {})
+            
+            # Get media dimensions
+            dimensions = await self._get_media_dimensions(media_path, media_type)
+            
+            # Create comprehensive media asset record
+            media_asset = {
+                "media_id": str(uuid.uuid4()),
+                "filename": media_filename,
+                "original_filename": original_filename,
+                "file_path": media_path,
+                "url": f"/api/static/uploads/{media_filename}",
+                "media_type": media_type,
+                "format": file_format,
+                "file_size": len(media_data),
+                "dimensions": dimensions,
+                "alt_text": alt_text,
+                "detected_caption": detected_caption,
+                "ocr_text": ocr_text,
+                "context": context,
+                "source_pointer": source_pointer,
+                "metadata": {
+                    "run_id": run_id,
+                    "doc_id": doc_id,
+                    "extraction_method": "v2_save_only",
+                    "naming_convention": "v2_standard",
+                    **(metadata or {})
+                },
+                "created_at": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+            
+            # Store in media library database
+            await self._store_media_metadata(media_asset)
+            
+            print(f"✅ V2 MEDIA: Saved {media_filename} ({media_type}, {len(media_data)} bytes) - engine=v2")
+            
+            return media_asset
+            
+        except Exception as e:
+            print(f"❌ V2 MEDIA: Error saving media asset - {e} - engine=v2")
+            return None
+    
+    def _detect_media_type(self, filename: str) -> str:
+        """Detect media type from filename extension"""
+        extension = filename.split('.')[-1].lower() if '.' in filename else ''
+        
+        for media_type, formats in self.supported_formats.items():
+            if extension in formats:
+                return media_type
+        
+        # Default to image for unknown types
+        return 'image'
+    
+    async def _extract_ocr_text(self, media_path: str) -> str:
+        """Extract OCR text from image (placeholder for future OCR integration)"""
+        try:
+            # TODO: Integrate with OCR service (Tesseract, AWS Textract, etc.)
+            # For now, return empty string as placeholder
+            return ""
+        except Exception:
+            return ""
+    
+    async def _generate_alt_text(self, media_path: str, context: str, metadata: dict) -> str:
+        """Generate descriptive alt text for media asset"""
+        try:
+            # Use context and metadata to generate meaningful alt text
+            if context:
+                context_clean = context.replace('-', ' ').replace('_', ' ')
+                return f"Image from {context_clean}"
+            
+            # Fallback based on metadata
+            if metadata.get('page_number'):
+                return f"Image from page {metadata['page_number']}"
+            elif metadata.get('slide_number'):
+                return f"Image from slide {metadata['slide_number']}"
+            
+            return "Document image"
+            
+        except Exception:
+            return "Document image"
+    
+    async def _generate_caption(self, media_path: str, context: str, metadata: dict) -> str:
+        """Generate descriptive caption for media asset"""
+        try:
+            # Generate more detailed caption based on context
+            if context:
+                context_parts = context.replace('-', ' ').replace('_', ' ').split()
+                if len(context_parts) > 1:
+                    return f"Figure: {' '.join(context_parts).title()}"
+                else:
+                    return f"Figure from {context.title()}"
+            
+            return "Figure from document"
+            
+        except Exception:
+            return "Figure from document"
+    
+    async def _get_media_dimensions(self, media_path: str, media_type: str) -> dict:
+        """Get media dimensions (width/height for images, duration for videos/audio)"""
+        try:
+            if media_type == 'image':
+                from PIL import Image
+                with Image.open(media_path) as img:
+                    return {"width": img.width, "height": img.height}
+            elif media_type in ['video', 'audio']:
+                # TODO: Integrate with media library to get duration
+                return {"duration": 0}
+            
+            return {}
+            
+        except Exception:
+            return {}
+    
+    async def _store_media_metadata(self, media_asset: dict) -> bool:
+        """Store media asset metadata in database"""
+        try:
+            # Store in media_library collection
+            await db.media_library.insert_one(media_asset)
+            print(f"📊 V2 MEDIA: Stored metadata for {media_asset['filename']} - engine=v2")
+            return True
+            
+        except Exception as e:
+            print(f"❌ V2 MEDIA: Error storing metadata - {e} - engine=v2")
+            return False
+    
+    async def get_media_references_only(self, media_list: list) -> list:
+        """Convert media list to reference-only format (no embedding)"""
+        try:
+            references = []
+            
+            for media in media_list:
+                if isinstance(media, dict):
+                    # Create reference-only media entry
+                    reference = {
+                        "media_id": media.get('media_id'),
+                        "type": "media_reference",
+                        "filename": media.get('filename'),
+                        "url": media.get('url'),
+                        "alt_text": media.get('alt_text', ''),
+                        "caption": media.get('detected_caption', ''),
+                        "media_type": media.get('media_type', 'image'),
+                        "context": media.get('context', ''),
+                        "source_location": media.get('source_pointer', {}),
+                        "no_embed": True  # Explicit flag to prevent embedding
+                    }
+                    references.append(reference)
+            
+            print(f"🔗 V2 MEDIA: Generated {len(references)} media references (no embedding) - engine=v2")
+            return references
+            
+        except Exception as e:
+            print(f"❌ V2 MEDIA: Error creating media references - {e} - engine=v2")
+            return []
+
+# Global V2 Media Manager instance
+v2_media_manager = V2MediaManager()
+
 @app.put("/api/content-library/{article_id}")
 async def update_article(article_id: str, request: SaveArticleRequest):
     """Update an existing article"""

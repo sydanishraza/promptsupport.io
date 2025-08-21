@@ -412,13 +412,13 @@ ID:block_6 | TYPE:list | CONTENT: • Token-based authentication..."""
         """Test global outline storage in v2_global_outlines collection"""
         try:
             # Test backend health and database connectivity
-            response = requests.get(f"{self.backend_url}/health", timeout=30)
+            health_response = requests.get(f"{self.backend_url}/health", timeout=30)
             
-            if response.status_code != 200:
-                self.log_test("Database Integration - Health Check", False, f"Health check failed: {response.status_code}")
+            if health_response.status_code != 200:
+                self.log_test("Database Integration - Health Check", False, f"Health check failed: {health_response.status_code}")
                 return False
             
-            health_data = response.json()
+            health_data = health_response.json()
             
             # Check if MongoDB is connected
             mongodb_connected = False
@@ -427,8 +427,12 @@ ID:block_6 | TYPE:list | CONTENT: • Token-based authentication..."""
             elif 'database' in health_data:
                 mongodb_connected = health_data['database'] == 'connected'
             
-            # Test V2 engine is active
-            v2_active = health_data.get('engine') == 'v2'
+            # Test V2 engine status from dedicated endpoint
+            engine_response = requests.get(f"{self.backend_url}/engine", timeout=30)
+            v2_active = False
+            if engine_response.status_code == 200:
+                engine_data = engine_response.json()
+                v2_active = engine_data.get('engine') == 'v2' and engine_data.get('status') == 'active'
             
             # Test that v2_global_outlines collection would be accessible
             # We can't directly test database operations without full integration,

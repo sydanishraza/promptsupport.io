@@ -11775,6 +11775,372 @@ def count_embedded_images(content: str) -> int:
     import re
     return len(re.findall(r'<img[^>]*>', content, re.IGNORECASE))
 
+# PHASE 2: ADVANCED REFINED ENGINE v2.1 - Process content endpoint
+@app.post("/api/content/process-advanced")
+async def process_content_advanced(request: ContentProcessRequest):
+    """Process text content with the Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        print(f"🚀 ADVANCED REFINED ENGINE v2.1: Processing content request")
+        
+        # Extract content and metadata from request
+        content = request.content
+        metadata = {
+            "original_filename": request.metadata.get("title", "Text Input"),
+            "input_type": "text",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "advanced_2.1"
+        }
+        
+        # Process with advanced refined engine
+        generated_articles = await advanced_refined_engine.process_content(content, metadata)
+        
+        if generated_articles:
+            print(f"✅ ADVANCED REFINED ENGINE: Successfully created {len(generated_articles)} articles")
+            
+            # Get processing analytics
+            analytics = advanced_refined_engine.get_processing_analytics()
+            
+            return {
+                "success": True,
+                "message": f"Content processed successfully with Advanced Refined Engine v2.1",
+                "articles_created": len(generated_articles),
+                "engine_used": "advanced_refined_2.1",
+                "processing_analytics": {
+                    "processing_time": analytics.get('performance_trend', [{}])[-1].get('processing_time', 0),
+                    "chars_per_second": analytics.get('performance_trend', [{}])[-1].get('chars_per_second', 0),
+                    "total_processed": analytics.get('total_processed', 0)
+                },
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"]),
+                        "confidence_score": article.get("metadata", {}).get("analysis_confidence", 0.0),
+                        "processing_approach": article.get("metadata", {}).get("processing_approach", "unknown")
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            print(f"⚠️ ADVANCED REFINED ENGINE: No articles created")
+            return {
+                "success": False,
+                "message": "No articles were created from the provided content",
+                "engine_used": "advanced_refined_2.1"
+            }
+            
+    except Exception as e:
+        print(f"❌ ADVANCED REFINED ENGINE ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Advanced Refined Engine processing failed: {str(e)}")
+
+# PHASE 2: ADVANCED REFINED ENGINE - File upload endpoint  
+@app.post("/api/content/upload-advanced")
+async def upload_file_advanced(
+    file: UploadFile = File(...),
+    metadata: str = Form("{}")
+):
+    """Upload and process files with the Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        print(f"🚀 ADVANCED REFINED ENGINE v2.1: Processing file upload - {file.filename}")
+        
+        # Parse metadata
+        file_metadata = json.loads(metadata)
+        file_metadata.update({
+            "original_filename": file.filename,
+            "input_type": "file",
+            "processing_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "advanced_2.1"
+        })
+        
+        # Read and extract content (same logic as refined engine)
+        file_content = await file.read()
+        file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+        
+        print(f"📄 File: {file.filename} ({len(file_content)} bytes, .{file_extension})")
+        
+        extracted_content = ""
+        
+        # Extract content based on file type
+        if file_extension in ['txt', 'md', 'csv']:
+            try:
+                extracted_content = file_content.decode('utf-8')
+            except UnicodeDecodeError:
+                extracted_content = file_content.decode('latin-1', errors='ignore')
+                
+        elif file_extension == 'docx':
+            try:
+                import io
+                import mammoth
+                
+                # Extract text with mammoth
+                docx_buffer = io.BytesIO(file_content)
+                result = mammoth.extract_raw_text(docx_buffer)
+                extracted_content = result.value
+                
+                print(f"✅ DOCX extraction: {len(extracted_content)} characters")
+                
+            except Exception as docx_error:
+                print(f"❌ DOCX extraction error: {docx_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process DOCX file: {docx_error}")
+                
+        elif file_extension == 'pdf':
+            try:
+                import PyPDF2
+                import io
+                
+                pdf_buffer = io.BytesIO(file_content)
+                pdf_reader = PyPDF2.PdfReader(pdf_buffer)
+                
+                text_parts = []
+                for page in pdf_reader.pages:
+                    text_parts.append(page.extract_text())
+                
+                extracted_content = '\n'.join(text_parts)
+                print(f"✅ PDF extraction: {len(extracted_content)} characters")
+                
+            except Exception as pdf_error:
+                print(f"❌ PDF extraction error: {pdf_error}")
+                raise HTTPException(status_code=400, detail=f"Failed to process PDF file: {pdf_error}")
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_extension}")
+        
+        # Validate content
+        if not extracted_content or len(extracted_content.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Insufficient content extracted from file")
+        
+        print(f"📊 Content extracted: {len(extracted_content)} characters")
+        
+        # Process with advanced refined engine
+        generated_articles = await advanced_refined_engine.process_content(extracted_content, file_metadata)
+        
+        if generated_articles:
+            print(f"✅ ADVANCED REFINED ENGINE: Successfully created {len(generated_articles)} articles from {file.filename}")
+            
+            # Get processing analytics
+            analytics = advanced_refined_engine.get_processing_analytics()
+            
+            return {
+                "success": True,
+                "message": f"File processed successfully with Advanced Refined Engine v2.1",
+                "filename": file.filename,
+                "content_extracted": len(extracted_content),
+                "articles_created": len(generated_articles),
+                "engine_used": "advanced_refined_2.1",
+                "processing_analytics": {
+                    "processing_time": analytics.get('performance_trend', [{}])[-1].get('processing_time', 0),
+                    "chars_per_second": analytics.get('performance_trend', [{}])[-1].get('chars_per_second', 0),
+                    "confidence_average": sum(
+                        article.get("metadata", {}).get("analysis_confidence", 0.0) 
+                        for article in generated_articles
+                    ) / max(1, len(generated_articles))
+                },
+                "articles": [
+                    {
+                        "id": article["id"],
+                        "title": article["title"],
+                        "article_type": article["article_type"],
+                        "content_length": len(article["content"]),
+                        "confidence_score": article.get("metadata", {}).get("analysis_confidence", 0.0),
+                        "processing_approach": article.get("metadata", {}).get("processing_approach", "unknown"),
+                        "content_type": article.get("metadata", {}).get("content_type", "unknown")
+                    } for article in generated_articles
+                ]
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No articles were created from the uploaded file",
+                "filename": file.filename,
+                "engine_used": "advanced_refined_2.1"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ADVANCED REFINED ENGINE UPLOAD ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Advanced Refined Engine upload processing failed: {str(e)}")
+
+# PHASE 2: BATCH PROCESSING - Multiple files endpoint
+@app.post("/api/content/upload-batch-advanced")
+async def upload_batch_files_advanced(
+    files: List[UploadFile] = File(...),
+    metadata: str = Form("{}")
+):
+    """Batch upload and process multiple files with Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        print(f"📦 BATCH PROCESSING: {len(files)} files with Advanced Refined Engine v2.1")
+        
+        # Parse metadata
+        batch_metadata = json.loads(metadata)
+        batch_id = str(uuid.uuid4())
+        
+        results = []
+        total_articles = 0
+        
+        for i, file in enumerate(files):
+            try:
+                print(f"📄 Processing file {i+1}/{len(files)}: {file.filename}")
+                
+                # Process each file individually
+                file_content = await file.read()
+                file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+                
+                # Extract content (same logic as single file)
+                extracted_content = ""
+                
+                if file_extension in ['txt', 'md', 'csv']:
+                    try:
+                        extracted_content = file_content.decode('utf-8')
+                    except UnicodeDecodeError:
+                        extracted_content = file_content.decode('latin-1', errors='ignore')
+                        
+                elif file_extension == 'docx':
+                    import io
+                    import mammoth
+                    
+                    docx_buffer = io.BytesIO(file_content)
+                    result = mammoth.extract_raw_text(docx_buffer)
+                    extracted_content = result.value
+                    
+                elif file_extension == 'pdf':
+                    import PyPDF2
+                    import io
+                    
+                    pdf_buffer = io.BytesIO(file_content)
+                    pdf_reader = PyPDF2.PdfReader(pdf_buffer)
+                    
+                    text_parts = []
+                    for page in pdf_reader.pages:
+                        text_parts.append(page.extract_text())
+                    
+                    extracted_content = '\n'.join(text_parts)
+                
+                if extracted_content and len(extracted_content.strip()) >= 50:
+                    # Prepare file metadata
+                    file_metadata = {
+                        **batch_metadata,
+                        "original_filename": file.filename,
+                        "input_type": "batch_file",
+                        "batch_id": batch_id,
+                        "batch_position": i + 1,
+                        "batch_total": len(files),
+                        "processing_timestamp": datetime.utcnow().isoformat(),
+                        "engine_version": "advanced_2.1"
+                    }
+                    
+                    # Process with advanced engine
+                    articles = await advanced_refined_engine.process_content(extracted_content, file_metadata)
+                    
+                    results.append({
+                        "filename": file.filename,
+                        "success": True,
+                        "articles_created": len(articles),
+                        "content_extracted": len(extracted_content),
+                        "articles": [
+                            {
+                                "id": article["id"],
+                                "title": article["title"],
+                                "article_type": article["article_type"],
+                                "content_length": len(article["content"])
+                            } for article in articles
+                        ]
+                    })
+                    
+                    total_articles += len(articles)
+                    print(f"✅ File {i+1} processed: {len(articles)} articles created")
+                    
+                else:
+                    results.append({
+                        "filename": file.filename,
+                        "success": False,
+                        "error": "Insufficient content extracted"
+                    })
+                    print(f"⚠️ File {i+1} skipped: insufficient content")
+                    
+            except Exception as file_error:
+                results.append({
+                    "filename": file.filename,
+                    "success": False,
+                    "error": str(file_error)
+                })
+                print(f"❌ File {i+1} failed: {file_error}")
+        
+        # Get final analytics
+        analytics = advanced_refined_engine.get_processing_analytics()
+        
+        successful_files = sum(1 for r in results if r['success'])
+        
+        return {
+            "success": True,
+            "message": f"Batch processing completed with Advanced Refined Engine v2.1",
+            "batch_id": batch_id,
+            "files_processed": len(files),
+            "files_successful": successful_files,
+            "total_articles_created": total_articles,
+            "engine_used": "advanced_refined_2.1",
+            "processing_analytics": {
+                "total_processing_jobs": analytics.get('total_processed', 0),
+                "average_processing_time": analytics.get('average_processing_time', 0),
+                "average_chars_per_second": analytics.get('average_chars_per_second', 0)
+            },
+            "results": results
+        }
+        
+    except Exception as e:
+        print(f"❌ BATCH PROCESSING ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Batch processing failed: {str(e)}")
+
+# PHASE 2: ANALYTICS ENDPOINT
+@app.get("/api/content/analytics/advanced")
+async def get_advanced_processing_analytics():
+    """Get processing analytics from Advanced Refined Engine v2.1"""
+    try:
+        from refined_engine_v2 import advanced_refined_engine
+        
+        analytics = advanced_refined_engine.get_processing_analytics()
+        
+        # Add database statistics
+        try:
+            advanced_articles_count = await db.content_library.count_documents({
+                "metadata.advanced_refined_engine": True
+            })
+            
+            refined_articles_count = await db.content_library.count_documents({
+                "metadata.refined_engine": True
+            })
+            
+            total_articles_count = await db.content_library.count_documents({})
+            
+            analytics['database_stats'] = {
+                'advanced_refined_articles': advanced_articles_count,
+                'refined_articles': refined_articles_count,
+                'total_articles': total_articles_count,
+                'advanced_percentage': (advanced_articles_count / max(1, total_articles_count)) * 100
+            }
+            
+        except Exception as db_error:
+            print(f"⚠️ Database stats error: {db_error}")
+            analytics['database_stats'] = {'error': 'Unable to fetch database statistics'}
+        
+        return analytics
+        
+    except Exception as e:
+        print(f"❌ Analytics error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analytics retrieval failed: {str(e)}")
+
 # NEW REFINED ENGINE - Process content endpoint
 @app.post("/api/content/process-refined")
 async def process_content_refined(request: ContentProcessRequest):

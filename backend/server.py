@@ -7286,6 +7286,260 @@ class V2ContentExtractor:
                 extraction_metadata={"error": str(e), "status": "failed"}
             )
 
+    async def _extract_html(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from HTML files"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            html_content = file_content.decode('utf-8', errors='ignore')
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Extract title
+            title_tag = soup.find('title')
+            title = title_tag.get_text().strip() if title_tag else filename
+            
+            # Remove script, style, and navigation elements
+            for element in soup(["script", "style", "nav", "header", "footer", "aside"]):
+                element.decompose()
+            
+            blocks = []
+            media = []
+            
+            # Extract structured content
+            for i, element in enumerate(soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'blockquote', 'pre', 'code', 'table'])):
+                content_text = element.get_text().strip()
+                if not content_text or len(content_text) < 5:
+                    continue
+                
+                # Determine block type and level
+                if element.name.startswith('h'):
+                    block_type = 'heading'
+                    level = int(element.name[1])
+                elif element.name in ['p', 'div']:
+                    block_type = 'paragraph'
+                    level = None
+                elif element.name in ['ul', 'ol']:
+                    block_type = 'list'
+                    level = None
+                    # Extract list structure
+                    items = element.find_all('li')
+                    if items:
+                        content_text = '\n'.join([f"• {item.get_text().strip()}" for item in items if item.get_text().strip()])
+                elif element.name == 'blockquote':
+                    block_type = 'quote'
+                    level = None
+                elif element.name in ['pre', 'code']:
+                    block_type = 'code'
+                    level = None
+                    # Detect language from class attribute
+                    class_attr = element.get('class', [])
+                    language = next((cls.replace('language-', '') for cls in class_attr if cls.startswith('language-')), None)
+                elif element.name == 'table':
+                    block_type = 'table'
+                    level = None
+                    # Extract table content
+                    rows = element.find_all('tr')
+                    table_content = []
+                    for row in rows:
+                        cells = row.find_all(['td', 'th'])
+                        if cells:
+                            table_content.append(' | '.join([cell.get_text().strip() for cell in cells]))
+                    content_text = '\n'.join(table_content)
+                else:
+                    continue
+                
+                if content_text:
+                    block = ContentBlock(
+                        block_type=block_type,
+                        content=content_text,
+                        level=level,
+                        language=language if 'language' in locals() else None,
+                        metadata={"html_tag": element.name, "extraction_order": i},
+                        source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i, line_end=i)
+                    )
+                    blocks.append(block)
+            
+            # Extract images
+            for i, img in enumerate(soup.find_all('img')):
+                src = img.get('src', '')
+                alt_text = img.get('alt', '')
+                
+                if src:
+                    media_record = MediaRecord(
+                        media_type='image',
+                        url=src if src.startswith('http') else None,
+                        file_path=src if not src.startswith('http') else None,
+                        alt_text=alt_text,
+                        metadata={"html_attributes": dict(img.attrs)},
+                        source_pointer=SourcePointer(file_id=file_id, mime_type=mime_type, line_start=i, line_end=i)
+                    )
+                    media.append(media_record)
+            
+            return NormalizedDocument(
+                doc_id=file_id,
+                title=title,
+                original_filename=filename,
+                file_id=file_id,
+                mime_type=mime_type,
+                word_count=sum([len(block.content.split()) for block in blocks]),
+                blocks=blocks,
+                media=media,
+                extraction_metadata={
+                    "status": "success",
+                    "blocks_extracted": len(blocks),
+                    "media_extracted": len(media)
+                }
+            )
+            
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+
+    async def _extract_pdf(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
+        """Extract content from PDF files with comprehensive structure detection"""
+        try:
+            import tempfile
+            import os
+            
+            # Save to temporary file for processing
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_pdf_path = temp_file.name
+            
+            try:
+                # Use the existing DocumentPreprocessor for comprehensive PDF processing
+                doc_processor = DocumentPreprocessor(session_id=file_id[:8])
+                html_content, pdf_images = await doc_processor._convert_pdf_to_html(temp_pdf_path)
+                
+                # Parse the HTML to extract structured blocks
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_content, 'html.parser')
+                
+                blocks = []
+                media = []
+                
+                # Extract text blocks with page information
+                for i, element in enumerate(soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'table'])):
+                    content_text = element.get_text().strip()
+                    if not content_text or len(content_text) < 10:
+                        continue
+                    
+                    # Determine block type
+                    if element.name.startswith('h'):
+                        block_type = 'heading'
+                        level = int(element.name[1])
+                    elif element.name in ['p', 'div']:
+                        block_type = 'paragraph'
+                        level = None
+                    elif element.name in ['ul', 'ol']:
+                        block_type = 'list'
+                        level = None
+                    elif element.name == 'table':
+                        block_type = 'table'
+                        level = None
+                    else:
+                        block_type = 'paragraph'
+                        level = None
+                    
+                    # Extract page number from data attributes or nearby elements
+                    page_num = None
+                    parent = element.parent
+                    while parent and not page_num:
+                        page_attr = parent.get('data-page') or parent.get('page')
+                        if page_attr:
+                            try:
+                                page_num = int(page_attr)
+                                break
+                            except ValueError:
+                                pass
+                        parent = parent.parent
+                    
+                    block = ContentBlock(
+                        block_type=block_type,
+                        content=content_text,
+                        level=level,
+                        metadata={"extraction_order": i, "source": "pdf"},
+                        source_pointer=SourcePointer(
+                            file_id=file_id,
+                            mime_type=mime_type,
+                            page_number=page_num,
+                            line_start=i,
+                            line_end=i
+                        )
+                    )
+                    blocks.append(block)
+                
+                # Convert extracted images to MediaRecord objects
+                for i, img_data in enumerate(pdf_images):
+                    media_record = MediaRecord(
+                        media_type='image',
+                        file_path=img_data.get('file_path'),
+                        url=img_data.get('url'),
+                        dimensions={"width": img_data.get('width', 0), "height": img_data.get('height', 0)},
+                        file_size=img_data.get('size', 0),
+                        format=img_data.get('format', 'unknown'),
+                        metadata={
+                            "pdf_extraction": True,
+                            "original_data": img_data
+                        },
+                        source_pointer=SourcePointer(
+                            file_id=file_id,
+                            mime_type=mime_type,
+                            page_number=img_data.get('page_number', 1)
+                        )
+                    )
+                    media.append(media_record)
+                
+                # Get PDF metadata
+                try:
+                    import PyPDF2
+                    with open(temp_pdf_path, 'rb') as pdf_file:
+                        pdf_reader = PyPDF2.PdfReader(pdf_file)
+                        pdf_info = pdf_reader.metadata
+                        page_count = len(pdf_reader.pages)
+                        
+                        author = pdf_info.get('/Author', '') if pdf_info else None
+                        title = pdf_info.get('/Title', filename) if pdf_info else filename
+                        created_date = pdf_info.get('/CreationDate') if pdf_info else None
+                except Exception:
+                    page_count = None
+                    author = None
+                    title = filename
+                    created_date = None
+                
+                return NormalizedDocument(
+                    doc_id=file_id,
+                    title=title,
+                    original_filename=filename,
+                    file_id=file_id,
+                    mime_type=mime_type,
+                    author=author,
+                    created_date=created_date,
+                    page_count=page_count,
+                    word_count=sum([len(block.content.split()) for block in blocks]),
+                    blocks=blocks,
+                    media=media,
+                    extraction_metadata={
+                        "status": "success",
+                        "blocks_extracted": len(blocks),
+                        "media_extracted": len(media),
+                        "pages_processed": page_count
+                    }
+                )
+                
+            finally:
+                # Clean up temp file
+                if os.path.exists(temp_pdf_path):
+                    os.unlink(temp_pdf_path)
+                    
+        except Exception as e:
+            return NormalizedDocument(
+                doc_id=file_id, title=filename, file_id=file_id, mime_type=mime_type,
+                extraction_metadata={"error": str(e), "status": "failed"}
+            )
+
     async def _extract_text(self, file_content: bytes, filename: str, file_id: str, mime_type: str) -> NormalizedDocument:
         """Extract content from plain text files"""
         try:

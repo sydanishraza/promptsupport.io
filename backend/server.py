@@ -13611,57 +13611,161 @@ async def convert_normalized_doc_to_articles(normalized_doc) -> List[Dict[str, A
         print(f"❌ V2 ENGINE: Error converting normalized doc to articles - {e} - engine=v2")
         return []
 
-async def create_article_from_blocks(blocks, title: str, normalized_doc) -> Dict[str, Any]:
-    """Create a single article from content blocks"""
+async def convert_normalized_doc_to_articles(normalized_doc) -> List[Dict[str, Any]]:
+    """V2 ENGINE: Convert normalized document to legacy articles format with media references (no embedding)"""
     try:
-        # Convert blocks to HTML content
+        print(f"🔄 V2 ENGINE: Converting normalized doc to articles - engine=v2")
+        
+        articles = []
+        current_blocks = []
+        current_title = normalized_doc.title
+        
+        # Group blocks into logical articles based on headings
+        for block in normalized_doc.blocks:
+            if block.block_type == 'heading' and block.level == 1:
+                # New article starting - save previous if it exists
+                if current_blocks:
+                    article = await create_article_from_blocks_v2(current_blocks, current_title, normalized_doc)
+                    if article:
+                        articles.append(article)
+                
+                # Start new article
+                current_title = block.content
+                current_blocks = [block]
+            else:
+                current_blocks.append(block)
+        
+        # Handle final article
+        if current_blocks:
+            article = await create_article_from_blocks_v2(current_blocks, current_title, normalized_doc)
+            if article:
+                articles.append(article)
+        
+        # If no articles created (no H1 headings), create single article
+        if not articles and normalized_doc.blocks:
+            article = await create_article_from_blocks_v2(normalized_doc.blocks, normalized_doc.title, normalized_doc)
+            if article:
+                articles.append(article)
+        
+        # V2 MEDIA: Add media references to all articles (no embedding)
+        if normalized_doc.media:
+            media_references = await v2_media_manager.get_media_references_only([media.dict() for media in normalized_doc.media])
+            
+            for article in articles:
+                if isinstance(article, dict):
+                    article.setdefault('metadata', {})
+                    article['metadata']['media_references'] = media_references
+                    article['metadata']['media_count'] = len(media_references)
+                    article['metadata']['v2_no_embed'] = True
+        
+        print(f"✅ V2 ENGINE: Converted to {len(articles)} articles with media references (no embedding) - engine=v2")
+        return articles
+        
+    except Exception as e:
+        print(f"❌ V2 ENGINE: Error converting normalized doc to articles - {e} - engine=v2")
+        return []
+
+async def create_article_from_blocks_v2(blocks, title: str, normalized_doc) -> Dict[str, Any]:
+    """V2 ENGINE: Create a single article from content blocks with media references (no embedding)"""
+    try:
+        # Convert blocks to HTML content with NO IMAGE EMBEDDING
         html_parts = []
         
         for block in blocks:
             if block.block_type == 'heading':
-                level = min(block.level, 6)  # Ensure valid HTML heading level
+                level = min(block.level, 6) if block.level else 2  # Default to H2 if no level
                 html_parts.append(f"<h{level}>{block.content}</h{level}>")
             elif block.block_type == 'paragraph':
                 html_parts.append(f"<p>{block.content}</p>")
             elif block.block_type == 'list':
-                list_tag = 'ol' if block.metadata.get('ordered', False) else 'ul'
-                items = block.content.split('\n') if isinstance(block.content, str) else [block.content]
-                html_parts.append(f"<{list_tag}>")
-                for item in items:
-                    if item.strip():
-                        html_parts.append(f"<li>{item.strip()}</li>")
-                html_parts.append(f"</{list_tag}>")
+                # Detect if it's ordered or unordered list
+                list_items = []
+                if isinstance(block.content, str):
+                    lines = block.content.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if line and (line.startswith('•') or line.startswith('-') or line.startswith('*')):
+                            list_items.append(line[1:].strip())
+                        elif line and any(line.startswith(f"{i}.") for i in range(1, 20)):
+                            list_items.append(line.split('.', 1)[1].strip())
+                        elif line:
+                            list_items.append(line)
+                
+                if list_items:
+                    # Detect ordered vs unordered
+                    is_ordered = any(block.content.startswith(f"{i}.") for i in range(1, 10))
+                    list_tag = 'ol' if is_ordered else 'ul'
+                    html_parts.append(f"<{list_tag}>")
+                    for item in list_items:
+                        html_parts.append(f"<li>{item}</li>")
+                    html_parts.append(f"</{list_tag}>")
+                else:
+                    html_parts.append(f"<p>{block.content}</p>")
+                    
             elif block.block_type == 'code':
-                html_parts.append(f"<pre><code>{block.content}</code></pre>")
+                language = block.language if hasattr(block, 'language') and block.language else ''
+                if language:
+                    html_parts.append(f"<pre><code class='language-{language}'>{block.content}</code></pre>")
+                else:
+                    html_parts.append(f"<pre><code>{block.content}</code></pre>")
+            elif block.block_type == 'quote':
+                html_parts.append(f"<blockquote>{block.content}</blockquote>")
+            elif block.block_type == 'table':
+                # Convert table content to HTML table
+                lines = block.content.split('\n') if isinstance(block.content, str) else [block.content]
+                if lines:
+                    html_parts.append("<table>")
+                    for i, line in enumerate(lines):
+                        if line.strip():
+                            cells = line.split('|')
+                            tag = 'th' if i == 0 else 'td'
+                            html_parts.append("<tr>")
+                            for cell in cells:
+                                html_parts.append(f"<{tag}>{cell.strip()}</{tag}>")
+                            html_parts.append("</tr>")
+                    html_parts.append("</table>")
             else:
-                # Generic block
-                html_parts.append(f"<div class='{block.block_type}'>{block.content}</div>")
+                # Generic block - no embedding of any media
+                html_parts.append(f"<div class='content-block {block.block_type}'>{block.content}</div>")
         
         content = '\n'.join(html_parts)
         
-        # Create article object
+        # V2 MEDIA RULE: Ensure NO image embedding in content
+        # Remove any potential <img> tags that might have been created
+        import re
+        content = re.sub(r'<img[^>]*>', '', content)  # Remove any img tags
+        content = re.sub(r'!\[[^\]]*\]\([^)]*\)', '', content)  # Remove markdown image syntax
+        
+        # Create article object with V2 metadata
         article = {
             "id": str(uuid.uuid4()),
             "title": title,
             "content": content,
             "status": "published",
             "article_type": "main_content",
-            "source_document": normalized_doc.metadata.get("original_filename", "Unknown"),
+            "source_document": normalized_doc.original_filename or "Unknown",
             "created_at": datetime.utcnow(),
             "metadata": {
                 "engine": "v2",
                 "processing_version": "2.0",
                 "normalized_doc_id": normalized_doc.doc_id,
                 "block_count": len(blocks),
+                "v2_no_embed": True,  # Explicit flag indicating no media embedding
+                "media_handling": "reference_only",
                 **normalized_doc.metadata
             }
         }
         
+        print(f"📄 V2 ENGINE: Created article '{title}' with {len(blocks)} blocks (no media embedding) - engine=v2")
         return article
         
     except Exception as e:
-        print(f"❌ V2 ENGINE: Error creating article from blocks - {e} - engine=v2")
+        print(f"❌ V2 ENGINE: Error creating V2 article from blocks - {e} - engine=v2")
         return None
+
+async def create_article_from_blocks(blocks, title: str, normalized_doc) -> Dict[str, Any]:
+    """Legacy function - redirects to V2 implementation"""
+    return await create_article_from_blocks_v2(blocks, title, normalized_doc)
 
 async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """V2 ENGINE: Enhanced text content processing with normalized document extraction"""

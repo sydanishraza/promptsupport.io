@@ -391,107 +391,81 @@ SOURCE CONTENT:
             return content
 
     def apply_wysiwyg_enhancements(self, content: str, source_content: str) -> str:
-        """Apply WYSIWYG enhancements only when warranted by source"""
+        """Apply SIMPLE, CLEAN HTML formatting without complex layouts"""
         try:
-            print(f"🎨 APPLYING WYSIWYG ENHANCEMENTS based on source content")
+            print(f"🎨 APPLYING SIMPLE HTML FORMATTING")
+            
+            # Only enhance if content is substantial
+            content_text = re.sub(r'<[^>]+>', '', content).strip()
+            if len(content_text) < 100:
+                print(f"🚫 Content too short for enhancements ({len(content_text)} chars)")
+                return content
             
             enhanced = content
             
-            # 1. Add article-body wrapper if not present
+            # 1. Add simple article wrapper (NO complex layouts)
             if '<div class="article-body">' not in enhanced:
                 enhanced = f'<div class="article-body">\n{enhanced}\n</div>'
-                print("✅ Added article-body wrapper")
+                print("✅ Added simple article-body wrapper")
             
-            # 2. Generate mini-TOC only if source has multiple sections
-            heading_count = len(re.findall(r'<h[2-6][^>]*>', enhanced))
-            if heading_count >= 3:
-                toc_html = self.generate_mini_toc(enhanced)
-                if toc_html:
-                    # Create proper layout structure with TOC on the right
-                    enhanced = enhanced.replace('<div class="article-body">', 
-                        '''<div class="article-body-with-toc">
-<div class="article-main-content">''')
-                    enhanced = enhanced.replace('</div>', f'''</div>
-{toc_html}
-</div>''')
-                    print(f"✅ Added right-aligned mini-TOC with {heading_count} sections")
+            # 2. Clean up any existing complex layouts
+            enhanced = enhanced.replace('class="article-body-with-toc"', 'class="article-body"')
+            enhanced = enhanced.replace('class="article-main-content"', '')
+            enhanced = enhanced.replace('class="article-sidebar"', '')
             
-            # 3. Enhance code blocks with line numbers
-            code_pattern = r'<pre[^>]*><code[^>]*>(.*?)</code></pre>'
-            code_matches = re.findall(code_pattern, enhanced, re.DOTALL)
-            if code_matches:
-                enhanced = re.sub(
-                    r'<pre[^>]*><code([^>]*)>(.*?)</code></pre>',
-                    r'<pre class="line-numbers"><code\1>\2</code></pre>',
-                    enhanced,
-                    flags=re.DOTALL
-                )
-                print(f"✅ Enhanced {len(code_matches)} code blocks with line numbers")
+            # Remove any existing mini-TOC complexity
+            enhanced = re.sub(r'<div class="article-sidebar">.*?</div>\s*</div>$', '</div>', enhanced, flags=re.DOTALL)
+            enhanced = re.sub(r'<div[^>]*mini-toc[^>]*>.*?</div>', '', enhanced, flags=re.DOTALL)
+            enhanced = re.sub(r'<div[^>]*advanced-toc[^>]*>.*?</div>', '', enhanced, flags=re.DOTALL)
             
-            # 4. Add heading IDs for navigation
-            def add_heading_id(match):
-                tag = match.group(1)
-                attrs = match.group(2) or ''
-                text = match.group(3)
+            # 3. Add heading IDs for basic navigation (keep this simple feature)
+            def add_simple_heading_id(match):
+                heading_tag = match.group(1)
+                heading_text = match.group(3)
+                existing_attrs = match.group(2) or ''
                 
                 # Skip if ID already exists
-                if 'id=' in attrs:
+                if 'id=' in existing_attrs:
                     return match.group(0)
                 
-                # Generate unique ID
-                heading_id = f"h_{uuid.uuid4().hex[:20]}"
-                return f'<{tag}{attrs} id="{heading_id}">{text}</{tag}>'
+                # Generate simple ID
+                heading_id = heading_text.lower().strip()
+                heading_id = re.sub(r'[^a-z0-9\s-]', '', heading_id)
+                heading_id = re.sub(r'\s+', '-', heading_id)
+                heading_id = heading_id[:30]  # Shorter IDs
+                
+                return f'<{heading_tag}{existing_attrs} id="{heading_id}">{heading_text}</{heading_tag}>'
             
             heading_pattern = r'<(h[2-6])([^>]*)>([^<]*)</\1>'
-            enhanced = re.sub(heading_pattern, add_heading_id, enhanced)
+            enhanced = re.sub(heading_pattern, add_simple_heading_id, enhanced)
             
-            # 5. Convert source notes to proper note format
-            if 'note:' in source_content.lower() or 'Note:' in source_content:
-                note_pattern = r'(\([^)]*Note:[^)]*\)|Note:[^.!?]*[.!?])'
-                notes = re.findall(note_pattern, enhanced, re.IGNORECASE)
-                for note in notes:
-                    note_text = re.sub(r'^[^:]*:', '', note).strip('() ')
-                    enhanced_note = f'<div class="note">💡 <strong>Note:</strong> {note_text}</div>'
-                    enhanced = enhanced.replace(note, enhanced_note)
-                    print(f"✅ Enhanced note: {note_text[:50]}...")
+            # 4. Simple code block formatting (no complex classes)
+            def simplify_code_block(match):
+                full_match = match.group(0)
+                code_content_match = re.search(r'<code[^>]*>(.*?)</code>', full_match, re.DOTALL)
+                code_content = code_content_match.group(1) if code_content_match else ''
+                
+                if code_content.strip():
+                    return f'<pre><code>{code_content}</code></pre>'
+                return full_match
             
-            # 6. Generate FAQs only from source-implied questions
-            faq_content = self.extract_source_faqs(source_content)
-            if faq_content:
-                enhanced += f'\n<hr>\n{faq_content}'
-                print("✅ Added source-derived FAQs")
+            enhanced = re.sub(r'<pre[^>]*><code[^>]*>.*?</code></pre>', simplify_code_block, enhanced, flags=re.DOTALL)
             
-            print(f"✅ WYSIWYG enhancements complete")
+            # 5. Clean up any complex CSS classes
+            enhanced = re.sub(r'class="[^"]*line-numbers[^"]*"', '', enhanced)
+            enhanced = re.sub(r'class="[^"]*expandable[^"]*"', '', enhanced)
+            enhanced = re.sub(r'class="[^"]*note[^"]*"', 'class="note"', enhanced)
+            
+            print(f"✅ Simple HTML formatting complete - clean, readable structure")
             return enhanced
             
         except Exception as e:
-            print(f"❌ Error applying WYSIWYG enhancements: {e}")
+            print(f"❌ Error applying simple formatting: {e}")
             return content
 
     def generate_mini_toc(self, content: str) -> str:
-        """Generate mini table of contents from headings with proper right-alignment structure"""
-        try:
-            headings = re.findall(r'<h([2-6])[^>]*id="([^"]*)"[^>]*>([^<]*)</h[2-6]>', content)
-            if len(headings) < 3:
-                return ""
-            
-            toc_html = '''<div class="article-sidebar">
-<div class="mini-toc">
-<h3>📋 Navigation</h3>
-<ul>'''
-            
-            for level, heading_id, text in headings:
-                toc_html += f'<li><a href="#{heading_id}">{text}</a></li>\n'
-            
-            toc_html += '''</ul>
-</div>
-</div>'''
-            
-            return toc_html
-            
-        except Exception as e:
-            print(f"❌ Error generating mini-TOC: {e}")
-            return ""
+        """DISABLED - No mini-TOC to avoid layout issues"""
+        return ""
 
     def extract_source_faqs(self, source_content: str) -> str:
         """Extract FAQs only from explicit or implied questions in source"""

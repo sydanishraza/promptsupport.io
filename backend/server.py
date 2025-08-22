@@ -6789,6 +6789,78 @@ class V2VersioningSystem:
         except Exception as e:
             print(f"❌ V2 VERSIONING: Error in versioning management - {e} - run {run_id} - engine=v2")
             return self._create_versioning_result("error", run_id, {"error": str(e)})
+    
+    def _calculate_source_hash(self, content: str, content_type: str) -> str:
+        """Calculate hash of source content for change detection"""
+        try:
+            import hashlib
+            
+            # Normalize content for consistent hashing
+            normalized_content = content.strip().lower()
+            
+            # Include content type in hash to distinguish different types of same content
+            hash_input = f"{content_type}:{normalized_content}"
+            
+            # Calculate SHA-256 hash
+            source_hash = hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
+            
+            hash_preview = source_hash[:16] + "..."
+            print(f"📊 V2 VERSIONING: Source hash calculated - {hash_preview} (type: {content_type})")
+            return source_hash
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error calculating source hash - {e}")
+            # Fallback to timestamp-based hash
+            import time
+            fallback_hash = hashlib.sha256(f"{content_type}:{time.time()}".encode()).hexdigest()
+            return fallback_hash
+    
+    async def _find_existing_versions(self, source_hash: str, content_type: str, run_id: str) -> dict:
+        """Find existing versions of content based on source hash"""
+        try:
+            hash_preview = source_hash[:16] + "..."
+            print(f"🔍 V2 VERSIONING: Searching for existing versions - hash: {hash_preview} - run {run_id} - engine=v2")
+            
+            # Search for existing version records with same source hash
+            existing_versions = []
+            async for version_record in db.v2_version_records.find({"source_hash": source_hash}).sort("version", -1):
+                existing_versions.append(version_record)
+            
+            # Also search in content library for articles with same source hash
+            content_library_versions = []
+            async for article in db.content_library.find({"version_metadata.source_hash": source_hash}).sort("version_metadata.version", -1):
+                if article.get('engine') == 'v2':  # Only V2 articles
+                    content_library_versions.append(article)
+            
+            existing_version_info = {
+                "has_existing_versions": len(existing_versions) > 0 or len(content_library_versions) > 0,
+                "version_records": existing_versions,
+                "content_library_versions": content_library_versions,
+                "latest_version": existing_versions[0] if existing_versions else None,
+                "total_versions": len(existing_versions)
+            }
+            
+            if existing_version_info["has_existing_versions"]:
+                latest_version = existing_version_info["latest_version"]
+                if latest_version:
+                    version_num = latest_version.get('version', 'unknown')
+                    print(f"📋 V2 VERSIONING: Found {existing_version_info['total_versions']} existing versions - latest: v{version_num} - run {run_id} - engine=v2")
+                else:
+                    print(f"📋 V2 VERSIONING: Found existing content in library - run {run_id} - engine=v2")
+            else:
+                print(f"🆕 V2 VERSIONING: No existing versions found - this is a new content version - run {run_id} - engine=v2")
+            
+            return existing_version_info
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error finding existing versions - {e} - run {run_id} - engine=v2")
+            return {
+                "has_existing_versions": False,
+                "version_records": [],
+                "content_library_versions": [],
+                "latest_version": None,
+                "total_versions": 0
+            }
 
 # Global V2 Versioning System instance
 v2_versioning_system = V2VersioningSystem()

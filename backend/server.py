@@ -7399,9 +7399,17 @@ class V2ReviewSystem:
             publishing_result = await db.v2_publishing_results.find_one({"run_id": run_id})
             versioning_result = await db.v2_versioning_results.find_one({"run_id": run_id})
             
+            # Convert ObjectIds to strings for serialization
+            qa_result = objectid_to_str(qa_result) if qa_result else None
+            adjustment_result = objectid_to_str(adjustment_result) if adjustment_result else None
+            publishing_result = objectid_to_str(publishing_result) if publishing_result else None
+            versioning_result = objectid_to_str(versioning_result) if versioning_result else None
+            
             # Get articles from content library
             articles = []
             async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+                # Convert ObjectId to string for serialization
+                article = objectid_to_str(article)
                 articles.append(article)
             
             # Calculate quality badges

@@ -25887,7 +25887,7 @@ async def get_versioning_diagnostics():
             ],
             
             # Version chain analysis
-            "version_chains": _analyze_version_chains(versioning_results)
+            "version_chains": v2_versioning_system._analyze_version_chains(versioning_results)
         }
         
         print(f"✅ V2 VERSIONING: Returning versioning diagnostics - {total_versioning_runs} total runs - engine=v2")

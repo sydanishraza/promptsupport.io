@@ -14,6 +14,18 @@ import io
 import base64
 from bson import ObjectId
 
+# ObjectId serialization helper
+def objectid_to_str(obj: Any) -> Any:
+    """Convert ObjectId to string for JSON serialization"""
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {key: objectid_to_str(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [objectid_to_str(item) for item in obj]
+    else:
+        return obj
+
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Header, Request
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles

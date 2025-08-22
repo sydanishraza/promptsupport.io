@@ -24085,14 +24085,41 @@ Source Information:
             
             print(f"✅ V2 ENGINE: Step 10 complete for URL processing - Adjustment status: {adjustment_status}, Readability score: {readability_score:.2f} - engine=v2")
             
-            # CRITICAL FIX: Store V2 generated articles in content library for frontend access
-            if chunks:
+            # V2 STEP 11: Publishing Flow (V2 only)
+            print(f"📚 V2 ENGINE: Starting Step 11 - V2-only publishing flow for URL processing - engine=v2")
+            
+            # Publish finalized V2 content as single source of truth
+            publishing_result = await v2_publishing_system.publish_v2_content(
+                chunks, generated_articles_result, validation_result, qa_result, adjustment_result, run_id
+            )
+            
+            # Check publishing status and update chunks accordingly
+            publishing_status = publishing_result.get('publishing_status', 'unknown')
+            published_count = publishing_result.get('published_articles', 0)
+            coverage_achieved = publishing_result.get('coverage_achieved', 0)
+            
+            if publishing_status == 'success':
+                print(f"✅ V2 ENGINE: Step 11 publishing successful for URL processing - {published_count} articles published with {coverage_achieved}% coverage - engine=v2")
+                # Add publishing metadata to chunks
                 for chunk in chunks:
-                    try:
-                        await db.content_library.insert_one(chunk)
-                        print(f"💾 V2 ENGINE: Stored URL article in content library: {chunk['title']} - engine=v2")
-                    except Exception as storage_error:
-                        print(f"❌ V2 ENGINE: Error storing URL article in content library: {storage_error} - engine=v2")
+                    chunk.setdefault('metadata', {})['publishing_result'] = publishing_result
+                    chunk['publishing_status'] = 'published'
+                    chunk['published_at'] = datetime.utcnow().isoformat()
+            else:
+                print(f"⚠️ V2 ENGINE: Step 11 publishing issue for URL processing - Status: {publishing_status} - Coverage: {coverage_achieved}% - engine=v2")
+                # Mark chunks with publishing status
+                for chunk in chunks:
+                    chunk.setdefault('metadata', {})['publishing_result'] = publishing_result
+                    chunk['publishing_status'] = publishing_status
+            
+            # Store publishing result separately for analysis
+            try:
+                await db.v2_publishing_results.insert_one(publishing_result)
+                print(f"💾 V2 ENGINE: Stored URL publishing result for analysis - publishing_id: {publishing_result.get('publishing_id')} - engine=v2")
+            except Exception as publishing_storage_error:
+                print(f"❌ V2 ENGINE: Error storing URL publishing result - {publishing_storage_error} - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Step 11 complete for URL processing - Publishing status: {publishing_status}, Articles published: {published_count} - engine=v2")
             
         except Exception as v2_error:
             print(f"⚠️ V2 ENGINE: URL extraction failed, falling back to legacy processing - {v2_error} - engine=v2")

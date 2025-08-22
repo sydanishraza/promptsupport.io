@@ -23758,18 +23758,21 @@ async def get_content_library_articles():
     try:
         articles = []
         async for article in db.content_library.find().sort("created_at", -1):
+            # Convert ObjectId to string for JSON serialization
+            clean_article = objectid_to_str(article)
+            
             articles.append({
-                "id": article["id"],
-                "title": article["title"],
-                "content": article.get("content", ""),  # Added content field!
-                "summary": article.get("summary", ""),
-                "tags": article.get("tags", []),
-                "status": article.get("status", "draft"),
-                "source_type": article.get("source_type", ""),
-                "takeaways": article.get("takeaways", []),  # Added takeaways too
-                "metadata": article.get("metadata", {}),    # Added metadata
-                "created_at": article.get("created_at"),
-                "updated_at": article.get("updated_at")
+                "id": clean_article["id"],
+                "title": clean_article["title"],
+                "content": clean_article.get("content", ""),  # Added content field!
+                "summary": clean_article.get("summary", ""),
+                "tags": clean_article.get("tags", []),
+                "status": clean_article.get("status", "draft"),
+                "source_type": clean_article.get("source_type", ""),
+                "takeaways": clean_article.get("takeaways", []),  # Added takeaways too
+                "metadata": clean_article.get("metadata", {}),    # Added metadata - now ObjectId safe
+                "created_at": clean_article.get("created_at"),
+                "updated_at": clean_article.get("updated_at")
             })
         
         return {

@@ -169,6 +169,13 @@ class MediaIntelligenceService:
                     'enhanced_alt_text': analysis_data.get('accessibility', {}).get('alt_text', alt_text)
                 })
                 
+                # Add the specific fields that testing expects
+                caption_data = analysis_data.get('caption', {})
+                placement_data = analysis_data.get('placement', {})
+                
+                analysis_data['contextual_caption'] = caption_data.get('contextual', f'Supporting visual for {context[:50]}...' if context else 'Supporting image content')
+                analysis_data['placement_suggestion'] = placement_data.get('optimal_position', 'after_section')
+                
                 return analysis_data
                 
             except json.JSONDecodeError:

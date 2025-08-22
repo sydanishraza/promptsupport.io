@@ -14,39 +14,37 @@
 # Main and testing agents must follow this exact format to maintain testing data. 
 # The testing data must be entered in yaml format Below is the data structure:
 # 
-## user_problem_statement: V2 Engine Step 8 Implementation - Implement Validators (fidelity, 100% coverage, placeholders, style)
+## user_problem_statement: V2 Engine Step 9 Implementation - Cross-Article QA (dedupe, link validation, FAQ consolidation, terminology)
 
 IMPLEMENTATION SUMMARY:
-Successfully implemented Step 8 of the V2 Engine plan: "Implement Validators (fidelity, 100% coverage, placeholders, style)". This step adds comprehensive validation system that enforces correctness and completeness prior to consolidation.
+Successfully implemented Step 9 of the V2 Engine plan: "Cross-Article QA (dedupe, link validation, FAQ consolidation, terminology)". This step adds comprehensive cross-article quality assurance to produce coherent article sets with clean cross-links and no duplication.
 
 CHANGES IMPLEMENTED:
-1. Created V2ValidationSystem class with comprehensive validation capabilities
-2. Implemented fidelity and coverage validation using LLM (Prompt A)
-3. Implemented placeholder detection using LLM (Prompt B)  
-4. Implemented programmatic style guard validation
-5. Added validation metrics calculation (redundancy, granularity alignment, complexity alignment)
-6. Integrated validation into all 3 V2 processing pipelines (text, file upload, URL processing)
-7. Added comprehensive diagnostics endpoints for validation results
-8. Implemented quality thresholds and partial run marking
-9. Added actionable diagnostics for failed validations
+1. Created V2CrossArticleQASystem class with comprehensive cross-article analysis
+2. Implemented LLM-based cross-article analysis for duplicates, invalid links, duplicate FAQs, and terminology issues
+3. Implemented programmatic QA validation for link validation and consistency checking
+4. Added consolidation pass to resolve identified QA issues
+5. Integrated QA into all 3 V2 processing pipelines (text, file upload, URL processing)
+6. Added comprehensive QA diagnostics endpoints for analysis
+7. Added QA result storage and retrieval system
+8. Implemented terminology consistency patterns and standardization
 
-VALIDATION REQUIREMENTS MET:
-- Coverage validation (must be 100% for each run)
-- Fidelity validation (≥ 0.9, detect claims not in sources)
-- Placeholder detection ([MISSING], TODO, lorem ipsum)
-- Style guard (ensure Title, Intro, Mini-TOC, Main Body, FAQs, Related Links exist)
-- Metrics calculation (redundancy, granularity alignment, complexity alignment)
-- Runs failing thresholds are marked 'partial' with diagnostics
+CROSS-ARTICLE QA REQUIREMENTS MET:
+- Content deduplication (intros/sections across articles)
+- Related links validation (must point to existing articles/sections)
+- FAQ consolidation (duplicate FAQs across articles centralized)
+- Terminology consistency (standardized naming conventions)
+- Consolidation pass updates articles to resolve flagged items
 
 TESTING NEEDED:
-- Test V2 Engine Step 8 with all validation components
-- Test fidelity and coverage validation with LLM
-- Test placeholder detection with various placeholder types
-- Test style guard validation for structural compliance
-- Test validation metrics calculation
-- Test diagnostics endpoints functionality
-- Verify partial run marking when validation fails
-- Test validation result storage and retrieval
+- Test V2 Engine Step 9 with all cross-article QA components
+- Test LLM-based analysis for duplicates, invalid links, duplicate FAQs, terminology issues
+- Test programmatic link validation and consistency checking
+- Test consolidation pass for issue resolution
+- Test QA diagnostics endpoints functionality
+- Test QA result storage and retrieval
+- Verify articles marked with QA status and issues count
+- Test terminology standardization patterns
 backend:
   - task: "V2 ENGINE STEP 8 IMPLEMENTATION - Implement Validators (fidelity, 100% coverage, placeholders, style)"
     implemented: true

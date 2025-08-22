@@ -11,6 +11,7 @@ import KnowledgeBaseBuilder from './KnowledgeBaseBuilder';
 import Settings from './Settings';
 import AdminConsole from './AdminConsole';
 import Connections from './Connections';
+import ReviewDashboard from './ReviewDashboard';
 
 
 const MainLayout = () => {

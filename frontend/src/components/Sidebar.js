@@ -51,7 +51,8 @@ const Sidebar = ({ activeRoute, setActiveRoute, collapsed, setCollapsed }) => {
         { id: 'uploaded-content', label: 'Uploaded Content', icon: Database },
         { id: 'chat-with-engine', label: 'Chat with Engine', icon: MessageSquare },
         { id: 'processing-jobs', label: 'Jobs', icon: Clock },
-        { id: 'connections', label: 'Connections', icon: Link }
+        { id: 'connections', label: 'Connections', icon: Link },
+        { id: 'review-dashboard', label: 'Review Dashboard', icon: Activity }
       ]
     },
     {

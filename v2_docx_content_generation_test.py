@@ -260,7 +260,7 @@ class V2DOCXContentGenerationTester:
                 print(f"⏳ Waiting for V2 processing to complete... ({elapsed_time}s)")
             
             # Get final processing status
-            final_status_response = requests.get(f"{API_BASE}/content/status/{self.processing_job_id}", timeout=30)
+            final_status_response = requests.get(f"{API_BASE}/jobs/{self.processing_job_id}", timeout=30)
             
             if final_status_response.status_code != 200:
                 self.log_test("V2 Processing Pipeline Steps", False, f"Could not get processing status: HTTP {final_status_response.status_code}")

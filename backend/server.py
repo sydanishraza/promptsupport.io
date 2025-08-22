@@ -7009,6 +7009,277 @@ class V2VersioningSystem:
             print(f"❌ V2 VERSIONING: Error storing version record - {e} - run {run_id} - engine=v2")
             return False
     
+    async def _generate_version_diff(self, previous_run_id: str, current_run_id: str, current_articles: list) -> dict:
+        """Generate diff between current and previous version"""
+        try:
+            print(f"🔍 V2 VERSIONING: Generating diff - current: {current_run_id} vs previous: {previous_run_id} - engine=v2")
+            
+            # Step 1: Find previous version articles
+            previous_articles = []
+            
+            # Search in content library for previous version articles
+            async for article in db.content_library.find({"metadata.run_id": previous_run_id, "engine": "v2"}):
+                previous_articles.append(article)
+            
+            # Also search in v2_version_records for previous articles
+            previous_version_record = await db.v2_version_records.find_one({"run_id": previous_run_id})
+            
+            if not previous_articles and not previous_version_record:
+                print(f"⚠️ V2 VERSIONING: No previous version data found for diff - run {current_run_id} - engine=v2")
+                return {
+                    "diff_status": "no_previous_version",
+                    "message": f"No previous version found for run_id: {previous_run_id}",
+                    "current_run_id": current_run_id,
+                    "previous_run_id": previous_run_id
+                }
+            
+            # Step 2: Compare articles and generate diff
+            diff_analysis = await self._compare_article_versions(previous_articles, current_articles, previous_run_id, current_run_id)
+            
+            # Step 3: Create diff result structure
+            diff_result = {
+                "diff_id": f"diff_{current_run_id}_{int(datetime.utcnow().timestamp())}",
+                "current_run_id": current_run_id,
+                "previous_run_id": previous_run_id,
+                "diff_status": "success",
+                "comparison_timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                
+                # Article count comparison
+                "article_counts": {
+                    "previous": len(previous_articles),
+                    "current": len(current_articles),
+                    "difference": len(current_articles) - len(previous_articles)
+                },
+                
+                # Detailed diff analysis
+                **diff_analysis
+            }
+            
+            print(f"✅ V2 VERSIONING: Diff generated - {len(diff_analysis.get('title_changes', []))} title changes, {len(diff_analysis.get('content_changes', []))} content changes - run {current_run_id} - engine=v2")
+            return diff_result
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error generating version diff - {e} - run {current_run_id} - engine=v2")
+            return {
+                "diff_status": "error",
+                "error": str(e),
+                "current_run_id": current_run_id,
+                "previous_run_id": previous_run_id
+            }
+    
+    async def _compare_article_versions(self, previous_articles: list, current_articles: list, 
+                                      previous_run_id: str, current_run_id: str) -> dict:
+        """Compare previous and current articles to identify differences"""
+        try:
+            comparison_result = {
+                "title_changes": [],
+                "toc_changes": [],
+                "section_changes": [],
+                "faq_changes": [],
+                "related_links_changes": [],
+                "content_changes": [],
+                "new_articles": [],
+                "removed_articles": [],
+                "unchanged_articles": []
+            }
+            
+            # Create title-based lookup for previous articles
+            previous_lookup = {}
+            for prev_article in previous_articles:
+                title = prev_article.get('title', '').strip().lower()
+                if title:
+                    previous_lookup[title] = prev_article
+            
+            # Compare each current article with previous version
+            for curr_article in current_articles:
+                current_title = curr_article.get('title', '').strip()
+                current_title_lower = current_title.lower()
+                
+                if current_title_lower in previous_lookup:
+                    # Article exists in both versions - compare content
+                    prev_article = previous_lookup[current_title_lower]
+                    article_diff = await self._compare_individual_articles(prev_article, curr_article)
+                    
+                    if article_diff['has_changes']:
+                        # Add changes to respective categories
+                        if article_diff.get('title_changed'):
+                            comparison_result["title_changes"].append(article_diff['title_diff'])
+                        if article_diff.get('toc_changed'):
+                            comparison_result["toc_changes"].append(article_diff['toc_diff'])
+                        if article_diff.get('sections_changed'):
+                            comparison_result["section_changes"].extend(article_diff['section_diffs'])
+                        if article_diff.get('faq_changed'):
+                            comparison_result["faq_changes"].append(article_diff['faq_diff'])
+                        if article_diff.get('related_links_changed'):
+                            comparison_result["related_links_changes"].append(article_diff['related_links_diff'])
+                        if article_diff.get('content_changed'):
+                            comparison_result["content_changes"].append(article_diff['content_diff'])
+                    else:
+                        comparison_result["unchanged_articles"].append({
+                            "title": current_title,
+                            "article_id": curr_article.get('id', 'unknown')
+                        })
+                    
+                    # Remove from previous lookup to track removed articles
+                    del previous_lookup[current_title_lower]
+                else:
+                    # New article in current version
+                    comparison_result["new_articles"].append({
+                        "title": current_title,
+                        "article_id": curr_article.get('id', 'unknown'),
+                        "content_preview": self._get_content_preview(curr_article.get('content', ''))
+                    })
+            
+            # Any remaining articles in previous_lookup are removed articles
+            for removed_title, removed_article in previous_lookup.items():
+                comparison_result["removed_articles"].append({
+                    "title": removed_article.get('title', ''),
+                    "article_id": removed_article.get('id', 'unknown'),
+                    "content_preview": self._get_content_preview(removed_article.get('content', ''))
+                })
+            
+            return comparison_result
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error comparing article versions - {e} - engine=v2")
+            return {"error": str(e)}
+    
+    async def _compare_individual_articles(self, prev_article: dict, curr_article: dict) -> dict:
+        """Compare two individual articles and identify specific changes"""
+        try:
+            article_diff = {
+                "has_changes": False,
+                "article_title": curr_article.get('title', ''),
+                "article_id": curr_article.get('id', 'unknown')
+            }
+            
+            # Compare titles
+            prev_title = prev_article.get('title', '').strip()
+            curr_title = curr_article.get('title', '').strip()
+            
+            if prev_title != curr_title:
+                article_diff["title_changed"] = True
+                article_diff["title_diff"] = {
+                    "previous": prev_title,
+                    "current": curr_title,
+                    "change_type": "title_modified"
+                }
+                article_diff["has_changes"] = True
+            
+            # Compare content for significant changes
+            prev_content = prev_article.get('content', '')
+            curr_content = curr_article.get('content', '')
+            
+            content_similarity = self._calculate_content_similarity(prev_content, curr_content)
+            
+            if content_similarity < 0.8:  # Significant content change threshold
+                article_diff["content_changed"] = True
+                article_diff["content_diff"] = {
+                    "similarity_score": content_similarity,
+                    "change_type": "significant_content_change",
+                    "previous_preview": self._get_content_preview(prev_content),
+                    "current_preview": self._get_content_preview(curr_content),
+                    "word_count_change": self._count_words(curr_content) - self._count_words(prev_content)
+                }
+                article_diff["has_changes"] = True
+            
+            # Extract and compare table of contents
+            prev_toc = self._extract_toc_from_content(prev_content)
+            curr_toc = self._extract_toc_from_content(curr_content)
+            
+            if prev_toc != curr_toc:
+                article_diff["toc_changed"] = True
+                article_diff["toc_diff"] = {
+                    "previous": prev_toc,
+                    "current": curr_toc,
+                    "change_type": "toc_structure_change"
+                }
+                article_diff["has_changes"] = True
+            
+            # Compare sections, FAQs, and related links would require more complex parsing
+            # For now, we'll use content similarity as a proxy
+            
+            return article_diff
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error comparing individual articles - {e} - engine=v2")
+            return {"has_changes": False, "error": str(e)}
+    
+    def _calculate_content_similarity(self, content1: str, content2: str) -> float:
+        """Calculate similarity between two content strings"""
+        try:
+            # Simple word-based similarity calculation
+            import re
+            
+            # Extract words from both contents
+            words1 = set(re.findall(r'\w+', content1.lower()))
+            words2 = set(re.findall(r'\w+', content2.lower()))
+            
+            if not words1 and not words2:
+                return 1.0
+            if not words1 or not words2:
+                return 0.0
+            
+            # Calculate Jaccard similarity
+            intersection = len(words1 & words2)
+            union = len(words1 | words2)
+            
+            similarity = intersection / union if union > 0 else 0.0
+            return similarity
+            
+        except Exception:
+            return 0.5  # Fallback similarity score
+    
+    def _get_content_preview(self, content: str, max_length: int = 200) -> str:
+        """Get a preview of content for diff display"""
+        try:
+            import re
+            # Strip HTML tags for preview
+            text_content = re.sub(r'<[^>]+>', '', content).strip()
+            
+            if len(text_content) <= max_length:
+                return text_content
+            
+            return text_content[:max_length] + "..."
+            
+        except Exception:
+            return "Content preview unavailable"
+    
+    def _extract_toc_from_content(self, content: str) -> list:
+        """Extract table of contents (headings) from HTML content"""
+        try:
+            import re
+            
+            headings = []
+            # Find all headings (h1, h2, h3, etc.)
+            heading_pattern = r'<h([1-6])[^>]*>(.*?)</h[1-6]>'
+            matches = re.findall(heading_pattern, content, re.IGNORECASE)
+            
+            for level, text in matches:
+                # Clean heading text
+                clean_text = re.sub(r'<[^>]+>', '', text).strip()
+                headings.append({
+                    "level": int(level),
+                    "text": clean_text
+                })
+            
+            return headings
+            
+        except Exception:
+            return []
+    
+    def _count_words(self, content: str) -> int:
+        """Count words in content"""
+        try:
+            import re
+            # Strip HTML and count words
+            text_content = re.sub(r'<[^>]+>', ' ', content)
+            words = re.findall(r'\w+', text_content)
+            return len(words)
+        except Exception:
+            return 0
+
     def _create_versioning_result(self, status: str, run_id: str, additional_data: dict) -> dict:
         """Create a standard versioning result structure"""
         return {

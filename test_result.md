@@ -14,33 +14,39 @@
 # Main and testing agents must follow this exact format to maintain testing data. 
 # The testing data must be entered in yaml format Below is the data structure:
 # 
-## user_problem_statement: V2 Engine Step 7 Implementation - Generate Articles (strict format + audience-aware)
+## user_problem_statement: V2 Engine Step 8 Implementation - Implement Validators (fidelity, 100% coverage, placeholders, style)
 
 IMPLEMENTATION SUMMARY:
-Successfully implemented Step 7 of the V2 Engine plan: "Generate Articles (strict format + audience-aware)". This step integrates the existing V2ArticleGenerator class into the main processing pipeline, replacing the older convert_normalized_doc_to_articles_with_analysis function.
+Successfully implemented Step 8 of the V2 Engine plan: "Implement Validators (fidelity, 100% coverage, placeholders, style)". This step adds comprehensive validation system that enforces correctness and completeness prior to consolidation.
 
 CHANGES IMPLEMENTED:
-1. Updated process_text_content_v2 function to use v2_article_generator.generate_final_articles
-2. Updated /api/content/upload endpoint to use V2ArticleGenerator for file processing
-3. Updated /api/content/process-url endpoint to use V2ArticleGenerator for URL processing
-4. Added _extract_title_from_html method to V2ArticleGenerator class for better title extraction
-5. Ensured all generated articles follow the strict format requirements:
-   - H1 Title, Intro paragraph, Mini-TOC, Main Body, FAQs, Related Links
-   - Audience-aware styling (developer/business/admin/end_user)
-   - 100% coverage of assigned blocks
-   - No media embedding (only references)
-   - JSON output with html and summary
-   - HTML to Markdown conversion
+1. Created V2ValidationSystem class with comprehensive validation capabilities
+2. Implemented fidelity and coverage validation using LLM (Prompt A)
+3. Implemented placeholder detection using LLM (Prompt B)  
+4. Implemented programmatic style guard validation
+5. Added validation metrics calculation (redundancy, granularity alignment, complexity alignment)
+6. Integrated validation into all 3 V2 processing pipelines (text, file upload, URL processing)
+7. Added comprehensive diagnostics endpoints for validation results
+8. Implemented quality thresholds and partial run marking
+9. Added actionable diagnostics for failed validations
+
+VALIDATION REQUIREMENTS MET:
+- Coverage validation (must be 100% for each run)
+- Fidelity validation (≥ 0.9, detect claims not in sources)
+- Placeholder detection ([MISSING], TODO, lorem ipsum)
+- Style guard (ensure Title, Intro, Mini-TOC, Main Body, FAQs, Related Links exist)
+- Metrics calculation (redundancy, granularity alignment, complexity alignment)
+- Runs failing thresholds are marked 'partial' with diagnostics
 
 TESTING NEEDED:
-- Test V2 Engine Step 7 with text content processing
-- Test V2 Engine Step 7 with file upload processing  
-- Test V2 Engine Step 7 with URL processing
-- Verify strict article format compliance
-- Verify audience-aware styling works correctly
-- Confirm articles are properly stored in content library
-- Test HTML to Markdown conversion
-- Verify no media embedding occurs
+- Test V2 Engine Step 8 with all validation components
+- Test fidelity and coverage validation with LLM
+- Test placeholder detection with various placeholder types
+- Test style guard validation for structural compliance
+- Test validation metrics calculation
+- Test diagnostics endpoints functionality
+- Verify partial run marking when validation fails
+- Test validation result storage and retrieval
 backend:
   - task: "V2 ENGINE STEP 7 IMPLEMENTATION - Generate Articles (strict format + audience-aware)"
     implemented: true

@@ -23829,7 +23829,12 @@ async def get_engine_status():
             "content_deduplication",
             "link_validation",
             "faq_consolidation", 
-            "terminology_consistency"
+            "terminology_consistency",
+            "adaptive_adjustment",
+            "length_balancing",
+            "split_optimization",
+            "merge_suggestions",
+            "readability_optimization"
         ],
         "message": "V2 Engine is active with comprehensive validation and cross-article QA systems"
     }

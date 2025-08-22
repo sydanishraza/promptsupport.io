@@ -23024,7 +23024,8 @@ async def get_engine_status():
             "file_upload": "/api/content/upload", 
             "url_processing": "/api/content/process-url",
             "recording_processing": "/api/content/process-recording",
-            "validation_diagnostics": "/api/validation/diagnostics"
+            "validation_diagnostics": "/api/validation/diagnostics",
+            "qa_diagnostics": "/api/qa/diagnostics"
         },
         "features": [
             "multi_dimensional_analysis",

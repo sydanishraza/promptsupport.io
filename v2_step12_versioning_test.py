@@ -236,10 +236,12 @@ class V2VersioningSystemTester:
             """
             
             # Process original content
-            form_data1 = aiohttp.FormData()
-            form_data1.add_field('content', original_content)
+            payload1 = {
+                "content": original_content,
+                "content_type": "text"
+            }
             
-            async with self.session.post(f"{self.backend_url}/api/content/process", data=form_data1) as response1:
+            async with self.session.post(f"{self.backend_url}/api/content/process", json=payload1) as response1:
                 if response1.status == 200:
                     data1 = await response1.json()
                     job_id1 = data1.get('job_id')

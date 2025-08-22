@@ -23836,7 +23836,7 @@ async def get_engine_status():
             "merge_suggestions",
             "readability_optimization"
         ],
-        "message": "V2 Engine is active with comprehensive validation and cross-article QA systems"
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, and adaptive adjustment systems"
     }
 
 @app.get("/api/validation/diagnostics")

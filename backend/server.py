@@ -24062,6 +24062,134 @@ async def rerun_qa_analysis(run_id: str = Form(...)):
         print(f"❌ V2 CROSS-ARTICLE QA: Error in QA rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning QA analysis: {str(e)}")
 
+@app.get("/api/adjustment/diagnostics")
+async def get_adjustment_diagnostics(run_id: str = None, adjustment_id: str = None):
+    """V2 ENGINE: Get adaptive adjustment diagnostics"""
+    try:
+        print(f"⚖️ V2 ADAPTIVE ADJUSTMENT: Diagnostics requested - run_id: {run_id}, adjustment_id: {adjustment_id} - engine=v2")
+        
+        # Build query filter
+        query_filter = {}
+        if run_id:
+            query_filter["run_id"] = run_id
+        if adjustment_id:
+            query_filter["adjustment_id"] = adjustment_id
+        
+        # If no specific filters, get recent adjustment results
+        if not query_filter:
+            adjustment_results = await db.v2_adjustment_results.find().sort("timestamp", -1).limit(10).to_list(10)
+        else:
+            adjustment_results = await db.v2_adjustment_results.find(query_filter).sort("timestamp", -1).to_list(100)
+        
+        # Convert ObjectId to string for JSON serialization
+        for result in adjustment_results:
+            result['_id'] = str(result['_id'])
+        
+        diagnostics_summary = {
+            "total_adjustment_runs": len(adjustment_results),
+            "optimal_adjustment_runs": len([r for r in adjustment_results if r.get('adjustment_summary', {}).get('total_adjustments', 0) == 0]),
+            "adjustment_runs_with_changes": len([r for r in adjustment_results if r.get('adjustment_summary', {}).get('total_adjustments', 0) > 0]),
+            "error_adjustment_runs": len([r for r in adjustment_results if r.get('adjustment_status') == 'error']),
+            "adjustment_results": adjustment_results
+        }
+        
+        print(f"📊 V2 ADAPTIVE ADJUSTMENT: Returning {len(adjustment_results)} adjustment results - engine=v2")
+        return diagnostics_summary
+        
+    except Exception as e:
+        print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error retrieving adjustment diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving adjustment diagnostics: {str(e)}")
+
+@app.get("/api/adjustment/diagnostics/{adjustment_id}")
+async def get_specific_adjustment_diagnostics(adjustment_id: str):
+    """V2 ENGINE: Get specific adjustment result with detailed analysis"""
+    try:
+        print(f"⚖️ V2 ADAPTIVE ADJUSTMENT: Specific adjustment diagnostics requested - adjustment_id: {adjustment_id} - engine=v2")
+        
+        adjustment_result = await db.v2_adjustment_results.find_one({"adjustment_id": adjustment_id})
+        
+        if not adjustment_result:
+            raise HTTPException(status_code=404, detail=f"Adjustment result not found: {adjustment_id}")
+        
+        # Convert ObjectId to string for JSON serialization
+        adjustment_result['_id'] = str(adjustment_result['_id'])
+        
+        # Add summary for easy consumption
+        adjustment_summary = adjustment_result.get('adjustment_summary', {})
+        adjustment_application = adjustment_result.get('adjustment_application', {})
+        
+        enhanced_result = {
+            **adjustment_result,
+            "balance_summary": {
+                "overall_status": adjustment_result.get('adjustment_status', 'unknown'),
+                "total_adjustments": adjustment_summary.get('total_adjustments', 0),
+                "merge_suggestions": adjustment_summary.get('total_merge_suggestions', 0),
+                "split_suggestions": adjustment_summary.get('total_split_suggestions', 0),
+                "readability_score": f"{adjustment_result.get('readability_score', 0.5):.2f}",
+                "granularity_alignment": adjustment_result.get('granularity_alignment', 'unknown'),
+                "adjustment_priority": adjustment_summary.get('adjustment_priority', 'medium'),
+                "successful_applications": adjustment_application.get('successful_adjustments', 0)
+            }
+        }
+        
+        print(f"✅ V2 ADAPTIVE ADJUSTMENT: Returning specific adjustment result - Status: {adjustment_result.get('adjustment_status')} - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error retrieving specific adjustment diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving adjustment diagnostics: {str(e)}")
+
+@app.post("/api/adjustment/rerun")
+async def rerun_adjustment_analysis(run_id: str = Form(...)):
+    """V2 ENGINE: Rerun adaptive adjustment for a specific processing run"""
+    try:
+        print(f"🔄 V2 ADAPTIVE ADJUSTMENT: Rerun adjustment requested - run_id: {run_id} - engine=v2")
+        
+        # Find the original processing result
+        generated_articles_result = await v2_article_generator.get_generated_articles_for_run(run_id)
+        
+        if not generated_articles_result:
+            raise HTTPException(status_code=404, detail=f"Processing run not found: {run_id}")
+        
+        # Find the original analysis (simplified approach)
+        # In a full implementation, you'd store analysis results separately
+        analysis = {"granularity": "moderate", "audience": "end_user"}  # Default values
+        
+        # Perform adaptive adjustment analysis
+        adjustment_result = await v2_adaptive_adjustment_system.perform_adaptive_adjustment(
+            generated_articles_result, analysis, run_id
+        )
+        
+        # Store new adjustment result
+        try:
+            await db.v2_adjustment_results.insert_one(adjustment_result)
+            print(f"💾 V2 ADAPTIVE ADJUSTMENT: Stored rerun adjustment result - adjustment_id: {adjustment_result.get('adjustment_id')} - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error storing rerun adjustment result - {storage_error} - engine=v2")
+        
+        adjustment_status = adjustment_result.get('adjustment_status', 'unknown')
+        total_adjustments = adjustment_result.get('adjustment_summary', {}).get('total_adjustments', 0)
+        readability_score = adjustment_result.get('readability_score', 0.5)
+        
+        return {
+            "message": "Adaptive adjustment analysis rerun completed",
+            "run_id": run_id,
+            "adjustment_id": adjustment_result.get('adjustment_id'),
+            "adjustment_status": adjustment_status,
+            "total_adjustments": total_adjustments,
+            "readability_score": readability_score,
+            "analysis_methods": adjustment_result.get('analysis_methods', []),
+            "granularity_alignment": adjustment_result.get('granularity_alignment', 'unknown')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error in adjustment rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning adjustment analysis: {str(e)}")
+
 @app.post("/api/media-intelligence")
 async def analyze_media_intelligence(request: Request):
     """

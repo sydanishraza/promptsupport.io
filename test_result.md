@@ -14,37 +14,39 @@
 # Main and testing agents must follow this exact format to maintain testing data. 
 # The testing data must be entered in yaml format Below is the data structure:
 # 
-## user_problem_statement: V2 Engine Step 9 Implementation - Cross-Article QA (dedupe, link validation, FAQ consolidation, terminology)
+## user_problem_statement: V2 Engine Step 10 Implementation - Adaptive Adjustment (balance splits/length)
 
 IMPLEMENTATION SUMMARY:
-Successfully implemented Step 9 of the V2 Engine plan: "Cross-Article QA (dedupe, link validation, FAQ consolidation, terminology)". This step adds comprehensive cross-article quality assurance to produce coherent article sets with clean cross-links and no duplication.
+Successfully implemented Step 10 of the V2 Engine plan: "Adaptive Adjustment (balance splits/length)". This step adds comprehensive adaptive adjustment system to balance article lengths and splits based on readability and granularity optimization.
 
 CHANGES IMPLEMENTED:
-1. Created V2CrossArticleQASystem class with comprehensive cross-article analysis
-2. Implemented LLM-based cross-article analysis for duplicates, invalid links, duplicate FAQs, and terminology issues
-3. Implemented programmatic QA validation for link validation and consistency checking
-4. Added consolidation pass to resolve identified QA issues
-5. Integrated QA into all 3 V2 processing pipelines (text, file upload, URL processing)
-6. Added comprehensive QA diagnostics endpoints for analysis
-7. Added QA result storage and retrieval system
-8. Implemented terminology consistency patterns and standardization
+1. Created V2AdaptiveAdjustmentSystem class with comprehensive length balancing capabilities
+2. Implemented word count analysis for articles and sections with optimal range targeting
+3. Implemented LLM-based balancing analysis for merge/split suggestions and granularity checking
+4. Implemented programmatic adjustment validation for readability optimization
+5. Added automated adjustment application with action tracking
+6. Integrated adjustment into all 3 V2 processing pipelines (text, file upload, URL processing)
+7. Added comprehensive adjustment diagnostics endpoints for analysis
+8. Added adjustment result storage and retrieval system
+9. Implemented readability scoring and granularity alignment validation
 
-CROSS-ARTICLE QA REQUIREMENTS MET:
-- Content deduplication (intros/sections across articles)
-- Related links validation (must point to existing articles/sections)
-- FAQ consolidation (duplicate FAQs across articles centralized)
-- Terminology consistency (standardized naming conventions)
-- Consolidation pass updates articles to resolve flagged items
+ADAPTIVE ADJUSTMENT REQUIREMENTS MET:
+- Article word count < 300 → suggest/perform merge with neighbor
+- Section word count > 1200 → suggest/perform split
+- Final article count aligned with analysis.granularity while balancing readability
+- Optimal article range (500-2000 words) and section range (200-800 words)
+- Granularity expectations: shallow (1-3 articles), moderate (2-8), deep (5-20)
 
 TESTING NEEDED:
-- Test V2 Engine Step 9 with all cross-article QA components
-- Test LLM-based analysis for duplicates, invalid links, duplicate FAQs, terminology issues
-- Test programmatic link validation and consistency checking
-- Test consolidation pass for issue resolution
-- Test QA diagnostics endpoints functionality
-- Test QA result storage and retrieval
-- Verify articles marked with QA status and issues count
-- Test terminology standardization patterns
+- Test V2 Engine Step 10 with all adaptive adjustment components
+- Test word count analysis for articles and sections
+- Test LLM-based balancing analysis for merge/split suggestions
+- Test programmatic adjustment validation and readability scoring
+- Test adjustment application and action tracking
+- Test adjustment diagnostics endpoints functionality
+- Test adjustment result storage and retrieval
+- Verify articles marked with adjustment_status and readability_score
+- Test granularity alignment validation and optimization
 backend:
   - task: "V2 ENGINE STEP 9 IMPLEMENTATION - Cross-Article QA (dedupe, link validation, FAQ consolidation, terminology)"
     implemented: true

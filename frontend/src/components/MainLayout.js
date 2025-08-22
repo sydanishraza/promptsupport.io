@@ -55,6 +55,8 @@ const MainLayout = () => {
         return <KnowledgeEngine activeModule="jobs" />;
       case 'connections':
         return <Connections />;
+      case 'review-dashboard':
+        return <ReviewDashboard />;
       case 'content-library':
         return <ContentLibrary />;
 

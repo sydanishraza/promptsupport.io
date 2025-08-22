@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-08-22T10:13:08.702511",
+  "test_results": {
+    "url_processing_corrected": false,
+    "text_processing_optimized": true,
+    "adjustment_system_detailed": false,
+    "adjustment_features": false
+  },
+  "success_rate": 25.0,
+  "failed_tests": [
+    "url_processing_corrected",
+    "adjustment_system_detailed",
+    "adjustment_features"
+  ],
+  "total_tests": 4,
+  "passed_tests": 1
+}

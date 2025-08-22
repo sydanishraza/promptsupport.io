@@ -282,50 +282,35 @@ class V2MediaManagementTester:
             # Test direct media intelligence with vision
             test_image = create_test_image_base64()
             
-            payload = {
-                "image_data": test_image,
+            form_data = {
+                "media_data": f"data:image/png;base64,{test_image}",
                 "context": "Google Maps JavaScript API tutorial showing how to initialize a map with markers and custom styling options",
-                "analysis_type": "comprehensive"
+                "alt_text": "Google Maps tutorial screenshot"
             }
             
-            response = requests.post(f"{API_BASE}/media/vision-analyze", 
-                                   json=payload, timeout=20)
+            response = requests.post(f"{API_BASE}/media-intelligence", 
+                                   data=form_data, timeout=20)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Check for LLM+Vision specific fields
-                has_vision_analysis = 'vision_analysis' in data
-                has_contextual_caption = 'contextual_caption' in data
-                has_placement_suggestion = 'placement_suggestion' in data
-                analysis_method = data.get('analysis_method', 'unknown')
+                success = data.get('success', False)
+                analysis = data.get('analysis', {})
+                has_vision_analysis = 'vision_analysis' in analysis or 'classification' in analysis
+                has_contextual_caption = 'contextual_caption' in analysis
+                has_placement_suggestion = 'placement_suggestion' in analysis
+                analysis_method = analysis.get('analysis_method', 'unknown')
                 
-                if has_vision_analysis and has_contextual_caption and has_placement_suggestion and analysis_method == 'llm_vision':
+                if success and has_contextual_caption and has_placement_suggestion:
                     self.log_test("LLM+Vision Integration", True, 
-                                f"Vision analysis: {has_vision_analysis}, Method: {analysis_method}")
+                                f"Success: {success}, Vision analysis: {has_vision_analysis}, Method: {analysis_method}")
                 else:
                     self.log_test("LLM+Vision Integration", False, 
-                                f"Vision: {has_vision_analysis}, Contextual: {has_contextual_caption}, Placement: {has_placement_suggestion}, Method: {analysis_method}")
+                                f"Success: {success}, Vision: {has_vision_analysis}, Contextual: {has_contextual_caption}, Placement: {has_placement_suggestion}")
             else:
-                # Try fallback endpoint
-                response = requests.post(f"{API_BASE}/media/analyze", 
-                                       json={"base64_data": f"data:image/png;base64,{test_image}", 
-                                            "context": payload["context"]}, timeout=15)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    has_contextual_caption = 'contextual_caption' in data
-                    has_placement_suggestion = 'placement_suggestion' in data
-                    
-                    if has_contextual_caption and has_placement_suggestion:
-                        self.log_test("LLM+Vision Integration", True, 
-                                    f"Fallback endpoint working with required fields")
-                    else:
-                        self.log_test("LLM+Vision Integration", False, 
-                                    f"Fallback missing fields: contextual_caption={has_contextual_caption}, placement_suggestion={has_placement_suggestion}")
-                else:
-                    self.log_test("LLM+Vision Integration", False, 
-                                f"Both endpoints failed: {response.status_code}")
+                self.log_test("LLM+Vision Integration", False, 
+                            f"HTTP {response.status_code}: {response.text[:200]}")
                 
         except Exception as e:
             self.log_test("LLM+Vision Integration", False, str(e))

@@ -6353,6 +6353,7 @@ class V2PublishingSystem:
             return {
                 "id": article.get('id', str(uuid.uuid4())),
                 "title": article.get('title', 'Error Article'),
+                "content": article.get('content', ''),  # ADD CONTENT FIELD FOR ERROR CASE TOO
                 "html": article.get('content', ''),
                 "error": str(e),
                 "engine": "v2"

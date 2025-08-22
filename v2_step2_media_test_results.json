@@ -1,67 +1,67 @@
 {
   "total_tests": 10,
-  "passed_tests": 1,
-  "success_rate": 10.0,
+  "passed_tests": 5,
+  "success_rate": 50.0,
   "results": [
     {
       "test": "V2 Engine Health Check with Media Features",
       "passed": true,
       "details": "Engine: v2, Media features: 2",
-      "timestamp": "2025-08-22T14:59:07.043215"
+      "timestamp": "2025-08-22T15:01:57.355075"
     },
     {
       "test": "Media Intelligence Contextual Processing",
-      "passed": false,
-      "details": "HTTP 404: {\"detail\":\"Not Found\"}",
-      "timestamp": "2025-08-22T14:59:07.097817"
+      "passed": true,
+      "details": "contextual_caption: True, placement_suggestion: True, status: success",
+      "timestamp": "2025-08-22T15:01:57.410959"
     },
     {
       "test": "Complex Document Media Extraction Pipeline",
       "passed": false,
       "details": "HTTP 500: {\"detail\":\"\"}",
-      "timestamp": "2025-08-22T14:59:07.152571"
+      "timestamp": "2025-08-22T15:01:57.466719"
     },
     {
       "test": "Media Asset Library Integration",
       "passed": false,
-      "details": "No media assets found in 1 total assets",
-      "timestamp": "2025-08-22T14:59:07.212351"
+      "details": "No media assets found in 2 total assets",
+      "timestamp": "2025-08-22T15:01:57.534514"
     },
     {
       "test": "Media Storage and Organization",
-      "passed": false,
-      "details": "Upload failed: {'success': True, 'asset': {'id': '73c7f6dd-28cc-4586-88bb-4cb71bd4a71a', 'name': 'test_media.png', 'type': 'image', 'url': '/api/static/uploads/7b1c8062-4b85-4e37-a05e-cd96fd086bbc.png', 'original_filename': 'test_media.png', 'size': 71}}",
-      "timestamp": "2025-08-22T14:59:07.272840"
+      "passed": true,
+      "details": "Upload successful, Asset ID: 94229921-957a-4dc6-9a4c-a95c64c5fb5f",
+      "timestamp": "2025-08-22T15:01:57.594929"
     },
     {
       "test": "LLM+Vision Integration",
-      "passed": false,
-      "details": "Both endpoints failed: 404",
-      "timestamp": "2025-08-22T14:59:07.377919"
+      "passed": true,
+      "details": "Success: True, Vision analysis: True, Method: unknown",
+      "timestamp": "2025-08-22T15:01:57.703276"
     },
     {
       "test": "Intelligent Fallback Analysis",
-      "passed": false,
-      "details": "HTTP 404: {\"detail\":\"Not Found\"}",
-      "timestamp": "2025-08-22T14:59:07.432383"
+      "passed": true,
+      "details": "Fallback provides required fields, Status: success",
+      "timestamp": "2025-08-22T15:01:57.754881"
     },
     {
       "test": "DOCX Embedded Image Processing",
       "passed": false,
       "details": "HTTPSConnectionPool(host='smartdoc-v2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)",
-      "timestamp": "2025-08-22T14:59:37.500141"
+      "timestamp": "2025-08-22T15:02:27.829724"
     },
     {
       "test": "Media Integration Pipeline",
       "passed": false,
       "details": "HTTPSConnectionPool(host='smartdoc-v2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)",
-      "timestamp": "2025-08-22T15:00:07.613536"
+      "timestamp": "2025-08-22T15:02:57.970419"
     },
     {
       "test": "Media Extraction Various Formats",
       "passed": false,
       "details": "Only 0/3 formats processed successfully",
-      "timestamp": "2025-08-22T15:00:32.861495"
+      "timestamp": "2025-08-22T15:03:40.873997"
     }
   ]
 }

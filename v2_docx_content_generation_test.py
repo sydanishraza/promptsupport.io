@@ -319,7 +319,7 @@ class V2DOCXContentGenerationTester:
                 return False
             
             # Get processing results to analyze content extraction
-            response = requests.get(f"{API_BASE}/content/status/{self.processing_job_id}", timeout=30)
+            response = requests.get(f"{API_BASE}/jobs/{self.processing_job_id}", timeout=30)
             
             if response.status_code != 200:
                 self.log_test("Content Extraction Analysis", False, f"Could not get processing status: HTTP {response.status_code}")

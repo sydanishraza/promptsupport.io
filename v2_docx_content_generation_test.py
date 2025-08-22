@@ -61,7 +61,7 @@ class V2DOCXContentGenerationTester:
             # Verify content processing endpoints are present
             endpoints = data.get('endpoints', {})
             required_content_endpoints = [
-                'process_file', 'content_library', 'media_library'
+                'text_processing', 'file_upload', 'url_processing'
             ]
             
             missing_endpoints = []

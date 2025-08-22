@@ -24805,6 +24805,52 @@ Source Information:
             
             print(f"✅ V2 ENGINE: Step 11 complete for URL processing - Publishing status: {publishing_status}, Articles published: {published_count} - engine=v2")
             
+            # V2 STEP 12: Versioning & Diff (reprocessing support) for URL processing
+            print(f"🔄 V2 ENGINE: Starting Step 12 - Versioning and diff management for URL processing - engine=v2")
+            
+            # Determine content type and get original content for hashing
+            content_for_versioning = enriched_content[:5000] if enriched_content else ""  # Use first 5000 chars for hash  
+            content_type = f"url:{url}"
+            
+            # Perform versioning management
+            versioning_result = await v2_versioning_system.manage_versioning(
+                content_for_versioning, content_type, chunks, generated_articles_result, publishing_result, run_id
+            )
+            
+            # Check versioning status and update articles accordingly
+            versioning_status = versioning_result.get('versioning_status', 'unknown')
+            version_number = versioning_result.get('version_metadata', {}).get('version', 1)
+            is_update = versioning_result.get('version_metadata', {}).get('supersedes') is not None
+            
+            if versioning_status == 'success':
+                update_text = "(update)" if is_update else "(new)"
+                print(f"✅ V2 ENGINE: Step 12 versioning successful for URL processing - Version {version_number} {update_text} - engine=v2")
+                # Add versioning metadata to articles
+                for article in chunks:
+                    if isinstance(article, dict):
+                        article.setdefault('metadata', {})['versioning_result'] = versioning_result
+                        article['version_metadata'] = versioning_result.get('version_metadata', {})
+                        article['version_number'] = version_number
+                        article['is_version_update'] = is_update
+                        if versioning_result.get('diff_result'):
+                            article['version_diff'] = versioning_result['diff_result']
+            else:
+                print(f"❌ V2 ENGINE: Step 12 versioning failed for URL processing - Status: {versioning_status} - engine=v2")
+                # Mark articles with versioning error
+                for article in chunks:
+                    if isinstance(article, dict):
+                        article.setdefault('metadata', {})['versioning_result'] = versioning_result
+                        article['versioning_status'] = 'failed'
+            
+            # Store versioning result separately for diagnostics
+            try:
+                await db.v2_versioning_results.insert_one(versioning_result)
+                print(f"💾 V2 ENGINE: Stored URL versioning result for diagnostics - versioning_id: {versioning_result.get('versioning_id')} - engine=v2")
+            except Exception as versioning_storage_error:
+                print(f"❌ V2 ENGINE: Error storing URL versioning result - {versioning_storage_error} - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Step 12 complete for URL processing - Versioning status: {versioning_status}, Version: {version_number} - engine=v2")
+            
         except Exception as v2_error:
             print(f"⚠️ V2 ENGINE: URL extraction failed, falling back to legacy processing - {v2_error} - engine=v2")
             

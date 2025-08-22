@@ -22123,7 +22123,8 @@ async def get_engine_status():
             "text_processing": "/api/content/process",
             "file_upload": "/api/content/upload", 
             "url_processing": "/api/content/process-url",
-            "recording_processing": "/api/content/process-recording"
+            "recording_processing": "/api/content/process-recording",
+            "validation_diagnostics": "/api/validation/diagnostics"
         },
         "features": [
             "multi_dimensional_analysis",
@@ -22132,10 +22133,124 @@ async def get_engine_status():
             "cross_referencing",
             "comprehensive_file_support",
             "image_extraction",
-            "progress_tracking"
+            "progress_tracking",
+            "comprehensive_validation",
+            "fidelity_checking",
+            "coverage_validation",
+            "placeholder_detection",
+            "style_guard"
         ],
-        "message": "V2 Engine is active and all legacy processing has been disabled"
+        "message": "V2 Engine is active with comprehensive validation system"
     }
+
+@app.get("/api/validation/diagnostics")
+async def get_validation_diagnostics(run_id: str = None, validation_id: str = None):
+    """V2 ENGINE: Get validation diagnostics for runs"""
+    try:
+        print(f"🔍 V2 VALIDATION: Diagnostics requested - run_id: {run_id}, validation_id: {validation_id} - engine=v2")
+        
+        # Build query filter
+        query_filter = {}
+        if run_id:
+            query_filter["run_id"] = run_id
+        if validation_id:
+            query_filter["validation_id"] = validation_id
+        
+        # If no specific filters, get recent validation results
+        if not query_filter:
+            validation_results = await db.v2_validation_results.find().sort("timestamp", -1).limit(10).to_list(10)
+        else:
+            validation_results = await db.v2_validation_results.find(query_filter).sort("timestamp", -1).to_list(100)
+        
+        # Convert ObjectId to string for JSON serialization
+        for result in validation_results:
+            result['_id'] = str(result['_id'])
+        
+        diagnostics_summary = {
+            "total_validations": len(validation_results),
+            "passed_validations": len([r for r in validation_results if r.get('validation_status') == 'passed']),
+            "partial_validations": len([r for r in validation_results if r.get('validation_status') == 'partial']),
+            "failed_validations": len([r for r in validation_results if r.get('validation_status') not in ['passed', 'partial']]),
+            "validation_results": validation_results
+        }
+        
+        print(f"📊 V2 VALIDATION: Returning {len(validation_results)} validation results - engine=v2")
+        return diagnostics_summary
+        
+    except Exception as e:
+        print(f"❌ V2 VALIDATION: Error retrieving diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving validation diagnostics: {str(e)}")
+
+@app.get("/api/validation/diagnostics/{validation_id}")
+async def get_specific_validation_diagnostics(validation_id: str):
+    """V2 ENGINE: Get specific validation result with detailed diagnostics"""
+    try:
+        print(f"🔍 V2 VALIDATION: Specific diagnostics requested - validation_id: {validation_id} - engine=v2")
+        
+        validation_result = await db.v2_validation_results.find_one({"validation_id": validation_id})
+        
+        if not validation_result:
+            raise HTTPException(status_code=404, detail=f"Validation result not found: {validation_id}")
+        
+        # Convert ObjectId to string for JSON serialization
+        validation_result['_id'] = str(validation_result['_id'])
+        
+        # Add summary for easy consumption
+        summary_scores = validation_result.get('summary_scores', {})
+        threshold_compliance = validation_result.get('threshold_compliance', {})
+        
+        enhanced_result = {
+            **validation_result,
+            "compliance_summary": {
+                "overall_status": validation_result.get('validation_status', 'unknown'),
+                "fidelity_score": f"{summary_scores.get('fidelity_score', 0):.2f}",
+                "coverage_percent": f"{summary_scores.get('coverage_percent', 0):.1f}%",
+                "placeholder_count": summary_scores.get('placeholder_count', 0),
+                "style_compliance": f"{summary_scores.get('style_compliance', 0):.2f}",
+                "passed_checks": sum(threshold_compliance.values()) if threshold_compliance else 0,
+                "total_checks": len(threshold_compliance) if threshold_compliance else 0
+            }
+        }
+        
+        print(f"✅ V2 VALIDATION: Returning specific validation result - Status: {validation_result.get('validation_status')} - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 VALIDATION: Error retrieving specific diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving validation diagnostics: {str(e)}")
+
+@app.post("/api/validation/rerun")
+async def rerun_validation(run_id: str = Form(...)):
+    """V2 ENGINE: Rerun validation for a specific processing run"""
+    try:
+        print(f"🔄 V2 VALIDATION: Rerun validation requested - run_id: {run_id} - engine=v2")
+        
+        # Find the original processing result
+        generated_articles_result = await v2_article_generator.get_generated_articles_for_run(run_id)
+        
+        if not generated_articles_result:
+            raise HTTPException(status_code=404, detail=f"Processing run not found: {run_id}")
+        
+        # Find the normalized document and analysis (this is a simplified approach)
+        # In a real implementation, you'd store these separately or reconstruct them
+        print(f"⚠️ V2 VALIDATION: Rerun validation requires original normalized_doc and analysis - run_id: {run_id} - engine=v2")
+        
+        return {
+            "message": "Validation rerun requested but requires original processing context",
+            "run_id": run_id,
+            "status": "pending_implementation",
+            "note": "This endpoint requires storing normalized_doc and analysis for rerun capability"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 VALIDATION: Error in validation rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning validation: {str(e)}")
+
+@app.post("/api/media-intelligence")
 async def analyze_media_intelligence(request: Request):
     """
     Comprehensive media analysis using LLM + Vision models

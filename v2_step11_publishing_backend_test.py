@@ -674,13 +674,17 @@ class V2Step11PublishingTester:
             # Create a test run_id for republishing
             test_run_id = f"test_run_{int(datetime.utcnow().timestamp())}"
             
-            # Test republish endpoint
+            # Test republish endpoint with proper form data
             form_data = aiohttp.FormData()
             form_data.add_field('run_id', test_run_id)
             
+            # Update session headers for form data
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            
             async with self.session.post(
                 f"{self.backend_url}/api/publishing/republish",
-                data=form_data
+                data={'run_id': test_run_id},
+                headers=headers
             ) as response:
                 if response.status == 200:
                     data = await response.json()

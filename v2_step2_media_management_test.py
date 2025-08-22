@@ -248,20 +248,21 @@ class V2Step2MediaManagementTester:
             # Create complex document with embedded base64 images
             complex_content = self.create_complex_document_with_media()
             
-            # Test content processing with complex document
-            form_data = {
+            # Test content processing with complex document - use JSON format
+            json_data = {
                 'content': complex_content,
-                'metadata': json.dumps({
+                'content_type': 'text',
+                'metadata': {
                     'filename': 'complex_google_maps_guide.md',
                     'content_type': 'tutorial',
                     'has_embedded_media': True
-                })
+                }
             }
             
             print(f"📤 Sending complex document with {len(complex_content)} characters and embedded base64 images...")
             
             # Use longer timeout for complex processing
-            response = requests.post(f"{API_BASE}/content/process", data=form_data, timeout=120)
+            response = requests.post(f"{API_BASE}/content/process", json=json_data, timeout=120)
             
             if response.status_code == 408:
                 # Timeout is acceptable - verify it's handled properly

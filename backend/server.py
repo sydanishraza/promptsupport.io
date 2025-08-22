@@ -19791,6 +19791,50 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"✅ V2 ENGINE: Step 11 complete - Publishing status: {publishing_status}, Articles published: {published_count} - engine=v2")
         
+        # V2 STEP 12: Versioning & Diff (reprocessing support)
+        print(f"🔄 V2 ENGINE: Starting Step 12 - Versioning and diff management - engine=v2")
+        
+        # Determine content type and get original content for hashing
+        content_for_versioning = content[:5000]  # Use first 5000 chars for hash
+        content_type = metadata.get('content_type', 'text')
+        
+        # Perform versioning management
+        versioning_result = await v2_versioning_system.manage_versioning(
+            content_for_versioning, content_type, articles, generated_articles_result, publishing_result, run_id
+        )
+        
+        # Check versioning status and update articles accordingly
+        versioning_status = versioning_result.get('versioning_status', 'unknown')
+        version_number = versioning_result.get('version_metadata', {}).get('version', 1)
+        is_update = versioning_result.get('version_metadata', {}).get('supersedes') is not None
+        
+        if versioning_status == 'success':
+            update_text = "(update)" if is_update else "(new)"
+            print(f"✅ V2 ENGINE: Step 12 versioning successful - Version {version_number} {update_text} - engine=v2")
+            # Add versioning metadata to articles
+            for article in articles:
+                article.setdefault('metadata', {})['versioning_result'] = versioning_result
+                article['version_metadata'] = versioning_result.get('version_metadata', {})
+                article['version_number'] = version_number
+                article['is_version_update'] = is_update
+                if versioning_result.get('diff_result'):
+                    article['version_diff'] = versioning_result['diff_result']
+        else:
+            print(f"❌ V2 ENGINE: Step 12 versioning failed - Status: {versioning_status} - engine=v2")
+            # Mark articles with versioning error
+            for article in articles:
+                article.setdefault('metadata', {})['versioning_result'] = versioning_result
+                article['versioning_status'] = 'failed'
+        
+        # Store versioning result separately for diagnostics
+        try:
+            await db.v2_versioning_results.insert_one(versioning_result)
+            print(f"💾 V2 ENGINE: Stored versioning result for diagnostics - versioning_id: {versioning_result.get('versioning_id')} - engine=v2")
+        except Exception as versioning_storage_error:
+            print(f"❌ V2 ENGINE: Error storing versioning result - {versioning_storage_error} - engine=v2")
+        
+        print(f"✅ V2 ENGINE: Step 12 complete - Versioning status: {versioning_status}, Version: {version_number} - engine=v2")
+        
         print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using V2ArticleGenerator with {analysis.get('granularity', 'shallow')} granularity for {analysis.get('audience', 'end_user')} audience - engine=v2")
         return articles
         

@@ -23150,6 +23150,128 @@ async def rerun_validation(run_id: str = Form(...)):
         print(f"❌ V2 VALIDATION: Error in validation rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning validation: {str(e)}")
 
+@app.get("/api/qa/diagnostics")
+async def get_qa_diagnostics(run_id: str = None, qa_id: str = None):
+    """V2 ENGINE: Get cross-article QA diagnostics"""
+    try:
+        print(f"🔍 V2 CROSS-ARTICLE QA: Diagnostics requested - run_id: {run_id}, qa_id: {qa_id} - engine=v2")
+        
+        # Build query filter
+        query_filter = {}
+        if run_id:
+            query_filter["run_id"] = run_id
+        if qa_id:
+            query_filter["qa_id"] = qa_id
+        
+        # If no specific filters, get recent QA results
+        if not query_filter:
+            qa_results = await db.v2_qa_results.find().sort("timestamp", -1).limit(10).to_list(10)
+        else:
+            qa_results = await db.v2_qa_results.find(query_filter).sort("timestamp", -1).to_list(100)
+        
+        # Convert ObjectId to string for JSON serialization
+        for result in qa_results:
+            result['_id'] = str(result['_id'])
+        
+        diagnostics_summary = {
+            "total_qa_runs": len(qa_results),
+            "passed_qa_runs": len([r for r in qa_results if r.get('summary', {}).get('issues_found', 0) == 0]),
+            "qa_runs_with_issues": len([r for r in qa_results if r.get('summary', {}).get('issues_found', 0) > 0]),
+            "error_qa_runs": len([r for r in qa_results if r.get('qa_status') == 'error']),
+            "qa_results": qa_results
+        }
+        
+        print(f"📊 V2 CROSS-ARTICLE QA: Returning {len(qa_results)} QA results - engine=v2")
+        return diagnostics_summary
+        
+    except Exception as e:
+        print(f"❌ V2 CROSS-ARTICLE QA: Error retrieving QA diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving QA diagnostics: {str(e)}")
+
+@app.get("/api/qa/diagnostics/{qa_id}")
+async def get_specific_qa_diagnostics(qa_id: str):
+    """V2 ENGINE: Get specific QA result with detailed analysis"""
+    try:
+        print(f"🔍 V2 CROSS-ARTICLE QA: Specific QA diagnostics requested - qa_id: {qa_id} - engine=v2")
+        
+        qa_result = await db.v2_qa_results.find_one({"qa_id": qa_id})
+        
+        if not qa_result:
+            raise HTTPException(status_code=404, detail=f"QA result not found: {qa_id}")
+        
+        # Convert ObjectId to string for JSON serialization
+        qa_result['_id'] = str(qa_result['_id'])
+        
+        # Add summary for easy consumption
+        summary = qa_result.get('summary', {})
+        consolidation_result = qa_result.get('consolidation_result', {})
+        
+        enhanced_result = {
+            **qa_result,
+            "qa_summary": {
+                "overall_status": qa_result.get('qa_status', 'unknown'),
+                "total_issues": summary.get('issues_found', 0),
+                "duplicates_found": summary.get('total_duplicates', 0),
+                "invalid_links_found": summary.get('total_invalid_links', 0),
+                "duplicate_faqs_found": summary.get('total_duplicate_faqs', 0),
+                "terminology_issues_found": summary.get('total_terminology_issues', 0),
+                "consolidation_actions": consolidation_result.get('total_actions', 0),
+                "successful_consolidations": consolidation_result.get('successful_actions', 0)
+            }
+        }
+        
+        print(f"✅ V2 CROSS-ARTICLE QA: Returning specific QA result - Status: {qa_result.get('qa_status')} - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 CROSS-ARTICLE QA: Error retrieving specific QA diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving QA diagnostics: {str(e)}")
+
+@app.post("/api/qa/rerun")
+async def rerun_qa_analysis(run_id: str = Form(...)):
+    """V2 ENGINE: Rerun cross-article QA for a specific processing run"""
+    try:
+        print(f"🔄 V2 CROSS-ARTICLE QA: Rerun QA requested - run_id: {run_id} - engine=v2")
+        
+        # Find the original processing result
+        generated_articles_result = await v2_article_generator.get_generated_articles_for_run(run_id)
+        
+        if not generated_articles_result:
+            raise HTTPException(status_code=404, detail=f"Processing run not found: {run_id}")
+        
+        # Perform cross-article QA analysis
+        qa_result = await v2_cross_article_qa_system.perform_cross_article_qa(
+            generated_articles_result, run_id
+        )
+        
+        # Store new QA result
+        try:
+            await db.v2_qa_results.insert_one(qa_result)
+            print(f"💾 V2 CROSS-ARTICLE QA: Stored rerun QA result - qa_id: {qa_result.get('qa_id')} - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 CROSS-ARTICLE QA: Error storing rerun QA result - {storage_error} - engine=v2")
+        
+        qa_status = qa_result.get('qa_status', 'unknown')
+        issues_found = qa_result.get('summary', {}).get('issues_found', 0)
+        
+        return {
+            "message": "Cross-article QA analysis rerun completed",
+            "run_id": run_id,
+            "qa_id": qa_result.get('qa_id'),
+            "qa_status": qa_status,
+            "issues_found": issues_found,
+            "analysis_methods": qa_result.get('analysis_methods', []),
+            "consolidation_actions": qa_result.get('consolidation_result', {}).get('total_actions', 0)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 CROSS-ARTICLE QA: Error in QA rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning QA analysis: {str(e)}")
+
 @app.post("/api/media-intelligence")
 async def analyze_media_intelligence(request: Request):
     """

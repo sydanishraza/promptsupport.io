@@ -7653,7 +7653,7 @@ class V2ReviewSystem:
         """Get existing review metadata for a run"""
         try:
             review_metadata = await db.v2_review_metadata.find_one({"run_id": run_id})
-            return review_metadata if review_metadata else {}
+            return objectid_to_str(review_metadata) if review_metadata else {}
         except Exception as e:
             print(f"❌ V2 REVIEW: Error getting review metadata - {e}")
             return {}

@@ -3494,7 +3494,7 @@ backend:
 
 ## test_plan:
   current_focus:
-    - "V2 ENGINE STEP 1 IMPLEMENTATION TESTING"
+    - "V2 ENGINE COMPREHENSIVE FRONTEND TESTING"
   stuck_tasks: []
   test_all: false
   test_priority: "critical_first"

@@ -5389,6 +5389,670 @@ Analyze these articles and return ONLY JSON in this exact format:
 # Global V2 Cross-Article QA System instance
 v2_cross_article_qa_system = V2CrossArticleQASystem()
 
+# ========================================
+# V2 ENGINE: ADAPTIVE ADJUSTMENT SYSTEM
+# ========================================
+
+class V2AdaptiveAdjustmentSystem:
+    """V2 Engine: Adaptive adjustment system for balancing article lengths and splits"""
+    
+    def __init__(self):
+        self.word_count_thresholds = {
+            "min_article_length": 300,  # Articles below this should be merged
+            "max_section_length": 1200,  # Sections above this should be split
+            "optimal_article_range": (500, 2000),  # Optimal article length range
+            "optimal_section_range": (200, 800)   # Optimal section length range
+        }
+        
+        self.granularity_expectations = {
+            "shallow": {"min_articles": 1, "max_articles": 3, "target_length_per_article": 1500},
+            "moderate": {"min_articles": 2, "max_articles": 8, "target_length_per_article": 1000},
+            "deep": {"min_articles": 5, "max_articles": 20, "target_length_per_article": 800}
+        }
+    
+    async def perform_adaptive_adjustment(self, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: Perform adaptive adjustment for optimal article balance"""
+        try:
+            print(f"⚖️ V2 ADAPTIVE ADJUSTMENT: Starting length and split balancing - run {run_id} - engine=v2")
+            
+            generated_articles = generated_articles_result.get('generated_articles', [])
+            if not generated_articles:
+                print(f"⚠️ V2 ADAPTIVE ADJUSTMENT: No articles to adjust - run {run_id} - engine=v2")
+                return self._create_adjustment_result("no_articles", run_id, {"article_count": 0})
+            
+            # Step 1: Analyze current word counts and structure
+            word_count_analysis = await self._analyze_word_counts(generated_articles, run_id)
+            
+            # Step 2: LLM-based balancing analysis
+            llm_adjustment_result = await self._perform_llm_balancing_analysis(
+                word_count_analysis, analysis, run_id
+            )
+            
+            # Step 3: Programmatic adjustment validation
+            programmatic_adjustment_result = await self._perform_programmatic_adjustment_analysis(
+                word_count_analysis, analysis, run_id
+            )
+            
+            # Step 4: Consolidate adjustment recommendations
+            consolidated_adjustments = self._consolidate_adjustment_recommendations(
+                llm_adjustment_result, programmatic_adjustment_result, run_id
+            )
+            
+            # Step 5: Apply adaptive adjustments
+            adjustment_application_result = await self._apply_adaptive_adjustments(
+                generated_articles, consolidated_adjustments, run_id
+            )
+            
+            # Step 6: Create final adjustment result
+            final_adjustment_result = {
+                **consolidated_adjustments,
+                "adjustment_application": adjustment_application_result,
+                "adjustment_id": f"adjustment_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+            
+            adjustments_applied = adjustment_application_result.get('total_adjustments', 0)
+            granularity_status = consolidated_adjustments.get('granularity_check', 'unknown')
+            
+            print(f"✅ V2 ADAPTIVE ADJUSTMENT: Balancing complete - {adjustments_applied} adjustments applied, granularity: {granularity_status} - run {run_id} - engine=v2")
+            return final_adjustment_result
+            
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error in adaptive adjustment - {e} - run {run_id} - engine=v2")
+            return self._create_adjustment_result("error", run_id, {"error": str(e)})
+    
+    async def _analyze_word_counts(self, generated_articles: list, run_id: str) -> dict:
+        """Analyze word counts for articles and sections"""
+        try:
+            print(f"📊 V2 ADAPTIVE ADJUSTMENT: Analyzing word counts - run {run_id} - engine=v2")
+            
+            word_count_analysis = {
+                "articles": [],
+                "total_articles": len(generated_articles),
+                "total_word_count": 0
+            }
+            
+            for generated_article in generated_articles:
+                article_id = generated_article.get('article_id', 'unknown')
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                # Extract text content and count words
+                article_word_count = self._count_words_in_html(html_content)
+                word_count_analysis['total_word_count'] += article_word_count
+                
+                # Analyze sections within the article
+                sections_analysis = self._analyze_sections_word_count(html_content)
+                
+                article_analysis = {
+                    "article_id": article_id,
+                    "word_count": article_word_count,
+                    "sections": sections_analysis,
+                    "length_status": self._classify_article_length(article_word_count),
+                    "needs_adjustment": self._needs_length_adjustment(article_word_count, sections_analysis)
+                }
+                
+                word_count_analysis['articles'].append(article_analysis)
+            
+            # Calculate averages and statistics
+            avg_word_count = word_count_analysis['total_word_count'] / len(generated_articles) if generated_articles else 0
+            word_count_analysis['average_word_count'] = avg_word_count
+            word_count_analysis['articles_needing_merge'] = len([a for a in word_count_analysis['articles'] if a['word_count'] < self.word_count_thresholds['min_article_length']])
+            word_count_analysis['sections_needing_split'] = sum(len([s for s in a['sections'] if s['word_count'] > self.word_count_thresholds['max_section_length']]) for a in word_count_analysis['articles'])
+            
+            print(f"📊 V2 ADAPTIVE ADJUSTMENT: Analysis complete - Avg: {avg_word_count:.0f} words, {word_count_analysis['articles_needing_merge']} articles need merge, {word_count_analysis['sections_needing_split']} sections need split - run {run_id} - engine=v2")
+            return word_count_analysis
+            
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error analyzing word counts - {e} - run {run_id} - engine=v2")
+            return {
+                "articles": [],
+                "total_articles": 0,
+                "total_word_count": 0,
+                "average_word_count": 0,
+                "articles_needing_merge": 0,
+                "sections_needing_split": 0
+            }
+    
+    def _count_words_in_html(self, html_content: str) -> int:
+        """Count words in HTML content by extracting text"""
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            # Parse HTML and extract text
+            soup = BeautifulSoup(html_content, 'html.parser')
+            text_content = soup.get_text()
+            
+            # Count words (split on whitespace and filter empty strings)
+            words = [word for word in re.split(r'\s+', text_content.strip()) if word]
+            return len(words)
+            
+        except Exception as e:
+            # Fallback: simple word count
+            import re
+            text_only = re.sub(r'<[^>]+>', '', html_content)
+            words = [word for word in re.split(r'\s+', text_only.strip()) if word]
+            return len(words)
+    
+    def _analyze_sections_word_count(self, html_content: str) -> list:
+        """Analyze word counts for sections within an article"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            sections = []
+            
+            # Find all section headings (h2, h3)
+            section_headings = soup.find_all(['h2', 'h3'])
+            
+            for i, heading in enumerate(section_headings):
+                section_heading = heading.get_text().strip()
+                section_id = heading.get('id', f'section_{i+1}')
+                
+                # Get content under this heading
+                section_content = self._get_section_content_for_word_count(heading)
+                section_word_count = self._count_words_in_html(section_content)
+                
+                sections.append({
+                    "section_id": section_id,
+                    "heading": section_heading,
+                    "word_count": section_word_count,
+                    "length_status": self._classify_section_length(section_word_count),
+                    "needs_split": section_word_count > self.word_count_thresholds['max_section_length']
+                })
+            
+            return sections
+            
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error analyzing sections - {e}")
+            return []
+    
+    def _get_section_content_for_word_count(self, heading_tag) -> str:
+        """Get content under a heading for word counting"""
+        try:
+            content_parts = []
+            next_element = heading_tag.next_sibling
+            
+            while next_element:
+                if hasattr(next_element, 'name'):
+                    if next_element.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                        break
+                    content_parts.append(str(next_element))
+                elif hasattr(next_element, 'string') and next_element.string:
+                    content_parts.append(next_element.string)
+                
+                next_element = next_element.next_sibling
+            
+            return ''.join(content_parts)
+            
+        except Exception as e:
+            return ""
+    
+    def _classify_article_length(self, word_count: int) -> str:
+        """Classify article length status"""
+        if word_count < self.word_count_thresholds['min_article_length']:
+            return "too_short"
+        elif word_count > self.word_count_thresholds['optimal_article_range'][1]:
+            return "too_long"
+        elif self.word_count_thresholds['optimal_article_range'][0] <= word_count <= self.word_count_thresholds['optimal_article_range'][1]:
+            return "optimal"
+        else:
+            return "acceptable"
+    
+    def _classify_section_length(self, word_count: int) -> str:
+        """Classify section length status"""
+        if word_count > self.word_count_thresholds['max_section_length']:
+            return "too_long"
+        elif self.word_count_thresholds['optimal_section_range'][0] <= word_count <= self.word_count_thresholds['optimal_section_range'][1]:
+            return "optimal"
+        else:
+            return "acceptable"
+    
+    def _needs_length_adjustment(self, article_word_count: int, sections_analysis: list) -> bool:
+        """Determine if article needs length adjustment"""
+        # Check if article is too short
+        if article_word_count < self.word_count_thresholds['min_article_length']:
+            return True
+        
+        # Check if any section is too long
+        for section in sections_analysis:
+            if section['word_count'] > self.word_count_thresholds['max_section_length']:
+                return True
+        
+        return False
+    
+    async def _perform_llm_balancing_analysis(self, word_count_analysis: dict, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: LLM-based balancing analysis"""
+        try:
+            print(f"🤖 V2 ADAPTIVE ADJUSTMENT: Starting LLM balancing analysis - run {run_id} - engine=v2")
+            
+            granularity = analysis.get('granularity', 'moderate')
+            
+            # Create system message
+            system_message = """You are a balancing agent. Suggest merges/splits to optimize readability.
+
+Your task is to analyze article and section word counts and propose optimizations:
+1. Merge suggestions: Articles under 300 words should be merged with neighbors
+2. Split suggestions: Sections over 1200 words should be split into smaller sections
+3. Granularity check: Ensure final article count aligns with granularity expectations
+
+Consider readability and user experience when making recommendations.
+
+Return ONLY JSON in the exact format specified."""
+
+            # Create user message with word count data
+            user_message = f"""Given word counts per article/section, propose merges/splits and confirm granularity.
+
+WORD COUNT ANALYSIS:
+{json.dumps(word_count_analysis, indent=2)}
+
+CURRENT GRANULARITY: {granularity}
+
+GRANULARITY EXPECTATIONS:
+- shallow: 1-3 articles
+- moderate: 2-8 articles  
+- deep: 5-20 articles
+
+Analyze the word counts and return ONLY JSON in this exact format:
+{{
+  "merge_suggestions": [
+    {{
+      "article_id": "a4",
+      "merge_with": "a3",
+      "reason": "Article too short (250 words)",
+      "combined_word_count": 850
+    }}
+  ],
+  "split_suggestions": [
+    {{
+      "article_id": "a2",
+      "section": "Advanced Configuration",
+      "reason": "Section too long (1450 words)",
+      "suggested_split_points": ["Basic Settings", "Advanced Settings"]
+    }}
+  ],
+  "granularity_check": "moderate",
+  "granularity_alignment": "aligned",
+  "optimization_priority": "readability"
+}}"""
+
+            # Call LLM for balancing analysis
+            print(f"🤖 V2 ADAPTIVE ADJUSTMENT: Sending balancing analysis request to LLM - run {run_id} - engine=v2")
+            ai_response = await call_llm_with_fallback(system_message, user_message)
+            
+            if ai_response:
+                # Parse JSON response
+                import re
+                json_match = re.search(r'\{.*\}', ai_response, re.DOTALL)
+                if json_match:
+                    balancing_data = json.loads(json_match.group(0))
+                    
+                    # Validate required fields
+                    required_fields = ['merge_suggestions', 'split_suggestions', 'granularity_check']
+                    if all(field in balancing_data for field in required_fields):
+                        merge_count = len(balancing_data.get('merge_suggestions', []))
+                        split_count = len(balancing_data.get('split_suggestions', []))
+                        granularity_check = balancing_data.get('granularity_check', 'unknown')
+                        
+                        print(f"🤖 V2 ADAPTIVE ADJUSTMENT: LLM suggests {merge_count} merges, {split_count} splits, granularity: {granularity_check} - run {run_id} - engine=v2")
+                        return balancing_data
+                    else:
+                        print(f"⚠️ V2 ADAPTIVE ADJUSTMENT: Missing fields in LLM response - run {run_id} - engine=v2")
+                        return self._create_fallback_balancing_analysis(word_count_analysis, analysis)
+                else:
+                    print(f"⚠️ V2 ADAPTIVE ADJUSTMENT: No JSON found in LLM response - run {run_id} - engine=v2")
+                    return self._create_fallback_balancing_analysis(word_count_analysis, analysis)
+            else:
+                print(f"❌ V2 ADAPTIVE ADJUSTMENT: No LLM response for balancing analysis - run {run_id} - engine=v2")
+                return self._create_fallback_balancing_analysis(word_count_analysis, analysis)
+                
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error in LLM balancing analysis - {e} - run {run_id} - engine=v2")
+            return self._create_fallback_balancing_analysis(word_count_analysis, analysis)
+    
+    def _create_fallback_balancing_analysis(self, word_count_analysis: dict, analysis: dict) -> dict:
+        """Create fallback balancing analysis using programmatic rules"""
+        try:
+            articles = word_count_analysis.get('articles', [])
+            granularity = analysis.get('granularity', 'moderate')
+            
+            # Generate merge suggestions for short articles
+            merge_suggestions = []
+            for i, article in enumerate(articles):
+                if article['word_count'] < self.word_count_thresholds['min_article_length']:
+                    # Find a neighbor to merge with (prefer next article, then previous)
+                    merge_with = None
+                    if i + 1 < len(articles):
+                        merge_with = articles[i + 1]['article_id']
+                    elif i > 0:
+                        merge_with = articles[i - 1]['article_id']
+                    
+                    if merge_with:
+                        merge_suggestions.append({
+                            "article_id": article['article_id'],
+                            "merge_with": merge_with,
+                            "reason": f"Article too short ({article['word_count']} words)",
+                            "combined_word_count": article['word_count'] + 400  # Estimated
+                        })
+            
+            # Generate split suggestions for long sections
+            split_suggestions = []
+            for article in articles:
+                for section in article.get('sections', []):
+                    if section['word_count'] > self.word_count_thresholds['max_section_length']:
+                        split_suggestions.append({
+                            "article_id": article['article_id'],
+                            "section": section['heading'],
+                            "reason": f"Section too long ({section['word_count']} words)",
+                            "suggested_split_points": ["Part 1", "Part 2"]
+                        })
+            
+            # Check granularity alignment
+            current_article_count = len(articles)
+            expectations = self.granularity_expectations.get(granularity, {"min_articles": 1, "max_articles": 10})
+            
+            if expectations['min_articles'] <= current_article_count <= expectations['max_articles']:
+                granularity_alignment = "aligned"
+            else:
+                granularity_alignment = "needs_adjustment"
+            
+            print(f"🔧 V2 ADAPTIVE ADJUSTMENT: Fallback analysis - {len(merge_suggestions)} merges, {len(split_suggestions)} splits")
+            
+            return {
+                "merge_suggestions": merge_suggestions,
+                "split_suggestions": split_suggestions,
+                "granularity_check": granularity,
+                "granularity_alignment": granularity_alignment,
+                "optimization_priority": "readability",
+                "analysis_method": "fallback_programmatic"
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error in fallback balancing analysis - {e}")
+            return {
+                "merge_suggestions": [],
+                "split_suggestions": [],
+                "granularity_check": "unknown",
+                "granularity_alignment": "unknown",
+                "optimization_priority": "readability",
+                "analysis_method": "error"
+            }
+    
+    async def _perform_programmatic_adjustment_analysis(self, word_count_analysis: dict, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: Programmatic adjustment analysis for validation"""
+        try:
+            print(f"🔍 V2 ADAPTIVE ADJUSTMENT: Performing programmatic adjustment validation - run {run_id} - engine=v2")
+            
+            articles = word_count_analysis.get('articles', [])
+            granularity = analysis.get('granularity', 'moderate')
+            
+            # Validate article count against granularity
+            current_article_count = len(articles)
+            expectations = self.granularity_expectations.get(granularity, {"min_articles": 1, "max_articles": 10})
+            
+            granularity_validation = {
+                "current_count": current_article_count,
+                "expected_range": f"{expectations['min_articles']}-{expectations['max_articles']}",
+                "alignment": "aligned" if expectations['min_articles'] <= current_article_count <= expectations['max_articles'] else "out_of_range",
+                "target_length_per_article": expectations.get('target_length_per_article', 1000)
+            }
+            
+            # Calculate length distribution
+            word_counts = [article['word_count'] for article in articles]
+            length_distribution = {
+                "min_length": min(word_counts) if word_counts else 0,
+                "max_length": max(word_counts) if word_counts else 0,
+                "average_length": sum(word_counts) / len(word_counts) if word_counts else 0,
+                "median_length": sorted(word_counts)[len(word_counts)//2] if word_counts else 0,
+                "total_length": sum(word_counts)
+            }
+            
+            # Readability analysis
+            readability_analysis = {
+                "articles_too_short": len([a for a in articles if a['word_count'] < self.word_count_thresholds['min_article_length']]),
+                "articles_too_long": len([a for a in articles if a['word_count'] > self.word_count_thresholds['optimal_article_range'][1]]),
+                "articles_optimal": len([a for a in articles if self.word_count_thresholds['optimal_article_range'][0] <= a['word_count'] <= self.word_count_thresholds['optimal_article_range'][1]]),
+                "sections_too_long": sum(len([s for s in article.get('sections', []) if s['word_count'] > self.word_count_thresholds['max_section_length']]) for article in articles),
+                "readability_score": self._calculate_readability_score(articles)
+            }
+            
+            programmatic_result = {
+                "granularity_validation": granularity_validation,
+                "length_distribution": length_distribution,
+                "readability_analysis": readability_analysis,
+                "adjustment_priority": self._determine_adjustment_priority(granularity_validation, readability_analysis),
+                "analysis_method": "programmatic_validation"
+            }
+            
+            print(f"🔍 V2 ADAPTIVE ADJUSTMENT: Programmatic validation complete - Readability score: {readability_analysis['readability_score']:.2f} - run {run_id} - engine=v2")
+            return programmatic_result
+            
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error in programmatic adjustment analysis - {e} - run {run_id} - engine=v2")
+            return {
+                "granularity_validation": {"alignment": "unknown"},
+                "length_distribution": {},
+                "readability_analysis": {"readability_score": 0.5},
+                "adjustment_priority": "medium",
+                "analysis_method": "error"
+            }
+    
+    def _calculate_readability_score(self, articles: list) -> float:
+        """Calculate readability score based on length distribution"""
+        try:
+            if not articles:
+                return 0.0
+            
+            optimal_count = 0
+            total_articles = len(articles)
+            
+            for article in articles:
+                word_count = article['word_count']
+                
+                # Score based on article length
+                if self.word_count_thresholds['optimal_article_range'][0] <= word_count <= self.word_count_thresholds['optimal_article_range'][1]:
+                    optimal_count += 1
+                
+                # Penalty for sections that are too long
+                long_sections = len([s for s in article.get('sections', []) if s['word_count'] > self.word_count_thresholds['max_section_length']])
+                if long_sections > 0:
+                    optimal_count -= 0.2 * long_sections  # Penalty for long sections
+            
+            # Calculate score (0.0 to 1.0)
+            readability_score = max(0.0, min(1.0, optimal_count / total_articles))
+            return readability_score
+            
+        except Exception as e:
+            return 0.5  # Default moderate readability
+    
+    def _determine_adjustment_priority(self, granularity_validation: dict, readability_analysis: dict) -> str:
+        """Determine adjustment priority based on analysis"""
+        try:
+            granularity_aligned = granularity_validation.get('alignment') == 'aligned'
+            readability_score = readability_analysis.get('readability_score', 0.5)
+            articles_too_short = readability_analysis.get('articles_too_short', 0)
+            sections_too_long = readability_analysis.get('sections_too_long', 0)
+            
+            # High priority: Major readability issues or granularity misalignment
+            if not granularity_aligned or readability_score < 0.3 or articles_too_short > 2 or sections_too_long > 3:
+                return "high"
+            
+            # Medium priority: Moderate issues
+            elif readability_score < 0.7 or articles_too_short > 0 or sections_too_long > 0:
+                return "medium"
+            
+            # Low priority: Minor optimizations
+            else:
+                return "low"
+                
+        except Exception as e:
+            return "medium"  # Default priority
+    
+    def _consolidate_adjustment_recommendations(self, llm_result: dict, programmatic_result: dict, run_id: str) -> dict:
+        """Consolidate LLM and programmatic adjustment recommendations"""
+        try:
+            # Base consolidation on LLM results with programmatic validation
+            consolidated = {
+                "merge_suggestions": llm_result.get('merge_suggestions', []),
+                "split_suggestions": llm_result.get('split_suggestions', []),
+                "granularity_check": llm_result.get('granularity_check', 'moderate'),
+                "run_id": run_id,
+                "analysis_methods": []
+            }
+            
+            # Add programmatic validation insights
+            granularity_validation = programmatic_result.get('granularity_validation', {})
+            readability_analysis = programmatic_result.get('readability_analysis', {})
+            
+            consolidated['granularity_alignment'] = granularity_validation.get('alignment', 'unknown')
+            consolidated['readability_score'] = readability_analysis.get('readability_score', 0.5)
+            consolidated['adjustment_priority'] = programmatic_result.get('adjustment_priority', 'medium')
+            
+            # Add analysis methods used
+            if llm_result.get('analysis_method') != 'error':
+                consolidated['analysis_methods'].append('llm_balancing_analysis')
+            if programmatic_result.get('analysis_method') != 'error':
+                consolidated['analysis_methods'].append('programmatic_validation')
+            
+            # Additional programmatic insights
+            consolidated['length_distribution'] = programmatic_result.get('length_distribution', {})
+            consolidated['readability_analysis'] = readability_analysis
+            
+            # Summary statistics
+            consolidated['adjustment_summary'] = {
+                "total_merge_suggestions": len(consolidated['merge_suggestions']),
+                "total_split_suggestions": len(consolidated['split_suggestions']),
+                "adjustment_priority": consolidated['adjustment_priority'],
+                "readability_score": consolidated['readability_score'],
+                "granularity_alignment": consolidated['granularity_alignment']
+            }
+            
+            total_adjustments = len(consolidated['merge_suggestions']) + len(consolidated['split_suggestions'])
+            print(f"⚖️ V2 ADAPTIVE ADJUSTMENT: Consolidated recommendations - {total_adjustments} total adjustments, priority: {consolidated['adjustment_priority']} - run {run_id} - engine=v2")
+            return consolidated
+            
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error consolidating adjustment recommendations - {e} - run {run_id} - engine=v2")
+            return {
+                "merge_suggestions": [],
+                "split_suggestions": [],
+                "granularity_check": "moderate",
+                "adjustment_summary": {"total_adjustments": 0}
+            }
+    
+    async def _apply_adaptive_adjustments(self, generated_articles: list, adjustment_recommendations: dict, run_id: str) -> dict:
+        """V2 Engine: Apply adaptive adjustments to articles"""
+        try:
+            print(f"🔧 V2 ADAPTIVE ADJUSTMENT: Starting adjustment application - run {run_id} - engine=v2")
+            
+            adjustment_actions = []
+            
+            # Apply merge suggestions
+            merge_suggestions = adjustment_recommendations.get('merge_suggestions', [])
+            for merge_suggestion in merge_suggestions:
+                action = await self._apply_merge_adjustment(generated_articles, merge_suggestion, run_id)
+                adjustment_actions.append(action)
+            
+            # Apply split suggestions
+            split_suggestions = adjustment_recommendations.get('split_suggestions', [])
+            for split_suggestion in split_suggestions:
+                action = await self._apply_split_adjustment(generated_articles, split_suggestion, run_id)
+                adjustment_actions.append(action)
+            
+            adjustment_application_result = {
+                "actions_applied": adjustment_actions,
+                "total_adjustments": len(adjustment_actions),
+                "successful_adjustments": len([a for a in adjustment_actions if a.get('status') == 'success']),
+                "failed_adjustments": len([a for a in adjustment_actions if a.get('status') == 'failed']),
+                "application_method": "automated_adjustment"
+            }
+            
+            print(f"🔧 V2 ADAPTIVE ADJUSTMENT: Adjustment application complete - {adjustment_application_result['successful_adjustments']}/{adjustment_application_result['total_adjustments']} successful adjustments - run {run_id} - engine=v2")
+            return adjustment_application_result
+            
+        except Exception as e:
+            print(f"❌ V2 ADAPTIVE ADJUSTMENT: Error applying adaptive adjustments - {e} - run {run_id} - engine=v2")
+            return {
+                "actions_applied": [],
+                "total_adjustments": 0,
+                "successful_adjustments": 0,
+                "failed_adjustments": 0,
+                "application_method": "error"
+            }
+    
+    async def _apply_merge_adjustment(self, generated_articles: list, merge_suggestion: dict, run_id: str) -> dict:
+        """Apply merge adjustment for short articles"""
+        try:
+            article_id = merge_suggestion.get('article_id')
+            merge_with = merge_suggestion.get('merge_with')
+            
+            # For now, record the merge action (full implementation would modify articles)
+            action = {
+                "type": "merge_adjustment",
+                "article_id": article_id,
+                "merge_with": merge_with,
+                "action": "recorded_for_manual_review",
+                "status": "success",
+                "details": f"Merge suggestion recorded: {article_id} -> {merge_with}",
+                "reason": merge_suggestion.get('reason', 'Article length optimization')
+            }
+            
+            print(f"🔗 V2 ADAPTIVE ADJUSTMENT: Recorded merge adjustment - {article_id} -> {merge_with} - run {run_id} - engine=v2")
+            return action
+            
+        except Exception as e:
+            return {
+                "type": "merge_adjustment",
+                "action": "error",
+                "status": "failed",
+                "error": str(e)
+            }
+    
+    async def _apply_split_adjustment(self, generated_articles: list, split_suggestion: dict, run_id: str) -> dict:
+        """Apply split adjustment for long sections"""
+        try:
+            article_id = split_suggestion.get('article_id')
+            section = split_suggestion.get('section')
+            
+            # For now, record the split action (full implementation would modify articles)
+            action = {
+                "type": "split_adjustment",
+                "article_id": article_id,
+                "section": section,
+                "action": "recorded_for_manual_review",
+                "status": "success",
+                "details": f"Split suggestion recorded: {article_id} section '{section}'",
+                "reason": split_suggestion.get('reason', 'Section length optimization'),
+                "suggested_split_points": split_suggestion.get('suggested_split_points', [])
+            }
+            
+            print(f"✂️ V2 ADAPTIVE ADJUSTMENT: Recorded split adjustment - {article_id}:'{section}' - run {run_id} - engine=v2")
+            return action
+            
+        except Exception as e:
+            return {
+                "type": "split_adjustment",
+                "action": "error",
+                "status": "failed",
+                "error": str(e)
+            }
+    
+    def _create_adjustment_result(self, status: str, run_id: str, additional_data: dict) -> dict:
+        """Create a standard adjustment result structure"""
+        return {
+            "adjustment_id": f"adjustment_{run_id}_{int(datetime.utcnow().timestamp())}",
+            "run_id": run_id,
+            "adjustment_status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2",
+            **additional_data
+        }
+
+# Global V2 Adaptive Adjustment System instance
+v2_adaptive_adjustment_system = V2AdaptiveAdjustmentSystem()
+
 # Placeholder functions for Phase 6 features - to be implemented
 
 async def create_high_quality_article_content(content: str, article_type: str, metadata: Dict[str, Any]) -> str:

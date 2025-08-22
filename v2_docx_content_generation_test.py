@@ -246,7 +246,7 @@ class V2DOCXContentGenerationTester:
             
             while elapsed_time < max_wait_time:
                 # Check processing status
-                status_response = requests.get(f"{API_BASE}/content/status/{self.processing_job_id}", timeout=30)
+                status_response = requests.get(f"{API_BASE}/jobs/{self.processing_job_id}", timeout=30)
                 
                 if status_response.status_code == 200:
                     status_data = status_response.json()

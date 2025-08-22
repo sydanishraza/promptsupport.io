@@ -7291,6 +7291,33 @@ class V2VersioningSystem:
             **additional_data
         }
 
+    def _analyze_version_chains(self, versioning_results: list) -> dict:
+        """Analyze version chains from versioning results"""
+        try:
+            # Group by source hash to find version chains
+            source_chains = {}
+            
+            for result in versioning_results:
+                source_hash = result.get('version_metadata', {}).get('source_hash')
+                if source_hash:
+                    if source_hash not in source_chains:
+                        source_chains[source_hash] = []
+                    source_chains[source_hash].append(result)
+            
+            # Analyze chains
+            chain_analysis = {
+                "total_source_content": len(source_chains),
+                "content_with_multiple_versions": len([chain for chain in source_chains.values() if len(chain) > 1]),
+                "longest_version_chain": max([len(chain) for chain in source_chains.values()]) if source_chains else 0,
+                "average_versions_per_content": sum([len(chain) for chain in source_chains.values()]) / len(source_chains) if source_chains else 0
+            }
+            
+            return chain_analysis
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error analyzing version chains - {e}")
+            return {"error": str(e)}
+
 # Global V2 Versioning System instance
 v2_versioning_system = V2VersioningSystem()
 

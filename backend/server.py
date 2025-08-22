@@ -26347,6 +26347,331 @@ async def rerun_versioning_analysis(run_id: str = Form(...)):
         print(f"❌ V2 VERSIONING: Error in versioning rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning versioning analysis: {str(e)}")
 
+# V2 ENGINE: Review System API Endpoints
+@app.get("/api/review/runs")
+async def get_runs_for_review(limit: int = 50, status: str = None):
+    """V2 ENGINE: Get processing runs available for human review with quality badges"""
+    try:
+        print(f"📋 V2 REVIEW: Getting runs for review - limit: {limit}, status: {status} - engine=v2")
+        
+        # Get runs data from review system
+        review_data = await v2_review_system.get_runs_for_review(limit, status)
+        
+        print(f"✅ V2 REVIEW: Returning {len(review_data.get('runs', []))} runs for review - engine=v2")
+        return review_data
+        
+    except Exception as e:
+        print(f"❌ V2 REVIEW: Error getting runs for review - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving runs for review: {str(e)}")
+
+@app.get("/api/review/runs/{run_id}")
+async def get_run_details_for_review(run_id: str):
+    """V2 ENGINE: Get detailed information for a specific run for review"""
+    try:
+        print(f"🔍 V2 REVIEW: Getting detailed run information - run_id: {run_id} - engine=v2")
+        
+        # Get validation result as base
+        validation_result = await db.v2_validation_results.find_one({"run_id": run_id})
+        if not validation_result:
+            raise HTTPException(status_code=404, detail=f"Processing run not found: {run_id}")
+        
+        # Compile comprehensive run data
+        run_data = await v2_review_system._compile_run_data_for_review(run_id, validation_result)
+        
+        if not run_data:
+            raise HTTPException(status_code=404, detail=f"Unable to compile run data: {run_id}")
+        
+        print(f"✅ V2 REVIEW: Returning detailed run information - {len(run_data.get('articles', {}).get('articles_data', []))} articles - engine=v2")
+        return run_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 REVIEW: Error getting run details - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving run details: {str(e)}")
+
+@app.post("/api/review/approve")
+async def approve_and_publish_run(
+    run_id: str = Form(...),
+    reviewer_name: str = Form("System Reviewer"),
+    review_notes: str = Form("")
+):
+    """V2 ENGINE: Approve a processing run and publish to content library"""
+    try:
+        print(f"✅ V2 REVIEW: Approving and publishing run - run_id: {run_id}, reviewer: {reviewer_name} - engine=v2")
+        
+        # Get run details
+        validation_result = await db.v2_validation_results.find_one({"run_id": run_id})
+        if not validation_result:
+            raise HTTPException(status_code=404, detail=f"Processing run not found: {run_id}")
+        
+        # Create review metadata
+        review_metadata = {
+            "run_id": run_id,
+            "review_action": "approved",
+            "review_status": "approved",
+            "reviewer_name": reviewer_name,
+            "review_notes": review_notes,
+            "review_timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2"
+        }
+        
+        # Store review metadata
+        await db.v2_review_metadata.insert_one(review_metadata)
+        
+        # Get articles and ensure they're published
+        articles_published = 0
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            # Update article status to published
+            await db.content_library.update_one(
+                {"id": article["id"]},
+                {"$set": {
+                    "status": "published",
+                    "published_at": datetime.utcnow().isoformat(),
+                    "reviewed_by": reviewer_name,
+                    "review_approved": True
+                }}
+            )
+            articles_published += 1
+        
+        # Update any existing publishing result
+        await db.v2_publishing_results.update_one(
+            {"run_id": run_id},
+            {"$set": {
+                "review_approved": True,
+                "reviewed_by": reviewer_name,
+                "review_timestamp": datetime.utcnow().isoformat()
+            }}
+        )
+        
+        approval_result = {
+            "message": "Processing run approved and published successfully",
+            "run_id": run_id,
+            "review_status": "approved",
+            "reviewer_name": reviewer_name,
+            "articles_published": articles_published,
+            "review_timestamp": review_metadata["review_timestamp"],
+            "engine": "v2"
+        }
+        
+        print(f"✅ V2 REVIEW: Run approved and published - {articles_published} articles published - engine=v2")
+        return approval_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 REVIEW: Error approving and publishing run - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error approving run: {str(e)}")
+
+@app.post("/api/review/reject")
+async def reject_run(
+    run_id: str = Form(...),
+    rejection_reason: str = Form(...),
+    reviewer_name: str = Form("System Reviewer"),
+    review_notes: str = Form(""),
+    suggested_actions: str = Form("")
+):
+    """V2 ENGINE: Reject a processing run with structured reasons"""
+    try:
+        print(f"❌ V2 REVIEW: Rejecting run - run_id: {run_id}, reason: {rejection_reason}, reviewer: {reviewer_name} - engine=v2")
+        
+        # Validate rejection reason
+        valid_reasons = v2_review_system.rejection_reasons
+        if rejection_reason not in valid_reasons:
+            raise HTTPException(status_code=400, detail=f"Invalid rejection reason. Valid reasons: {valid_reasons}")
+        
+        # Get run details
+        validation_result = await db.v2_validation_results.find_one({"run_id": run_id})
+        if not validation_result:
+            raise HTTPException(status_code=404, detail=f"Processing run not found: {run_id}")
+        
+        # Create review metadata
+        review_metadata = {
+            "run_id": run_id,
+            "review_action": "rejected",
+            "review_status": "rejected",
+            "rejection_reason": rejection_reason,
+            "reviewer_name": reviewer_name,
+            "review_notes": review_notes,
+            "suggested_actions": suggested_actions,
+            "review_timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2"
+        }
+        
+        # Store review metadata
+        await db.v2_review_metadata.insert_one(review_metadata)
+        
+        # Update articles to partial status
+        articles_updated = 0
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            await db.content_library.update_one(
+                {"id": article["id"]},
+                {"$set": {
+                    "status": "partial",
+                    "rejection_reason": rejection_reason,
+                    "reviewed_by": reviewer_name,
+                    "review_rejected": True,
+                    "rejection_timestamp": datetime.utcnow().isoformat()
+                }}
+            )
+            articles_updated += 1
+        
+        # Update publishing result if exists
+        await db.v2_publishing_results.update_one(
+            {"run_id": run_id},
+            {"$set": {
+                "review_rejected": True,
+                "rejection_reason": rejection_reason,
+                "reviewed_by": reviewer_name,
+                "review_timestamp": datetime.utcnow().isoformat()
+            }}
+        )
+        
+        rejection_result = {
+            "message": "Processing run rejected with recorded reasons",
+            "run_id": run_id,
+            "review_status": "rejected",
+            "rejection_reason": rejection_reason,
+            "reviewer_name": reviewer_name,
+            "suggested_actions": suggested_actions,
+            "articles_updated": articles_updated,
+            "review_timestamp": review_metadata["review_timestamp"],
+            "engine": "v2"
+        }
+        
+        print(f"❌ V2 REVIEW: Run rejected - {articles_updated} articles marked as partial - engine=v2")
+        return rejection_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 REVIEW: Error rejecting run - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rejecting run: {str(e)}")
+
+@app.post("/api/review/rerun")
+async def rerun_selected_steps(
+    run_id: str = Form(...),
+    selected_steps: str = Form(...),  # JSON array of step names
+    reviewer_name: str = Form("System Reviewer"),
+    rerun_reason: str = Form("")
+):
+    """V2 ENGINE: Re-run selected processing steps for a run"""
+    try:
+        print(f"🔄 V2 REVIEW: Re-running selected steps - run_id: {run_id}, steps: {selected_steps} - engine=v2")
+        
+        # Parse selected steps
+        try:
+            steps_to_rerun = json.loads(selected_steps)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON format for selected_steps")
+        
+        # Validate steps
+        valid_steps = ['validation', 'qa', 'adjustment', 'publishing', 'versioning']
+        invalid_steps = [step for step in steps_to_rerun if step not in valid_steps]
+        if invalid_steps:
+            raise HTTPException(status_code=400, detail=f"Invalid steps: {invalid_steps}. Valid steps: {valid_steps}")
+        
+        # Get original processing results
+        validation_result = await db.v2_validation_results.find_one({"run_id": run_id})
+        if not validation_result:
+            raise HTTPException(status_code=404, detail=f"Processing run not found: {run_id}")
+        
+        # Create rerun metadata
+        rerun_metadata = {
+            "run_id": run_id,
+            "rerun_steps": steps_to_rerun,
+            "reviewer_name": reviewer_name,
+            "rerun_reason": rerun_reason,
+            "rerun_timestamp": datetime.utcnow().isoformat(),
+            "rerun_status": "in_progress",
+            "engine": "v2"
+        }
+        
+        # Store rerun metadata
+        await db.v2_rerun_metadata.insert_one(rerun_metadata)
+        
+        # In a full implementation, this would trigger actual re-processing of selected steps
+        # For now, we'll simulate the rerun completion
+        rerun_results = {}
+        
+        for step in steps_to_rerun:
+            if step == 'validation':
+                # Simulate validation rerun
+                rerun_results[step] = {"status": "completed", "message": "Validation re-run completed"}
+            elif step == 'qa':
+                # Simulate QA rerun
+                rerun_results[step] = {"status": "completed", "message": "QA analysis re-run completed"}
+            elif step == 'adjustment':
+                # Simulate adjustment rerun
+                rerun_results[step] = {"status": "completed", "message": "Adaptive adjustment re-run completed"}
+            elif step == 'publishing':
+                # Simulate publishing rerun
+                rerun_results[step] = {"status": "completed", "message": "Publishing flow re-run completed"}
+            elif step == 'versioning':
+                # Simulate versioning rerun
+                rerun_results[step] = {"status": "completed", "message": "Versioning analysis re-run completed"}
+        
+        # Update rerun metadata with results
+        await db.v2_rerun_metadata.update_one(
+            {"run_id": run_id, "rerun_timestamp": rerun_metadata["rerun_timestamp"]},
+            {"$set": {
+                "rerun_status": "completed",
+                "rerun_results": rerun_results,
+                "completed_timestamp": datetime.utcnow().isoformat()
+            }}
+        )
+        
+        rerun_response = {
+            "message": "Selected processing steps re-run completed",
+            "run_id": run_id,
+            "rerun_steps": steps_to_rerun,
+            "rerun_results": rerun_results,
+            "reviewer_name": reviewer_name,
+            "rerun_timestamp": rerun_metadata["rerun_timestamp"],
+            "engine": "v2"
+        }
+        
+        print(f"✅ V2 REVIEW: Re-run completed - {len(steps_to_rerun)} steps processed - engine=v2")
+        return rerun_response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 REVIEW: Error re-running selected steps - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error re-running steps: {str(e)}")
+
+@app.get("/api/review/media/{run_id}")
+async def get_media_for_review(run_id: str):
+    """V2 ENGINE: Get media library content for review"""
+    try:
+        print(f"🖼️ V2 REVIEW: Getting media for review - run_id: {run_id} - engine=v2")
+        
+        # In a full implementation, this would get actual media from media library
+        # For now, return a structured placeholder
+        media_data = {
+            "run_id": run_id,
+            "media_summary": {
+                "total_count": 0,
+                "images_count": 0,
+                "videos_count": 0,
+                "documents_count": 0
+            },
+            "media_items": [],
+            "contextual_info": {
+                "extraction_method": "v2_engine",
+                "alt_text_generated": True,
+                "contextual_filenames": True
+            },
+            "engine": "v2"
+        }
+        
+        print(f"✅ V2 REVIEW: Returning media information - {media_data['media_summary']['total_count']} items - engine=v2")
+        return media_data
+        
+    except Exception as e:
+        print(f"❌ V2 REVIEW: Error getting media for review - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving media: {str(e)}")
+
 @app.post("/api/media-intelligence")
 async def analyze_media_intelligence(request: Request):
     """

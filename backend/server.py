@@ -21864,6 +21864,43 @@ File Information:
             
             print(f"✅ V2 ENGINE: Step 8 complete for file upload - Validation status: {validation_status} - engine=v2")
             
+            # V2 STEP 9: Cross-Article QA (dedupe, link validation, FAQ consolidation, terminology)
+            print(f"🔍 V2 ENGINE: Starting Step 9 - Cross-Article QA for file upload - engine=v2")
+            
+            # Perform cross-article quality assurance
+            qa_result = await v2_cross_article_qa_system.perform_cross_article_qa(
+                generated_articles_result, run_id
+            )
+            
+            # Check QA status and update chunks accordingly
+            qa_status = qa_result.get('qa_status', 'unknown')
+            issues_found = qa_result.get('summary', {}).get('issues_found', 0)
+            
+            if qa_status == 'error':
+                print(f"❌ V2 ENGINE: Step 9 QA failed with error for file upload - run {run_id} - engine=v2")
+            elif issues_found == 0:
+                print(f"✅ V2 ENGINE: Step 9 QA passed for file upload - No coherence issues found - engine=v2")
+                # Add QA metadata to chunks
+                for chunk in chunks:
+                    chunk.setdefault('metadata', {})['qa_result'] = qa_result
+                    chunk['qa_status'] = 'passed'
+            else:
+                print(f"⚠️ V2 ENGINE: Step 9 QA found {issues_found} issues for file upload - Articles require consolidation - engine=v2")
+                # Mark chunks with QA issues
+                for chunk in chunks:
+                    chunk.setdefault('metadata', {})['qa_result'] = qa_result
+                    chunk['qa_status'] = 'issues_found'
+                    chunk['qa_issues_count'] = issues_found
+            
+            # Store QA result separately for analysis
+            try:
+                await db.v2_qa_results.insert_one(qa_result)
+                print(f"💾 V2 ENGINE: Stored file QA result for analysis - qa_id: {qa_result.get('qa_id')} - engine=v2")
+            except Exception as qa_storage_error:
+                print(f"❌ V2 ENGINE: Error storing file QA result - {qa_storage_error} - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Step 9 complete for file upload - QA status: {qa_status}, Issues found: {issues_found} - engine=v2")
+            
             # CRITICAL FIX: Store V2 generated articles in content library for frontend access
             if chunks:
                 for chunk in chunks:

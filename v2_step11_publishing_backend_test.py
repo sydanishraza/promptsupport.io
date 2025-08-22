@@ -498,9 +498,18 @@ class V2Step11PublishingTester:
                     structure_compliant_count = 0
                     
                     for article in articles[:10]:  # Check recent 10 articles
-                        # Check for V2 engine metadata
+                        # Check for V2 engine metadata in multiple locations
                         processing_metadata = article.get('processing_metadata', {})
-                        engine = processing_metadata.get('engine') or article.get('engine')
+                        metadata = article.get('metadata', {})
+                        
+                        # Check different ways V2 engine might be stored
+                        engine = None
+                        if 'engine' in processing_metadata:
+                            engine = processing_metadata['engine']
+                        elif 'engine' in metadata:
+                            engine = metadata['engine']
+                        elif 'engine' in article:
+                            engine = article['engine']
                         
                         if engine == 'v2':
                             v2_articles.append(article)

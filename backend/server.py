@@ -25290,7 +25290,8 @@ async def get_engine_status():
             "validation_diagnostics": "/api/validation/diagnostics",
             "qa_diagnostics": "/api/qa/diagnostics",
             "adjustment_diagnostics": "/api/adjustment/diagnostics",
-            "publishing_diagnostics": "/api/publishing/diagnostics"
+            "publishing_diagnostics": "/api/publishing/diagnostics",
+            "versioning_diagnostics": "/api/versioning/diagnostics"
         },
         "features": [
             "multi_dimensional_analysis",
@@ -25319,9 +25320,14 @@ async def get_engine_status():
             "content_library_persistence",
             "comprehensive_metadata",
             "provenance_mapping",
-            "media_reference_handling"
+            "media_reference_handling",
+            "version_management",
+            "content_versioning",
+            "diff_analysis",
+            "reprocessing_support",
+            "version_chain_tracking"
         ],
-        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, and V2-only publishing systems"
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, and version management systems"
     }
 
 @app.get("/api/validation/diagnostics")

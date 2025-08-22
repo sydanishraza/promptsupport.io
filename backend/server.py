@@ -25636,7 +25636,11 @@ async def get_engine_status():
             "qa_diagnostics": "/api/qa/diagnostics",
             "adjustment_diagnostics": "/api/adjustment/diagnostics",
             "publishing_diagnostics": "/api/publishing/diagnostics",
-            "versioning_diagnostics": "/api/versioning/diagnostics"
+            "versioning_diagnostics": "/api/versioning/diagnostics",
+            "review_runs": "/api/review/runs",
+            "review_approve": "/api/review/approve",
+            "review_reject": "/api/review/reject",
+            "review_rerun": "/api/review/rerun"
         },
         "features": [
             "multi_dimensional_analysis",
@@ -25670,9 +25674,14 @@ async def get_engine_status():
             "content_versioning",
             "diff_analysis",
             "reprocessing_support",
-            "version_chain_tracking"
+            "version_chain_tracking",
+            "human_in_the_loop_review",
+            "quality_badges",
+            "approval_workflow",
+            "rejection_tracking",
+            "step_rerun_capability"
         ],
-        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, and version management systems"
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, and human-in-the-loop review systems"
     }
 
 @app.get("/api/validation/diagnostics")

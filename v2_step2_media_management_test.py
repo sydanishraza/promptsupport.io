@@ -321,15 +321,16 @@ class V2Step2MediaManagementTester:
             The V2MediaManager should handle this embedded image properly.
             """
             
-            form_data = {
+            json_data = {
                 'content': test_content,
-                'metadata': json.dumps({
+                'content_type': 'text',
+                'metadata': {
                     'filename': 'media_integration_test.md',
                     'test_type': 'v2_media_manager'
-                })
+                }
             }
             
-            response = requests.post(f"{API_BASE}/content/process", data=form_data, timeout=60)
+            response = requests.post(f"{API_BASE}/content/process", json=json_data, timeout=60)
             
             if response.status_code != 200:
                 self.log_test("V2MediaManager Integration", False, 

@@ -504,12 +504,12 @@ class V2Step11PublishingTester:
                         
                         # Check different ways V2 engine might be stored
                         engine = None
-                        if 'engine' in processing_metadata:
+                        if 'engine' in article:  # Top-level engine field (V2 published articles)
+                            engine = article['engine']
+                        elif 'engine' in processing_metadata:
                             engine = processing_metadata['engine']
                         elif 'engine' in metadata:
                             engine = metadata['engine']
-                        elif 'engine' in article:
-                            engine = article['engine']
                         
                         if engine == 'v2':
                             v2_articles.append(article)

@@ -134,30 +134,34 @@ class V2MediaManagementTester:
             # Create test image
             test_image = create_test_image_base64()
             
-            # Test media intelligence endpoint
-            payload = {
-                "base64_data": f"data:image/png;base64,{test_image}",
+            # Test media intelligence endpoint using form data
+            form_data = {
+                "media_data": f"data:image/png;base64,{test_image}",
                 "alt_text": "Google Maps API setup screenshot",
                 "context": "This image shows the Google Cloud Console where users can obtain their API key for Google Maps integration. The screenshot demonstrates the steps to enable the Maps JavaScript API."
             }
             
-            response = requests.post(f"{API_BASE}/media/analyze", 
-                                   json=payload, timeout=15)
+            response = requests.post(f"{API_BASE}/media-intelligence", 
+                                   data=form_data, timeout=15)
             
             if response.status_code == 200:
                 data = response.json()
                 
-                # Check for required contextual fields
-                has_contextual_caption = 'contextual_caption' in data
-                has_placement_suggestion = 'placement_suggestion' in data
-                processing_status = data.get('processing_status', 'unknown')
+                # Check for success and analysis data
+                success = data.get('success', False)
+                analysis = data.get('analysis', {})
                 
-                if has_contextual_caption and has_placement_suggestion and processing_status != 'fallback':
+                # Check for required contextual fields in analysis
+                has_contextual_caption = 'contextual_caption' in analysis
+                has_placement_suggestion = 'placement_suggestion' in analysis
+                processing_status = analysis.get('processing_status', 'unknown')
+                
+                if success and has_contextual_caption and has_placement_suggestion and processing_status != 'fallback':
                     self.log_test("Media Intelligence Contextual Processing", True, 
                                 f"contextual_caption: {has_contextual_caption}, placement_suggestion: {has_placement_suggestion}, status: {processing_status}")
                 else:
                     self.log_test("Media Intelligence Contextual Processing", False, 
-                                f"contextual_caption: {has_contextual_caption}, placement_suggestion: {has_placement_suggestion}, status: {processing_status}")
+                                f"success: {success}, contextual_caption: {has_contextual_caption}, placement_suggestion: {has_placement_suggestion}, status: {processing_status}")
             else:
                 self.log_test("Media Intelligence Contextual Processing", False, 
                             f"HTTP {response.status_code}: {response.text[:200]}")

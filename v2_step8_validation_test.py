@@ -24,7 +24,7 @@ import os
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-pipeline-4.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://smartdoc-v2.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class V2ValidationTester:

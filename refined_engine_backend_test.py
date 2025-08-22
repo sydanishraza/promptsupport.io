@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 
 # Get backend URL from environment
-BACKEND_URL = "https://content-pipeline-4.preview.emergentagent.com/api"
+BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com/api"
 
 def test_refined_engine_endpoints():
     """Test the new Refined Engine v2.0 endpoints"""

@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 
 # Backend URL
-BACKEND_URL = "https://content-pipeline-4.preview.emergentagent.com"
+BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_result(message, status="INFO"):

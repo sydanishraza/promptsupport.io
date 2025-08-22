@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://content-pipeline-4.preview.emergentagent.com"
+BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com"
 
 def debug_title_generation():
     """Debug the title generation by examining the LLM processing"""

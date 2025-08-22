@@ -7,7 +7,7 @@ Analyzes the refined engine articles in detail
 import requests
 import json
 
-BACKEND_URL = "https://content-pipeline-4.preview.emergentagent.com/api"
+BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com/api"
 
 def analyze_refined_engine_articles():
     """Analyze refined engine articles in detail"""

@@ -189,9 +189,11 @@ class V2DOCXContentGenerationTester:
             }
             
             data = {
-                'template_id': 'comprehensive_guide',
-                'granularity': 'moderate',
-                'processing_mode': 'v2_engine'
+                'metadata': json.dumps({
+                    'template_id': 'comprehensive_guide',
+                    'granularity': 'moderate',
+                    'processing_mode': 'v2_engine'
+                })
             }
             
             response = requests.post(f"{API_BASE}/content/upload", files=files, data=data, timeout=60)

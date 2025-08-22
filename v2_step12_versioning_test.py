@@ -109,10 +109,12 @@ class V2VersioningSystemTester:
             """
             
             # Process content through V2 pipeline
-            form_data = aiohttp.FormData()
-            form_data.add_field('content', test_content)
+            payload = {
+                "content": test_content,
+                "content_type": "text"
+            }
             
-            async with self.session.post(f"{self.backend_url}/api/content/process", data=form_data) as response:
+            async with self.session.post(f"{self.backend_url}/api/content/process", json=payload) as response:
                 if response.status == 200:
                     data = await response.json()
                     engine = data.get('engine')

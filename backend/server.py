@@ -23039,7 +23039,12 @@ async def get_engine_status():
             "fidelity_checking",
             "coverage_validation",
             "placeholder_detection",
-            "style_guard"
+            "style_guard",
+            "cross_article_qa",
+            "content_deduplication",
+            "link_validation",
+            "faq_consolidation", 
+            "terminology_consistency"
         ],
         "message": "V2 Engine is active with comprehensive validation system"
     }

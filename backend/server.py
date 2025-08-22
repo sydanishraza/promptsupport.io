@@ -6308,6 +6308,7 @@ class V2PublishingSystem:
                 "summary": article.get('summary', ''),
                 
                 # Core content (required)
+                "content": html_content,  # ADD MISSING CONTENT FIELD
                 "html": html_content,
                 "markdown": markdown_content,
                 "toc": toc,

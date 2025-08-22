@@ -6861,6 +6861,93 @@ class V2VersioningSystem:
                 "latest_version": None,
                 "total_versions": 0
             }
+    
+    async def _determine_version_metadata(self, source_hash: str, existing_version_info: dict, run_id: str) -> dict:
+        """Determine version number and supersedes relationship"""
+        try:
+            version_metadata = {
+                "source_hash": source_hash,
+                "version_timestamp": datetime.utcnow().isoformat(),
+                "run_id": run_id
+            }
+            
+            if existing_version_info["has_existing_versions"]:
+                # This is an update to existing content
+                latest_version = existing_version_info["latest_version"]
+                
+                if latest_version:
+                    # Increment version number
+                    previous_version = latest_version.get('version', 0)
+                    version_metadata["version"] = previous_version + 1
+                    version_metadata["supersedes"] = latest_version.get('run_id', 'unknown')
+                    version_metadata["change_summary"] = "Content update detected"
+                else:
+                    # Found content in library but no version record
+                    version_metadata["version"] = 2  # Assume this is version 2
+                    version_metadata["supersedes"] = "content_library_existing"
+                    version_metadata["change_summary"] = "Update to existing content library article"
+            else:
+                # This is new content
+                version_metadata["version"] = 1
+                version_metadata["supersedes"] = None
+                version_metadata["change_summary"] = "New content version"
+            
+            supersedes_text = version_metadata.get('supersedes', 'none')
+            if version_metadata.get('supersedes'):
+                supersedes_info = f"(supersedes: {supersedes_text})"
+            else:
+                supersedes_info = "(new)"
+            
+            print(f"📊 V2 VERSIONING: Version metadata determined - v{version_metadata['version']} {supersedes_info} - run {run_id} - engine=v2")
+            return version_metadata
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error determining version metadata - {e} - run {run_id} - engine=v2")
+            return {
+                "source_hash": source_hash,
+                "version": 1,
+                "supersedes": None,
+                "version_timestamp": datetime.utcnow().isoformat(),
+                "change_summary": "Version metadata error",
+                "run_id": run_id
+            }
+    
+    async def _add_version_metadata_to_articles(self, articles: list, version_metadata: dict, run_id: str) -> list:
+        """Add version metadata to all articles"""
+        try:
+            print(f"🏷️ V2 VERSIONING: Adding version metadata to {len(articles)} articles - run {run_id} - engine=v2")
+            
+            versioned_articles = []
+            
+            for article in articles:
+                # Create versioned article with metadata
+                versioned_article = article.copy()
+                
+                # Add version metadata
+                versioned_article['version_metadata'] = version_metadata.copy()
+                
+                # Add version-specific fields to main article metadata
+                if 'metadata' not in versioned_article:
+                    versioned_article['metadata'] = {}
+                
+                versioned_article['metadata']['version'] = version_metadata['version']
+                versioned_article['metadata']['source_hash'] = version_metadata['source_hash']
+                versioned_article['metadata']['version_timestamp'] = version_metadata['version_timestamp']
+                
+                if version_metadata.get('supersedes'):
+                    versioned_article['metadata']['supersedes'] = version_metadata['supersedes']
+                    versioned_article['metadata']['is_update'] = True
+                else:
+                    versioned_article['metadata']['is_update'] = False
+                
+                versioned_articles.append(versioned_article)
+            
+            print(f"🏷️ V2 VERSIONING: Version metadata added to all articles - v{version_metadata['version']} - run {run_id} - engine=v2")
+            return versioned_articles
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error adding version metadata to articles - {e} - run {run_id} - engine=v2")
+            return articles  # Return original articles on error
 
 # Global V2 Versioning System instance
 v2_versioning_system = V2VersioningSystem()

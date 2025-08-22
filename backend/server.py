@@ -23046,7 +23046,7 @@ async def get_engine_status():
             "faq_consolidation", 
             "terminology_consistency"
         ],
-        "message": "V2 Engine is active with comprehensive validation system"
+        "message": "V2 Engine is active with comprehensive validation and cross-article QA systems"
     }
 
 @app.get("/api/validation/diagnostics")

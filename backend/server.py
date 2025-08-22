@@ -3863,6 +3863,743 @@ Return ONLY JSON in this exact format:
 # Global V2 Article Generator instance
 v2_article_generator = V2ArticleGenerator()
 
+# ========================================
+# V2 ENGINE: VALIDATION SYSTEM
+# ========================================
+
+class V2ValidationSystem:
+    """V2 Engine: Comprehensive validation system for fidelity, coverage, placeholders, and style"""
+    
+    def __init__(self):
+        self.required_sections = [
+            "h1_title",
+            "intro_paragraph",
+            "mini_toc", 
+            "main_body",
+            "faqs",
+            "related_links"
+        ]
+        
+        self.quality_thresholds = {
+            "coverage_percent": 100,
+            "fidelity_score": 0.9,
+            "redundancy_score": 0.3,  # Lower is better
+            "max_placeholders": 0
+        }
+    
+    async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: Comprehensive validation of generated articles"""
+        try:
+            print(f"🔍 V2 VALIDATION: Starting comprehensive validation - run {run_id} - engine=v2")
+            
+            generated_articles = generated_articles_result.get('generated_articles', [])
+            if not generated_articles:
+                print(f"⚠️ V2 VALIDATION: No articles to validate - run {run_id} - engine=v2")
+                return self._create_validation_result("no_articles", run_id, {})
+            
+            # Step 1: Fidelity and Coverage Validation
+            fidelity_coverage_result = await self._validate_fidelity_and_coverage(
+                normalized_doc, generated_articles, run_id
+            )
+            
+            # Step 2: Placeholder Detection
+            placeholder_result = await self._detect_placeholders(generated_articles, run_id)
+            
+            # Step 3: Style Guard Validation
+            style_result = await self._validate_style_guard(generated_articles, run_id)
+            
+            # Step 4: Metrics Calculation
+            metrics_result = await self._calculate_validation_metrics(
+                normalized_doc, generated_articles, analysis, run_id
+            )
+            
+            # Step 5: Overall Validation Decision
+            validation_result = self._consolidate_validation_results(
+                fidelity_coverage_result,
+                placeholder_result,
+                style_result,
+                metrics_result,
+                run_id
+            )
+            
+            # Log validation outcome
+            status = validation_result.get('validation_status', 'unknown')
+            if status == 'passed':
+                print(f"✅ V2 VALIDATION: All validation checks passed - run {run_id} - engine=v2")
+            else:
+                print(f"⚠️ V2 VALIDATION: Validation failed with status '{status}' - run {run_id} - engine=v2")
+            
+            return validation_result
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error during validation - {e} - run {run_id} - engine=v2")
+            return self._create_validation_result("error", run_id, {"error": str(e)})
+    
+    async def _validate_fidelity_and_coverage(self, normalized_doc, generated_articles: list, run_id: str) -> dict:
+        """V2 Engine: Validate fidelity and coverage using LLM"""
+        try:
+            print(f"🔍 V2 VALIDATION: Fidelity & Coverage validation - run {run_id} - engine=v2")
+            
+            # Prepare source blocks for validation
+            source_blocks = []
+            for i, block in enumerate(normalized_doc.blocks):
+                source_blocks.append({
+                    "block_id": f"block_{i+1}",
+                    "block_type": block.block_type,
+                    "content": block.content[:500],  # Truncate for LLM input
+                    "full_length": len(block.content)
+                })
+            
+            # Prepare generated articles with mapped block_ids
+            article_summaries = []
+            for generated_article in generated_articles:
+                article_data = generated_article.get('article_data', {})
+                validation_metadata = article_data.get('validation_metadata', {})
+                
+                article_summaries.append({
+                    "article_id": generated_article.get('article_id', 'unknown'),
+                    "title": article_data.get('title', 'Unknown'),
+                    "html_content": article_data.get('html', '')[:1000],  # Truncate for LLM
+                    "mapped_block_ids": validation_metadata.get('block_ids_assigned', []),
+                    "content_length": len(article_data.get('html', ''))
+                })
+            
+            # Create LLM prompt for fidelity and coverage validation
+            system_message = """You are a validation agent. Check fidelity and coverage vs. source.
+
+Your task is to:
+1. Compute fidelity_score (0-1): How well do the generated articles stick to the source content without hallucinating?
+2. Compute coverage_percent (0-100): What percentage of source blocks are covered in the generated articles?
+3. Identify hallucinated_claims: Content in articles that doesn't appear in the source blocks
+4. Identify uncovered_blocks: Source blocks that weren't used in any generated article
+
+Fidelity scoring:
+- 1.0: Perfect fidelity, no hallucinated content
+- 0.9: Minor additions that don't contradict source
+- 0.7: Some unsupported claims but generally accurate
+- 0.5: Significant hallucinations or contradictions
+- 0.0: Mostly hallucinated content
+
+Coverage scoring:
+- 100%: All source blocks are represented in generated articles
+- 80%: Most important blocks covered, some minor omissions
+- 60%: Key blocks covered but significant gaps
+- 40%: Major omissions in coverage
+- 0%: No source blocks covered
+
+Return ONLY JSON in the exact format specified."""
+
+            user_message = f"""Validate these generated articles against their source blocks.
+
+SOURCE BLOCKS:
+{json.dumps(source_blocks, indent=2)}
+
+GENERATED ARTICLES:
+{json.dumps(article_summaries, indent=2)}
+
+Compute fidelity_score (0-1) and coverage_percent (0-100).
+List hallucinated_claims and uncovered_blocks.
+
+Return ONLY JSON in this exact format:
+{{
+  "fidelity_score": 0.95,
+  "coverage_percent": 100,
+  "hallucinated_claims": [],
+  "uncovered_blocks": []
+}}"""
+
+            # Call LLM for validation
+            print(f"🤖 V2 VALIDATION: Sending fidelity & coverage request to LLM - run {run_id} - engine=v2")
+            ai_response = await call_llm_with_fallback(system_message, user_message)
+            
+            if ai_response:
+                # Parse JSON response
+                import re
+                json_match = re.search(r'\{.*\}', ai_response, re.DOTALL)
+                if json_match:
+                    validation_data = json.loads(json_match.group(0))
+                    
+                    # Validate required fields
+                    required_fields = ['fidelity_score', 'coverage_percent', 'hallucinated_claims', 'uncovered_blocks']
+                    if all(field in validation_data for field in required_fields):
+                        print(f"✅ V2 VALIDATION: Fidelity={validation_data['fidelity_score']}, Coverage={validation_data['coverage_percent']}% - run {run_id} - engine=v2")
+                        return validation_data
+                    else:
+                        print(f"⚠️ V2 VALIDATION: Missing fields in LLM response - run {run_id} - engine=v2")
+                        return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+                else:
+                    print(f"⚠️ V2 VALIDATION: No JSON found in LLM response - run {run_id} - engine=v2")
+                    return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+            else:
+                print(f"❌ V2 VALIDATION: No LLM response for fidelity validation - run {run_id} - engine=v2")
+                return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+                
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in fidelity & coverage validation - {e} - run {run_id} - engine=v2")
+            return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+    
+    def _create_fallback_fidelity_coverage(self, normalized_doc, generated_articles: list) -> dict:
+        """Create fallback fidelity and coverage scores"""
+        try:
+            # Basic coverage calculation
+            total_blocks = len(normalized_doc.blocks)
+            covered_blocks = set()
+            
+            for generated_article in generated_articles:
+                article_data = generated_article.get('article_data', {})
+                validation_metadata = article_data.get('validation_metadata', {})
+                mapped_blocks = validation_metadata.get('block_ids_assigned', [])
+                
+                for block_id in mapped_blocks:
+                    covered_blocks.add(block_id)
+            
+            coverage_percent = (len(covered_blocks) / total_blocks * 100) if total_blocks > 0 else 0
+            
+            # Conservative fidelity score for fallback
+            fidelity_score = 0.85 if len(generated_articles) > 0 else 0.0
+            
+            # Identify uncovered blocks
+            all_block_ids = set(f"block_{i+1}" for i in range(total_blocks))
+            uncovered_blocks = list(all_block_ids - covered_blocks)
+            
+            return {
+                "fidelity_score": fidelity_score,
+                "coverage_percent": coverage_percent,
+                "hallucinated_claims": [],  # Can't detect without LLM
+                "uncovered_blocks": uncovered_blocks
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in fallback fidelity calculation - {e}")
+            return {
+                "fidelity_score": 0.0,
+                "coverage_percent": 0.0,
+                "hallucinated_claims": [],
+                "uncovered_blocks": []
+            }
+    
+    async def _detect_placeholders(self, generated_articles: list, run_id: str) -> dict:
+        """V2 Engine: Detect placeholders and incomplete content using LLM"""
+        try:
+            print(f"🔍 V2 VALIDATION: Placeholder detection - run {run_id} - engine=v2")
+            
+            # Prepare HTML content for placeholder detection
+            articles_html = []
+            for generated_article in generated_articles:
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                articles_html.append({
+                    "article_id": generated_article.get('article_id', 'unknown'),
+                    "title": article_data.get('title', 'Unknown'),
+                    "html_content": html_content
+                })
+            
+            # Create LLM prompt for placeholder detection
+            system_message = """You are a style checker. Detect placeholders and incomplete content.
+
+Your task is to find any incomplete or placeholder content including:
+- [MISSING] markers
+- TODO items
+- Lorem ipsum text
+- Placeholder text like "Insert content here", "Add details", etc.
+- Empty sections or incomplete sentences
+- Generic placeholder content
+
+For each placeholder found, provide:
+- article_id: Which article contains it
+- location: Which section or area (e.g., "Section: Setup", "FAQ section", "Introduction")
+- text: The exact placeholder text found
+
+Return ONLY JSON in the exact format specified."""
+
+            user_message = f"""Check these generated articles for placeholders and incomplete content.
+
+GENERATED ARTICLES HTML:
+{json.dumps(articles_html, indent=2)}
+
+Report any [MISSING], TODO, lorem ipsum, or other placeholder content with article_id and location.
+
+Return ONLY JSON in this exact format:
+{{
+  "placeholders": [
+    {{
+      "article_id": "a1",
+      "location": "Section: Setup",
+      "text": "[MISSING]"
+    }}
+  ]
+}}"""
+
+            # Call LLM for placeholder detection
+            print(f"🤖 V2 VALIDATION: Sending placeholder detection request to LLM - run {run_id} - engine=v2")
+            ai_response = await call_llm_with_fallback(system_message, user_message)
+            
+            if ai_response:
+                # Parse JSON response
+                import re
+                json_match = re.search(r'\{.*\}', ai_response, re.DOTALL)
+                if json_match:
+                    placeholder_data = json.loads(json_match.group(0))
+                    
+                    if 'placeholders' in placeholder_data:
+                        placeholder_count = len(placeholder_data['placeholders'])
+                        print(f"🔍 V2 VALIDATION: Found {placeholder_count} placeholders - run {run_id} - engine=v2")
+                        return placeholder_data
+                    else:
+                        print(f"⚠️ V2 VALIDATION: Missing placeholders field in LLM response - run {run_id} - engine=v2")
+                        return self._create_fallback_placeholder_detection(generated_articles)
+                else:
+                    print(f"⚠️ V2 VALIDATION: No JSON found in placeholder response - run {run_id} - engine=v2")
+                    return self._create_fallback_placeholder_detection(generated_articles)
+            else:
+                print(f"❌ V2 VALIDATION: No LLM response for placeholder detection - run {run_id} - engine=v2")
+                return self._create_fallback_placeholder_detection(generated_articles)
+                
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in placeholder detection - {e} - run {run_id} - engine=v2")
+            return self._create_fallback_placeholder_detection(generated_articles)
+    
+    def _create_fallback_placeholder_detection(self, generated_articles: list) -> dict:
+        """Create fallback placeholder detection using regex"""
+        try:
+            import re
+            
+            placeholder_patterns = [
+                r'\[MISSING\]',
+                r'TODO',
+                r'lorem ipsum',
+                r'Lorem Ipsum',
+                r'placeholder',
+                r'INSERT_\w+',
+                r'ADD_\w+',
+                r'\[.*PLACEHOLDER.*\]'
+            ]
+            
+            placeholders = []
+            
+            for generated_article in generated_articles:
+                article_id = generated_article.get('article_id', 'unknown')
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                for pattern in placeholder_patterns:
+                    matches = re.finditer(pattern, html_content, re.IGNORECASE)
+                    for match in matches:
+                        placeholders.append({
+                            "article_id": article_id,
+                            "location": "Content scan",
+                            "text": match.group(0)
+                        })
+            
+            print(f"🔍 V2 VALIDATION: Fallback placeholder detection found {len(placeholders)} placeholders")
+            return {"placeholders": placeholders}
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in fallback placeholder detection - {e}")
+            return {"placeholders": []}
+    
+    async def _validate_style_guard(self, generated_articles: list, run_id: str) -> dict:
+        """V2 Engine: Validate article structure and style compliance"""
+        try:
+            print(f"🔍 V2 VALIDATION: Style guard validation - run {run_id} - engine=v2")
+            
+            style_results = []
+            
+            for generated_article in generated_articles:
+                article_id = generated_article.get('article_id', 'unknown')
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                # Check for required structural elements
+                structure_check = {
+                    "h1_title": bool(re.search(r'<h1[^>]*>.*?</h1>', html_content, re.IGNORECASE | re.DOTALL)),
+                    "intro_paragraph": bool(re.search(r'<p[^>]*>.*?</p>', html_content, re.IGNORECASE | re.DOTALL)),
+                    "mini_toc": bool(re.search(r'<ul[^>]*>.*?<li[^>]*>.*?<a[^>]*href="#', html_content, re.IGNORECASE | re.DOTALL)),
+                    "main_body": bool(re.search(r'<h2[^>]*>.*?</h2>', html_content, re.IGNORECASE | re.DOTALL)),
+                    "faqs": bool(re.search(r'FAQ|Q:|Question', html_content, re.IGNORECASE)),
+                    "related_links": bool(re.search(r'<ul[^>]*>.*?<li[^>]*>.*?<a[^>]*href=', html_content, re.IGNORECASE | re.DOTALL))
+                }
+                
+                # Calculate compliance score
+                total_elements = len(structure_check)
+                passed_elements = sum(structure_check.values())
+                compliance_score = passed_elements / total_elements if total_elements > 0 else 0
+                
+                # Identify missing elements
+                missing_elements = [element for element, present in structure_check.items() if not present]
+                
+                style_results.append({
+                    "article_id": article_id,
+                    "structure_check": structure_check,
+                    "compliance_score": compliance_score,
+                    "missing_elements": missing_elements,
+                    "content_length": len(html_content)
+                })
+            
+            # Overall style compliance
+            overall_compliance = sum(result['compliance_score'] for result in style_results) / len(style_results) if style_results else 0
+            
+            print(f"🎯 V2 VALIDATION: Style guard compliance: {overall_compliance:.2f} - run {run_id} - engine=v2")
+            
+            return {
+                "overall_compliance": overall_compliance,
+                "article_results": style_results,
+                "validation_method": "programmatic_style_guard"
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in style guard validation - {e} - run {run_id} - engine=v2")
+            return {
+                "overall_compliance": 0.0,
+                "article_results": [],
+                "validation_method": "error"
+            }
+    
+    async def _calculate_validation_metrics(self, normalized_doc, generated_articles: list, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: Calculate validation metrics"""
+        try:
+            print(f"🔍 V2 VALIDATION: Calculating validation metrics - run {run_id} - engine=v2")
+            
+            # Redundancy Score Calculation
+            redundancy_score = await self._calculate_redundancy_score(generated_articles)
+            
+            # Granularity Alignment Score
+            granularity_alignment = await self._calculate_granularity_alignment(generated_articles, analysis)
+            
+            # Complexity Alignment Score
+            complexity_alignment = await self._calculate_complexity_alignment(normalized_doc, generated_articles, analysis)
+            
+            metrics = {
+                "redundancy_score": redundancy_score,
+                "granularity_alignment_score": granularity_alignment,
+                "complexity_alignment_score": complexity_alignment,
+                "total_articles": len(generated_articles),
+                "total_source_blocks": len(normalized_doc.blocks),
+                "average_article_length": self._calculate_average_article_length(generated_articles)
+            }
+            
+            print(f"📊 V2 VALIDATION: Metrics calculated - Redundancy: {redundancy_score:.2f}, Granularity: {granularity_alignment:.2f}, Complexity: {complexity_alignment:.2f} - run {run_id} - engine=v2")
+            
+            return metrics
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error calculating validation metrics - {e} - run {run_id} - engine=v2")
+            return {
+                "redundancy_score": 0.5,
+                "granularity_alignment_score": 0.5,
+                "complexity_alignment_score": 0.5,
+                "total_articles": len(generated_articles),
+                "total_source_blocks": len(normalized_doc.blocks) if normalized_doc else 0,
+                "average_article_length": 0
+            }
+    
+    async def _calculate_redundancy_score(self, generated_articles: list) -> float:
+        """Calculate content redundancy between articles"""
+        try:
+            if len(generated_articles) <= 1:
+                return 0.0  # No redundancy with single article
+            
+            # Simple overlap detection based on content similarity
+            article_contents = []
+            for generated_article in generated_articles:
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                # Remove HTML tags for text comparison
+                import re
+                text_content = re.sub(r'<[^>]+>', '', html_content).lower()
+                article_contents.append(set(text_content.split()))
+            
+            # Calculate pairwise similarity
+            total_comparisons = 0
+            total_overlap = 0
+            
+            for i in range(len(article_contents)):
+                for j in range(i + 1, len(article_contents)):
+                    content_a = article_contents[i]
+                    content_b = article_contents[j]
+                    
+                    if len(content_a) > 0 and len(content_b) > 0:
+                        overlap = len(content_a & content_b)
+                        union = len(content_a | content_b)
+                        similarity = overlap / union if union > 0 else 0
+                        
+                        total_overlap += similarity
+                        total_comparisons += 1
+            
+            # Average redundancy score (lower is better)
+            redundancy_score = total_overlap / total_comparisons if total_comparisons > 0 else 0.0
+            return min(redundancy_score, 1.0)
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error calculating redundancy score - {e}")
+            return 0.3  # Default moderate redundancy
+    
+    async def _calculate_granularity_alignment(self, generated_articles: list, analysis: dict) -> float:
+        """Calculate how well article granularity matches analysis expectations"""
+        try:
+            expected_granularity = analysis.get('granularity', 'shallow')
+            article_count = len(generated_articles)
+            
+            # Granularity expectations
+            granularity_expectations = {
+                'shallow': {'min_articles': 1, 'max_articles': 3},
+                'moderate': {'min_articles': 2, 'max_articles': 8},
+                'deep': {'min_articles': 5, 'max_articles': 20}
+            }
+            
+            expectations = granularity_expectations.get(expected_granularity, {'min_articles': 1, 'max_articles': 10})
+            
+            # Calculate alignment score
+            if expectations['min_articles'] <= article_count <= expectations['max_articles']:
+                alignment_score = 1.0
+            elif article_count < expectations['min_articles']:
+                # Too few articles
+                alignment_score = article_count / expectations['min_articles']
+            else:
+                # Too many articles
+                excess = article_count - expectations['max_articles']
+                penalty = min(0.5, excess * 0.1)
+                alignment_score = max(0.1, 1.0 - penalty)
+            
+            return alignment_score
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error calculating granularity alignment - {e}")
+            return 0.7  # Default moderate alignment
+    
+    async def _calculate_complexity_alignment(self, normalized_doc, generated_articles: list, analysis: dict) -> float:
+        """Calculate how well article complexity matches source complexity"""
+        try:
+            expected_complexity = analysis.get('complexity', 'intermediate')
+            
+            # Calculate source complexity indicators
+            total_blocks = len(normalized_doc.blocks)
+            code_blocks = sum(1 for block in normalized_doc.blocks if block.block_type == 'code')
+            
+            source_complexity_score = 0
+            if code_blocks > 0:
+                source_complexity_score += min(0.3, code_blocks / total_blocks)
+            if total_blocks > 20:
+                source_complexity_score += 0.2
+            if len(normalized_doc.media) > 0:
+                source_complexity_score += 0.1
+            
+            # Calculate generated complexity
+            total_content_length = sum(
+                len(gen_article.get('article_data', {}).get('html', ''))
+                for gen_article in generated_articles
+            )
+            
+            generated_complexity_score = 0
+            if total_content_length > 5000:
+                generated_complexity_score += 0.3
+            if len(generated_articles) > 3:
+                generated_complexity_score += 0.2
+            
+            # Alignment calculation
+            complexity_difference = abs(source_complexity_score - generated_complexity_score)
+            alignment_score = max(0.1, 1.0 - complexity_difference * 2)
+            
+            return alignment_score
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error calculating complexity alignment - {e}")
+            return 0.6  # Default moderate complexity alignment
+    
+    def _calculate_average_article_length(self, generated_articles: list) -> int:
+        """Calculate average article content length"""
+        try:
+            if not generated_articles:
+                return 0
+            
+            total_length = sum(
+                len(gen_article.get('article_data', {}).get('html', ''))
+                for gen_article in generated_articles
+            )
+            
+            return total_length // len(generated_articles)
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error calculating average article length - {e}")
+            return 0
+    
+    def _consolidate_validation_results(self, fidelity_coverage: dict, placeholder: dict, style: dict, metrics: dict, run_id: str) -> dict:
+        """Consolidate all validation results into final validation decision"""
+        try:
+            # Extract key metrics
+            fidelity_score = fidelity_coverage.get('fidelity_score', 0.0)
+            coverage_percent = fidelity_coverage.get('coverage_percent', 0.0)
+            placeholder_count = len(placeholder.get('placeholders', []))
+            style_compliance = style.get('overall_compliance', 0.0)
+            
+            # Apply quality thresholds
+            fidelity_passed = fidelity_score >= self.quality_thresholds['fidelity_score']
+            coverage_passed = coverage_percent >= self.quality_thresholds['coverage_percent']
+            placeholder_passed = placeholder_count <= self.quality_thresholds['max_placeholders']
+            style_passed = style_compliance >= 0.8  # 80% structural compliance required
+            
+            # Overall validation status
+            all_passed = all([fidelity_passed, coverage_passed, placeholder_passed, style_passed])
+            
+            if all_passed:
+                validation_status = "passed"
+                status_message = "All validation checks passed"
+            else:
+                validation_status = "partial"
+                failed_checks = []
+                if not fidelity_passed:
+                    failed_checks.append(f"fidelity_score ({fidelity_score:.2f} < {self.quality_thresholds['fidelity_score']})")
+                if not coverage_passed:
+                    failed_checks.append(f"coverage_percent ({coverage_percent:.1f}% < {self.quality_thresholds['coverage_percent']}%)")
+                if not placeholder_passed:
+                    failed_checks.append(f"placeholder_count ({placeholder_count} > {self.quality_thresholds['max_placeholders']})")
+                if not style_passed:
+                    failed_checks.append(f"style_compliance ({style_compliance:.2f} < 0.8)")
+                
+                status_message = f"Failed checks: {', '.join(failed_checks)}"
+            
+            # Create comprehensive validation result
+            validation_result = {
+                "validation_id": f"validation_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "validation_status": validation_status,
+                "status_message": status_message,
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                
+                # Detailed validation results
+                "fidelity_coverage": fidelity_coverage,
+                "placeholder_detection": placeholder,
+                "style_guard": style,
+                "validation_metrics": metrics,
+                
+                # Summary scores
+                "summary_scores": {
+                    "fidelity_score": fidelity_score,
+                    "coverage_percent": coverage_percent,  
+                    "placeholder_count": placeholder_count,
+                    "style_compliance": style_compliance,
+                    "redundancy_score": metrics.get('redundancy_score', 0.0),
+                    "granularity_alignment": metrics.get('granularity_alignment_score', 0.0),
+                    "complexity_alignment": metrics.get('complexity_alignment_score', 0.0)
+                },
+                
+                # Threshold compliance
+                "threshold_compliance": {
+                    "fidelity_passed": fidelity_passed,
+                    "coverage_passed": coverage_passed,
+                    "placeholder_passed": placeholder_passed,
+                    "style_passed": style_passed
+                },
+                
+                # Actionable diagnostics for failed runs
+                "diagnostics": self._generate_actionable_diagnostics(
+                    fidelity_coverage, placeholder, style, metrics, validation_status
+                )
+            }
+            
+            return validation_result
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error consolidating validation results - {e} - run {run_id} - engine=v2")
+            return self._create_validation_result("error", run_id, {"consolidation_error": str(e)})
+    
+    def _generate_actionable_diagnostics(self, fidelity_coverage: dict, placeholder: dict, style: dict, metrics: dict, status: str) -> list:
+        """Generate actionable diagnostics for validation failures"""
+        diagnostics = []
+        
+        try:
+            if status == "passed":
+                diagnostics.append({
+                    "type": "success",
+                    "message": "All validation checks passed successfully",
+                    "action": "No action required"
+                })
+                return diagnostics
+            
+            # Fidelity diagnostics
+            fidelity_score = fidelity_coverage.get('fidelity_score', 0.0)
+            if fidelity_score < self.quality_thresholds['fidelity_score']:
+                hallucinated_claims = fidelity_coverage.get('hallucinated_claims', [])
+                diagnostics.append({
+                    "type": "fidelity_warning",
+                    "message": f"Fidelity score ({fidelity_score:.2f}) below threshold ({self.quality_thresholds['fidelity_score']})",
+                    "action": f"Review and remove {len(hallucinated_claims)} hallucinated claims",
+                    "details": hallucinated_claims[:3]  # Show first 3 examples
+                })
+            
+            # Coverage diagnostics
+            coverage_percent = fidelity_coverage.get('coverage_percent', 0.0)
+            if coverage_percent < self.quality_thresholds['coverage_percent']:
+                uncovered_blocks = fidelity_coverage.get('uncovered_blocks', [])
+                diagnostics.append({
+                    "type": "coverage_warning",
+                    "message": f"Coverage ({coverage_percent:.1f}%) below required 100%",
+                    "action": f"Include content from {len(uncovered_blocks)} uncovered source blocks",
+                    "details": uncovered_blocks[:5]  # Show first 5 examples
+                })
+            
+            # Placeholder diagnostics
+            placeholders = placeholder.get('placeholders', [])
+            if len(placeholders) > self.quality_thresholds['max_placeholders']:
+                diagnostics.append({
+                    "type": "placeholder_warning",
+                    "message": f"Found {len(placeholders)} placeholders (max allowed: {self.quality_thresholds['max_placeholders']})",
+                    "action": "Replace placeholder content with actual information",
+                    "details": [p.get('text', 'Unknown') for p in placeholders[:3]]  # Show first 3
+                })
+            
+            # Style compliance diagnostics
+            style_compliance = style.get('overall_compliance', 0.0)
+            if style_compliance < 0.8:
+                missing_elements = []
+                for article_result in style.get('article_results', []):
+                    missing_elements.extend(article_result.get('missing_elements', []))
+                
+                unique_missing = list(set(missing_elements))
+                diagnostics.append({
+                    "type": "style_warning",
+                    "message": f"Style compliance ({style_compliance:.2f}) below 80%",
+                    "action": f"Add missing structural elements: {', '.join(unique_missing)}",
+                    "details": unique_missing
+                })
+            
+            # Metrics diagnostics
+            redundancy_score = metrics.get('redundancy_score', 0.0)
+            if redundancy_score > self.quality_thresholds['redundancy_score']:
+                diagnostics.append({
+                    "type": "redundancy_warning",
+                    "message": f"High content redundancy ({redundancy_score:.2f}) detected",
+                    "action": "Review articles for duplicate content and consolidate where appropriate",
+                    "details": []
+                })
+            
+            return diagnostics
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error generating diagnostics - {e}")
+            return [{
+                "type": "error",
+                "message": "Error generating diagnostics",
+                "action": "Review validation manually",
+                "details": [str(e)]
+            }]
+    
+    def _create_validation_result(self, status: str, run_id: str, additional_data: dict) -> dict:
+        """Create a standard validation result structure"""
+        return {
+            "validation_id": f"validation_{run_id}_{int(datetime.utcnow().timestamp())}",
+            "run_id": run_id,
+            "validation_status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2",
+            **additional_data
+        }
+
+# Global V2 Validation System instance
+v2_validation_system = V2ValidationSystem()
+
 # Placeholder functions for Phase 6 features - to be implemented
 
 async def create_high_quality_article_content(content: str, article_type: str, metadata: Dict[str, Any]) -> str:

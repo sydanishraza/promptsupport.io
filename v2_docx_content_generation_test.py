@@ -636,7 +636,7 @@ class V2DOCXContentGenerationTester:
                 return False
             
             # Get detailed processing results
-            response = requests.get(f"{API_BASE}/content/status/{self.processing_job_id}?detailed=true", timeout=30)
+            response = requests.get(f"{API_BASE}/jobs/{self.processing_job_id}?detailed=true", timeout=30)
             
             if response.status_code != 200:
                 self.log_test("Pipeline Step-by-Step Analysis", False, f"Could not get detailed processing status: HTTP {response.status_code}")

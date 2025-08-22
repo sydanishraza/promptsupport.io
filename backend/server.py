@@ -6948,6 +6948,77 @@ class V2VersioningSystem:
         except Exception as e:
             print(f"❌ V2 VERSIONING: Error adding version metadata to articles - {e} - run {run_id} - engine=v2")
             return articles  # Return original articles on error
+    
+    async def _create_version_record(self, version_metadata: dict, generated_articles_result: dict, 
+                                   publishing_result: dict, run_id: str) -> dict:
+        """Create comprehensive version record for storage"""
+        try:
+            version_record = {
+                "version_record_id": f"version_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "engine": "v2",
+                
+                # Version metadata
+                **version_metadata,
+                
+                # Processing metadata
+                "processing_metadata": {
+                    "articles_generated": len(generated_articles_result.get('generated_articles', [])),
+                    "publishing_status": publishing_result.get('publishing_status', 'unknown'),
+                    "published_articles": publishing_result.get('published_articles', 0),
+                    "coverage_achieved": publishing_result.get('coverage_achieved', 0)
+                },
+                
+                # Version chain metadata
+                "version_chain": {
+                    "is_initial_version": version_metadata.get('version', 1) == 1,
+                    "is_update": version_metadata.get('supersedes') is not None,
+                    "previous_run_id": version_metadata.get('supersedes'),
+                    "version_number": version_metadata.get('version', 1)
+                },
+                
+                # Storage metadata
+                "created_at": datetime.utcnow().isoformat(),
+                "record_type": "v2_version_record"
+            }
+            
+            return version_record
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error creating version record - {e} - run {run_id} - engine=v2")
+            return {
+                "version_record_id": f"version_{run_id}_error",
+                "run_id": run_id,
+                "engine": "v2",
+                "error": str(e)
+            }
+    
+    async def _store_version_record(self, version_record: dict, run_id: str) -> bool:
+        """Store version record in database"""
+        try:
+            result = await db.v2_version_records.insert_one(version_record)
+            
+            if result.inserted_id:
+                print(f"💾 V2 VERSIONING: Version record stored - ID: {result.inserted_id} - run {run_id} - engine=v2")
+                return True
+            else:
+                print(f"❌ V2 VERSIONING: Failed to store version record - run {run_id} - engine=v2")
+                return False
+                
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error storing version record - {e} - run {run_id} - engine=v2")
+            return False
+    
+    def _create_versioning_result(self, status: str, run_id: str, additional_data: dict) -> dict:
+        """Create a standard versioning result structure"""
+        return {
+            "versioning_id": f"versioning_{run_id}_{int(datetime.utcnow().timestamp())}",
+            "run_id": run_id,
+            "versioning_status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2",
+            **additional_data
+        }
 
 # Global V2 Versioning System instance
 v2_versioning_system = V2VersioningSystem()

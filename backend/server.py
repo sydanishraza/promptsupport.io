@@ -23771,6 +23771,8 @@ async def get_content_library_articles():
                 "source_type": clean_article.get("source_type", ""),
                 "takeaways": clean_article.get("takeaways", []),  # Added takeaways too
                 "metadata": clean_article.get("metadata", {}),    # Added metadata - now ObjectId safe
+                "processing_metadata": clean_article.get("processing_metadata", {}),  # Added processing metadata
+                "engine": clean_article.get("engine"),  # Added engine field for V2 articles
                 "created_at": clean_article.get("created_at"),
                 "updated_at": clean_article.get("updated_at")
             })

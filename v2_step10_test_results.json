@@ -1,0 +1,141 @@
+{
+  "total_tests": 11,
+  "passed_tests": 0,
+  "success_rate": 0.0,
+  "failed_tests": [
+    {
+      "test": "V2 Engine Health Check",
+      "details": "Missing adjustment features: ['word_count_analysis', 'merge_split_suggestions', 'granularity_alignment']",
+      "data": null
+    },
+    {
+      "test": "Adjustment Diagnostics Endpoint",
+      "details": "Missing fields: ['adjustment_runs_with_issues']",
+      "data": null
+    },
+    {
+      "test": "Detailed Adjustment Analysis",
+      "details": "No sample run IDs available for testing",
+      "data": null
+    },
+    {
+      "test": "Word Count Analysis Accuracy",
+      "details": "Exception: HTTPSConnectionPool(host='smartdoc-v2.preview.emergentagent.com', port=443): Read timed out. (read timeout=60)",
+      "data": null
+    },
+    {
+      "test": "LLM Balancing Analysis",
+      "details": "No sample run IDs available for testing",
+      "data": null
+    },
+    {
+      "test": "Readability Scoring",
+      "details": "No sample run IDs available for testing",
+      "data": null
+    },
+    {
+      "test": "Adjustment Application System",
+      "details": "No sample run IDs available for testing",
+      "data": null
+    },
+    {
+      "test": "Adjustment Integration Pipelines",
+      "details": "Only 0/3 processing pipelines working",
+      "data": null
+    },
+    {
+      "test": "Adjustment Result Storage",
+      "details": "Failed to access adjustment diagnostics: HTTP 502",
+      "data": null
+    },
+    {
+      "test": "Articles Adjustment Status Marking",
+      "details": "Failed to access content library: HTTP 502",
+      "data": null
+    },
+    {
+      "test": "Adjustment Rerun Capability",
+      "details": "No sample run IDs available for testing",
+      "data": null
+    }
+  ],
+  "test_results": [
+    {
+      "test": "V2 Engine Health Check",
+      "success": false,
+      "details": "Missing adjustment features: ['word_count_analysis', 'merge_split_suggestions', 'granularity_alignment']",
+      "timestamp": "2025-08-22T10:06:30.459992",
+      "data": null
+    },
+    {
+      "test": "Adjustment Diagnostics Endpoint",
+      "success": false,
+      "details": "Missing fields: ['adjustment_runs_with_issues']",
+      "timestamp": "2025-08-22T10:06:48.245161",
+      "data": null
+    },
+    {
+      "test": "Detailed Adjustment Analysis",
+      "success": false,
+      "details": "No sample run IDs available for testing",
+      "timestamp": "2025-08-22T10:06:48.246508",
+      "data": null
+    },
+    {
+      "test": "Word Count Analysis Accuracy",
+      "success": false,
+      "details": "Exception: HTTPSConnectionPool(host='smartdoc-v2.preview.emergentagent.com', port=443): Read timed out. (read timeout=60)",
+      "timestamp": "2025-08-22T10:07:48.381561",
+      "data": null
+    },
+    {
+      "test": "LLM Balancing Analysis",
+      "success": false,
+      "details": "No sample run IDs available for testing",
+      "timestamp": "2025-08-22T10:07:48.381646",
+      "data": null
+    },
+    {
+      "test": "Readability Scoring",
+      "success": false,
+      "details": "No sample run IDs available for testing",
+      "timestamp": "2025-08-22T10:07:48.381662",
+      "data": null
+    },
+    {
+      "test": "Adjustment Application System",
+      "success": false,
+      "details": "No sample run IDs available for testing",
+      "timestamp": "2025-08-22T10:07:48.381676",
+      "data": null
+    },
+    {
+      "test": "Adjustment Integration Pipelines",
+      "success": false,
+      "details": "Only 0/3 processing pipelines working",
+      "timestamp": "2025-08-22T10:10:48.805546",
+      "data": null
+    },
+    {
+      "test": "Adjustment Result Storage",
+      "success": false,
+      "details": "Failed to access adjustment diagnostics: HTTP 502",
+      "timestamp": "2025-08-22T10:11:16.506330",
+      "data": null
+    },
+    {
+      "test": "Articles Adjustment Status Marking",
+      "success": false,
+      "details": "Failed to access content library: HTTP 502",
+      "timestamp": "2025-08-22T10:11:16.609480",
+      "data": null
+    },
+    {
+      "test": "Adjustment Rerun Capability",
+      "success": false,
+      "details": "No sample run IDs available for testing",
+      "timestamp": "2025-08-22T10:11:16.610780",
+      "data": null
+    }
+  ]
+}

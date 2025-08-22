@@ -23323,6 +23323,46 @@ Source Information:
             
             print(f"✅ V2 ENGINE: Step 9 complete for URL processing - QA status: {qa_status}, Issues found: {issues_found} - engine=v2")
             
+            # V2 STEP 10: Adaptive Adjustment (balance splits/length)
+            print(f"⚖️ V2 ENGINE: Starting Step 10 - Adaptive adjustment for URL processing - engine=v2")
+            
+            # Perform adaptive adjustment for article length and split optimization
+            adjustment_result = await v2_adaptive_adjustment_system.perform_adaptive_adjustment(
+                generated_articles_result, analysis, run_id
+            )
+            
+            # Check adjustment status and update chunks accordingly
+            adjustment_status = adjustment_result.get('adjustment_status', 'unknown')
+            total_adjustments = adjustment_result.get('adjustment_summary', {}).get('total_adjustments', 0)
+            readability_score = adjustment_result.get('readability_score', 0.5)
+            
+            if adjustment_status == 'error':
+                print(f"❌ V2 ENGINE: Step 10 adjustment failed with error for URL processing - run {run_id} - engine=v2")
+            elif total_adjustments == 0:
+                print(f"✅ V2 ENGINE: Step 10 adjustment complete for URL processing - No adjustments needed, optimal balance achieved - engine=v2")
+                # Add adjustment metadata to chunks
+                for chunk in chunks:
+                    chunk.setdefault('metadata', {})['adjustment_result'] = adjustment_result
+                    chunk['adjustment_status'] = 'optimal'
+                    chunk['readability_score'] = readability_score
+            else:
+                print(f"⚖️ V2 ENGINE: Step 10 found {total_adjustments} adjustments for URL processing - Articles balanced for optimal readability - engine=v2")
+                # Mark chunks with adjustment recommendations
+                for chunk in chunks:
+                    chunk.setdefault('metadata', {})['adjustment_result'] = adjustment_result
+                    chunk['adjustment_status'] = 'adjusted'
+                    chunk['adjustments_applied'] = total_adjustments
+                    chunk['readability_score'] = readability_score
+            
+            # Store adjustment result separately for analysis
+            try:
+                await db.v2_adjustment_results.insert_one(adjustment_result)
+                print(f"💾 V2 ENGINE: Stored URL adjustment result for analysis - adjustment_id: {adjustment_result.get('adjustment_id')} - engine=v2")
+            except Exception as adjustment_storage_error:
+                print(f"❌ V2 ENGINE: Error storing URL adjustment result - {adjustment_storage_error} - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Step 10 complete for URL processing - Adjustment status: {adjustment_status}, Readability score: {readability_score:.2f} - engine=v2")
+            
             # CRITICAL FIX: Store V2 generated articles in content library for frontend access
             if chunks:
                 for chunk in chunks:

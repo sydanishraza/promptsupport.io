@@ -250,10 +250,12 @@ class V2VersioningSystemTester:
                     await asyncio.sleep(3)
                     
                     # Process updated content
-                    form_data2 = aiohttp.FormData()
-                    form_data2.add_field('content', updated_content)
+                    payload2 = {
+                        "content": updated_content,
+                        "content_type": "text"
+                    }
                     
-                    async with self.session.post(f"{self.backend_url}/api/content/process", data=form_data2) as response2:
+                    async with self.session.post(f"{self.backend_url}/api/content/process", json=payload2) as response2:
                         if response2.status == 200:
                             data2 = await response2.json()
                             job_id2 = data2.get('job_id')

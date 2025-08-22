@@ -194,7 +194,7 @@ class V2DOCXContentGenerationTester:
                 'processing_mode': 'v2_engine'
             }
             
-            response = requests.post(f"{API_BASE}/content/process-file", files=files, data=data, timeout=60)
+            response = requests.post(f"{API_BASE}/content/upload", files=files, data=data, timeout=60)
             
             if response.status_code != 200:
                 self.log_test("DOCX File Upload Processing", False, f"HTTP {response.status_code}: {response.text}")

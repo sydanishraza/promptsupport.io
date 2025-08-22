@@ -254,7 +254,8 @@ class V2MediaManagementTester:
             if response.status_code == 200:
                 data = response.json()
                 success = data.get('success', False)
-                asset_id = data.get('asset_id')
+                asset_data = data.get('asset', {})
+                asset_id = asset_data.get('id')
                 
                 if success and asset_id:
                     self.log_test("Media Storage and Organization", True, 
@@ -267,7 +268,7 @@ class V2MediaManagementTester:
                         pass  # Ignore cleanup errors
                 else:
                     self.log_test("Media Storage and Organization", False, 
-                                f"Upload failed: {data}")
+                                f"Upload failed: success={success}, asset_id={asset_id}")
             else:
                 self.log_test("Media Storage and Organization", False, 
                             f"HTTP {response.status_code}: {response.text[:200]}")

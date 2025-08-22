@@ -319,30 +319,32 @@ class V2MediaManagementTester:
         """Test 7: Intelligent Fallback Analysis with Complete Field Structure"""
         try:
             # Test with invalid image data to trigger fallback
-            payload = {
-                "base64_data": "data:image/png;base64,invalid_data",
+            form_data = {
+                "media_data": "data:image/png;base64,invalid_data",
                 "alt_text": "Test fallback image",
                 "context": "Testing fallback analysis when vision processing fails"
             }
             
-            response = requests.post(f"{API_BASE}/media/analyze", 
-                                   json=payload, timeout=10)
+            response = requests.post(f"{API_BASE}/media-intelligence", 
+                                   data=form_data, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Check that fallback still provides required fields
-                has_contextual_caption = 'contextual_caption' in data
-                has_placement_suggestion = 'placement_suggestion' in data
-                processing_status = data.get('processing_status', 'unknown')
+                success = data.get('success', False)
+                analysis = data.get('analysis', {})
+                has_contextual_caption = 'contextual_caption' in analysis
+                has_placement_suggestion = 'placement_suggestion' in analysis
+                processing_status = analysis.get('processing_status', 'unknown')
                 
                 # Fallback should still provide these fields
-                if has_contextual_caption and has_placement_suggestion:
+                if success and has_contextual_caption and has_placement_suggestion:
                     self.log_test("Intelligent Fallback Analysis", True, 
                                 f"Fallback provides required fields, Status: {processing_status}")
                 else:
                     self.log_test("Intelligent Fallback Analysis", False, 
-                                f"Fallback missing fields: contextual_caption={has_contextual_caption}, placement_suggestion={has_placement_suggestion}")
+                                f"Success: {success}, contextual_caption={has_contextual_caption}, placement_suggestion={has_placement_suggestion}")
             else:
                 self.log_test("Intelligent Fallback Analysis", False, 
                             f"HTTP {response.status_code}: {response.text[:200]}")

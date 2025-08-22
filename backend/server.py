@@ -6714,6 +6714,85 @@ class V2PublishingSystem:
 # Global V2 Publishing System instance
 v2_publishing_system = V2PublishingSystem()
 
+# ========================================
+# V2 ENGINE: VERSIONING & DIFF SYSTEM
+# ========================================
+
+class V2VersioningSystem:
+    """V2 Engine: Versioning and diff system for reprocessing support and version comparison"""
+    
+    def __init__(self):
+        self.version_metadata_fields = [
+            'source_hash', 'version', 'supersedes', 'version_timestamp', 'change_summary'
+        ]
+        
+        self.diff_comparison_fields = [
+            'title', 'toc', 'sections', 'faq', 'related_links', 'content_changes'
+        ]
+    
+    async def manage_versioning(self, content: str, content_type: str, articles: list, 
+                              generated_articles_result: dict, publishing_result: dict, run_id: str) -> dict:
+        """V2 Engine: Manage versioning for content and articles"""
+        try:
+            print(f"🔄 V2 VERSIONING: Starting versioning management - run {run_id} - engine=v2")
+            
+            # Step 1: Calculate source hash for change detection
+            source_hash = self._calculate_source_hash(content, content_type)
+            
+            # Step 2: Check for existing versions
+            existing_version_info = await self._find_existing_versions(source_hash, content_type, run_id)
+            
+            # Step 3: Determine version number and supersedes relationship
+            version_metadata = await self._determine_version_metadata(
+                source_hash, existing_version_info, run_id
+            )
+            
+            # Step 4: Store version metadata with articles
+            versioned_articles = await self._add_version_metadata_to_articles(
+                articles, version_metadata, run_id
+            )
+            
+            # Step 5: Create version record
+            version_record = await self._create_version_record(
+                version_metadata, generated_articles_result, publishing_result, run_id
+            )
+            
+            # Step 6: Store version record
+            await self._store_version_record(version_record, run_id)
+            
+            # Step 7: Generate diff if this is an update
+            diff_result = None
+            if version_metadata.get('supersedes'):
+                diff_result = await self._generate_version_diff(
+                    version_metadata['supersedes'], run_id, versioned_articles
+                )
+            
+            versioning_result = {
+                "versioning_id": f"versioning_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "versioning_status": "success",
+                "version_metadata": version_metadata,
+                "version_record": version_record,
+                "diff_result": diff_result,
+                "versioned_articles_count": len(versioned_articles),
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+            
+            version_number = version_metadata.get('version', 1)
+            is_update = version_metadata.get('supersedes') is not None
+            
+            update_text = "(update)" if is_update else "(new)"
+            print(f"✅ V2 VERSIONING: Versioning complete - Version {version_number} {update_text} - run {run_id} - engine=v2")
+            return versioning_result
+            
+        except Exception as e:
+            print(f"❌ V2 VERSIONING: Error in versioning management - {e} - run {run_id} - engine=v2")
+            return self._create_versioning_result("error", run_id, {"error": str(e)})
+
+# Global V2 Versioning System instance
+v2_versioning_system = V2VersioningSystem()
+
 # Placeholder functions for Phase 6 features - to be implemented
 
 async def create_high_quality_article_content(content: str, article_type: str, metadata: Dict[str, Any]) -> str:

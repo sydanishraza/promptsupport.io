@@ -23773,6 +23773,15 @@ async def get_content_library_articles():
                 "metadata": clean_article.get("metadata", {}),    # Added metadata - now ObjectId safe
                 "processing_metadata": clean_article.get("processing_metadata", {}),  # Added processing metadata
                 "engine": clean_article.get("engine"),  # Added engine field for V2 articles
+                # V2 Publishing comprehensive structure fields
+                "html": clean_article.get("html"),
+                "markdown": clean_article.get("markdown"),
+                "toc": clean_article.get("toc"),
+                "faq": clean_article.get("faq"),
+                "related_links": clean_article.get("related_links"),
+                "provenance_map": clean_article.get("provenance_map"),
+                "metrics": clean_article.get("metrics"),
+                "media_references": clean_article.get("media_references"),
                 "created_at": clean_article.get("created_at"),
                 "updated_at": clean_article.get("updated_at")
             })

@@ -6053,6 +6053,667 @@ Analyze the word counts and return ONLY JSON in this exact format:
 # Global V2 Adaptive Adjustment System instance
 v2_adaptive_adjustment_system = V2AdaptiveAdjustmentSystem()
 
+# ========================================
+# V2 ENGINE: PUBLISHING SYSTEM
+# ========================================
+
+class V2PublishingSystem:
+    """V2 Engine: Publishing system for persisting finalized V2 content as single source of truth"""
+    
+    def __init__(self):
+        self.required_fields = [
+            'html', 'markdown', 'toc', 'faq', 'related_links', 
+            'provenance_map', 'metrics', 'media_references'
+        ]
+        
+        self.coverage_requirement = 100.0  # 100% coverage required for publishing
+        
+        self.v2_publishing_metadata = {
+            "engine": "v2",
+            "publishing_version": "1.0",
+            "content_source": "v2_only",
+            "quality_assured": True
+        }
+    
+    async def publish_v2_content(self, articles: list, generated_articles_result: dict, 
+                               validation_result: dict, qa_result: dict, 
+                               adjustment_result: dict, run_id: str) -> dict:
+        """V2 Engine: Publish finalized V2 content to content library"""
+        try:
+            print(f"📚 V2 PUBLISHING: Starting V2-only content publishing - run {run_id} - engine=v2")
+            
+            if not articles:
+                print(f"⚠️ V2 PUBLISHING: No articles to publish - run {run_id} - engine=v2")
+                return self._create_publishing_result("no_articles", run_id, {"article_count": 0})
+            
+            # Step 1: Validate V2-only content
+            v2_validation_result = await self._validate_v2_only_content(articles, validation_result, run_id)
+            if not v2_validation_result['is_valid']:
+                return self._create_publishing_result("validation_failed", run_id, v2_validation_result)
+            
+            # Step 2: Verify 100% coverage requirement
+            coverage_verification_result = await self._verify_coverage_requirement(validation_result, run_id)
+            if not coverage_verification_result['meets_requirement']:
+                return self._create_publishing_result("coverage_insufficient", run_id, coverage_verification_result)
+            
+            # Step 3: Prepare comprehensive content library structure
+            content_library_articles = await self._prepare_content_library_structure(
+                articles, generated_articles_result, validation_result, qa_result, adjustment_result, run_id
+            )
+            
+            # Step 4: Persist to content library
+            publishing_results = await self._persist_to_content_library(content_library_articles, run_id)
+            
+            # Step 5: Create comprehensive publishing result
+            final_publishing_result = {
+                "publishing_id": f"publishing_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "publishing_status": "success",
+                "published_articles": len(publishing_results.get('published_articles', [])),
+                "coverage_achieved": coverage_verification_result.get('coverage_percent', 0),
+                "v2_validation": v2_validation_result,
+                "coverage_verification": coverage_verification_result,
+                "publishing_results": publishing_results,
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+            
+            published_count = final_publishing_result['published_articles']
+            coverage = final_publishing_result['coverage_achieved']
+            
+            print(f"✅ V2 PUBLISHING: Publishing complete - {published_count} articles published with {coverage}% coverage - run {run_id} - engine=v2")
+            return final_publishing_result
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error in V2 content publishing - {e} - run {run_id} - engine=v2")
+            return self._create_publishing_result("error", run_id, {"error": str(e)})
+    
+    async def _validate_v2_only_content(self, articles: list, validation_result: dict, run_id: str) -> dict:
+        """Validate that content is V2-only with no v1 contamination"""
+        try:
+            print(f"🔍 V2 PUBLISHING: Validating V2-only content - run {run_id} - engine=v2")
+            
+            validation_issues = []
+            v2_articles_count = 0
+            
+            for article in articles:
+                metadata = article.get('metadata', {})
+                engine = metadata.get('engine', 'unknown')
+                processing_version = metadata.get('processing_version', 'unknown')
+                generated_by = metadata.get('generated_by', 'unknown')
+                
+                # Check for V2 engine processing
+                if engine != 'v2':
+                    validation_issues.append(f"Article {article.get('id', 'unknown')} not processed by V2 engine (engine: {engine})")
+                
+                # Check for V2 processing version
+                if processing_version != '2.0':
+                    validation_issues.append(f"Article {article.get('id', 'unknown')} not using V2 processing version (version: {processing_version})")
+                    
+                # Check for V2 article generator
+                if 'v2_article_generator' not in generated_by:
+                    validation_issues.append(f"Article {article.get('id', 'unknown')} not generated by V2ArticleGenerator (generated_by: {generated_by})")
+                
+                if engine == 'v2' and processing_version == '2.0':
+                    v2_articles_count += 1
+            
+            # Check validation result origin
+            validation_engine = validation_result.get('engine', 'unknown')
+            if validation_engine != 'v2':
+                validation_issues.append(f"Validation not performed by V2 engine (validation_engine: {validation_engine})")
+            
+            is_valid = len(validation_issues) == 0
+            validation_success_rate = (v2_articles_count / len(articles)) * 100 if articles else 0
+            
+            v2_validation_result = {
+                "is_valid": is_valid,
+                "v2_articles_count": v2_articles_count,
+                "total_articles": len(articles),
+                "validation_success_rate": validation_success_rate,
+                "validation_issues": validation_issues,
+                "v2_only_compliance": validation_success_rate == 100.0
+            }
+            
+            print(f"🔍 V2 PUBLISHING: V2 validation complete - {validation_success_rate:.1f}% V2 compliance, {len(validation_issues)} issues - run {run_id} - engine=v2")
+            return v2_validation_result
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error validating V2-only content - {e} - run {run_id} - engine=v2")
+            return {
+                "is_valid": False,
+                "validation_issues": [f"Validation error: {str(e)}"],
+                "v2_only_compliance": False
+            }
+    
+    async def _verify_coverage_requirement(self, validation_result: dict, run_id: str) -> dict:
+        """Verify 100% coverage requirement for publishing"""
+        try:
+            print(f"📊 V2 PUBLISHING: Verifying 100% coverage requirement - run {run_id} - engine=v2")
+            
+            # Extract coverage from validation result
+            fidelity_coverage = validation_result.get('fidelity_coverage', {})
+            coverage_percent = fidelity_coverage.get('coverage_percent', 0.0)
+            
+            # Alternative: check summary scores
+            if coverage_percent == 0.0:
+                summary_scores = validation_result.get('summary_scores', {})
+                coverage_percent = summary_scores.get('coverage_percent', 0.0)
+            
+            meets_requirement = coverage_percent >= self.coverage_requirement
+            coverage_gap = self.coverage_requirement - coverage_percent if not meets_requirement else 0.0
+            
+            uncovered_blocks = fidelity_coverage.get('uncovered_blocks', [])
+            
+            coverage_verification = {
+                "meets_requirement": meets_requirement,
+                "coverage_percent": coverage_percent,
+                "required_coverage": self.coverage_requirement,
+                "coverage_gap": coverage_gap,
+                "uncovered_blocks_count": len(uncovered_blocks),
+                "uncovered_blocks": uncovered_blocks[:5],  # Show first 5 uncovered blocks
+                "coverage_status": "sufficient" if meets_requirement else "insufficient"
+            }
+            
+            status_message = f"Coverage: {coverage_percent}% ({'✅ SUFFICIENT' if meets_requirement else '❌ INSUFFICIENT'})"
+            print(f"📊 V2 PUBLISHING: {status_message} - run {run_id} - engine=v2")
+            
+            return coverage_verification
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error verifying coverage requirement - {e} - run {run_id} - engine=v2")
+            return {
+                "meets_requirement": False,
+                "coverage_percent": 0.0,
+                "coverage_status": "error",
+                "error": str(e)
+            }
+    
+    async def _prepare_content_library_structure(self, articles: list, generated_articles_result: dict,
+                                               validation_result: dict, qa_result: dict, 
+                                               adjustment_result: dict, run_id: str) -> list:
+        """Prepare comprehensive content library structure for V2 articles"""
+        try:
+            print(f"🏗️ V2 PUBLISHING: Preparing content library structure - run {run_id} - engine=v2")
+            
+            content_library_articles = []
+            generated_articles = generated_articles_result.get('generated_articles', [])
+            
+            for i, article in enumerate(articles):
+                # Find corresponding generated article for additional metadata
+                generated_article = None
+                if i < len(generated_articles):
+                    generated_article = generated_articles[i]
+                
+                # Create comprehensive content library article
+                content_library_article = await self._create_content_library_article(
+                    article, generated_article, validation_result, qa_result, adjustment_result, run_id
+                )
+                
+                content_library_articles.append(content_library_article)
+            
+            print(f"🏗️ V2 PUBLISHING: Content library structure prepared - {len(content_library_articles)} articles - run {run_id} - engine=v2")
+            return content_library_articles
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error preparing content library structure - {e} - run {run_id} - engine=v2")
+            return []
+    
+    async def _create_content_library_article(self, article: dict, generated_article: dict,
+                                            validation_result: dict, qa_result: dict,
+                                            adjustment_result: dict, run_id: str) -> dict:
+        """Create comprehensive content library article with all V2 metadata"""
+        try:
+            article_id = article.get('id', str(uuid.uuid4()))
+            
+            # Extract core content
+            html_content = article.get('content', '')
+            markdown_content = article.get('markdown', '')
+            
+            # Generate TOC with anchors
+            toc = await self._generate_toc_with_anchors(html_content)
+            
+            # Extract FAQs from content  
+            faq = await self._extract_faq_structure(html_content)
+            
+            # Extract related links
+            related_links = await self._extract_related_links(html_content)
+            
+            # Create provenance map
+            provenance_map = await self._create_provenance_map(article, generated_article)
+            
+            # Compile comprehensive metrics
+            metrics = await self._compile_comprehensive_metrics(
+                article, validation_result, qa_result, adjustment_result
+            )
+            
+            # Extract media references (no embedding)
+            media_references = await self._extract_media_references(html_content, article)
+            
+            # Create comprehensive content library article
+            content_library_article = {
+                "id": article_id,
+                "title": article.get('title', 'Generated Article'),
+                "summary": article.get('summary', ''),
+                
+                # Core content (required)
+                "html": html_content,
+                "markdown": markdown_content,
+                "toc": toc,
+                "faq": faq,
+                "related_links": related_links,
+                "provenance_map": provenance_map,
+                "metrics": metrics,
+                "media_references": media_references,
+                
+                # Publishing metadata
+                "status": "published",
+                "published_at": datetime.utcnow().isoformat(),
+                "created_at": article.get('created_at', datetime.utcnow().isoformat()),
+                "updated_at": datetime.utcnow().isoformat(),
+                
+                # V2 Engine metadata
+                "engine": "v2",
+                "publishing_version": "1.0",
+                "content_source": "v2_only",
+                "quality_assured": True,
+                
+                # Processing pipeline metadata
+                "processing_metadata": {
+                    "run_id": run_id,
+                    "processing_version": "2.0",
+                    "generated_by": article.get('metadata', {}).get('generated_by', 'v2_article_generator'),
+                    "validation_status": article.get('validation_status', 'unknown'),
+                    "qa_status": article.get('qa_status', 'unknown'),
+                    "adjustment_status": article.get('adjustment_status', 'unknown'),
+                    "readability_score": article.get('readability_score', 0.5)
+                },
+                
+                # Legacy compatibility (minimal)
+                "tags": article.get('tags', []),
+                "takeaways": article.get('takeaways', [])
+            }
+            
+            return content_library_article
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error creating content library article - {e}")
+            return {
+                "id": article.get('id', str(uuid.uuid4())),
+                "title": article.get('title', 'Error Article'),
+                "html": article.get('content', ''),
+                "error": str(e),
+                "engine": "v2"
+            }
+    
+    async def _generate_toc_with_anchors(self, html_content: str) -> list:
+        """Generate table of contents with anchor links"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            toc = []
+            
+            # Find all headings (h1, h2, h3, h4)
+            headings = soup.find_all(['h1', 'h2', 'h3', 'h4'])
+            
+            for heading in headings:
+                heading_text = heading.get_text().strip()
+                heading_id = heading.get('id', '')
+                
+                # Generate ID if not present
+                if not heading_id:
+                    heading_id = heading_text.lower().replace(' ', '-').replace('?', '').replace('!', '')
+                    heading['id'] = heading_id
+                
+                toc_entry = {
+                    "level": int(heading.name[1]),  # h1 -> 1, h2 -> 2, etc.
+                    "title": heading_text,
+                    "anchor": f"#{heading_id}",
+                    "id": heading_id
+                }
+                
+                toc.append(toc_entry)
+            
+            return toc
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error generating TOC - {e}")
+            return []
+    
+    async def _extract_faq_structure(self, html_content: str) -> list:
+        """Extract FAQ structure from HTML content"""
+        try:
+            import re
+            
+            faqs = []
+            
+            # Pattern 1: Q: ... A: ...
+            qa_pattern = r'Q:\s*(.*?)\s*A:\s*(.*?)(?=Q:|$)'
+            matches = re.finditer(qa_pattern, html_content, re.IGNORECASE | re.DOTALL)
+            
+            for match in matches:
+                question = match.group(1).strip()
+                answer = match.group(2).strip()
+                
+                if question and answer:
+                    faqs.append({
+                        "question": question,
+                        "answer": answer,
+                        "id": f"faq_{len(faqs) + 1}"
+                    })
+            
+            # Pattern 2: HTML structure (h3 with Q:, followed by p with A:)
+            if not faqs:  # Only if no Q&A pattern found
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_content, 'html.parser')
+                
+                # Look for FAQ sections
+                faq_headings = soup.find_all(['h2', 'h3'], string=re.compile(r'FAQ|Questions?', re.I))
+                
+                for faq_heading in faq_headings:
+                    # Find questions after this heading
+                    current_element = faq_heading.next_sibling
+                    
+                    while current_element and current_element.name not in ['h1', 'h2']:
+                        if hasattr(current_element, 'get_text'):
+                            text = current_element.get_text().strip()
+                            if text.startswith('Q:') or text.startswith('Question:'):
+                                question = text.replace('Q:', '').replace('Question:', '').strip()
+                                
+                                # Look for answer in next element
+                                answer_element = current_element.next_sibling
+                                if answer_element and hasattr(answer_element, 'get_text'):
+                                    answer_text = answer_element.get_text().strip()
+                                    if answer_text.startswith('A:') or answer_text.startswith('Answer:'):
+                                        answer = answer_text.replace('A:', '').replace('Answer:', '').strip()
+                                        
+                                        faqs.append({
+                                            "question": question,
+                                            "answer": answer,
+                                            "id": f"faq_{len(faqs) + 1}"
+                                        })
+                        
+                        current_element = current_element.next_sibling
+            
+            return faqs
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error extracting FAQ structure - {e}")
+            return []
+    
+    async def _extract_related_links(self, html_content: str) -> list:
+        """Extract related links from HTML content"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            related_links = []
+            
+            # Find all links
+            links = soup.find_all('a', href=True)
+            
+            for link in links:
+                href = link.get('href', '')
+                link_text = link.get_text().strip()
+                
+                if href and link_text:
+                    link_entry = {
+                        "title": link_text,
+                        "url": href,
+                        "type": "internal" if href.startswith('#') or href.startswith('/') else "external",
+                        "description": link_text  # Use link text as description
+                    }
+                    
+                    # Avoid duplicates
+                    if not any(existing['url'] == href for existing in related_links):
+                        related_links.append(link_entry)
+            
+            return related_links
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error extracting related links - {e}")
+            return []
+    
+    async def _create_provenance_map(self, article: dict, generated_article: dict) -> dict:
+        """Create provenance map linking article/sections to source blocks"""
+        try:
+            provenance_map = {
+                "article_id": article.get('id', 'unknown'),
+                "source_mapping": {},
+                "coverage_summary": {}
+            }
+            
+            if generated_article:
+                article_data = generated_article.get('article_data', {})
+                validation_metadata = article_data.get('validation_metadata', {})
+                
+                # Map assigned block IDs
+                assigned_blocks = validation_metadata.get('block_ids_assigned', [])
+                if assigned_blocks:
+                    provenance_map["source_mapping"]["assigned_blocks"] = assigned_blocks
+                    provenance_map["coverage_summary"]["total_blocks_assigned"] = len(assigned_blocks)
+                
+                # Add source document information
+                article_metadata = article.get('metadata', {})
+                normalized_doc_id = article_metadata.get('normalized_doc_id', 'unknown')
+                
+                provenance_map["source_mapping"]["normalized_doc_id"] = normalized_doc_id
+                provenance_map["source_mapping"]["run_id"] = article_metadata.get('run_id', 'unknown')
+                
+                # Add section-level mapping if available
+                # This would be enhanced in a full implementation to map specific sections to source blocks
+                provenance_map["source_mapping"]["mapping_method"] = "v2_article_generator"
+                provenance_map["source_mapping"]["extraction_method"] = article_metadata.get('extraction_method', 'v2_processing')
+            
+            return provenance_map
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error creating provenance map - {e}")
+            return {
+                "article_id": article.get('id', 'unknown'),
+                "source_mapping": {},
+                "error": str(e)
+            }
+    
+    async def _compile_comprehensive_metrics(self, article: dict, validation_result: dict,
+                                           qa_result: dict, adjustment_result: dict) -> dict:
+        """Compile comprehensive metrics from all V2 pipeline steps"""
+        try:
+            metrics = {
+                "compilation_timestamp": datetime.utcnow().isoformat(),
+                "metrics_version": "v2.1"
+            }
+            
+            # Validation metrics (Step 8)
+            if validation_result:
+                summary_scores = validation_result.get('summary_scores', {})
+                metrics["fidelity_score"] = summary_scores.get('fidelity_score', 0.0)
+                metrics["coverage_percent"] = summary_scores.get('coverage_percent', 0.0)
+                metrics["style_compliance"] = summary_scores.get('style_compliance', 0.0)
+                metrics["placeholder_count"] = summary_scores.get('placeholder_count', 0)
+                
+                validation_metrics = validation_result.get('validation_metrics', {})
+                metrics["redundancy_score"] = validation_metrics.get('redundancy_score', 0.0)
+                metrics["granularity_alignment_score"] = validation_metrics.get('granularity_alignment_score', 0.0)
+                metrics["complexity_alignment_score"] = validation_metrics.get('complexity_alignment_score', 0.0)
+            
+            # QA metrics (Step 9)
+            if qa_result:
+                qa_summary = qa_result.get('summary', {})
+                metrics["qa_issues_found"] = qa_summary.get('issues_found', 0)
+                metrics["duplicates_found"] = qa_summary.get('total_duplicates', 0)
+                metrics["invalid_links_found"] = qa_summary.get('total_invalid_links', 0)
+                metrics["duplicate_faqs_found"] = qa_summary.get('total_duplicate_faqs', 0)
+                metrics["terminology_issues_found"] = qa_summary.get('total_terminology_issues', 0)
+            
+            # Adjustment metrics (Step 10)
+            if adjustment_result:
+                adjustment_summary = adjustment_result.get('adjustment_summary', {})
+                metrics["readability_score"] = adjustment_result.get('readability_score', 0.5)
+                metrics["total_adjustments"] = adjustment_summary.get('total_adjustments', 0)
+                metrics["merge_suggestions"] = adjustment_summary.get('total_merge_suggestions', 0)
+                metrics["split_suggestions"] = adjustment_summary.get('total_split_suggestions', 0)
+                metrics["granularity_alignment"] = adjustment_result.get('granularity_alignment', 'unknown')
+            
+            # Article-specific metrics
+            article_metadata = article.get('metadata', {})
+            metrics["validation_status"] = article.get('validation_status', 'unknown')
+            metrics["qa_status"] = article.get('qa_status', 'unknown')
+            metrics["adjustment_status"] = article.get('adjustment_status', 'unknown')
+            
+            # Content metrics
+            content_length = len(article.get('content', ''))
+            metrics["content_length_chars"] = content_length
+            metrics["content_length_words"] = len(article.get('content', '').split()) if article.get('content') else 0
+            
+            # Overall quality score (composite metric)
+            quality_components = [
+                metrics.get('fidelity_score', 0) * 0.3,
+                (metrics.get('coverage_percent', 0) / 100) * 0.3,
+                metrics.get('style_compliance', 0) * 0.2,
+                metrics.get('readability_score', 0) * 0.2
+            ]
+            metrics["overall_quality_score"] = sum(quality_components)
+            
+            return metrics
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error compiling comprehensive metrics - {e}")
+            return {
+                "compilation_error": str(e),
+                "metrics_version": "error"
+            }
+    
+    async def _extract_media_references(self, html_content: str, article: dict) -> list:
+        """Extract media references (IDs/URLs + alt-text) without embedding"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            media_references = []
+            
+            # Find all image references (but don't embed)
+            images = soup.find_all('img')
+            
+            for img in images:
+                src = img.get('src', '')
+                alt_text = img.get('alt', '')
+                
+                if src:
+                    media_ref = {
+                        "type": "image",
+                        "src": src,
+                        "alt_text": alt_text,
+                        "reference_only": True,  # Indicates no embedding
+                        "media_id": src.split('/')[-1] if '/' in src else src  # Extract media ID from URL
+                    }
+                    
+                    media_references.append(media_ref)
+            
+            # Find video references
+            videos = soup.find_all('video')
+            for video in videos:
+                src = video.get('src', '')
+                if src:
+                    media_ref = {
+                        "type": "video",
+                        "src": src,
+                        "reference_only": True,
+                        "media_id": src.split('/')[-1] if '/' in src else src
+                    }
+                    media_references.append(media_ref)
+            
+            # Find audio references
+            audios = soup.find_all('audio')
+            for audio in audios:
+                src = audio.get('src', '')
+                if src:
+                    media_ref = {
+                        "type": "audio",
+                        "src": src,
+                        "reference_only": True,
+                        "media_id": src.split('/')[-1] if '/' in src else src
+                    }
+                    media_references.append(media_ref)
+            
+            return media_references
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error extracting media references - {e}")
+            return []
+    
+    async def _persist_to_content_library(self, content_library_articles: list, run_id: str) -> dict:
+        """Persist V2 articles to content library collection"""
+        try:
+            print(f"💾 V2 PUBLISHING: Persisting to content library - {len(content_library_articles)} articles - run {run_id} - engine=v2")
+            
+            published_articles = []
+            failed_articles = []
+            
+            for article in content_library_articles:
+                try:
+                    # Insert into content library
+                    result = await db.content_library.insert_one(article)
+                    
+                    if result.inserted_id:
+                        published_articles.append({
+                            "article_id": article['id'],
+                            "title": article['title'],
+                            "inserted_id": str(result.inserted_id),
+                            "status": "published"
+                        })
+                        print(f"📚 V2 PUBLISHING: Published article '{article['title']}' - ID: {article['id']} - engine=v2")
+                    else:
+                        failed_articles.append({
+                            "article_id": article['id'],
+                            "title": article['title'],
+                            "error": "Insert operation returned no ID"
+                        })
+                        
+                except Exception as article_error:
+                    failed_articles.append({
+                        "article_id": article.get('id', 'unknown'),
+                        "title": article.get('title', 'unknown'),
+                        "error": str(article_error)
+                    })
+                    print(f"❌ V2 PUBLISHING: Failed to publish article '{article.get('title', 'unknown')}' - {article_error}")
+            
+            persistence_result = {
+                "published_articles": published_articles,
+                "failed_articles": failed_articles,
+                "total_published": len(published_articles),
+                "total_failed": len(failed_articles),
+                "success_rate": (len(published_articles) / len(content_library_articles)) * 100 if content_library_articles else 0
+            }
+            
+            print(f"💾 V2 PUBLISHING: Persistence complete - {len(published_articles)}/{len(content_library_articles)} articles published ({persistence_result['success_rate']:.1f}% success) - run {run_id} - engine=v2")
+            return persistence_result
+            
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error persisting to content library - {e} - run {run_id} - engine=v2")
+            return {
+                "published_articles": [],
+                "failed_articles": [],
+                "total_published": 0,
+                "total_failed": len(content_library_articles),
+                "success_rate": 0.0,
+                "error": str(e)
+            }
+    
+    def _create_publishing_result(self, status: str, run_id: str, additional_data: dict) -> dict:
+        """Create a standard publishing result structure"""
+        return {
+            "publishing_id": f"publishing_{run_id}_{int(datetime.utcnow().timestamp())}",
+            "run_id": run_id,
+            "publishing_status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2",
+            **additional_data
+        }
+
+# Global V2 Publishing System instance
+v2_publishing_system = V2PublishingSystem()
+
 # Placeholder functions for Phase 6 features - to be implemented
 
 async def create_high_quality_article_content(content: str, article_type: str, metadata: Dict[str, Any]) -> str:

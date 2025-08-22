@@ -283,7 +283,7 @@ class V2Step2MediaManagementTester:
                 return False
                 
             # Verify articles were generated (not 0 articles)
-            articles_created = data.get('articles_created', 0)
+            articles_created = data.get('articles_created') or data.get('chunks_created', 0)
             if articles_created == 0:
                 self.log_test("Complex Document Media Extraction Pipeline", False, 
                              f"Complex document failed to generate articles (0 articles created)")

@@ -7359,6 +7359,8 @@ class V2ReviewSystem:
             
             # Get from validation results
             async for validation_result in db.v2_validation_results.find(runs_query).sort("timestamp", -1).limit(limit):
+                # Convert ObjectId to string for serialization
+                validation_result = objectid_to_str(validation_result)
                 run_id = validation_result.get('run_id')
                 if run_id:
                     run_data = await self._compile_run_data_for_review(run_id, validation_result)

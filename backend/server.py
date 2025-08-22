@@ -19168,14 +19168,48 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"✅ V2 ENGINE: Step 10 complete - Adjustment status: {adjustment_status}, Readability score: {readability_score:.2f} - engine=v2")
         
-        # CRITICAL FIX: Store V2 generated articles in content library for frontend access
-        if articles:
+        # V2 STEP 11: Publishing Flow (V2 only)
+        print(f"📚 V2 ENGINE: Starting Step 11 - V2-only publishing flow - engine=v2")
+        
+        # Publish finalized V2 content as single source of truth
+        publishing_result = await v2_publishing_system.publish_v2_content(
+            articles, generated_articles_result, validation_result, qa_result, adjustment_result, run_id
+        )
+        
+        # Check publishing status and update articles accordingly
+        publishing_status = publishing_result.get('publishing_status', 'unknown')
+        published_count = publishing_result.get('published_articles', 0)
+        coverage_achieved = publishing_result.get('coverage_achieved', 0)
+        
+        if publishing_status == 'success':
+            print(f"✅ V2 ENGINE: Step 11 publishing successful - {published_count} articles published with {coverage_achieved}% coverage - engine=v2")
+            # Add publishing metadata to articles
             for article in articles:
-                try:
-                    await db.content_library.insert_one(article)
-                    print(f"💾 V2 ENGINE: Stored article in content library: {article['title']} - engine=v2")
-                except Exception as storage_error:
-                    print(f"❌ V2 ENGINE: Error storing article in content library: {storage_error} - engine=v2")
+                article.setdefault('metadata', {})['publishing_result'] = publishing_result
+                article['publishing_status'] = 'published'
+                article['published_at'] = datetime.utcnow().isoformat()
+        elif publishing_status in ['validation_failed', 'coverage_insufficient']:
+            print(f"⚠️ V2 ENGINE: Step 11 publishing blocked - {publishing_status} - Coverage: {coverage_achieved}% - engine=v2")
+            # Mark articles as unpublishable
+            for article in articles:
+                article.setdefault('metadata', {})['publishing_result'] = publishing_result
+                article['publishing_status'] = 'blocked'
+                article['publishing_reason'] = publishing_status
+        else:
+            print(f"❌ V2 ENGINE: Step 11 publishing failed - Status: {publishing_status} - engine=v2")
+            # Mark articles with error status
+            for article in articles:
+                article.setdefault('metadata', {})['publishing_result'] = publishing_result
+                article['publishing_status'] = 'failed'
+        
+        # Store publishing result separately for analysis
+        try:
+            await db.v2_publishing_results.insert_one(publishing_result)
+            print(f"💾 V2 ENGINE: Stored publishing result for analysis - publishing_id: {publishing_result.get('publishing_id')} - engine=v2")
+        except Exception as publishing_storage_error:
+            print(f"❌ V2 ENGINE: Error storing publishing result - {publishing_storage_error} - engine=v2")
+        
+        print(f"✅ V2 ENGINE: Step 11 complete - Publishing status: {publishing_status}, Articles published: {published_count} - engine=v2")
         
         print(f"✅ V2 ENGINE: Processing complete - Generated {len(articles)} articles using V2ArticleGenerator with {analysis.get('granularity', 'shallow')} granularity for {analysis.get('audience', 'end_user')} audience - engine=v2")
         return articles

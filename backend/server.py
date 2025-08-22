@@ -24559,7 +24559,8 @@ async def get_engine_status():
             "recording_processing": "/api/content/process-recording",
             "validation_diagnostics": "/api/validation/diagnostics",
             "qa_diagnostics": "/api/qa/diagnostics",
-            "adjustment_diagnostics": "/api/adjustment/diagnostics"
+            "adjustment_diagnostics": "/api/adjustment/diagnostics",
+            "publishing_diagnostics": "/api/publishing/diagnostics"
         },
         "features": [
             "multi_dimensional_analysis",

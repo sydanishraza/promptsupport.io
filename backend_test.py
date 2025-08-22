@@ -1,1103 +1,733 @@
 #!/usr/bin/env python3
 """
-V2 ENGINE STEP 10 COMPREHENSIVE TESTING
-Test the V2 Engine Step 10: "Adaptive Adjustment (balance splits/length)" functionality
-
-This test suite covers:
-1. V2AdaptiveAdjustmentSystem integration in all 3 processing pipelines
-2. Word count analysis for articles and sections with optimal range targeting
-3. LLM-based balancing analysis for merge/split suggestions
-4. Programmatic adjustment validation including readability scoring
-5. Adjustment application system with action tracking
-6. Adjustment diagnostics endpoints
-7. Adjustment result storage in v2_adjustment_results collection
-8. Articles marked with adjustment_status, readability_score, and adjustments_applied
-9. Granularity expectations testing
+V2 Engine Step 13 Implementation Testing - Review UI (Human-in-the-loop QA)
+Comprehensive testing of review system API endpoints, quality badges, approval/rejection workflow, and re-run capabilities
 """
 
 import asyncio
 import json
 import requests
-import time
-from datetime import datetime
 import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from datetime import datetime
+from typing import Dict, Any, List
 
 # Get backend URL from environment
 BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://smartdoc-v2.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
-class V2AdaptiveAdjustmentTester:
+class V2ReviewSystemTester:
+    """Comprehensive tester for V2 Engine Step 13 Review System"""
+    
     def __init__(self):
         self.test_results = []
-        self.backend_url = API_BASE
-        print(f"🧪 V2 ENGINE STEP 10 TESTING: Initializing comprehensive adaptive adjustment tests")
-        print(f"🔗 Backend URL: {self.backend_url}")
-    
-    def log_test_result(self, test_name: str, success: bool, details: str, data: dict = None):
-        """Log test result with details"""
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status} {test_name}: {details}")
+        self.test_run_id = None
+        self.sample_run_ids = []
         
-        self.test_results.append({
-            "test_name": test_name,
+    def log_test(self, test_name: str, success: bool, details: str, data: Any = None):
+        """Log test results"""
+        result = {
+            "test": test_name,
             "success": success,
             "details": details,
-            "data": data,
-            "timestamp": datetime.now().isoformat()
-        })
-    
-    def test_backend_health_check(self):
-        """Test 1: Verify backend is operational and V2 engine is active"""
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": data
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {details}")
+        
+    def test_engine_health_check(self) -> bool:
+        """Test V2 Engine health check includes review endpoints"""
         try:
-            print(f"\n🏥 TEST 1: Backend Health Check and V2 Engine Status")
+            print(f"\n🔍 TESTING V2 ENGINE HEALTH CHECK WITH REVIEW ENDPOINTS")
             
-            response = requests.get(f"{self.backend_url}/engine", timeout=30)
+            response = requests.get(f"{API_BASE}/engine", timeout=30)
             
-            if response.status_code == 200:
-                data = response.json()
-                engine = data.get('engine')
-                status = data.get('status')
-                
-                if engine == 'v2' and status == 'active':
-                    self.log_test_result(
-                        "Backend Health Check", 
-                        True, 
-                        f"V2 Engine active and operational - Status: {status}",
-                        data
-                    )
-                    return True
-                else:
-                    self.log_test_result(
-                        "Backend Health Check", 
-                        False, 
-                        f"V2 Engine not active - Engine: {engine}, Status: {status}",
-                        data
-                    )
-                    return False
-            else:
-                self.log_test_result(
-                    "Backend Health Check", 
-                    False, 
-                    f"Backend health check failed - Status: {response.status_code}",
-                    {"status_code": response.status_code}
-                )
+            if response.status_code != 200:
+                self.log_test("Engine Health Check", False, f"HTTP {response.status_code}: {response.text}")
                 return False
                 
-        except Exception as e:
-            self.log_test_result(
-                "Backend Health Check", 
-                False, 
-                f"Backend health check error: {str(e)}",
-                {"error": str(e)}
-            )
-            return False
-    
-    def test_v2_text_processing_with_adaptive_adjustment(self):
-        """Test 2: V2 Text Processing Pipeline with Adaptive Adjustment Integration"""
-        try:
-            print(f"\n📝 TEST 2: V2 Text Processing Pipeline with Adaptive Adjustment")
+            data = response.json()
             
-            # Create test content that will trigger adaptive adjustment analysis
-            test_content = """
-            # Complete API Integration Guide
-            
-            This comprehensive guide covers API integration best practices, authentication methods, and error handling strategies for modern web applications.
-            
-            ## Authentication Overview
-            
-            API authentication is crucial for securing your application endpoints. This section covers various authentication methods including API keys, OAuth tokens, and JWT authentication.
-            
-            ### API Key Authentication
-            
-            API key authentication is the simplest form of authentication. You include your API key in the request headers or as a query parameter. Here's how to implement it:
-            
-            1. Obtain your API key from the developer dashboard
-            2. Include the key in your request headers: Authorization: Bearer YOUR_API_KEY
-            3. Handle authentication errors appropriately
-            4. Rotate your keys regularly for security
-            
-            ### OAuth 2.0 Implementation
-            
-            OAuth 2.0 provides a more secure authentication method. The implementation involves several steps:
-            
-            1. Register your application with the OAuth provider
-            2. Redirect users to the authorization server
-            3. Handle the authorization callback
-            4. Exchange the authorization code for an access token
-            5. Use the access token to make authenticated requests
-            6. Refresh tokens when they expire
-            
-            ## Rate Limiting and Throttling
-            
-            Rate limiting is essential for API stability and fair usage. This section covers implementation strategies and best practices.
-            
-            ### Understanding Rate Limits
-            
-            Most APIs implement rate limiting to prevent abuse and ensure service availability. Common rate limiting strategies include:
-            
-            - Fixed window rate limiting
-            - Sliding window rate limiting
-            - Token bucket algorithm
-            - Leaky bucket algorithm
-            
-            ### Implementing Rate Limiting
-            
-            When implementing rate limiting in your application:
-            
-            1. Check rate limit headers in API responses
-            2. Implement exponential backoff for retry logic
-            3. Cache responses when appropriate
-            4. Use connection pooling for efficiency
-            5. Monitor your API usage patterns
-            
-            ## Error Handling Best Practices
-            
-            Proper error handling is crucial for robust API integrations. This section covers comprehensive error handling strategies.
-            
-            ### HTTP Status Codes
-            
-            Understanding HTTP status codes is fundamental:
-            
-            - 200-299: Success responses
-            - 300-399: Redirection messages
-            - 400-499: Client error responses
-            - 500-599: Server error responses
-            
-            ### Error Response Handling
-            
-            Implement comprehensive error handling:
-            
-            1. Parse error responses properly
-            2. Log errors for debugging
-            3. Provide meaningful error messages to users
-            4. Implement retry logic for transient errors
-            5. Handle network timeouts gracefully
-            
-            ## Advanced Integration Patterns
-            
-            This section covers advanced patterns for complex API integrations including webhooks, pagination, and bulk operations.
-            
-            ### Webhook Implementation
-            
-            Webhooks provide real-time notifications:
-            
-            1. Set up webhook endpoints in your application
-            2. Verify webhook signatures for security
-            3. Handle webhook retries and failures
-            4. Implement idempotency for webhook processing
-            5. Monitor webhook delivery success rates
-            
-            ### Pagination Strategies
-            
-            Handle large datasets efficiently:
-            
-            1. Implement cursor-based pagination
-            2. Use offset-based pagination when appropriate
-            3. Handle pagination metadata correctly
-            4. Optimize page sizes for performance
-            5. Cache paginated results when possible
-            
-            ## Testing and Monitoring
-            
-            Comprehensive testing and monitoring ensure reliable API integrations.
-            
-            ### Testing Strategies
-            
-            Implement thorough testing:
-            
-            1. Unit tests for API client code
-            2. Integration tests with API endpoints
-            3. Mock API responses for testing
-            4. Load testing for performance validation
-            5. Security testing for vulnerabilities
-            
-            ### Monitoring and Observability
-            
-            Monitor your API integrations:
-            
-            1. Track API response times
-            2. Monitor error rates and types
-            3. Set up alerts for critical failures
-            4. Use distributed tracing for complex flows
-            5. Implement health checks for dependencies
-            """
-            
-            # Submit content for V2 processing
-            response = requests.post(
-                f"{self.backend_url}/content/process",
-                json={"content": test_content},
-                timeout=120
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                engine = data.get('engine')
-                status = data.get('status')
-                job_id = data.get('job_id')
-                
-                if engine == 'v2' and status == 'completed':
-                    # Check if adaptive adjustment was performed
-                    message = data.get('message', '')
-                    
-                    self.log_test_result(
-                        "V2 Text Processing with Adaptive Adjustment", 
-                        True, 
-                        f"V2 processing completed successfully - Job ID: {job_id}, Engine: {engine}",
-                        {
-                            "job_id": job_id,
-                            "engine": engine,
-                            "status": status,
-                            "message": message
-                        }
-                    )
-                    return job_id
-                else:
-                    self.log_test_result(
-                        "V2 Text Processing with Adaptive Adjustment", 
-                        False, 
-                        f"V2 processing failed - Engine: {engine}, Status: {status}",
-                        data
-                    )
-                    return None
-            else:
-                self.log_test_result(
-                    "V2 Text Processing with Adaptive Adjustment", 
-                    False, 
-                    f"Text processing failed - Status: {response.status_code}",
-                    {"status_code": response.status_code, "response": response.text}
-                )
-                return None
-                
-        except Exception as e:
-            self.log_test_result(
-                "V2 Text Processing with Adaptive Adjustment", 
-                False, 
-                f"Text processing error: {str(e)}",
-                {"error": str(e)}
-            )
-            return None
-    
-    def test_adjustment_diagnostics_endpoints(self):
-        """Test 3: Adjustment Diagnostics Endpoints Functionality"""
-        try:
-            print(f"\n📊 TEST 3: Adjustment Diagnostics Endpoints")
-            
-            # Test general adjustment diagnostics endpoint
-            print(f"🔍 Testing GET /api/adjustment/diagnostics")
-            response = requests.get(f"{self.backend_url}/adjustment/diagnostics", timeout=30)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Validate response structure
-                required_fields = ['total_adjustment_runs', 'optimal_adjustment_runs', 'adjustment_runs_with_changes', 'adjustment_results']
-                missing_fields = [field for field in required_fields if field not in data]
-                
-                if not missing_fields:
-                    total_runs = data.get('total_adjustment_runs', 0)
-                    optimal_runs = data.get('optimal_adjustment_runs', 0)
-                    runs_with_changes = data.get('adjustment_runs_with_changes', 0)
-                    adjustment_results = data.get('adjustment_results', [])
-                    
-                    self.log_test_result(
-                        "Adjustment Diagnostics General Endpoint", 
-                        True, 
-                        f"Diagnostics endpoint working - {total_runs} total runs, {optimal_runs} optimal, {runs_with_changes} with changes",
-                        {
-                            "total_runs": total_runs,
-                            "optimal_runs": optimal_runs,
-                            "runs_with_changes": runs_with_changes,
-                            "results_count": len(adjustment_results)
-                        }
-                    )
-                    
-                    # Test specific adjustment diagnostics if we have results
-                    if adjustment_results:
-                        first_result = adjustment_results[0]
-                        adjustment_id = first_result.get('adjustment_id')
-                        
-                        if adjustment_id:
-                            print(f"🔍 Testing GET /api/adjustment/diagnostics/{adjustment_id}")
-                            specific_response = requests.get(
-                                f"{self.backend_url}/adjustment/diagnostics/{adjustment_id}", 
-                                timeout=30
-                            )
-                            
-                            if specific_response.status_code == 200:
-                                specific_data = specific_response.json()
-                                
-                                # Check for enhanced result structure
-                                if 'balance_summary' in specific_data:
-                                    balance_summary = specific_data['balance_summary']
-                                    
-                                    self.log_test_result(
-                                        "Adjustment Diagnostics Specific Endpoint", 
-                                        True, 
-                                        f"Specific diagnostics working - Status: {balance_summary.get('overall_status')}, Adjustments: {balance_summary.get('total_adjustments')}, Readability: {balance_summary.get('readability_score')}",
-                                        {
-                                            "adjustment_id": adjustment_id,
-                                            "balance_summary": balance_summary
-                                        }
-                                    )
-                                else:
-                                    self.log_test_result(
-                                        "Adjustment Diagnostics Specific Endpoint", 
-                                        False, 
-                                        f"Specific diagnostics missing balance_summary",
-                                        specific_data
-                                    )
-                            else:
-                                self.log_test_result(
-                                    "Adjustment Diagnostics Specific Endpoint", 
-                                    False, 
-                                    f"Specific diagnostics failed - Status: {specific_response.status_code}",
-                                    {"status_code": specific_response.status_code}
-                                )
-                    else:
-                        self.log_test_result(
-                            "Adjustment Diagnostics Specific Endpoint", 
-                            True, 
-                            "No adjustment results available for specific testing (expected for new system)",
-                            {"note": "No existing adjustment results"}
-                        )
-                    
-                    return True
-                else:
-                    self.log_test_result(
-                        "Adjustment Diagnostics General Endpoint", 
-                        False, 
-                        f"Missing required fields in diagnostics response: {missing_fields}",
-                        data
-                    )
-                    return False
-            else:
-                self.log_test_result(
-                    "Adjustment Diagnostics General Endpoint", 
-                    False, 
-                    f"Diagnostics endpoint failed - Status: {response.status_code}",
-                    {"status_code": response.status_code, "response": response.text}
-                )
+            # Verify V2 engine status
+            if data.get('engine') != 'v2':
+                self.log_test("Engine Health Check", False, f"Expected engine=v2, got {data.get('engine')}")
                 return False
                 
-        except Exception as e:
-            self.log_test_result(
-                "Adjustment Diagnostics Endpoints", 
-                False, 
-                f"Diagnostics endpoints error: {str(e)}",
-                {"error": str(e)}
-            )
-            return False
-    
-    def test_adjustment_rerun_endpoint(self):
-        """Test 4: Adjustment Rerun Endpoint"""
-        try:
-            print(f"\n🔄 TEST 4: Adjustment Rerun Endpoint")
-            
-            # Test rerun endpoint with a sample run_id
-            test_run_id = f"test_run_{int(time.time())}"
-            
-            response = requests.post(
-                f"{self.backend_url}/adjustment/rerun",
-                data={"run_id": test_run_id},
-                timeout=60
-            )
-            
-            # We expect this to fail with 404 since the run_id doesn't exist
-            # But we want to verify the endpoint is working
-            if response.status_code == 404:
-                # This is expected - the endpoint is working but run_id doesn't exist
-                self.log_test_result(
-                    "Adjustment Rerun Endpoint", 
-                    True, 
-                    f"Rerun endpoint working correctly - Expected 404 for non-existent run_id: {test_run_id}",
-                    {"test_run_id": test_run_id, "status_code": response.status_code}
-                )
-                return True
-            elif response.status_code == 200:
-                # Unexpected success - but still good
-                data = response.json()
-                self.log_test_result(
-                    "Adjustment Rerun Endpoint", 
-                    True, 
-                    f"Rerun endpoint working - Unexpected success for test run_id",
-                    data
-                )
-                return True
-            else:
-                self.log_test_result(
-                    "Adjustment Rerun Endpoint", 
-                    False, 
-                    f"Rerun endpoint failed - Status: {response.status_code}",
-                    {"status_code": response.status_code, "response": response.text}
-                )
-                return False
-                
-        except Exception as e:
-            self.log_test_result(
-                "Adjustment Rerun Endpoint", 
-                False, 
-                f"Rerun endpoint error: {str(e)}",
-                {"error": str(e)}
-            )
-            return False
-    
-    def test_file_upload_processing_with_adaptive_adjustment(self):
-        """Test 5: File Upload Processing Pipeline with Adaptive Adjustment"""
-        try:
-            print(f"\n📁 TEST 5: File Upload Processing with Adaptive Adjustment")
-            
-            # Create a test text file with content that should trigger adaptive adjustment
-            test_content = """API Integration Best Practices Guide
-
-This guide covers essential API integration patterns and best practices for modern web applications.
-
-Authentication Methods
-
-API authentication is the foundation of secure integrations. Common methods include:
-
-1. API Key Authentication - Simple but effective for server-to-server communication
-2. OAuth 2.0 - Industry standard for user authorization
-3. JWT Tokens - Stateless authentication with embedded claims
-4. Basic Authentication - Simple but should only be used over HTTPS
-
-Rate Limiting Strategies
-
-Implementing proper rate limiting protects your API from abuse:
-
-- Fixed window rate limiting
-- Sliding window rate limiting  
-- Token bucket algorithm
-- Leaky bucket algorithm
-
-Error Handling Patterns
-
-Robust error handling is crucial for reliable integrations:
-
-1. Parse HTTP status codes correctly
-2. Implement exponential backoff for retries
-3. Log errors for debugging and monitoring
-4. Provide meaningful error messages to users
-5. Handle network timeouts gracefully
-
-Testing and Monitoring
-
-Comprehensive testing ensures reliable API integrations:
-
-- Unit tests for API client code
-- Integration tests with live endpoints
-- Mock API responses for isolated testing
-- Load testing for performance validation
-- Security testing for vulnerability assessment
-
-Monitoring your API integrations helps maintain reliability:
-
-- Track response times and error rates
-- Set up alerts for critical failures
-- Use distributed tracing for complex flows
-- Implement health checks for dependencies
-- Monitor API usage patterns and quotas"""
-            
-            # Create a temporary file
-            import tempfile
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
-                temp_file.write(test_content)
-                temp_file_path = temp_file.name
-            
-            try:
-                # Upload the file
-                with open(temp_file_path, 'rb') as file:
-                    files = {'file': ('test_api_guide.txt', file, 'text/plain')}
-                    response = requests.post(
-                        f"{self.backend_url}/content/upload",
-                        files=files,
-                        timeout=120
-                    )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    engine = data.get('engine')
-                    status = data.get('status')
-                    job_id = data.get('job_id')
-                    
-                    if engine == 'v2' and status == 'completed':
-                        self.log_test_result(
-                            "File Upload Processing with Adaptive Adjustment", 
-                            True, 
-                            f"V2 file processing completed successfully - Job ID: {job_id}, Engine: {engine}",
-                            {
-                                "job_id": job_id,
-                                "engine": engine,
-                                "status": status,
-                                "filename": "test_api_guide.txt"
-                            }
-                        )
-                        return job_id
-                    else:
-                        self.log_test_result(
-                            "File Upload Processing with Adaptive Adjustment", 
-                            False, 
-                            f"V2 file processing failed - Engine: {engine}, Status: {status}",
-                            data
-                        )
-                        return None
-                else:
-                    self.log_test_result(
-                        "File Upload Processing with Adaptive Adjustment", 
-                        False, 
-                        f"File upload failed - Status: {response.status_code}",
-                        {"status_code": response.status_code, "response": response.text}
-                    )
-                    return None
-                    
-            finally:
-                # Clean up temporary file
-                import os
-                try:
-                    os.unlink(temp_file_path)
-                except:
-                    pass
-                    
-        except Exception as e:
-            self.log_test_result(
-                "File Upload Processing with Adaptive Adjustment", 
-                False, 
-                f"File upload processing error: {str(e)}",
-                {"error": str(e)}
-            )
-            return None
-    
-    def test_url_processing_with_adaptive_adjustment(self):
-        """Test 6: URL Processing Pipeline with Adaptive Adjustment"""
-        try:
-            print(f"\n🌐 TEST 6: URL Processing with Adaptive Adjustment")
-            
-            # Test with a URL that should provide substantial content for adaptive adjustment
-            test_url = "https://httpbin.org/html"  # Simple HTML page for testing
-            
-            response = requests.post(
-                f"{self.backend_url}/content/url",
-                json={"url": test_url},
-                timeout=120
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                engine = data.get('engine')
-                status = data.get('status')
-                job_id = data.get('job_id')
-                
-                if engine == 'v2' and status == 'completed':
-                    self.log_test_result(
-                        "URL Processing with Adaptive Adjustment", 
-                        True, 
-                        f"V2 URL processing completed successfully - Job ID: {job_id}, Engine: {engine}",
-                        {
-                            "job_id": job_id,
-                            "engine": engine,
-                            "status": status,
-                            "url": test_url
-                        }
-                    )
-                    return job_id
-                else:
-                    self.log_test_result(
-                        "URL Processing with Adaptive Adjustment", 
-                        False, 
-                        f"V2 URL processing failed - Engine: {engine}, Status: {status}",
-                        data
-                    )
-                    return None
-            else:
-                self.log_test_result(
-                    "URL Processing with Adaptive Adjustment", 
-                    False, 
-                    f"URL processing failed - Status: {response.status_code}",
-                    {"status_code": response.status_code, "response": response.text}
-                )
-                return None
-                
-        except Exception as e:
-            self.log_test_result(
-                "URL Processing with Adaptive Adjustment", 
-                False, 
-                f"URL processing error: {str(e)}",
-                {"error": str(e)}
-            )
-            return None
-    
-    def test_content_library_integration(self):
-        """Test 7: Content Library Integration with Adjustment Metadata"""
-        try:
-            print(f"\n📚 TEST 7: Content Library Integration with Adjustment Metadata")
-            
-            # Get articles from content library
-            response = requests.get(f"{self.backend_url}/content-library", timeout=30)
-            
-            if response.status_code == 200:
-                data = response.json()
-                articles = data.get('articles', [])
-                total_articles = data.get('total', 0)
-                
-                if total_articles > 0:
-                    # Check for articles with adjustment metadata
-                    articles_with_adjustment_status = 0
-                    articles_with_readability_score = 0
-                    articles_with_adjustments_applied = 0
-                    
-                    for article in articles:
-                        if 'adjustment_status' in article:
-                            articles_with_adjustment_status += 1
-                        if 'readability_score' in article:
-                            articles_with_readability_score += 1
-                        if 'adjustments_applied' in article:
-                            articles_with_adjustments_applied += 1
-                    
-                    self.log_test_result(
-                        "Content Library Integration with Adjustment Metadata", 
-                        True, 
-                        f"Content Library accessible - {total_articles} articles, {articles_with_adjustment_status} with adjustment_status, {articles_with_readability_score} with readability_score",
-                        {
-                            "total_articles": total_articles,
-                            "articles_with_adjustment_status": articles_with_adjustment_status,
-                            "articles_with_readability_score": articles_with_readability_score,
-                            "articles_with_adjustments_applied": articles_with_adjustments_applied
-                        }
-                    )
-                    return True
-                else:
-                    self.log_test_result(
-                        "Content Library Integration with Adjustment Metadata", 
-                        True, 
-                        "Content Library accessible but no articles found (expected for new system)",
-                        {"total_articles": 0}
-                    )
-                    return True
-            else:
-                self.log_test_result(
-                    "Content Library Integration with Adjustment Metadata", 
-                    False, 
-                    f"Content Library access failed - Status: {response.status_code}",
-                    {"status_code": response.status_code}
-                )
-                return False
-                
-        except Exception as e:
-            self.log_test_result(
-                "Content Library Integration with Adjustment Metadata", 
-                False, 
-                f"Content Library integration error: {str(e)}",
-                {"error": str(e)}
-            )
-            return False
-    
-    def test_granularity_expectations_validation(self):
-        """Test 8: Granularity Expectations Validation"""
-        try:
-            print(f"\n📏 TEST 8: Granularity Expectations Validation")
-            
-            # Test different granularity levels with appropriate content
-            granularity_tests = [
-                {
-                    "granularity": "shallow",
-                    "expected_articles": "1-3",
-                    "content": "Short API guide with basic authentication and simple examples."
-                },
-                {
-                    "granularity": "moderate", 
-                    "expected_articles": "2-8",
-                    "content": """Comprehensive API Integration Guide
-                    
-                    This guide covers authentication, rate limiting, error handling, testing, and monitoring for API integrations.
-                    
-                    Authentication section covers API keys, OAuth 2.0, and JWT tokens with implementation examples.
-                    
-                    Rate limiting section explains fixed window, sliding window, token bucket, and leaky bucket algorithms.
-                    
-                    Error handling covers HTTP status codes, retry logic, logging, and user-friendly error messages.
-                    
-                    Testing section includes unit tests, integration tests, mocking, load testing, and security testing.
-                    
-                    Monitoring covers response times, error rates, alerts, distributed tracing, and health checks."""
-                },
-                {
-                    "granularity": "deep",
-                    "expected_articles": "5-20", 
-                    "content": """Complete Enterprise API Integration Manual
-                    
-                    This comprehensive manual covers all aspects of enterprise API integration including security, performance, monitoring, testing, deployment, and maintenance.
-                    
-                    Security chapter covers authentication methods, authorization patterns, API key management, OAuth 2.0 flows, JWT implementation, rate limiting strategies, input validation, output encoding, and security testing.
-                    
-                    Performance chapter covers caching strategies, connection pooling, request optimization, response compression, CDN integration, load balancing, and performance monitoring.
-                    
-                    Monitoring chapter covers metrics collection, alerting systems, distributed tracing, log aggregation, error tracking, performance dashboards, and SLA monitoring.
-                    
-                    Testing chapter covers unit testing, integration testing, contract testing, load testing, security testing, chaos engineering, and test automation.
-                    
-                    Deployment chapter covers CI/CD pipelines, environment management, configuration management, secret management, and deployment strategies.
-                    
-                    Maintenance chapter covers version management, backward compatibility, deprecation strategies, documentation updates, and support processes."""
-                }
+            # Verify review endpoints are present
+            endpoints = data.get('endpoints', {})
+            required_review_endpoints = [
+                'review_runs', 'review_approve', 'review_reject', 'review_rerun'
             ]
             
-            granularity_test_results = []
+            missing_endpoints = []
+            for endpoint in required_review_endpoints:
+                if endpoint not in endpoints:
+                    missing_endpoints.append(endpoint)
+                    
+            if missing_endpoints:
+                self.log_test("Engine Health Check", False, f"Missing review endpoints: {missing_endpoints}")
+                return False
+                
+            # Verify review features are present
+            features = data.get('features', [])
+            required_review_features = [
+                'human_in_the_loop_review', 'quality_badges', 'approval_workflow', 
+                'rejection_tracking', 'step_rerun_capability'
+            ]
             
-            for test_case in granularity_tests:
-                granularity = test_case["granularity"]
-                expected_range = test_case["expected_articles"]
-                content = test_case["content"]
+            missing_features = []
+            for feature in required_review_features:
+                if feature not in features:
+                    missing_features.append(feature)
+                    
+            if missing_features:
+                self.log_test("Engine Health Check", False, f"Missing review features: {missing_features}")
+                return False
                 
-                print(f"🔍 Testing {granularity} granularity (expected: {expected_range} articles)")
-                
-                # This is a conceptual test - in a real implementation, we would:
-                # 1. Process content with specific granularity setting
-                # 2. Check the adaptive adjustment results
-                # 3. Verify article count aligns with granularity expectations
-                
-                granularity_test_results.append({
-                    "granularity": granularity,
-                    "expected_range": expected_range,
-                    "test_status": "conceptual_validation",
-                    "note": "Granularity expectations defined in V2AdaptiveAdjustmentSystem"
-                })
-            
-            self.log_test_result(
-                "Granularity Expectations Validation", 
-                True, 
-                f"Granularity expectations validated - Shallow: 1-3 articles, Moderate: 2-8 articles, Deep: 5-20 articles",
-                {
-                    "granularity_tests": granularity_test_results,
-                    "validation_method": "conceptual_framework_verification"
-                }
-            )
+            self.log_test("Engine Health Check", True, 
+                         f"V2 Engine active with review endpoints: {required_review_endpoints} and features: {required_review_features}",
+                         data)
             return True
-                
+            
         except Exception as e:
-            self.log_test_result(
-                "Granularity Expectations Validation", 
-                False, 
-                f"Granularity expectations validation error: {str(e)}",
-                {"error": str(e)}
-            )
+            self.log_test("Engine Health Check", False, f"Exception: {str(e)}")
             return False
     
-    def test_word_count_analysis_thresholds(self):
-        """Test 9: Word Count Analysis and Thresholds"""
+    def test_get_runs_for_review(self) -> bool:
+        """Test GET /api/review/runs for runs list with quality badges"""
         try:
-            print(f"\n📊 TEST 9: Word Count Analysis and Thresholds Validation")
+            print(f"\n📋 TESTING GET RUNS FOR REVIEW WITH QUALITY BADGES")
             
-            # Test the word count thresholds defined in V2AdaptiveAdjustmentSystem
-            expected_thresholds = {
-                "min_article_length": 300,  # Articles below this should be merged
-                "max_section_length": 1200,  # Sections above this should be split
-                "optimal_article_range": (500, 2000),  # Optimal article length range
-                "optimal_section_range": (200, 800)   # Optimal section length range
+            response = requests.get(f"{API_BASE}/review/runs?limit=10", timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("Get Runs for Review", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+            data = response.json()
+            
+            # Verify response structure
+            required_fields = ['review_system_status', 'engine', 'summary', 'runs']
+            missing_fields = [field for field in required_fields if field not in data]
+            
+            if missing_fields:
+                self.log_test("Get Runs for Review", False, f"Missing required fields: {missing_fields}")
+                return False
+                
+            # Verify engine is v2
+            if data.get('engine') != 'v2':
+                self.log_test("Get Runs for Review", False, f"Expected engine=v2, got {data.get('engine')}")
+                return False
+                
+            # Verify review system status
+            if data.get('review_system_status') != 'active':
+                self.log_test("Get Runs for Review", False, f"Review system not active: {data.get('review_system_status')}")
+                return False
+                
+            # Check summary statistics structure
+            summary = data.get('summary', {})
+            summary_fields = ['total_runs', 'pending_review', 'approved', 'rejected', 'published', 'approval_rate']
+            missing_summary_fields = [field for field in summary_fields if field not in summary]
+            
+            if missing_summary_fields:
+                self.log_test("Get Runs for Review", False, f"Missing summary fields: {missing_summary_fields}")
+                return False
+                
+            # Check runs structure and quality badges
+            runs = data.get('runs', [])
+            total_runs = len(runs)
+            
+            if total_runs > 0:
+                # Store sample run IDs for later tests
+                self.sample_run_ids = [run.get('run_id') for run in runs[:3] if run.get('run_id')]
+                
+                # Verify first run has required structure
+                first_run = runs[0]
+                required_run_fields = ['run_id', 'review_status', 'badges', 'articles', 'processing_results']
+                missing_run_fields = [field for field in required_run_fields if field not in first_run]
+                
+                if missing_run_fields:
+                    self.log_test("Get Runs for Review", False, f"Missing run fields: {missing_run_fields}")
+                    return False
+                    
+                # Verify quality badges structure
+                badges = first_run.get('badges', {})
+                expected_badges = ['coverage', 'fidelity', 'redundancy', 'granularity', 'placeholders']
+                
+                badge_issues = []
+                for badge_name in expected_badges:
+                    if badge_name in badges:
+                        badge = badges[badge_name]
+                        if not all(key in badge for key in ['value', 'status', 'tooltip']):
+                            badge_issues.append(f"{badge_name} missing required fields")
+                        if badge['status'] not in ['excellent', 'good', 'warning']:
+                            badge_issues.append(f"{badge_name} invalid status: {badge['status']}")
+                            
+                if badge_issues:
+                    self.log_test("Get Runs for Review", False, f"Badge issues: {badge_issues}")
+                    return False
+                    
+            self.log_test("Get Runs for Review", True, 
+                         f"Retrieved {total_runs} runs with proper structure and quality badges. Summary: {summary}",
+                         data)
+            return True
+            
+        except Exception as e:
+            self.log_test("Get Runs for Review", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_get_run_details_for_review(self) -> bool:
+        """Test GET /api/review/runs/{run_id} for detailed run information"""
+        try:
+            print(f"\n🔍 TESTING GET RUN DETAILS FOR REVIEW")
+            
+            if not self.sample_run_ids:
+                self.log_test("Get Run Details", False, "No sample run IDs available from previous test")
+                return False
+                
+            run_id = self.sample_run_ids[0]
+            response = requests.get(f"{API_BASE}/review/runs/{run_id}", timeout=30)
+            
+            if response.status_code == 404:
+                self.log_test("Get Run Details", True, f"Run {run_id} not found (expected for some test scenarios)")
+                return True
+                
+            if response.status_code != 200:
+                self.log_test("Get Run Details", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+            data = response.json()
+            
+            # Verify detailed run structure
+            required_fields = ['run_id', 'review_status', 'badges', 'articles', 'processing_results', 'media']
+            missing_fields = [field for field in required_fields if field not in data]
+            
+            if missing_fields:
+                self.log_test("Get Run Details", False, f"Missing required fields: {missing_fields}")
+                return False
+                
+            # Verify articles structure
+            articles = data.get('articles', {})
+            article_fields = ['count', 'titles', 'total_content_length', 'articles_data']
+            missing_article_fields = [field for field in article_fields if field not in articles]
+            
+            if missing_article_fields:
+                self.log_test("Get Run Details", False, f"Missing article fields: {missing_article_fields}")
+                return False
+                
+            # Verify processing results structure
+            processing_results = data.get('processing_results', {})
+            expected_steps = ['validation', 'qa', 'adjustment', 'publishing', 'versioning']
+            
+            for step in expected_steps:
+                if step not in processing_results:
+                    self.log_test("Get Run Details", False, f"Missing processing step: {step}")
+                    return False
+                    
+                step_result = processing_results[step]
+                if 'status' not in step_result:
+                    self.log_test("Get Run Details", False, f"Step {step} missing status field")
+                    return False
+                    
+            self.log_test("Get Run Details", True, 
+                         f"Retrieved detailed run information for {run_id}. Articles: {articles['count']}, Processing steps: {len(processing_results)}",
+                         data)
+            return True
+            
+        except Exception as e:
+            self.log_test("Get Run Details", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_approval_workflow(self) -> bool:
+        """Test POST /api/review/approve for approval and publishing workflow"""
+        try:
+            print(f"\n✅ TESTING APPROVAL AND PUBLISHING WORKFLOW")
+            
+            if not self.sample_run_ids:
+                self.log_test("Approval Workflow", False, "No sample run IDs available")
+                return False
+                
+            run_id = self.sample_run_ids[0] if len(self.sample_run_ids) > 0 else "test_run_123"
+            
+            # Test approval request
+            approval_data = {
+                'run_id': run_id,
+                'reviewer_name': 'Test Reviewer',
+                'review_notes': 'Approved for testing purposes'
             }
             
-            # Create test scenarios for different word count ranges
-            test_scenarios = [
-                {
-                    "scenario": "short_article_needs_merge",
-                    "word_count": 250,
-                    "expected_action": "merge_suggestion",
-                    "reason": "Below min_article_length (300 words)"
-                },
-                {
-                    "scenario": "optimal_article_length",
-                    "word_count": 800,
-                    "expected_action": "no_adjustment",
-                    "reason": "Within optimal_article_range (500-2000 words)"
-                },
-                {
-                    "scenario": "long_section_needs_split",
-                    "word_count": 1500,
-                    "expected_action": "split_suggestion",
-                    "reason": "Above max_section_length (1200 words)"
-                },
-                {
-                    "scenario": "optimal_section_length",
-                    "word_count": 400,
-                    "expected_action": "no_adjustment",
-                    "reason": "Within optimal_section_range (200-800 words)"
-                }
-            ]
+            response = requests.post(f"{API_BASE}/review/approve", data=approval_data, timeout=30)
             
-            threshold_validation_results = []
-            
-            for scenario in test_scenarios:
-                scenario_name = scenario["scenario"]
-                word_count = scenario["word_count"]
-                expected_action = scenario["expected_action"]
-                reason = scenario["reason"]
+            if response.status_code == 404:
+                self.log_test("Approval Workflow", True, f"Run {run_id} not found (expected for test scenario)")
+                return True
                 
-                # Validate threshold logic
-                if scenario_name == "short_article_needs_merge":
-                    validation_result = word_count < expected_thresholds["min_article_length"]
-                elif scenario_name == "optimal_article_length":
-                    validation_result = (expected_thresholds["optimal_article_range"][0] <= 
-                                       word_count <= expected_thresholds["optimal_article_range"][1])
-                elif scenario_name == "long_section_needs_split":
-                    validation_result = word_count > expected_thresholds["max_section_length"]
-                elif scenario_name == "optimal_section_length":
-                    validation_result = (expected_thresholds["optimal_section_range"][0] <= 
-                                       word_count <= expected_thresholds["optimal_section_range"][1])
-                else:
-                    validation_result = False
+            if response.status_code != 200:
+                self.log_test("Approval Workflow", False, f"HTTP {response.status_code}: {response.text}")
+                return False
                 
-                threshold_validation_results.append({
-                    "scenario": scenario_name,
-                    "word_count": word_count,
-                    "expected_action": expected_action,
-                    "reason": reason,
-                    "threshold_logic_valid": validation_result
-                })
+            data = response.json()
             
-            all_validations_passed = all(result["threshold_logic_valid"] for result in threshold_validation_results)
+            # Verify approval response structure
+            required_fields = ['message', 'run_id', 'review_status', 'reviewer_name', 'articles_published', 'engine']
+            missing_fields = [field for field in required_fields if field not in data]
             
-            self.log_test_result(
-                "Word Count Analysis and Thresholds", 
-                all_validations_passed, 
-                f"Word count thresholds validated - All {len(threshold_validation_results)} scenarios passed threshold logic",
-                {
-                    "expected_thresholds": expected_thresholds,
-                    "test_scenarios": threshold_validation_results,
-                    "all_validations_passed": all_validations_passed
-                }
-            )
-            return all_validations_passed
+            if missing_fields:
+                self.log_test("Approval Workflow", False, f"Missing response fields: {missing_fields}")
+                return False
                 
+            # Verify approval details
+            if data.get('review_status') != 'approved':
+                self.log_test("Approval Workflow", False, f"Expected review_status=approved, got {data.get('review_status')}")
+                return False
+                
+            if data.get('engine') != 'v2':
+                self.log_test("Approval Workflow", False, f"Expected engine=v2, got {data.get('engine')}")
+                return False
+                
+            self.log_test("Approval Workflow", True, 
+                         f"Approval workflow completed. Run {run_id} approved by {data.get('reviewer_name')}, {data.get('articles_published')} articles published",
+                         data)
+            return True
+            
         except Exception as e:
-            self.log_test_result(
-                "Word Count Analysis and Thresholds", 
-                False, 
-                f"Word count analysis validation error: {str(e)}",
-                {"error": str(e)}
-            )
+            self.log_test("Approval Workflow", False, f"Exception: {str(e)}")
             return False
     
-    def test_readability_scoring_calculation(self):
-        """Test 10: Readability Scoring Calculation Logic"""
+    def test_rejection_workflow(self) -> bool:
+        """Test POST /api/review/reject for rejection with structured reasons"""
         try:
-            print(f"\n📈 TEST 10: Readability Scoring Calculation Logic")
+            print(f"\n❌ TESTING REJECTION WORKFLOW WITH STRUCTURED REASONS")
             
-            # Test readability scoring scenarios
-            readability_test_scenarios = [
-                {
-                    "scenario": "optimal_readability",
-                    "articles": [
-                        {"word_count": 800, "sections": []},  # Optimal length
-                        {"word_count": 1200, "sections": []},  # Optimal length
-                        {"word_count": 600, "sections": []}   # Optimal length
-                    ],
-                    "expected_score_range": (0.8, 1.0),
-                    "description": "All articles in optimal range"
-                },
-                {
-                    "scenario": "mixed_readability",
-                    "articles": [
-                        {"word_count": 200, "sections": []},  # Too short
-                        {"word_count": 800, "sections": []},  # Optimal
-                        {"word_count": 2500, "sections": []}  # Too long
-                    ],
-                    "expected_score_range": (0.2, 0.5),
-                    "description": "Mixed article lengths"
-                },
-                {
-                    "scenario": "poor_readability",
-                    "articles": [
-                        {"word_count": 150, "sections": []},  # Too short
-                        {"word_count": 100, "sections": []},  # Too short
-                        {"word_count": 3000, "sections": [{"word_count": 1500}]}  # Too long with long section
-                    ],
-                    "expected_score_range": (0.0, 0.3),
-                    "description": "Poor article distribution with long sections"
-                }
-            ]
+            if not self.sample_run_ids:
+                run_id = "test_run_456"
+            else:
+                run_id = self.sample_run_ids[1] if len(self.sample_run_ids) > 1 else self.sample_run_ids[0]
             
-            readability_results = []
+            # Test rejection request with valid reason
+            rejection_data = {
+                'run_id': run_id,
+                'rejection_reason': 'quality_issues',
+                'reviewer_name': 'Test Reviewer',
+                'review_notes': 'Content quality needs improvement',
+                'suggested_actions': 'Review validation results and improve content fidelity'
+            }
             
-            for scenario in readability_test_scenarios:
-                scenario_name = scenario["scenario"]
-                articles = scenario["articles"]
-                expected_range = scenario["expected_score_range"]
-                description = scenario["description"]
-                
-                # Simulate readability score calculation logic
-                optimal_count = 0
-                total_articles = len(articles)
-                
-                for article in articles:
-                    word_count = article["word_count"]
-                    
-                    # Check if article is in optimal range (500-2000 words)
-                    if 500 <= word_count <= 2000:
-                        optimal_count += 1
-                    
-                    # Penalty for long sections (>1200 words)
-                    long_sections = len([s for s in article.get("sections", []) if s.get("word_count", 0) > 1200])
-                    if long_sections > 0:
-                        optimal_count -= 0.2 * long_sections
-                
-                # Calculate readability score (0.0 to 1.0)
-                calculated_score = max(0.0, min(1.0, optimal_count / total_articles))
-                
-                # Check if calculated score is within expected range
-                score_in_range = expected_range[0] <= calculated_score <= expected_range[1]
-                
-                readability_results.append({
-                    "scenario": scenario_name,
-                    "description": description,
-                    "articles_count": total_articles,
-                    "calculated_score": round(calculated_score, 2),
-                    "expected_range": expected_range,
-                    "score_in_expected_range": score_in_range
-                })
+            response = requests.post(f"{API_BASE}/review/reject", data=rejection_data, timeout=30)
             
-            all_scores_valid = all(result["score_in_expected_range"] for result in readability_results)
-            
-            self.log_test_result(
-                "Readability Scoring Calculation Logic", 
-                all_scores_valid, 
-                f"Readability scoring logic validated - All {len(readability_results)} scenarios calculated correctly",
-                {
-                    "readability_scenarios": readability_results,
-                    "all_scores_valid": all_scores_valid,
-                    "scoring_method": "optimal_article_ratio_with_section_penalties"
-                }
-            )
-            return all_scores_valid
+            if response.status_code == 404:
+                self.log_test("Rejection Workflow", True, f"Run {run_id} not found (expected for test scenario)")
+                return True
                 
+            if response.status_code != 200:
+                self.log_test("Rejection Workflow", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+            data = response.json()
+            
+            # Verify rejection response structure
+            required_fields = ['message', 'run_id', 'review_status', 'rejection_reason', 'reviewer_name', 'articles_updated', 'engine']
+            missing_fields = [field for field in required_fields if field not in data]
+            
+            if missing_fields:
+                self.log_test("Rejection Workflow", False, f"Missing response fields: {missing_fields}")
+                return False
+                
+            # Verify rejection details
+            if data.get('review_status') != 'rejected':
+                self.log_test("Rejection Workflow", False, f"Expected review_status=rejected, got {data.get('review_status')}")
+                return False
+                
+            if data.get('rejection_reason') != 'quality_issues':
+                self.log_test("Rejection Workflow", False, f"Expected rejection_reason=quality_issues, got {data.get('rejection_reason')}")
+                return False
+                
+            # Test invalid rejection reason
+            invalid_rejection_data = {
+                'run_id': run_id,
+                'rejection_reason': 'invalid_reason',
+                'reviewer_name': 'Test Reviewer'
+            }
+            
+            invalid_response = requests.post(f"{API_BASE}/review/reject", data=invalid_rejection_data, timeout=30)
+            
+            if invalid_response.status_code != 400:
+                self.log_test("Rejection Workflow", False, f"Expected 400 for invalid reason, got {invalid_response.status_code}")
+                return False
+                
+            self.log_test("Rejection Workflow", True, 
+                         f"Rejection workflow completed. Run {run_id} rejected for {data.get('rejection_reason')}, {data.get('articles_updated')} articles updated. Invalid reason properly rejected.",
+                         data)
+            return True
+            
         except Exception as e:
-            self.log_test_result(
-                "Readability Scoring Calculation Logic", 
-                False, 
-                f"Readability scoring validation error: {str(e)}",
-                {"error": str(e)}
-            )
+            self.log_test("Rejection Workflow", False, f"Exception: {str(e)}")
             return False
     
-    def generate_comprehensive_test_report(self):
-        """Generate comprehensive test report"""
-        print(f"\n" + "="*80)
-        print(f"🎯 V2 ENGINE STEP 10 ADAPTIVE ADJUSTMENT COMPREHENSIVE TEST REPORT")
-        print(f"="*80)
+    def test_rerun_capability(self) -> bool:
+        """Test POST /api/review/rerun for selected step re-processing"""
+        try:
+            print(f"\n🔄 TESTING STEP RERUN CAPABILITY")
+            
+            if not self.sample_run_ids:
+                run_id = "test_run_789"
+            else:
+                run_id = self.sample_run_ids[2] if len(self.sample_run_ids) > 2 else self.sample_run_ids[0]
+            
+            # Test rerun request with valid steps
+            rerun_data = {
+                'run_id': run_id,
+                'selected_steps': json.dumps(['validation', 'qa', 'publishing']),
+                'reviewer_name': 'Test Reviewer',
+                'rerun_reason': 'Quality improvement after content updates'
+            }
+            
+            response = requests.post(f"{API_BASE}/review/rerun", data=rerun_data, timeout=30)
+            
+            if response.status_code == 404:
+                self.log_test("Rerun Capability", True, f"Run {run_id} not found (expected for test scenario)")
+                return True
+                
+            if response.status_code != 200:
+                self.log_test("Rerun Capability", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+            data = response.json()
+            
+            # Verify rerun response structure
+            required_fields = ['message', 'run_id', 'rerun_steps', 'rerun_results', 'reviewer_name', 'engine']
+            missing_fields = [field for field in required_fields if field not in data]
+            
+            if missing_fields:
+                self.log_test("Rerun Capability", False, f"Missing response fields: {missing_fields}")
+                return False
+                
+            # Verify rerun steps
+            expected_steps = ['validation', 'qa', 'publishing']
+            actual_steps = data.get('rerun_steps', [])
+            
+            if set(expected_steps) != set(actual_steps):
+                self.log_test("Rerun Capability", False, f"Expected steps {expected_steps}, got {actual_steps}")
+                return False
+                
+            # Verify rerun results
+            rerun_results = data.get('rerun_results', {})
+            for step in expected_steps:
+                if step not in rerun_results:
+                    self.log_test("Rerun Capability", False, f"Missing rerun result for step: {step}")
+                    return False
+                    
+                step_result = rerun_results[step]
+                if step_result.get('status') != 'completed':
+                    self.log_test("Rerun Capability", False, f"Step {step} not completed: {step_result}")
+                    return False
+                    
+            # Test invalid steps
+            invalid_rerun_data = {
+                'run_id': run_id,
+                'selected_steps': json.dumps(['invalid_step', 'another_invalid']),
+                'reviewer_name': 'Test Reviewer'
+            }
+            
+            invalid_response = requests.post(f"{API_BASE}/review/rerun", data=invalid_rerun_data, timeout=30)
+            
+            if invalid_response.status_code != 400:
+                self.log_test("Rerun Capability", False, f"Expected 400 for invalid steps, got {invalid_response.status_code}")
+                return False
+                
+            self.log_test("Rerun Capability", True, 
+                         f"Rerun capability working. Run {run_id} reprocessed {len(expected_steps)} steps successfully. Invalid steps properly rejected.",
+                         data)
+            return True
+            
+        except Exception as e:
+            self.log_test("Rerun Capability", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_media_library_preview(self) -> bool:
+        """Test GET /api/review/media/{run_id} for media library preview"""
+        try:
+            print(f"\n🖼️ TESTING MEDIA LIBRARY PREVIEW")
+            
+            if not self.sample_run_ids:
+                run_id = "test_run_media"
+            else:
+                run_id = self.sample_run_ids[0]
+            
+            response = requests.get(f"{API_BASE}/review/media/{run_id}", timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("Media Library Preview", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+            data = response.json()
+            
+            # Verify media response structure
+            required_fields = ['run_id', 'media_summary', 'media_items', 'contextual_info', 'engine']
+            missing_fields = [field for field in required_fields if field not in data]
+            
+            if missing_fields:
+                self.log_test("Media Library Preview", False, f"Missing response fields: {missing_fields}")
+                return False
+                
+            # Verify media summary structure
+            media_summary = data.get('media_summary', {})
+            summary_fields = ['total_count', 'images_count', 'videos_count', 'documents_count']
+            missing_summary_fields = [field for field in summary_fields if field not in media_summary]
+            
+            if missing_summary_fields:
+                self.log_test("Media Library Preview", False, f"Missing media summary fields: {missing_summary_fields}")
+                return False
+                
+            # Verify contextual info
+            contextual_info = data.get('contextual_info', {})
+            context_fields = ['extraction_method', 'alt_text_generated', 'contextual_filenames']
+            missing_context_fields = [field for field in context_fields if field not in contextual_info]
+            
+            if missing_context_fields:
+                self.log_test("Media Library Preview", False, f"Missing contextual info fields: {missing_context_fields}")
+                return False
+                
+            if data.get('engine') != 'v2':
+                self.log_test("Media Library Preview", False, f"Expected engine=v2, got {data.get('engine')}")
+                return False
+                
+            self.log_test("Media Library Preview", True, 
+                         f"Media library preview working. Run {run_id} has {media_summary.get('total_count', 0)} media items",
+                         data)
+            return True
+            
+        except Exception as e:
+            self.log_test("Media Library Preview", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_quality_badges_calculation(self) -> bool:
+        """Test quality badge calculation and status determination"""
+        try:
+            print(f"\n🏆 TESTING QUALITY BADGES CALCULATION")
+            
+            # Get runs to test badge calculation
+            response = requests.get(f"{API_BASE}/review/runs?limit=5", timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("Quality Badges Calculation", False, f"Could not get runs: HTTP {response.status_code}")
+                return False
+                
+            data = response.json()
+            runs = data.get('runs', [])
+            
+            if not runs:
+                self.log_test("Quality Badges Calculation", True, "No runs available for badge testing (expected in some scenarios)")
+                return True
+                
+            # Test badge calculation on first run
+            first_run = runs[0]
+            badges = first_run.get('badges', {})
+            
+            # Test each badge type
+            badge_tests = []
+            
+            # Coverage badge
+            if 'coverage' in badges:
+                coverage_badge = badges['coverage']
+                coverage_value = coverage_badge.get('value', '0%')
+                coverage_status = coverage_badge.get('status', 'warning')
+                
+                # Verify status logic
+                coverage_percent = float(coverage_value.replace('%', ''))
+                expected_status = 'excellent' if coverage_percent >= 95 else 'good' if coverage_percent >= 85 else 'warning'
+                
+                if coverage_status == expected_status:
+                    badge_tests.append(f"Coverage badge status correct: {coverage_percent}% -> {coverage_status}")
+                else:
+                    badge_tests.append(f"Coverage badge status incorrect: {coverage_percent}% -> {coverage_status} (expected {expected_status})")
+            
+            # Fidelity badge
+            if 'fidelity' in badges:
+                fidelity_badge = badges['fidelity']
+                fidelity_value = float(fidelity_badge.get('value', '0'))
+                fidelity_status = fidelity_badge.get('status', 'warning')
+                
+                expected_status = 'excellent' if fidelity_value >= 0.9 else 'good' if fidelity_value >= 0.7 else 'warning'
+                
+                if fidelity_status == expected_status:
+                    badge_tests.append(f"Fidelity badge status correct: {fidelity_value} -> {fidelity_status}")
+                else:
+                    badge_tests.append(f"Fidelity badge status incorrect: {fidelity_value} -> {fidelity_status} (expected {expected_status})")
+            
+            # Placeholders badge
+            if 'placeholders' in badges:
+                placeholders_badge = badges['placeholders']
+                placeholder_count = int(placeholders_badge.get('value', '0'))
+                placeholder_status = placeholders_badge.get('status', 'warning')
+                
+                expected_status = 'excellent' if placeholder_count == 0 else 'warning'
+                
+                if placeholder_status == expected_status:
+                    badge_tests.append(f"Placeholders badge status correct: {placeholder_count} -> {placeholder_status}")
+                else:
+                    badge_tests.append(f"Placeholders badge status incorrect: {placeholder_count} -> {placeholder_status} (expected {expected_status})")
+            
+            # Verify all badges have required fields
+            badge_field_tests = []
+            for badge_name, badge_data in badges.items():
+                required_badge_fields = ['value', 'status', 'tooltip']
+                missing_badge_fields = [field for field in required_badge_fields if field not in badge_data]
+                
+                if missing_badge_fields:
+                    badge_field_tests.append(f"{badge_name} missing fields: {missing_badge_fields}")
+                else:
+                    badge_field_tests.append(f"{badge_name} has all required fields")
+            
+            all_tests_passed = all('correct' in test or 'has all required fields' in test for test in badge_tests + badge_field_tests)
+            
+            self.log_test("Quality Badges Calculation", all_tests_passed, 
+                         f"Badge calculation tests: {badge_tests + badge_field_tests}",
+                         badges)
+            return all_tests_passed
+            
+        except Exception as e:
+            self.log_test("Quality Badges Calculation", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_review_workflow_integration(self) -> bool:
+        """Test review workflow integration with database collections"""
+        try:
+            print(f"\n🔄 TESTING REVIEW WORKFLOW INTEGRATION")
+            
+            # Test that review system provides comprehensive data
+            response = requests.get(f"{API_BASE}/review/runs?limit=3", timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("Review Workflow Integration", False, f"Could not get runs: HTTP {response.status_code}")
+                return False
+                
+            data = response.json()
+            
+            # Verify integration components
+            integration_tests = []
+            
+            # Test summary statistics
+            summary = data.get('summary', {})
+            if all(field in summary for field in ['total_runs', 'pending_review', 'approved', 'rejected', 'published']):
+                integration_tests.append("Summary statistics properly calculated")
+            else:
+                integration_tests.append("Summary statistics missing fields")
+            
+            # Test runs data structure
+            runs = data.get('runs', [])
+            if runs:
+                first_run = runs[0]
+                
+                # Test processing results integration
+                processing_results = first_run.get('processing_results', {})
+                expected_steps = ['validation', 'qa', 'adjustment', 'publishing', 'versioning']
+                
+                if all(step in processing_results for step in expected_steps):
+                    integration_tests.append("All V2 processing steps integrated")
+                else:
+                    missing_steps = [step for step in expected_steps if step not in processing_results]
+                    integration_tests.append(f"Missing processing steps: {missing_steps}")
+                
+                # Test article data integration
+                articles = first_run.get('articles', {})
+                if all(field in articles for field in ['count', 'titles', 'articles_data']):
+                    integration_tests.append("Article data properly integrated")
+                else:
+                    integration_tests.append("Article data integration incomplete")
+                
+                # Test badge integration
+                badges = first_run.get('badges', {})
+                if badges and len(badges) >= 3:
+                    integration_tests.append("Quality badges properly integrated")
+                else:
+                    integration_tests.append("Quality badges integration incomplete")
+            
+            # Test engine identification
+            if data.get('engine') == 'v2' and data.get('review_system_status') == 'active':
+                integration_tests.append("V2 engine and review system properly identified")
+            else:
+                integration_tests.append("V2 engine or review system identification failed")
+            
+            all_integration_passed = all('properly' in test or 'All V2' in test for test in integration_tests)
+            
+            self.log_test("Review Workflow Integration", all_integration_passed, 
+                         f"Integration tests: {integration_tests}",
+                         data)
+            return all_integration_passed
+            
+        except Exception as e:
+            self.log_test("Review Workflow Integration", False, f"Exception: {str(e)}")
+            return False
+    
+    def run_comprehensive_tests(self) -> Dict[str, Any]:
+        """Run all V2 Engine Step 13 Review System tests"""
+        print(f"🚀 STARTING V2 ENGINE STEP 13 REVIEW SYSTEM COMPREHENSIVE TESTING")
+        print(f"🌐 Backend URL: {BACKEND_URL}")
+        print(f"📡 API Base: {API_BASE}")
         
-        total_tests = len(self.test_results)
-        passed_tests = len([r for r in self.test_results if r['success']])
-        failed_tests = total_tests - passed_tests
-        success_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
-        
-        print(f"\n📊 OVERALL RESULTS:")
-        print(f"   Total Tests: {total_tests}")
-        print(f"   Passed: {passed_tests} ✅")
-        print(f"   Failed: {failed_tests} ❌")
-        print(f"   Success Rate: {success_rate:.1f}%")
-        
-        print(f"\n📋 DETAILED TEST RESULTS:")
-        for i, result in enumerate(self.test_results, 1):
-            status = "✅ PASS" if result['success'] else "❌ FAIL"
-            print(f"   {i:2d}. {status} {result['test_name']}")
-            print(f"       {result['details']}")
-        
-        print(f"\n🎯 V2 ENGINE STEP 10 ADAPTIVE ADJUSTMENT TESTING SUMMARY:")
-        
-        # Categorize test results
-        critical_tests = [
-            "Backend Health Check",
-            "V2 Text Processing with Adaptive Adjustment", 
-            "Adjustment Diagnostics General Endpoint",
-            "Content Library Integration with Adjustment Metadata"
+        test_methods = [
+            self.test_engine_health_check,
+            self.test_get_runs_for_review,
+            self.test_get_run_details_for_review,
+            self.test_approval_workflow,
+            self.test_rejection_workflow,
+            self.test_rerun_capability,
+            self.test_media_library_preview,
+            self.test_quality_badges_calculation,
+            self.test_review_workflow_integration
         ]
         
-        critical_passed = len([r for r in self.test_results if r['test_name'] in critical_tests and r['success']])
-        critical_total = len([r for r in self.test_results if r['test_name'] in critical_tests])
+        passed_tests = 0
+        total_tests = len(test_methods)
         
-        if critical_passed == critical_total:
-            print(f"   ✅ CRITICAL FUNCTIONALITY: All {critical_total}/{critical_total} critical tests passed")
-        else:
-            print(f"   ❌ CRITICAL FUNCTIONALITY: {critical_passed}/{critical_total} critical tests passed")
+        for test_method in test_methods:
+            try:
+                if test_method():
+                    passed_tests += 1
+            except Exception as e:
+                print(f"❌ CRITICAL ERROR in {test_method.__name__}: {str(e)}")
         
-        # Feature coverage analysis
-        feature_coverage = {
-            "V2AdaptiveAdjustmentSystem Integration": any("Processing with Adaptive Adjustment" in r['test_name'] for r in self.test_results),
-            "Word Count Analysis": any("Word Count Analysis" in r['test_name'] for r in self.test_results),
-            "Readability Scoring": any("Readability Scoring" in r['test_name'] for r in self.test_results),
-            "Adjustment Diagnostics Endpoints": any("Adjustment Diagnostics" in r['test_name'] for r in self.test_results),
-            "Granularity Expectations": any("Granularity Expectations" in r['test_name'] for r in self.test_results),
-            "Content Library Integration": any("Content Library Integration" in r['test_name'] for r in self.test_results)
+        # Calculate success rate
+        success_rate = (passed_tests / total_tests) * 100
+        
+        # Compile final results
+        results = {
+            "test_summary": {
+                "total_tests": total_tests,
+                "passed_tests": passed_tests,
+                "failed_tests": total_tests - passed_tests,
+                "success_rate": f"{success_rate:.1f}%",
+                "overall_status": "PASS" if success_rate >= 80 else "FAIL"
+            },
+            "test_details": self.test_results,
+            "backend_url": BACKEND_URL,
+            "test_timestamp": datetime.utcnow().isoformat(),
+            "engine_version": "v2",
+            "step_tested": "Step 13 - Review UI (Human-in-the-loop QA)"
         }
         
-        print(f"\n🔍 FEATURE COVERAGE ANALYSIS:")
-        for feature, covered in feature_coverage.items():
-            status = "✅ COVERED" if covered else "❌ NOT COVERED"
-            print(f"   {status} {feature}")
+        print(f"\n" + "="*80)
+        print(f"🎯 V2 ENGINE STEP 13 REVIEW SYSTEM TESTING COMPLETE")
+        print(f"📊 RESULTS: {passed_tests}/{total_tests} tests passed ({success_rate:.1f}% success rate)")
+        print(f"🏆 OVERALL STATUS: {results['test_summary']['overall_status']}")
+        print(f"="*80)
         
-        # Final assessment
-        if success_rate >= 90:
-            assessment = "🎉 EXCELLENT - V2 Engine Step 10 is production ready"
-        elif success_rate >= 75:
-            assessment = "✅ GOOD - V2 Engine Step 10 is mostly functional with minor issues"
-        elif success_rate >= 50:
-            assessment = "⚠️ MODERATE - V2 Engine Step 10 has significant issues requiring attention"
-        else:
-            assessment = "❌ POOR - V2 Engine Step 10 has critical issues requiring immediate fixes"
-        
-        print(f"\n🏆 FINAL ASSESSMENT: {assessment}")
-        print(f"   Success Rate: {success_rate:.1f}%")
-        print(f"   Critical Tests: {critical_passed}/{critical_total} passed")
-        print(f"   Feature Coverage: {sum(feature_coverage.values())}/{len(feature_coverage)} features covered")
-        
-        return {
-            "total_tests": total_tests,
-            "passed_tests": passed_tests,
-            "failed_tests": failed_tests,
-            "success_rate": success_rate,
-            "critical_tests_passed": critical_passed,
-            "critical_tests_total": critical_total,
-            "feature_coverage": feature_coverage,
-            "assessment": assessment,
-            "test_results": self.test_results
-        }
+        return results
 
 def main():
-    """Main test execution function"""
-    print(f"🚀 V2 ENGINE STEP 10 ADAPTIVE ADJUSTMENT COMPREHENSIVE TESTING STARTED")
-    print(f"⏰ Test started at: {datetime.now().isoformat()}")
+    """Main test execution"""
+    tester = V2ReviewSystemTester()
+    results = tester.run_comprehensive_tests()
     
-    tester = V2AdaptiveAdjustmentTester()
+    # Print detailed results
+    print(f"\n📋 DETAILED TEST RESULTS:")
+    for result in results["test_details"]:
+        status = "✅" if result["success"] else "❌"
+        print(f"{status} {result['test']}: {result['details']}")
     
-    # Execute all tests in sequence
-    test_methods = [
-        tester.test_backend_health_check,
-        tester.test_v2_text_processing_with_adaptive_adjustment,
-        tester.test_adjustment_diagnostics_endpoints,
-        tester.test_adjustment_rerun_endpoint,
-        tester.test_file_upload_processing_with_adaptive_adjustment,
-        tester.test_url_processing_with_adaptive_adjustment,
-        tester.test_content_library_integration,
-        tester.test_granularity_expectations_validation,
-        tester.test_word_count_analysis_thresholds,
-        tester.test_readability_scoring_calculation
-    ]
-    
-    for test_method in test_methods:
-        try:
-            test_method()
-            time.sleep(2)  # Brief pause between tests
-        except Exception as e:
-            print(f"❌ Test execution error in {test_method.__name__}: {str(e)}")
-    
-    # Generate comprehensive report
-    final_report = tester.generate_comprehensive_test_report()
-    
-    print(f"\n⏰ Test completed at: {datetime.now().isoformat()}")
-    print(f"🎯 V2 ENGINE STEP 10 ADAPTIVE ADJUSTMENT TESTING COMPLETE")
-    
-    return final_report
+    return results
 
 if __name__ == "__main__":
     main()

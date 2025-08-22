@@ -19187,9 +19187,24 @@ async def process_content(request: ContentProcessRequest):
         await db.processing_jobs.insert_one(job.dict())
         print(f"📊 V2 ENGINE: Job created - {job.job_id} - engine=v2")
         
-        # V2 PROCESSING: Route to V2 text processor
+        # V2 PROCESSING: Route to V2 text processor with timeout protection
         if request.content_type == "text":
-            chunks = await process_text_content_v2(request.content, request.metadata)
+            # Add timeout wrapper similar to file upload endpoint
+            async def process_with_timeout():
+                return await process_text_content_v2(request.content, request.metadata)
+            
+            try:
+                # 10-minute timeout for V2 processing pipeline (same as upload endpoint)
+                chunks = await asyncio.wait_for(process_with_timeout(), timeout=600)
+            except asyncio.TimeoutError:
+                print(f"⏰ V2 ENGINE: Processing timeout after 10 minutes - job: {job.job_id} - engine=v2")
+                job.status = "failed"
+                job.error_message = "Processing timeout - content too complex or system overloaded"
+                await db.processing_jobs.update_one(
+                    {"job_id": job.job_id},
+                    {"$set": {"status": "failed", "error_message": job.error_message}}
+                )
+                raise HTTPException(status_code=408, detail="Processing timeout after 10 minutes")
         else:
             raise HTTPException(status_code=400, detail=f"Content type {request.content_type} not supported yet")
         

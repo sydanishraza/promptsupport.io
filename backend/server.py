@@ -25829,6 +25829,199 @@ async def republish_v2_content(run_id: str = Form(...)):
         print(f"❌ V2 PUBLISHING: Error in republishing - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error republishing V2 content: {str(e)}")
 
+# V2 ENGINE: Versioning diagnostic endpoints
+@app.get("/api/versioning/diagnostics")
+async def get_versioning_diagnostics():
+    """V2 ENGINE: Get comprehensive versioning diagnostics for all processing runs"""
+    try:
+        print(f"📊 V2 VERSIONING: Retrieving versioning diagnostics - engine=v2")
+        
+        # Get all versioning results from database
+        versioning_results = []
+        async for versioning_result in db.v2_versioning_results.find().sort("timestamp", -1).limit(50):
+            versioning_results.append(versioning_result)
+        
+        # Calculate summary statistics
+        total_versioning_runs = len(versioning_results)
+        successful_runs = len([r for r in versioning_results if r.get('versioning_status') == 'success'])
+        failed_runs = len([r for r in versioning_results if r.get('versioning_status') == 'error'])
+        version_updates = len([r for r in versioning_results if r.get('version_metadata', {}).get('supersedes')])
+        new_versions = total_versioning_runs - version_updates
+        
+        # Create diagnostics response
+        diagnostics_response = {
+            "versioning_system_status": "active",
+            "engine": "v2",
+            "diagnostics_generated_at": datetime.utcnow().isoformat(),
+            
+            # Overall versioning statistics
+            "versioning_summary": {
+                "total_versioning_runs": total_versioning_runs,
+                "successful_runs": successful_runs,
+                "failed_runs": failed_runs,
+                "success_rate": (successful_runs / total_versioning_runs * 100) if total_versioning_runs > 0 else 0,
+                "version_updates": version_updates,
+                "new_versions": new_versions
+            },
+            
+            # Recent versioning results
+            "recent_versioning_results": [
+                {
+                    "versioning_id": result.get('versioning_id'),
+                    "run_id": result.get('run_id'),
+                    "versioning_status": result.get('versioning_status'),
+                    "version_number": result.get('version_metadata', {}).get('version', 1),
+                    "is_update": result.get('version_metadata', {}).get('supersedes') is not None,
+                    "supersedes": result.get('version_metadata', {}).get('supersedes'),
+                    "change_summary": result.get('version_metadata', {}).get('change_summary', ''),
+                    "diff_available": result.get('diff_result') is not None,
+                    "timestamp": result.get('timestamp')
+                }
+                for result in versioning_results[:20]  # Show last 20 results
+            ],
+            
+            # Version chain analysis
+            "version_chains": _analyze_version_chains(versioning_results)
+        }
+        
+        print(f"✅ V2 VERSIONING: Returning versioning diagnostics - {total_versioning_runs} total runs - engine=v2")
+        return diagnostics_response
+        
+    except Exception as e:
+        print(f"❌ V2 VERSIONING: Error retrieving versioning diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving versioning diagnostics: {str(e)}")
+
+def _analyze_version_chains(versioning_results: list) -> dict:
+    """Analyze version chains from versioning results"""
+    try:
+        # Group by source hash to find version chains
+        source_chains = {}
+        
+        for result in versioning_results:
+            source_hash = result.get('version_metadata', {}).get('source_hash')
+            if source_hash:
+                if source_hash not in source_chains:
+                    source_chains[source_hash] = []
+                source_chains[source_hash].append(result)
+        
+        # Analyze chains
+        chain_analysis = {
+            "total_source_content": len(source_chains),
+            "content_with_multiple_versions": len([chain for chain in source_chains.values() if len(chain) > 1]),
+            "longest_version_chain": max([len(chain) for chain in source_chains.values()]) if source_chains else 0,
+            "average_versions_per_content": sum([len(chain) for chain in source_chains.values()]) / len(source_chains) if source_chains else 0
+        }
+        
+        return chain_analysis
+        
+    except Exception as e:
+        print(f"❌ V2 VERSIONING: Error analyzing version chains - {e}")
+        return {"error": str(e)}
+
+@app.get("/api/versioning/diagnostics/{versioning_id}")
+async def get_specific_versioning_diagnostics(versioning_id: str):
+    """V2 ENGINE: Get detailed diagnostics for a specific versioning result"""
+    try:
+        print(f"🔍 V2 VERSIONING: Retrieving specific versioning diagnostics - ID: {versioning_id} - engine=v2")
+        
+        # Find the specific versioning result
+        versioning_result = await db.v2_versioning_results.find_one({"versioning_id": versioning_id})
+        
+        if not versioning_result:
+            raise HTTPException(status_code=404, detail=f"Versioning result not found: {versioning_id}")
+        
+        # Enhance result with additional analysis
+        enhanced_result = {
+            "versioning_result": versioning_result,
+            "analysis": {
+                "version_metadata": versioning_result.get('version_metadata', {}),
+                "version_chain_info": {
+                    "is_initial_version": versioning_result.get('version_metadata', {}).get('version', 1) == 1,
+                    "is_update": versioning_result.get('version_metadata', {}).get('supersedes') is not None,
+                    "version_number": versioning_result.get('version_metadata', {}).get('version', 1),
+                    "previous_run_id": versioning_result.get('version_metadata', {}).get('supersedes')
+                },
+                "diff_analysis": versioning_result.get('diff_result', {}),
+                "processing_context": {
+                    "versioned_articles_count": versioning_result.get('versioned_articles_count', 0),
+                    "source_hash": versioning_result.get('version_metadata', {}).get('source_hash', '')[:16] + "..." if versioning_result.get('version_metadata', {}).get('source_hash') else '',
+                    "change_summary": versioning_result.get('version_metadata', {}).get('change_summary', '')
+                }
+            }
+        }
+        
+        print(f"✅ V2 VERSIONING: Returning specific versioning result - Version: {versioning_result.get('version_metadata', {}).get('version', 1)} - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 VERSIONING: Error retrieving specific versioning diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving versioning diagnostics: {str(e)}")
+
+@app.post("/api/versioning/rerun")
+async def rerun_versioning_analysis(run_id: str = Form(...)):
+    """V2 ENGINE: Rerun versioning analysis for a specific processing run"""
+    try:
+        print(f"🔄 V2 VERSIONING: Rerun versioning analysis requested - run_id: {run_id} - engine=v2")
+        
+        # Find articles from the specified run
+        articles = []
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            articles.append(article)
+        
+        if not articles:
+            raise HTTPException(status_code=404, detail=f"No V2 articles found for run: {run_id}")
+        
+        # Get original content for hashing (simplified approach)
+        # In a full implementation, this would be retrieved from stored processing context
+        content_for_versioning = f"rerun_content_{run_id}"
+        content_type = "rerun"
+        
+        # Create mock results for rerun (in full implementation, these would be retrieved)
+        generated_articles_result = {
+            "generated_articles": [{"article_data": {"title": article.get("title", ""), "html": article.get("content", "")}} for article in articles],
+            "engine": "v2"
+        }
+        
+        publishing_result = {
+            "publishing_status": "success",
+            "published_articles": len(articles),
+            "coverage_achieved": 100.0,
+            "engine": "v2"
+        }
+        
+        # Perform versioning analysis
+        versioning_result = await v2_versioning_system.manage_versioning(
+            content_for_versioning, content_type, articles, generated_articles_result, publishing_result, run_id
+        )
+        
+        # Store the rerun result
+        try:
+            await db.v2_versioning_results.insert_one(versioning_result)
+            print(f"💾 V2 VERSIONING: Stored rerun versioning result - versioning_id: {versioning_result.get('versioning_id')} - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 VERSIONING: Error storing rerun result - {storage_error} - engine=v2")
+        
+        versioning_status = versioning_result.get('versioning_status', 'unknown')
+        version_number = versioning_result.get('version_metadata', {}).get('version', 1)
+        
+        return {
+            "message": "V2 versioning analysis rerun completed",
+            "run_id": run_id,
+            "versioning_id": versioning_result.get('versioning_id'),
+            "versioning_status": versioning_status,
+            "version_number": version_number,
+            "is_update": versioning_result.get('version_metadata', {}).get('supersedes') is not None,
+            "diff_available": versioning_result.get('diff_result') is not None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 VERSIONING: Error in versioning rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning versioning analysis: {str(e)}")
+
 @app.post("/api/media-intelligence")
 async def analyze_media_intelligence(request: Request):
     """

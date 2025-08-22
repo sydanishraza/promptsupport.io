@@ -471,20 +471,21 @@ class V2Step2MediaManagementTester:
             # Multiply content to make it larger
             large_content = large_content * 3  # Triple the content size
             
-            form_data = {
+            json_data = {
                 'content': large_content,
-                'metadata': json.dumps({
+                'content_type': 'text',
+                'metadata': {
                     'filename': 'large_complex_document.md',
                     'size': len(large_content),
                     'timeout_test': True
-                })
+                }
             }
             
             print(f"📤 Testing timeout protection with {len(large_content)} character document...")
             
             # Use shorter timeout to potentially trigger timeout protection
             try:
-                response = requests.post(f"{API_BASE}/content/process", data=form_data, timeout=90)
+                response = requests.post(f"{API_BASE}/content/process", json=json_data, timeout=90)
                 
                 if response.status_code == 408:
                     # Timeout protection working correctly

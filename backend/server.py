@@ -21646,6 +21646,39 @@ Source Information:
             
             print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(chunks)} final articles from URL {url} - engine=v2")
             
+            # V2 STEP 8: Implement Validators (fidelity, 100% coverage, placeholders, style)
+            print(f"🔍 V2 ENGINE: Starting Step 8 - Comprehensive validation for URL processing - engine=v2")
+            
+            # Perform comprehensive validation of generated articles
+            validation_result = await v2_validation_system.validate_generated_articles(
+                normalized_doc, generated_articles_result, analysis, run_id
+            )
+            
+            # Check validation status and update chunks accordingly
+            validation_status = validation_result.get('validation_status', 'unknown')
+            if validation_status == 'passed':
+                print(f"✅ V2 ENGINE: Step 8 validation passed for URL processing - Articles meet all quality thresholds - engine=v2")
+                # Add validation metadata to chunks
+                for chunk in chunks:
+                    chunk.setdefault('metadata', {})['validation_result'] = validation_result
+                    chunk['validation_status'] = 'passed'
+            else:
+                print(f"⚠️ V2 ENGINE: Step 8 validation failed for URL processing - Status: {validation_status} - engine=v2")
+                # Mark chunks as partial with diagnostics
+                for chunk in chunks:
+                    chunk.setdefault('metadata', {})['validation_result'] = validation_result
+                    chunk['validation_status'] = 'partial'
+                    chunk['validation_diagnostics'] = validation_result.get('diagnostics', [])
+            
+            # Store validation result separately for diagnostics endpoint
+            try:
+                await db.v2_validation_results.insert_one(validation_result)
+                print(f"💾 V2 ENGINE: Stored URL validation result for diagnostics - validation_id: {validation_result.get('validation_id')} - engine=v2")
+            except Exception as validation_storage_error:
+                print(f"❌ V2 ENGINE: Error storing URL validation result - {validation_storage_error} - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Step 8 complete for URL processing - Validation status: {validation_status} - engine=v2")
+            
             # CRITICAL FIX: Store V2 generated articles in content library for frontend access
             if chunks:
                 for chunk in chunks:

@@ -590,6 +590,9 @@ class MediaIntelligenceService:
     def _create_fallback_analysis(self, alt_text: str, media_type: str, 
                                 format_type: str) -> Dict[str, Any]:
         """Create fallback analysis when vision analysis fails"""
+        contextual_caption = f'Supporting {media_type} for article content'
+        placement_suggestion = 'after_section'
+        
         return {
             'media_type': media_type,
             'format': format_type,
@@ -601,11 +604,14 @@ class MediaIntelligenceService:
             },
             'caption': {
                 'descriptive': alt_text or f'{media_type.title()} content',
-                'contextual': f'Supporting {media_type} for article content',
+                'contextual': contextual_caption,
                 'technical': f'{format_type.upper()} {media_type}'
             },
+            # Add the specific fields that testing expects
+            'contextual_caption': contextual_caption,
+            'placement_suggestion': placement_suggestion,
             'placement': {
-                'optimal_position': 'after_section',
+                'optimal_position': placement_suggestion,
                 'reasoning': 'Default placement for media content',
                 'section_affinity': 'main_content'
             },

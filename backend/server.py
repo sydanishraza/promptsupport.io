@@ -3263,7 +3263,7 @@ Return ONLY JSON in this exact format:
             return None
 
 # Global V2 Per-Article Outline Planner instance
-v2_article_planner = V2PerArticleOutlinePlanner()
+v2_per_article_outline_planner = V2PerArticleOutlinePlanner()
 
 class V2PrewriteSystem:
     """V2 Engine: Section-Grounded Prewrite Pass - Facts extraction before article generation"""
@@ -20343,7 +20343,7 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         print(f"📋 V2 ENGINE: Global outline created - {len(article_outlines)} articles planned, {len(discarded_blocks)} blocks discarded - engine=v2")
         
         # V2 STEP 6: Create detailed per-article outlines
-        per_article_outlines_result = await v2_article_planner.create_per_article_outlines(
+        per_article_outlines_result = await v2_per_article_outline_planner.create_per_article_outlines(
             normalized_doc, outline, analysis, run_id
         )
         
@@ -24557,7 +24557,7 @@ File Information:
             print(f"📋 V2 ENGINE: Global outline created - {len(article_outlines)} articles planned, {len(discarded_blocks)} blocks discarded - engine=v2")
             
             # V2 STEP 6: Create detailed per-article outlines
-            per_article_outlines_result = await v2_article_planner.create_per_article_outlines(
+            per_article_outlines_result = await v2_per_article_outline_planner.create_per_article_outlines(
                 normalized_doc, outline, analysis, run_id
             )
             
@@ -25362,7 +25362,7 @@ Source Information:
             print(f"📋 V2 ENGINE: Global outline created - {len(article_outlines)} articles planned, {len(discarded_blocks)} blocks discarded - engine=v2")
             
             # V2 STEP 6: Create detailed per-article outlines
-            per_article_outlines_result = await v2_article_planner.create_per_article_outlines(
+            per_article_outlines_result = await v2_per_article_outline_planner.create_per_article_outlines(
                 normalized_doc, outline, analysis, run_id
             )
             

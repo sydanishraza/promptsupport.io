@@ -3485,7 +3485,8 @@ class V2PrewriteSystem:
                 for section in sections
             ])
             
-            prewrite_prompt = f"""System: You are a fact extractor. Pull *verbatim or tightly paraphrased* facts from the provided blocks for each section.
+            # Create prewrite prompt for LLM
+            system_message = """You are a fact extractor. Pull *verbatim or tightly paraphrased* facts from the provided blocks for each section.
 
 User rules:
 - Output JSON only.
@@ -3493,37 +3494,35 @@ User rules:
 - Extract any concrete examples (curl, parameters, object fields).
 - If a required fact is missing, emit a `gap` entry with what is missing (no [MISSING] text here).
 
-ARTICLE: {article_title}
+OUTPUT JSON FORMAT:
+{
+  "sections": [
+    {
+      "heading": "...",
+      "facts": [{"text":"...", "evidence_block_ids":["b034","b091"]}, ...],
+      "must_include_examples": [{"type":"curl","content":"..."},{"type":"table","headers":[...],"rows":[...]}, ...],
+      "gaps":[{"need":"...", "where":"..."}, ...],
+      "terms":["Integration ID","Server Token", "..."]
+    }
+  ]
+}
+
+Extract facts ONLY from the provided blocks. Each fact must cite specific block_ids where the information was found."""
+
+            user_message = f"""ARTICLE: {article_title}
 
 SECTIONS TO PROCESS:
 {sections_summary}
 
 SOURCE CONTENT BLOCKS:
-{blocks_text}
-
-OUTPUT JSON FORMAT:
-{{
-  "sections": [
-    {{
-      "heading": "...",
-      "facts": [{{"text":"...", "evidence_block_ids":["b034","b091"]}}, ...],
-      "must_include_examples": [{{"type":"curl","content":"..."}},{{"type":"table","headers":[...],"rows":[...]}}, ...],
-      "gaps":[{{"need":"...", "where":"..."}}, ...],
-      "terms":["Integration ID","Server Token", "..."]
-    }}
-  ]
-}}
-
-Extract facts ONLY from the provided blocks. Each fact must cite specific block_ids where the information was found."""
+{blocks_text}"""
 
             # Call LLM for fact extraction
             try:
                 response = await call_llm_with_fallback(
-                    prompt=prewrite_prompt,
-                    model="gpt-4o",
-                    temperature=0.1,  # Low temperature for factual extraction
-                    max_tokens=4000,
-                    timeout=90
+                    system_message=system_message,
+                    user_message=user_message,
+                    session_id=f"prewrite_{article_title}"
                 )
                 
                 # Parse JSON response

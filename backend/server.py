@@ -4072,12 +4072,18 @@ Return the fully formatted article with improved clarity and structure."""
                 compliance_checks['intro_length_compliant'] = False
                 issues.append("No clear intro section found")
             
-            # Check for mini-TOC
+            # Check for mini-TOC with clickable anchors
+            import re
+            toc_anchor_links = re.findall(r'- \[[^\]]+\]\(#[^)]+\)', content)
             compliance_checks['has_mini_toc'] = ('mini-toc' in content.lower() or 
                                                'table of contents' in content.lower() or
-                                               ('- [' in content and '](#' in content))
+                                               len(toc_anchor_links) > 0)
+            compliance_checks['toc_anchor_count'] = len(toc_anchor_links)
+            
             if not compliance_checks['has_mini_toc']:
                 issues.append("Missing mini-TOC with anchor links")
+            elif len(toc_anchor_links) == 0:
+                issues.append("Mini-TOC found but lacks clickable anchor links")
             
             # Check paragraph length (≤4 lines heuristic)
             paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]

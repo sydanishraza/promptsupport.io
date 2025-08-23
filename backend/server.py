@@ -26735,6 +26735,7 @@ async def get_engine_status():
             "publishing_diagnostics": "/api/publishing/diagnostics",
             "versioning_diagnostics": "/api/versioning/diagnostics",
             "prewrite_diagnostics": "/api/prewrite/diagnostics",
+            "style_diagnostics": "/api/style/diagnostics",
             "review_runs": "/api/review/runs",
             "review_approve": "/api/review/approve",
             "review_reject": "/api/review/reject",

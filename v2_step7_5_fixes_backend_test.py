@@ -52,7 +52,7 @@ class V2StyleFixesTester:
             data = response.json()
             
             # Verify basic structure
-            required_fields = ['style_system_status', 'engine', 'summary', 'recent_results']
+            required_fields = ['style_system_status', 'engine', 'style_summary', 'recent_style_results']
             missing_fields = [field for field in required_fields if field not in data]
             
             if missing_fields:

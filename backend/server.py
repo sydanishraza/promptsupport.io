@@ -3265,6 +3265,386 @@ Return ONLY JSON in this exact format:
 # Global V2 Per-Article Outline Planner instance
 v2_article_planner = V2PerArticleOutlinePlanner()
 
+class V2PrewriteSystem:
+    """V2 Engine: Section-Grounded Prewrite Pass - Facts extraction before article generation"""
+    
+    def __init__(self):
+        self.prewrite_storage_path = "/app/backend/static/prewrite_data"
+        os.makedirs(self.prewrite_storage_path, exist_ok=True)
+        
+    async def execute_prewrite_pass(self, content: str, content_type: str, articles: list, 
+                                  per_article_outlines: dict, global_analysis: dict, run_id: str) -> dict:
+        """Execute section-grounded prewrite pass for all articles"""
+        try:
+            print(f"🔍 V2 PREWRITE: Starting section-grounded prewrite pass - {len(articles)} articles - engine=v2")
+            
+            # Process each article individually
+            prewrite_results = []
+            successful_prewrites = 0
+            failed_prewrites = 0
+            
+            for i, article in enumerate(articles):
+                try:
+                    article_prewrite = await self._process_article_prewrite(
+                        article, content, per_article_outlines, global_analysis, run_id, i
+                    )
+                    
+                    if article_prewrite.get('prewrite_status') == 'success':
+                        successful_prewrites += 1
+                        # Add prewrite data to article for use in generation
+                        article['prewrite_data'] = article_prewrite.get('prewrite_data', {})
+                        article['prewrite_file'] = article_prewrite.get('prewrite_file', '')
+                    else:
+                        failed_prewrites += 1
+                    
+                    prewrite_results.append(article_prewrite)
+                    
+                except Exception as article_error:
+                    print(f"❌ V2 PREWRITE: Error processing article {i+1} - {article_error} - engine=v2")
+                    failed_prewrites += 1
+                    prewrite_results.append({
+                        "article_index": i,
+                        "prewrite_status": "error",
+                        "error": str(article_error)
+                    })
+            
+            # Calculate overall success metrics
+            total_articles = len(articles)
+            success_rate = (successful_prewrites / total_articles * 100) if total_articles > 0 else 0
+            
+            prewrite_summary = {
+                "prewrite_id": f"prewrite_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "prewrite_status": "success" if failed_prewrites == 0 else "partial" if successful_prewrites > 0 else "failed",
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                
+                # Processing metrics
+                "articles_processed": total_articles,
+                "successful_prewrites": successful_prewrites,
+                "failed_prewrites": failed_prewrites,
+                "success_rate": success_rate,
+                
+                # Detailed results per article
+                "prewrite_results": prewrite_results,
+                
+                # Content analysis
+                "content_analysis": {
+                    "content_type": content_type,
+                    "content_length": len(content),
+                    "source_blocks_available": len(self._extract_content_blocks(content)),
+                    "prewrite_files_created": successful_prewrites
+                }
+            }
+            
+            print(f"✅ V2 PREWRITE: Prewrite pass complete - {successful_prewrites}/{total_articles} successful - engine=v2")
+            return prewrite_summary
+            
+        except Exception as e:
+            print(f"❌ V2 PREWRITE: Error in prewrite pass - {e} - engine=v2")
+            return {
+                "prewrite_id": f"prewrite_error_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "prewrite_status": "error",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+    
+    async def _process_article_prewrite(self, article: dict, content: str, 
+                                      per_article_outlines: dict, global_analysis: dict, 
+                                      run_id: str, article_index: int) -> dict:
+        """Process prewrite for a single article"""
+        try:
+            article_title = article.get('title', f'Article {article_index + 1}')
+            print(f"📝 V2 PREWRITE: Processing prewrite for '{article_title}' - engine=v2")
+            
+            # Get article outline
+            article_outline = per_article_outlines.get(f'article_{article_index}', {})
+            sections = article_outline.get('sections', [])
+            
+            if not sections:
+                print(f"⚠️ V2 PREWRITE: No outline sections found for article {article_index} - engine=v2")
+                return {
+                    "article_index": article_index,
+                    "article_title": article_title,
+                    "prewrite_status": "skipped",
+                    "reason": "no_outline_sections"
+                }
+            
+            # Extract content blocks for fact extraction
+            content_blocks = self._extract_content_blocks(content)
+            
+            # Generate section-grounded prewrite using LLM
+            prewrite_data = await self._generate_section_prewrite(
+                article_title, sections, content_blocks, global_analysis
+            )
+            
+            # Validate prewrite data
+            validation_result = self._validate_prewrite_data(prewrite_data, sections)
+            
+            if not validation_result['is_valid']:
+                print(f"❌ V2 PREWRITE: Prewrite validation failed for '{article_title}' - {validation_result['reason']} - engine=v2")
+                return {
+                    "article_index": article_index,
+                    "article_title": article_title,
+                    "prewrite_status": "validation_failed",
+                    "validation_error": validation_result['reason']
+                }
+            
+            # Save prewrite.json file
+            prewrite_filename = f"prewrite_{run_id}_article_{article_index}.json"
+            prewrite_filepath = os.path.join(self.prewrite_storage_path, prewrite_filename)
+            
+            prewrite_file_data = {
+                "article_index": article_index,
+                "article_title": article_title,
+                "run_id": run_id,
+                "created_at": datetime.utcnow().isoformat(),
+                "prewrite_data": prewrite_data,
+                "validation_result": validation_result
+            }
+            
+            with open(prewrite_filepath, 'w', encoding='utf-8') as f:
+                json.dump(prewrite_file_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"✅ V2 PREWRITE: Saved prewrite file - {prewrite_filename} - {len(prewrite_data.get('sections', []))} sections - engine=v2")
+            
+            return {
+                "article_index": article_index,
+                "article_title": article_title,
+                "prewrite_status": "success",
+                "prewrite_file": prewrite_filepath,
+                "prewrite_data": prewrite_data,
+                "validation_result": validation_result,
+                "sections_processed": len(prewrite_data.get('sections', [])),
+                "total_facts_extracted": sum([len(section.get('facts', [])) for section in prewrite_data.get('sections', [])])
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 PREWRITE: Error processing article prewrite - {e} - engine=v2")
+            return {
+                "article_index": article_index,
+                "article_title": article.get('title', f'Article {article_index + 1}'),
+                "prewrite_status": "error",
+                "error": str(e)
+            }
+    
+    def _extract_content_blocks(self, content: str) -> list:
+        """Extract content blocks with block_ids for fact extraction"""
+        try:
+            # Split content into logical blocks (paragraphs, sections, etc.)
+            blocks = []
+            
+            # Split by double newlines first (paragraphs)
+            paragraphs = content.split('\n\n')
+            
+            for i, paragraph in enumerate(paragraphs):
+                if paragraph.strip():
+                    block_id = f"b{i+1:03d}"  # Format: b001, b002, etc.
+                    
+                    # Determine block type
+                    block_type = "paragraph"
+                    if paragraph.strip().startswith('#'):
+                        block_type = "heading"
+                    elif paragraph.strip().startswith('```') or 'curl' in paragraph.lower():
+                        block_type = "code"
+                    elif '|' in paragraph and paragraph.count('|') > 2:
+                        block_type = "table"
+                    elif paragraph.strip().startswith(('- ', '* ', '1. ', '2. ')):
+                        block_type = "list"
+                    
+                    blocks.append({
+                        "block_id": block_id,
+                        "type": block_type,
+                        "content": paragraph.strip(),
+                        "length": len(paragraph.strip()),
+                        "index": i
+                    })
+            
+            print(f"🔍 V2 PREWRITE: Extracted {len(blocks)} content blocks for fact extraction - engine=v2")
+            return blocks
+            
+        except Exception as e:
+            print(f"❌ V2 PREWRITE: Error extracting content blocks - {e} - engine=v2")
+            return []
+    
+    async def _generate_section_prewrite(self, article_title: str, sections: list, 
+                                       content_blocks: list, global_analysis: dict) -> dict:
+        """Generate section-grounded prewrite using LLM"""
+        try:
+            # Prepare content blocks for LLM
+            blocks_text = "\n\n".join([
+                f"[BLOCK {block['block_id']}] ({block['type']})\n{block['content']}"
+                for block in content_blocks
+            ])
+            
+            # Create sections summary for context
+            sections_summary = "\n".join([
+                f"- {section.get('title', section.get('heading', 'Untitled Section'))}: {section.get('content_focus', 'General content')}"
+                for section in sections
+            ])
+            
+            prewrite_prompt = f"""System: You are a fact extractor. Pull *verbatim or tightly paraphrased* facts from the provided blocks for each section.
+
+User rules:
+- Output JSON only.
+- For each section: list 5–12 facts, each with `evidence_block_ids`.
+- Extract any concrete examples (curl, parameters, object fields).
+- If a required fact is missing, emit a `gap` entry with what is missing (no [MISSING] text here).
+
+ARTICLE: {article_title}
+
+SECTIONS TO PROCESS:
+{sections_summary}
+
+SOURCE CONTENT BLOCKS:
+{blocks_text}
+
+OUTPUT JSON FORMAT:
+{{
+  "sections": [
+    {{
+      "heading": "...",
+      "facts": [{{"text":"...", "evidence_block_ids":["b034","b091"]}}, ...],
+      "must_include_examples": [{{"type":"curl","content":"..."}},{{"type":"table","headers":[...],"rows":[...]}}, ...],
+      "gaps":[{{"need":"...", "where":"..."}}, ...],
+      "terms":["Integration ID","Server Token", "..."]
+    }}
+  ]
+}}
+
+Extract facts ONLY from the provided blocks. Each fact must cite specific block_ids where the information was found."""
+
+            # Call LLM for fact extraction
+            try:
+                response = await call_llm_with_fallback(
+                    prompt=prewrite_prompt,
+                    model="gpt-4o",
+                    temperature=0.1,  # Low temperature for factual extraction
+                    max_tokens=4000,
+                    timeout=90
+                )
+                
+                # Parse JSON response
+                prewrite_data = json.loads(response)
+                
+                # Enhance with metadata
+                prewrite_data['article_title'] = article_title
+                prewrite_data['extraction_timestamp'] = datetime.utcnow().isoformat()
+                prewrite_data['source_blocks_count'] = len(content_blocks)
+                
+                print(f"✅ V2 PREWRITE: Generated prewrite data - {len(prewrite_data.get('sections', []))} sections - engine=v2")
+                return prewrite_data
+                
+            except json.JSONDecodeError as json_error:
+                print(f"❌ V2 PREWRITE: JSON parsing error in LLM response - {json_error} - engine=v2")
+                # Create fallback structure
+                return self._create_fallback_prewrite(article_title, sections, content_blocks)
+            
+        except Exception as e:
+            print(f"❌ V2 PREWRITE: Error generating section prewrite - {e} - engine=v2")
+            return self._create_fallback_prewrite(article_title, sections, content_blocks)
+    
+    def _create_fallback_prewrite(self, article_title: str, sections: list, content_blocks: list) -> dict:
+        """Create fallback prewrite data when LLM fails"""
+        try:
+            fallback_sections = []
+            
+            for i, section in enumerate(sections):
+                section_title = section.get('title', section.get('heading', f'Section {i+1}'))
+                
+                # Extract basic facts from available blocks
+                relevant_blocks = content_blocks[:min(5, len(content_blocks))]  # Use first 5 blocks
+                
+                fallback_facts = []
+                for j, block in enumerate(relevant_blocks):
+                    if j < 3:  # Limit to 3 facts per section in fallback
+                        fact_text = block['content'][:200] + "..." if len(block['content']) > 200 else block['content']
+                        fallback_facts.append({
+                            "text": fact_text,
+                            "evidence_block_ids": [block['block_id']]
+                        })
+                
+                fallback_sections.append({
+                    "heading": section_title,
+                    "facts": fallback_facts,
+                    "must_include_examples": [],
+                    "gaps": [{"need": "More specific facts", "where": "LLM extraction failed"}],
+                    "terms": []
+                })
+            
+            return {
+                "article_title": article_title,
+                "sections": fallback_sections,
+                "extraction_timestamp": datetime.utcnow().isoformat(),
+                "extraction_method": "fallback",
+                "source_blocks_count": len(content_blocks)
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 PREWRITE: Error creating fallback prewrite - {e} - engine=v2")
+            return {
+                "article_title": article_title,
+                "sections": [],
+                "extraction_timestamp": datetime.utcnow().isoformat(),
+                "extraction_method": "error_fallback",
+                "error": str(e)
+            }
+    
+    def _validate_prewrite_data(self, prewrite_data: dict, outline_sections: list) -> dict:
+        """Validate prewrite data meets requirements"""
+        try:
+            validation_issues = []
+            sections = prewrite_data.get('sections', [])
+            
+            if not sections:
+                return {
+                    "is_valid": False,
+                    "reason": "no_sections_extracted",
+                    "issues": ["No sections found in prewrite data"]
+                }
+            
+            # Check each section for requirements
+            for i, section in enumerate(sections):
+                section_heading = section.get('heading', f'Section {i+1}')
+                facts = section.get('facts', [])
+                
+                # Requirement: Each section has ≥5 grounded facts when source blocks are available
+                if len(facts) < 5:
+                    validation_issues.append(f"Section '{section_heading}' has only {len(facts)} facts (minimum 5 required)")
+                
+                # Requirement: Facts must have evidence_block_ids
+                for j, fact in enumerate(facts):
+                    if not fact.get('evidence_block_ids'):
+                        validation_issues.append(f"Section '{section_heading}', fact {j+1} missing evidence_block_ids")
+                
+                # Check for concrete examples when available
+                examples = section.get('must_include_examples', [])
+                if len(examples) == 0:
+                    # This is a warning, not a failure
+                    pass
+            
+            is_valid = len(validation_issues) == 0
+            
+            return {
+                "is_valid": is_valid,
+                "reason": "validation_passed" if is_valid else "validation_failed",
+                "issues": validation_issues,
+                "sections_validated": len(sections),
+                "total_facts": sum([len(section.get('facts', [])) for section in sections])
+            }
+            
+        except Exception as e:
+            return {
+                "is_valid": False,
+                "reason": "validation_error",
+                "error": str(e)
+            }
+
+# Global V2 Prewrite System instance
+v2_prewrite_system = V2PrewriteSystem()
+
 # ========================================
 # V2 ENGINE: ARTICLE GENERATOR SYSTEM
 # ========================================

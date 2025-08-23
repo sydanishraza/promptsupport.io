@@ -3825,7 +3825,7 @@ class V2StyleProcessor:
 
 STRUCTURAL RULES:
 1. Intro section: 2–3 sentences, plain language, sets context.
-2. Mini-TOC: bullet list with anchor links (no static text).
+2. Mini-TOC: bullet list with clickable anchor links. Format as: "- [Section Name](#section-slug)"
 3. Headings: H1 = article title (sentence case), H2/H3 = imperative, descriptive (e.g., "Create an account").
 4. Body: Short paragraphs (≤4 lines), active voice ("Click **Save**"), numbered steps for procedures.
 5. Code samples: Always fenced with language tag (```bash, ```json), multi-line curl with \ breaks.
@@ -3844,7 +3844,8 @@ User Rules:
 - Rewrite vague content into specific, evidence-backed instructions.
 - Return full HTML/Markdown, no comments.
 - NO PLACEHOLDERS unless explicitly required.
-- Mini-TOC must have clickable anchors."""
+- Mini-TOC MUST have clickable anchors in format: "- [Section Name](#section-slug)"
+- All H2/H3 headings will get matching IDs automatically - just ensure TOC matches heading text."""
 
             user_message = f"""ARTICLE TITLE: {article_title}
 

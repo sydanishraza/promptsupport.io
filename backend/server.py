@@ -3789,7 +3789,9 @@ class V2StyleProcessor:
                 "structural_changes": formatted_result.get('structural_changes', []),
                 "terminology_corrections": terminology_result.get('corrections', []),
                 "compliance_score": compliance_result.get('compliance_score', 0),
-                "woolf_standards_applied": True
+                "woolf_standards_applied": True,
+                "toc_broken_links": formatted_result.get('toc_broken_links', []),
+                "anchor_links_generated": formatted_result.get('anchor_links_generated', 0)
             }
             
             print(f"✅ V2 STYLE: Style formatting successful for '{article_title}' - compliance: {compliance_result.get('compliance_score', 0)}% - engine=v2")

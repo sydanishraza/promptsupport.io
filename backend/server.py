@@ -27753,6 +27753,7 @@ async def get_specific_style_diagnostics(style_id: str):
         
         # Enhance result with additional analysis
         enhanced_result = {
+            "engine": "v2",
             "style_result": style_result,
             "analysis": {
                 "processing_summary": {

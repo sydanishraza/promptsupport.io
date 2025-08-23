@@ -30017,6 +30017,154 @@ CRITICAL: Return ONLY the complete HTML article content with semantic structure.
         return None
 
 
+# Seed Data Creation Endpoint for Testing Related Links
+@app.post("/api/seed/create-test-articles")
+async def create_seed_articles():
+    """Create seed articles for testing the related links system"""
+    try:
+        print("🌱 Creating seed articles for related links testing...")
+        
+        seed_articles = [
+            {
+                "title": "Integration Process and Synchronization",
+                "content": """<h1>Integration Process and Synchronization</h1>
+                <p>This comprehensive guide covers the integration process and synchronization workflows for enterprise applications.</p>
+                
+                <h2 id="overview">Overview</h2>
+                <p>Integration processes are critical for maintaining data consistency across multiple systems. Our synchronization framework ensures real-time data updates and seamless communication between services.</p>
+                
+                <h2 id="synchronization-methods">Synchronization Methods</h2>
+                <p>We support various synchronization approaches including event-driven, batch processing, and real-time streaming synchronization patterns.</p>
+                
+                <h2 id="best-practices">Best Practices</h2>
+                <ul>
+                <li>Implement proper error handling and retry mechanisms</li>
+                <li>Use idempotent operations to prevent duplicate processing</li>
+                <li>Monitor synchronization status and performance metrics</li>
+                </ul>""",
+                "summary": "Comprehensive guide covering integration processes and synchronization workflows for enterprise applications with best practices and implementation details.",
+                "related_links": []
+            },
+            {
+                "title": "API Integration and Authentication",
+                "content": """<h1>API Integration and Authentication</h1>
+                <p>Learn how to integrate with our API services and implement secure authentication mechanisms.</p>
+                
+                <h2 id="authentication-methods">Authentication Methods</h2>
+                <p>We support multiple authentication methods including API keys, OAuth 2.0, and JWT tokens for secure API access.</p>
+                
+                <h2 id="api-integration">API Integration</h2>
+                <p>Our REST API provides comprehensive endpoints for data management, user authentication, and system integration.</p>
+                
+                <h2 id="security-considerations">Security Considerations</h2>
+                <p>Always use HTTPS for API calls, implement proper rate limiting, and follow security best practices for credential management.</p>""",
+                "summary": "Complete guide for API integration with secure authentication methods including OAuth 2.0, JWT tokens, and security best practices.",
+                "related_links": []
+            },
+            {
+                "title": "Getting Started",
+                "content": """<h1>Getting Started</h1>
+                <p>Welcome to our platform! This guide will help you get started quickly and efficiently.</p>
+                
+                <h2 id="initial-setup">Initial Setup</h2>
+                <p>Begin by creating your account and configuring your workspace. Follow the setup wizard to customize your environment.</p>
+                
+                <h2 id="first-steps">First Steps</h2>
+                <p>After setup, explore the dashboard to familiarize yourself with the interface. Start with simple tasks to understand the workflow.</p>
+                
+                <h2 id="next-steps">Next Steps</h2>
+                <p>Once comfortable with the basics, explore advanced features like API integration, custom workflows, and reporting tools.</p>""",
+                "summary": "Quick start guide for new users covering initial setup, first steps, and progression to advanced features.",
+                "related_links": []
+            },
+            {
+                "title": "Error Handling & Best Practices",
+                "content": """<h1>Error Handling & Best Practices</h1>
+                <p>Comprehensive guide to error handling strategies and best practices for robust application development.</p>
+                
+                <h2 id="error-handling-strategies">Error Handling Strategies</h2>
+                <p>Implement graceful error handling with proper logging, user feedback, and recovery mechanisms. Use try-catch blocks and validation patterns.</p>
+                
+                <h2 id="logging-practices">Logging Practices</h2>
+                <p>Maintain detailed logs for debugging and monitoring. Include relevant context information and use appropriate log levels.</p>
+                
+                <h2 id="recovery-mechanisms">Recovery Mechanisms</h2>
+                <p>Design systems with automatic recovery capabilities, circuit breakers, and fallback options for enhanced reliability.</p>""",
+                "summary": "Essential guide covering error handling strategies, logging practices, and recovery mechanisms for robust application development.",
+                "related_links": []
+            },
+            {
+                "title": "Whisk Studio Integration Guide",
+                "content": """<h1>Whisk Studio Integration Guide</h1>
+                <p>Complete integration guide for Whisk Studio development environment and workflow management.</p>
+                
+                <h2 id="studio-setup">Studio Setup</h2>
+                <p>Install and configure Whisk Studio for your development environment. Connect to your project repositories and configure build settings.</p>
+                
+                <h2 id="workflow-integration">Workflow Integration</h2>
+                <p>Integrate Whisk Studio with your existing development workflows, CI/CD pipelines, and collaboration tools.</p>
+                
+                <h2 id="advanced-features">Advanced Features</h2>
+                <p>Explore advanced features like custom plugins, automated testing integration, and deployment automation through Whisk Studio.</p>""",
+                "summary": "Complete integration guide for Whisk Studio covering setup, workflow integration, and advanced features for development teams.",
+                "related_links": []
+            }
+        ]
+        
+        created_articles = []
+        
+        for article_data in seed_articles:
+            # Create article document
+            article = {
+                "id": str(uuid.uuid4()),
+                "title": article_data["title"],
+                "content": article_data["content"],
+                "html": article_data["content"],
+                "summary": article_data["summary"],
+                "related_links": article_data["related_links"],
+                "status": "published",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "source_type": "seed_data",
+                "metadata": {
+                    "engine": "v2",
+                    "processing_version": "2.0",
+                    "generated_by": "seed_data_creator",
+                    "content_type": "seed_article"
+                }
+            }
+            
+            # Insert into content library
+            result = await db.content_library.insert_one(article)
+            
+            article['_id'] = str(result.inserted_id)
+            created_articles.append(article)
+            
+            print(f"✅ Created seed article: {article_data['title']}")
+        
+        print(f"🌱 Successfully created {len(created_articles)} seed articles for related links testing")
+        
+        return {
+            "success": True,
+            "message": f"Successfully created {len(created_articles)} seed articles",
+            "articles": [
+                {
+                    "id": article["id"],
+                    "title": article["title"],
+                    "summary": article["summary"]
+                }
+                for article in created_articles
+            ]
+        }
+        
+    except Exception as e:
+        print(f"❌ Error creating seed articles: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8001, reload=True)

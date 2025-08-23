@@ -4158,6 +4158,159 @@ Return the fully formatted article with improved clarity and structure."""
         except Exception as e:
             print(f"❌ V2 STYLE: Error calculating style compliance - {e}")
             return {"overall_compliance": 0, "articles_compliant": 0, "error": str(e)}
+    
+    def _process_clickable_anchors(self, content: str) -> dict:
+        """Convert Mini-TOC to clickable anchors and add IDs to headings"""
+        try:
+            import re
+            
+            processed_content = content
+            structural_changes = []
+            toc_broken_links = []
+            anchor_links_generated = 0
+            
+            # Step 1: Generate slugified IDs for all H2/H3 headings
+            heading_ids = {}
+            
+            def generate_slug(text: str) -> str:
+                """Generate a URL-friendly slug from heading text"""
+                # Remove HTML tags
+                clean_text = re.sub(r'<[^>]*>', '', text)
+                # Convert to lowercase and replace spaces/special chars with hyphens
+                slug = re.sub(r'[^\w\s-]', '', clean_text).strip()
+                slug = re.sub(r'[-\s]+', '-', slug).lower()
+                return slug
+            
+            def add_id_to_heading(match):
+                """Add ID attribute to heading if not already present"""
+                heading_tag = match.group(1)  # h2 or h3
+                heading_text = match.group(2)  # heading content
+                
+                # Check if ID already exists
+                if 'id=' in match.group(0):
+                    return match.group(0)  # Return unchanged if ID already exists
+                
+                slug = generate_slug(heading_text)
+                # Ensure unique slug
+                original_slug = slug
+                counter = 1
+                while slug in heading_ids.values():
+                    slug = f"{original_slug}-{counter}"
+                    counter += 1
+                
+                heading_ids[heading_text.strip()] = slug
+                return f'<{heading_tag} id="{slug}">{heading_text}</{heading_tag}>'
+            
+            # Add IDs to H2 and H3 headings
+            processed_content = re.sub(r'<(h[23])>(.*?)</\1>', add_id_to_heading, processed_content, flags=re.IGNORECASE | re.DOTALL)
+            
+            if heading_ids:
+                structural_changes.append(f"Added IDs to {len(heading_ids)} headings")
+            
+            # Step 2: Convert Mini-TOC bullets to clickable anchor links
+            def convert_toc_item(match):
+                """Convert TOC bullet point to clickable anchor link"""
+                nonlocal anchor_links_generated
+                indent = match.group(1) if match.group(1) else ''  # Capture indentation
+                bullet = match.group(2)  # - or *
+                toc_text = match.group(3).strip()  # TOC item text
+                
+                # Clean the TOC text for matching
+                clean_toc_text = re.sub(r'[^\w\s-]', '', toc_text).strip()
+                
+                # Try to find matching heading
+                matching_slug = None
+                best_match_score = 0
+                
+                for heading_text, slug in heading_ids.items():
+                    clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
+                    
+                    # Calculate simple similarity score
+                    similarity = len(set(clean_toc_text.lower().split()) & set(clean_heading.lower().split()))
+                    if similarity > best_match_score:
+                        best_match_score = similarity
+                        matching_slug = slug
+                
+                # If no good match found, create a slug from TOC text
+                if not matching_slug or best_match_score == 0:
+                    matching_slug = generate_slug(toc_text)
+                    # Check if this slug actually exists in content
+                    if f'id="{matching_slug}"' not in processed_content:
+                        toc_broken_links.append({
+                            "toc_text": toc_text,
+                            "expected_slug": matching_slug,
+                            "reason": "no_matching_heading"
+                        })
+                
+                anchor_links_generated += 1
+                return f'{indent}{bullet} [{toc_text}](#{matching_slug})'
+            
+            # Match TOC patterns - both markdown and HTML list formats
+            # Pattern: optional whitespace + bullet (- or *) + space + text
+            toc_pattern = r'^(\s*)([-*])\s+([^\n\r]+)$'
+            
+            # Only convert lines that look like TOC items (not in code blocks)
+            lines = processed_content.split('\n')
+            in_code_block = False
+            converted_lines = []
+            
+            for line in lines:
+                # Track code block boundaries
+                if line.strip().startswith('```'):
+                    in_code_block = not in_code_block
+                    converted_lines.append(line)
+                    continue
+                
+                # Don't convert lines inside code blocks
+                if in_code_block:
+                    converted_lines.append(line)
+                    continue
+                
+                # Check if this line looks like a TOC item
+                if re.match(toc_pattern, line):
+                    # Additional heuristic: TOC items are usually near the beginning
+                    # or after "Table of Contents" or "Contents" heading
+                    converted_line = re.sub(toc_pattern, convert_toc_item, line)
+                    converted_lines.append(converted_line)
+                else:
+                    converted_lines.append(line)
+            
+            processed_content = '\n'.join(converted_lines)
+            
+            if anchor_links_generated > 0:
+                structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable anchors")
+            
+            # Step 3: Validate that all anchor links resolve
+            anchor_links = re.findall(r'\[([^\]]+)\]\(#([^)]+)\)', processed_content)
+            for link_text, anchor in anchor_links:
+                if f'id="{anchor}"' not in processed_content:
+                    toc_broken_links.append({
+                        "toc_text": link_text,
+                        "expected_slug": anchor,
+                        "reason": "missing_target_heading"
+                    })
+            
+            if toc_broken_links:
+                structural_changes.append(f"Found {len(toc_broken_links)} broken TOC links")
+            
+            print(f"🔗 V2 STYLE: Clickable anchors processed - {anchor_links_generated} links, {len(toc_broken_links)} broken - engine=v2")
+            
+            return {
+                "content": processed_content,
+                "structural_changes": structural_changes,
+                "toc_broken_links": toc_broken_links,
+                "anchor_links_generated": anchor_links_generated,
+                "heading_ids_added": len(heading_ids)
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error processing clickable anchors - {e} - engine=v2")
+            return {
+                "content": content,  # Return original content on error
+                "structural_changes": [f"Anchor processing error: {str(e)}"],
+                "toc_broken_links": [],
+                "anchor_links_generated": 0
+            }
 
 # Global V2 Style Processor instance
 v2_style_processor = V2StyleProcessor()

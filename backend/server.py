@@ -3532,6 +3532,9 @@ SOURCE CONTENT BLOCKS:
                     session_id=f"prewrite_{article_title}"
                 )
                 
+                if response is None:
+                    raise Exception("LLM returned None response")
+                
                 # Parse JSON response
                 prewrite_data = json.loads(response)
                 

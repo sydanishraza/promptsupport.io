@@ -65,7 +65,7 @@ class V2StyleFixesTester:
                 return False
                 
             # Store sample style IDs for later tests
-            recent_results = data.get('recent_results', [])
+            recent_results = data.get('recent_style_results', [])
             if recent_results:
                 self.sample_style_ids = [result.get('style_id') for result in recent_results[:3] if result.get('style_id')]
                 

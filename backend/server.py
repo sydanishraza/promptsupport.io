@@ -3654,6 +3654,507 @@ SOURCE CONTENT BLOCKS:
 # Global V2 Prewrite System instance
 v2_prewrite_system = V2PrewriteSystem()
 
+class V2StyleProcessor:
+    """V2 Engine: Woolf-aligned technical writing style + structural lint post-processor"""
+    
+    def __init__(self):
+        self.woolf_terminology = {
+            "api key": "API key",
+            "Api key": "API key", 
+            "APIKey": "API key",
+            "integration id": "Integration ID",
+            "Integration id": "Integration ID",
+            "sandbox api token": "Sandbox API token",
+            "server token": "Server token",
+            "client secret": "Client secret"
+        }
+        
+        self.structural_requirements = {
+            "intro_sentences": {"min": 2, "max": 3},
+            "paragraph_lines": {"max": 4},
+            "table_rows": {"max": 10},
+            "faq_sentence_limit": {"max": 2}
+        }
+        
+    async def apply_style_formatting(self, content: str, content_type: str, articles: list, 
+                                   prewrite_data: dict, global_analysis: dict, run_id: str) -> dict:
+        """Apply Woolf-aligned style and formatting to all generated articles"""
+        try:
+            print(f"✍️ V2 STYLE: Starting Woolf-aligned style formatting - {len(articles)} articles - engine=v2")
+            
+            # Process each article individually
+            style_results = []
+            successful_formatting = 0
+            failed_formatting = 0
+            
+            for i, article in enumerate(articles):
+                try:
+                    article_style_result = await self._process_article_style(
+                        article, content, prewrite_data, global_analysis, run_id, i
+                    )
+                    
+                    if article_style_result.get('style_status') == 'success':
+                        successful_formatting += 1
+                        # Update article with formatted content
+                        article['formatted_content'] = article_style_result.get('formatted_content', '')
+                        article['style_metadata'] = article_style_result.get('style_metadata', {})
+                        article['structural_compliance'] = article_style_result.get('structural_compliance', {})
+                    else:
+                        failed_formatting += 1
+                    
+                    style_results.append(article_style_result)
+                    
+                except Exception as article_error:
+                    print(f"❌ V2 STYLE: Error processing article style {i+1} - {article_error} - engine=v2")
+                    failed_formatting += 1
+                    style_results.append({
+                        "article_index": i,
+                        "style_status": "error",
+                        "error": str(article_error)
+                    })
+            
+            # Calculate overall success metrics
+            total_articles = len(articles)
+            success_rate = (successful_formatting / total_articles * 100) if total_articles > 0 else 0
+            
+            style_summary = {
+                "style_id": f"style_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "style_status": "success" if failed_formatting == 0 else "partial" if successful_formatting > 0 else "failed",
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                
+                # Processing metrics
+                "articles_processed": total_articles,
+                "successful_formatting": successful_formatting,
+                "failed_formatting": failed_formatting,
+                "success_rate": success_rate,
+                
+                # Style compliance metrics
+                "style_compliance": self._calculate_style_compliance(style_results),
+                
+                # Detailed results per article
+                "style_results": style_results
+            }
+            
+            print(f"✅ V2 STYLE: Style formatting complete - {successful_formatting}/{total_articles} successful - engine=v2")
+            return style_summary
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error in style formatting - {e} - engine=v2")
+            return {
+                "style_id": f"style_error_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "style_status": "error",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+    
+    async def _process_article_style(self, article: dict, content: str, 
+                                   prewrite_data: dict, global_analysis: dict, 
+                                   run_id: str, article_index: int) -> dict:
+        """Process Woolf style formatting for a single article"""
+        try:
+            article_title = article.get('title', f'Article {article_index + 1}')
+            article_content = article.get('content', article.get('html', ''))
+            
+            print(f"✍️ V2 STYLE: Processing Woolf style for '{article_title}' - engine=v2")
+            
+            if not article_content:
+                return {
+                    "article_index": article_index,
+                    "article_title": article_title,
+                    "style_status": "skipped",
+                    "reason": "no_content_to_format"
+                }
+            
+            # Apply Woolf style formatting using LLM
+            formatted_result = await self._apply_woolf_style_linting(
+                article_title, article_content, prewrite_data, global_analysis
+            )
+            
+            # Validate structural compliance
+            compliance_result = self._validate_structural_compliance(
+                formatted_result.get('formatted_content', ''), article_title
+            )
+            
+            # Apply terminology standardization
+            terminology_result = self._standardize_terminology(
+                formatted_result.get('formatted_content', '')
+            )
+            
+            style_metadata = {
+                "formatting_method": formatted_result.get('method', 'llm_style_linting'),
+                "structural_changes": formatted_result.get('structural_changes', []),
+                "terminology_corrections": terminology_result.get('corrections', []),
+                "compliance_score": compliance_result.get('compliance_score', 0),
+                "woolf_standards_applied": True
+            }
+            
+            print(f"✅ V2 STYLE: Style formatting successful for '{article_title}' - compliance: {compliance_result.get('compliance_score', 0)}% - engine=v2")
+            
+            return {
+                "article_index": article_index,
+                "article_title": article_title,
+                "style_status": "success",
+                "formatted_content": terminology_result.get('formatted_content', formatted_result.get('formatted_content', '')),
+                "original_length": len(article_content),
+                "formatted_length": len(terminology_result.get('formatted_content', '')),
+                "style_metadata": style_metadata,
+                "structural_compliance": compliance_result
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error processing article style - {e} - engine=v2")
+            return {
+                "article_index": article_index,
+                "article_title": article.get('title', f'Article {article_index + 1}'),
+                "style_status": "error",
+                "error": str(e)
+            }
+    
+    async def _apply_woolf_style_linting(self, article_title: str, article_content: str, 
+                                       prewrite_data: dict, global_analysis: dict) -> dict:
+        """Apply Woolf Help Center style using LLM-based linting"""
+        try:
+            # Create comprehensive style linting prompt
+            system_message = """You are a style enforcer. Rewrite the article to meet Woolf Help Center style and Microsoft Manual of Style rules.
+
+STRUCTURAL RULES:
+1. Intro section: 2–3 sentences, plain language, sets context.
+2. Mini-TOC: bullet list with anchor links (no static text).
+3. Headings: H1 = article title (sentence case), H2/H3 = imperative, descriptive (e.g., "Create an account").
+4. Body: Short paragraphs (≤4 lines), active voice ("Click **Save**"), numbered steps for procedures.
+5. Code samples: Always fenced with language tag (```bash, ```json), multi-line curl with \ breaks.
+6. Tables: GFM format, ≤10 rows inline.
+7. Admonitions: Use blockquotes (> **Note:** / > **Warning:**).
+8. FAQs: Concise Q&A with **Q:** / **A:** styling.
+
+LANGUAGE RULES:
+- Terminology: "API key", "Integration ID", "Sandbox API token", "Server token", "Client secret"
+- Clarity: avoid filler ("basically", "very"), split long sentences
+- Active voice: "Click Save to apply settings" not "Settings are applied by clicking Save"
+- Parallelism in lists (consistent verb/noun structure)
+
+User Rules:
+- Preserve technical accuracy and 100% source coverage.
+- Rewrite vague content into specific, evidence-backed instructions.
+- Return full HTML/Markdown, no comments.
+- NO PLACEHOLDERS unless explicitly required.
+- Mini-TOC must have clickable anchors."""
+
+            user_message = f"""ARTICLE TITLE: {article_title}
+
+ORIGINAL CONTENT:
+{article_content}
+
+Apply Woolf Help Center style standards. Ensure:
+- Professional, concise tone matching live Help Center docs
+- Clear structure with proper headings and mini-TOC
+- Active voice and specific instructions
+- Proper code formatting and table structure
+- Consistent terminology throughout
+
+Return the fully formatted article with improved clarity and structure."""
+
+            # Call LLM for style formatting
+            try:
+                response = await call_llm_with_fallback(
+                    system_message=system_message,
+                    user_message=user_message,
+                    session_id=f"style_{article_title}"
+                )
+                
+                if response is None:
+                    raise Exception("LLM returned None response for style formatting")
+                
+                # Analyze what changes were made
+                structural_changes = self._analyze_style_changes(article_content, response)
+                
+                print(f"✅ V2 STYLE: LLM style formatting applied - {len(structural_changes)} changes made - engine=v2")
+                
+                return {
+                    "formatted_content": response,
+                    "method": "llm_style_linting",
+                    "structural_changes": structural_changes,
+                    "original_length": len(article_content),
+                    "formatted_length": len(response)
+                }
+                
+            except Exception as llm_error:
+                print(f"❌ V2 STYLE: LLM style formatting failed - {llm_error} - applying fallback - engine=v2")
+                return self._apply_fallback_style_formatting(article_title, article_content)
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error in Woolf style linting - {e} - engine=v2")
+            return self._apply_fallback_style_formatting(article_title, article_content)
+    
+    def _apply_fallback_style_formatting(self, article_title: str, article_content: str) -> dict:
+        """Apply basic style formatting as fallback when LLM fails"""
+        try:
+            formatted_content = article_content
+            structural_changes = []
+            
+            # Basic structural improvements
+            
+            # 1. Ensure proper heading structure
+            if not formatted_content.startswith(f'<h1>{article_title}</h1>'):
+                formatted_content = f'<h1>{article_title}</h1>\n\n{formatted_content}'
+                structural_changes.append("Added H1 title")
+            
+            # 2. Apply basic paragraph formatting (limit line length)
+            paragraphs = formatted_content.split('\n\n')
+            formatted_paragraphs = []
+            
+            for para in paragraphs:
+                if para.strip():
+                    # Basic line break for long paragraphs
+                    if len(para) > 400:  # Rough estimate for 4 lines
+                        sentences = para.split('. ')
+                        if len(sentences) > 2:
+                            mid_point = len(sentences) // 2
+                            para = '. '.join(sentences[:mid_point]) + '.\n\n' + '. '.join(sentences[mid_point:])
+                            structural_changes.append("Split long paragraph")
+                    
+                    formatted_paragraphs.append(para)
+            
+            formatted_content = '\n\n'.join(formatted_paragraphs)
+            
+            # 3. Ensure code blocks are properly formatted
+            import re
+            # Find unformatted code blocks and add language tags
+            code_pattern = r'```\n([^`]+)\n```'
+            def add_language_tag(match):
+                code_content = match.group(1)
+                if 'curl' in code_content.lower() or 'http' in code_content.lower():
+                    return f'```bash\n{code_content}\n```'
+                elif '{' in code_content and '}' in code_content:
+                    return f'```json\n{code_content}\n```'
+                else:
+                    return f'```text\n{code_content}\n```'
+            
+            original_content = formatted_content
+            formatted_content = re.sub(code_pattern, add_language_tag, formatted_content)
+            
+            if original_content != formatted_content:
+                structural_changes.append("Added language tags to code blocks")
+            
+            # 4. Basic terminology corrections
+            for incorrect, correct in self.woolf_terminology.items():
+                if incorrect in formatted_content:
+                    formatted_content = formatted_content.replace(incorrect, correct)
+                    structural_changes.append(f"Corrected terminology: {incorrect} → {correct}")
+            
+            return {
+                "formatted_content": formatted_content,
+                "method": "fallback_formatting",
+                "structural_changes": structural_changes,
+                "original_length": len(article_content),
+                "formatted_length": len(formatted_content)
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error in fallback formatting - {e} - engine=v2")
+            return {
+                "formatted_content": article_content,  # Return original as last resort
+                "method": "no_formatting_applied",
+                "structural_changes": [],
+                "error": str(e)
+            }
+    
+    def _analyze_style_changes(self, original: str, formatted: str) -> list:
+        """Analyze what structural changes were made during formatting"""
+        changes = []
+        
+        try:
+            # Count heading changes
+            original_h2_count = original.count('<h2>')
+            formatted_h2_count = formatted.count('<h2>')
+            if original_h2_count != formatted_h2_count:
+                changes.append(f"H2 headings: {original_h2_count} → {formatted_h2_count}")
+            
+            # Count paragraph structure changes
+            original_paragraphs = len([p for p in original.split('\n\n') if p.strip()])
+            formatted_paragraphs = len([p for p in formatted.split('\n\n') if p.strip()])
+            if original_paragraphs != formatted_paragraphs:
+                changes.append(f"Paragraphs restructured: {original_paragraphs} → {formatted_paragraphs}")
+            
+            # Check for mini-TOC addition
+            if 'mini-toc' in formatted.lower() or 'table of contents' in formatted.lower():
+                if 'mini-toc' not in original.lower() and 'table of contents' not in original.lower():
+                    changes.append("Added mini-TOC")
+            
+            # Check for code block improvements
+            original_code_blocks = original.count('```')
+            formatted_code_blocks = formatted.count('```')
+            if formatted_code_blocks > original_code_blocks:
+                changes.append("Enhanced code block formatting")
+            
+            # Check for table formatting
+            original_tables = original.count('|')
+            formatted_tables = formatted.count('|')
+            if formatted_tables > original_tables:
+                changes.append("Added or enhanced tables")
+            
+            # Check for admonition blocks
+            if '> **Note:**' in formatted or '> **Warning:**' in formatted:
+                if '> **Note:**' not in original and '> **Warning:**' not in original:
+                    changes.append("Added admonition blocks")
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error analyzing style changes - {e}")
+            changes.append("Style analysis error")
+        
+        return changes
+    
+    def _standardize_terminology(self, content: str) -> dict:
+        """Apply Woolf terminology standardization"""
+        try:
+            formatted_content = content
+            corrections = []
+            
+            # Apply terminology corrections
+            for incorrect, correct in self.woolf_terminology.items():
+                if incorrect in formatted_content:
+                    formatted_content = formatted_content.replace(incorrect, correct)
+                    corrections.append(f"{incorrect} → {correct}")
+            
+            return {
+                "formatted_content": formatted_content,
+                "corrections": corrections,
+                "terminology_compliant": len(corrections) == 0
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error in terminology standardization - {e}")
+            return {
+                "formatted_content": content,
+                "corrections": [],
+                "error": str(e)
+            }
+    
+    def _validate_structural_compliance(self, content: str, article_title: str) -> dict:
+        """Validate article structural compliance with Woolf standards"""
+        try:
+            compliance_checks = {}
+            issues = []
+            
+            # Check H1 title presence
+            compliance_checks['has_h1_title'] = f'<h1>{article_title}</h1>' in content or f'# {article_title}' in content
+            if not compliance_checks['has_h1_title']:
+                issues.append("Missing H1 title")
+            
+            # Check intro section (2-3 sentences)
+            intro_match = content.find('<h2>')
+            if intro_match > 0:
+                intro_section = content[:intro_match]
+                sentence_count = intro_section.count('.') + intro_section.count('!') + intro_section.count('?')
+                compliance_checks['intro_sentence_count'] = sentence_count
+                compliance_checks['intro_length_compliant'] = 2 <= sentence_count <= 3
+                if not compliance_checks['intro_length_compliant']:
+                    issues.append(f"Intro section has {sentence_count} sentences (should be 2-3)")
+            else:
+                compliance_checks['intro_length_compliant'] = False
+                issues.append("No clear intro section found")
+            
+            # Check for mini-TOC
+            compliance_checks['has_mini_toc'] = ('mini-toc' in content.lower() or 
+                                               'table of contents' in content.lower() or
+                                               ('- [' in content and '](#' in content))
+            if not compliance_checks['has_mini_toc']:
+                issues.append("Missing mini-TOC with anchor links")
+            
+            # Check paragraph length (≤4 lines heuristic)
+            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+            long_paragraphs = [p for p in paragraphs if len(p) > 400]  # Rough estimate
+            compliance_checks['paragraph_length_compliant'] = len(long_paragraphs) == 0
+            if not compliance_checks['paragraph_length_compliant']:
+                issues.append(f"{len(long_paragraphs)} paragraphs exceed length limit")
+            
+            # Check code block formatting
+            code_blocks = content.count('```')
+            untagged_code = content.count('```\n') - content.count('```bash') - content.count('```json') - content.count('```text')
+            compliance_checks['code_blocks_tagged'] = untagged_code == 0
+            if not compliance_checks['code_blocks_tagged'] and code_blocks > 0:
+                issues.append("Some code blocks missing language tags")
+            
+            # Check for FAQ structure
+            has_faqs = '**Q:**' in content or '**A:**' in content
+            compliance_checks['faq_structure_compliant'] = True  # Assume compliant if no FAQs
+            if has_faqs:
+                # Check FAQ formatting
+                q_count = content.count('**Q:**')
+                a_count = content.count('**A:**')
+                compliance_checks['faq_structure_compliant'] = q_count == a_count
+                if not compliance_checks['faq_structure_compliant']:
+                    issues.append("FAQ Q&A count mismatch")
+            
+            # Calculate overall compliance score
+            compliant_checks = sum([1 for check, result in compliance_checks.items() 
+                                  if isinstance(result, bool) and result])
+            total_checks = len([check for check, result in compliance_checks.items() 
+                              if isinstance(result, bool)])
+            compliance_score = (compliant_checks / total_checks * 100) if total_checks > 0 else 0
+            
+            return {
+                "compliance_score": compliance_score,
+                "compliance_checks": compliance_checks,
+                "issues": issues,
+                "is_compliant": len(issues) == 0,
+                "total_checks": total_checks,
+                "passed_checks": compliant_checks
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error in structural compliance validation - {e}")
+            return {
+                "compliance_score": 0,
+                "compliance_checks": {},
+                "issues": [f"Validation error: {str(e)}"],
+                "is_compliant": False,
+                "error": str(e)
+            }
+    
+    def _calculate_style_compliance(self, style_results: list) -> dict:
+        """Calculate overall style compliance metrics"""
+        try:
+            if not style_results:
+                return {"overall_compliance": 0, "articles_compliant": 0}
+            
+            successful_results = [r for r in style_results if r.get('style_status') == 'success']
+            
+            if not successful_results:
+                return {"overall_compliance": 0, "articles_compliant": 0}
+            
+            # Calculate average compliance score
+            compliance_scores = []
+            compliant_articles = 0
+            
+            for result in successful_results:
+                structural_compliance = result.get('structural_compliance', {})
+                score = structural_compliance.get('compliance_score', 0)
+                compliance_scores.append(score)
+                
+                if structural_compliance.get('is_compliant', False):
+                    compliant_articles += 1
+            
+            overall_compliance = sum(compliance_scores) / len(compliance_scores) if compliance_scores else 0
+            
+            return {
+                "overall_compliance": overall_compliance,
+                "articles_compliant": compliant_articles,
+                "total_articles": len(successful_results),
+                "compliance_rate": (compliant_articles / len(successful_results) * 100) if successful_results else 0
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error calculating style compliance - {e}")
+            return {"overall_compliance": 0, "articles_compliant": 0, "error": str(e)}
+
+# Global V2 Style Processor instance
+v2_style_processor = V2StyleProcessor()
+
 # ========================================
 # V2 ENGINE: ARTICLE GENERATOR SYSTEM
 # ========================================

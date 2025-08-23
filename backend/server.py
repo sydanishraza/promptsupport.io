@@ -3953,12 +3953,19 @@ Return the fully formatted article with improved clarity and structure."""
                     formatted_content = formatted_content.replace(incorrect, correct)
                     structural_changes.append(f"Corrected terminology: {incorrect} → {correct}")
             
+            # 5. Apply clickable anchor processing to Mini-TOC
+            anchor_result = self._process_clickable_anchors(formatted_content)
+            formatted_content = anchor_result.get('content', formatted_content)
+            structural_changes.extend(anchor_result.get('structural_changes', []))
+            
             return {
                 "formatted_content": formatted_content,
                 "method": "fallback_formatting",
                 "structural_changes": structural_changes,
                 "original_length": len(article_content),
-                "formatted_length": len(formatted_content)
+                "formatted_length": len(formatted_content),
+                "toc_broken_links": anchor_result.get('toc_broken_links', []),
+                "anchor_links_generated": anchor_result.get('anchor_links_generated', 0)
             }
             
         except Exception as e:

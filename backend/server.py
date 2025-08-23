@@ -26183,7 +26183,13 @@ async def get_engine_status():
             "quality_badges",
             "approval_workflow",
             "rejection_tracking",
-            "step_rerun_capability"
+            "step_rerun_capability",
+            "section_grounded_prewrite",
+            "fact_extraction",
+            "evidence_based_writing",
+            "concrete_examples_extraction",
+            "gap_analysis",
+            "terminology_extraction"
         ],
         "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, and human-in-the-loop review systems"
     }

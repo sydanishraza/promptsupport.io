@@ -9,7 +9,7 @@ import time
 from dotenv import load_dotenv
 
 load_dotenv('/app/frontend/.env')
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smartdoc-v2.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://woolf-style-lint.preview.emergentagent.com') + '/api'
 
 def check_backend_health():
     """Check if backend is responsive"""

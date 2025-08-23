@@ -35,7 +35,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Configuration
-BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com/api"
+BACKEND_URL = "https://woolf-style-lint.preview.emergentagent.com/api"
 
 class SemanticImagePlacementTester:
     """Comprehensive tester for the semantic image placement system"""

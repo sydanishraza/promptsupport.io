@@ -7,7 +7,7 @@ Tests the fidelity validation and content cleaning functions
 import requests
 import json
 
-BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com/api"
+BACKEND_URL = "https://woolf-style-lint.preview.emergentagent.com/api"
 
 def test_content_fidelity_and_cleaning():
     """Test content fidelity validation and cleaning functions"""

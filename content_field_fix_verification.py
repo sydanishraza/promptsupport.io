@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime
 
-BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com"
+BACKEND_URL = "https://woolf-style-lint.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def test_content_field_fix():

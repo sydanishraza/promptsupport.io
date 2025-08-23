@@ -1,20 +1,21 @@
 <analysis>
-The previous AI engineer effectively transitioned the PromptSupport application from an MVP to an intelligent, AI-native content platform. The trajectory details an iterative cycle of feature development and critical bug fixes. Initial efforts focused on resolving hard-coded article limits, phantom links, and ensuring basic content visibility. Subsequent work refined the core processing logic through an outline-first approach, addressing content fragmentation, empty articles, and HTML formatting inconsistencies. A significant Phase 6 introduced multi-dimensional content analysis and adaptive granularity, aiming for intelligent content splitting and rich formatting preservation. Despite claims of success, user feedback consistently revealed regressions and unaddressed issues, particularly concerning WYSIWYG editor compatibility, list rendering, content overlap, and overall content quality, requiring the AI to repeatedly re-evaluate and re-implement fixes. The work culminated in a series of comprehensive bug resolutions, though the latest user feedback indicates a new set of persistent content generation and UI/UX issues, requiring further, systematic enhancements.
+The trajectory details the iterative development and migration of a content processing pipeline to a V2 Engine. Initially, the AI engineer completed Steps 12 (Versioning & Diff) and 13 (Review UI) as explicitly requested by the user, integrating new classes (, ) and corresponding API endpoints into the backend, and frontend components (). After achieving 100% backend and frontend test success, a critical bug was reported by the user regarding empty article content for DOCX files; this was successfully debugged to a missing  field in the  and fixed. Subsequently, the engineer provided a detailed overview of supported file formats. The trajectory concludes with the implementation of two new intermediate steps: 6.5 (Section-Grounded Prewrite Pass) and 7.5 (Woolf-aligned Style Processor), each involving new backend classes, integration into the processing pipeline, API endpoints, and subsequent bug fixes and testing to ensure functionality.
 </analysis>
 
 <product_requirements>
-The PromptSupport application is an AI-native platform designed to convert various document formats (DOCX, PDF, HTML, URLs) into editable HTML articles. Key objectives include robust content extraction, intelligent chunking for context-aware sections, and LLM-driven content revision compatible with WYSIWYG editors. The system requires structured articles with Related Links and an advanced Content Library for comprehensive article and asset management, including selection, bulk actions, renaming, publishing/drafting, and merging, along with enhanced UI/UX. The application aims for comprehensive content coverage, ensuring no information is missed or fragmented.
-
-**Implementation Done So Far:**
-The Knowledge Engine processes DOCX, PDF, and text via an outline-first and Phase 6 multi-dimensional approach, generating dynamic, multi-article chunks with LLM integration. It features intelligent content splitting/merging, introductory TOC articles, related links, and intelligent FAQ generation. The Content Library supports robust asset management, UI/UX improvements, and stable backend APIs, with an unlimited asset limit. Significant effort has been put into preserving rich HTML formatting, fixing empty article generation, and addressing WYSIWYG editor compatibility issues (scrolling, title flickering, code block rendering).
+The PromptSupport application aims to convert various document formats (DOCX, PDF, HTML, URLs) into structured, editable HTML articles for WYSIWYG editors. Key features include content extraction, intelligent chunking, LLM-driven revisions, Related Links, and Content Library management. The system is undergoing a re-architecture to a V2 Engine for enhanced content generation. Recent work included:
+1.  **Step 12: Versioning & Diff (reprocessing support)**: Store version metadata (source_hash, version, supersedes), support reprocessing updated inputs, and provide a diff API/UI for comparing article titles, TOC, sections, FAQs, and related links.
+2.  **Step 13: Review UI (Human-in-the-loop QA)**: Implement a UI for reviewers to inspect, approve, or reject content before publishing. This includes a runs list with quality badges, article/media previews, and approve/reject/rerun actions with structured reasons for rejections.
+3.  **Step 6.5: Section-Grounded Prewrite Pass**: A new step to be added between Per-Article Outline and Article Generation. This involves forcing each section to collect concrete facts from assigned blocks before writing, persisting a  with facts, evidence, examples, and terms. Generation must use only these facts.
+4.  **Step 7.5: Apply Woolf-aligned Technical Writing Style + Structural Lint**: A post-processor step after article generation to enforce specific structural rules (intro, mini-TOC, headings, body, code blocks, tables, admonitions, FAQs, related links) and language/style rules (terminology, clarity, brevity, parallelism, accessibility), matching Woolf's Help Center standards.
 </product_requirements>
 
 <key_technical_concepts>
-- **Frontend**: React.js, TailwindCSS.
-- **Backend**: FastAPI, MongoDB.
-- **LLM Integration**: OpenAI (GPT-4o) for content generation, analysis, and outline creation.
-- **Content Parsing**: , , , , , .
-- **Processing Paradigms**: Multi-tiered chunking, Outline-First Article Generation, Multi-Dimensional Content Analysis, Adaptive Granularity.
+-   **Frontend**: React.js, TailwindCSS.
+-   **Backend**: FastAPI, MongoDB,  for timeouts.
+-   **LLM Integration**: OpenAI (GPT-4o), Anthropic, Local LLMs via .
+-   **Content Parsing**: , , , , , .
+-   **Processing Paradigms**: Multi-tiered chunking, Outline-First, Multi-Dimensional Analysis, Adaptive Granularity, Strict Source Fidelity, Versioning, Human-in-the-loop QA, Section-Grounded Prewrite, Style Linting.
 </key_technical_concepts>
 
 <code_architecture>
@@ -22,95 +23,51 @@ The application uses a  (React) and  (FastAPI) architecture.
 
 
 
-- ****:
-    - **Importance**: The core backend logic for LLM interactions, document parsing, article generation, and database operations.
-    - **Changes**: This file has undergone extensive modifications throughout the project. It now includes:
-        - Enhanced  (from 1200 to 8000).
-        - Dynamic article limits and .
-        - Ultra-large document handling ().
-        - Core  processing (, ).
-        - Re-integration of related links, FAQs, and TOC generation.
-        - CORS fixes and significant logic cleanup to use a single, unified pipeline.
-        - **Phase 6 Implementation**: Introduction of  for multi-dimensional classification (content_type, audience, format_signals, complexity) and  (shallow, moderate, deep split).
-        - Fixes for empty article content, particularly in  and .
-        - Numerous updates to LLM prompts for better content generation, rich HTML formatting, and avoiding full HTML document wrapping.
-        - HTML cleaning functions (, ) were modified to preserve rich styling (e.g., code blocks, lists, callouts) and to remove full-document HTML wrappers.
-        - Logic to differentiate Overview and Complete Guide articles has been added.
-        - Functions for FAQ standardization with proper titles and cross-references.
-        -  and  (using BeautifulSoup) were introduced/modified to remove text duplication.
-- ****:
-    - **Importance**: Main entry point for the React application.
-    - **Changes**:  was removed to fix double-mounting issues.
-- ****:
-    - **Importance**: Global CSS styling for the application.
-    - **Changes**: Added comprehensive technical documentation CSS (typography, spacing, callouts, code blocks, tables), and specific styles for  and enhanced list formatting. Also added CSS for editor scrolling.
-- ****:
-    - **Importance**: The WYSIWYG editor component.
-    - **Changes**: Fixed toolbar menu persistence, optimized hooks, resolved editor flickering by adding debounce to title input, and fixed mouse scrolling issues by adjusting height properties and removing conflicting dynamic CSS.
-- ****:
-    - **Importance**: Handles document uploads and processing progress display.
-    - **Changes**: Fixed a persistent Lucide React constructor error by replacing Lucide React JSX components with custom SVG icons.
-- ****:
-    - **Importance**: Manages the display and interaction with generated articles.
-    - **Changes**: Enhanced with state for selection, bulk actions, renaming, and publishing/merging articles.
-- ****:
-    - **Importance**: Displays articles in a tabular format.
-    - **Changes**: Added selection checkboxes, an action menu, and  functionality.
-- ****:
-    - **Importance**: Manages uploaded assets.
-    - **Changes**: Implemented state for upload, selection, renaming, and deletion. Fixed PUT/DELETE bugs.
-- ****:
-    - **Importance**: Utility script for cleaning up content library.
-    - **Changes**: Modified to run without user confirmation for automation during testing.
-- ****:
-    - **Importance**: Tracks debugging, test results, and fixes.
-    - **Changes**: Continuously updated throughout the development process to document issues, fixes, and test outcomes.
-
+-   ****:
+    -   **Importance**: Central backend file for FastAPI endpoints and core V2 engine logic.
+    -   **Changes**:
+        -   **Step 12**:  class was implemented with  method. Integrated into , file upload, and URL processing pipelines after Step 11. New API endpoints , ,  were added. The  status was updated. Fixed  call.
+        -   **Step 13**:  class implemented. New API endpoints , , ,  were added. The  status was updated. Fixed  serialization in  methods using  helper.
+        -   **Bug Fix**: Added  to  in  (line 6311) to populate the main content field.
+        -   **Step 6.5**:  class was implemented. Integrated into  and URL processing pipelines between Step 6 and Step 7. Added API endpoints , . The  status and features were updated. Fixed  parameters and per-article outline data structure. Added LLM response parsing error handling.
+        -   **Step 7.5**:  class was implemented. Integrated into the processing pipeline between Step 7 and Step 8. Style diagnostic API endpoints are being added.
+        -   **Step 2 Fix**: Added timeout protection () to the  endpoint.
+-   ****:
+    -   **Importance**: Handles media extraction and LLM+Vision analysis.
+    -   **Changes**: Updated  and OpenAI vision analysis to include  and  fields to fix Step 2 issues.
+-   ****:
+    -   **Importance**: New component for the human-in-the-loop review UI.
+    -   **Changes**: Newly created.
+-   ****:
+    -   **Importance**: Manages application navigation.
+    -   **Changes**: Added Review Dashboard menu item under the Knowledge Engine section.
+-   ****:
+    -   **Importance**: Defines the application's main structural layout and routing.
+    -   **Changes**: Added route for the  component.
+-   ****:
+    -   **Importance**: Documents test results, bug fixes, and development progress.
+    -   **Changes**: Continuously updated to reflect the status and test outcomes of Step 12, Step 13, the DOCX content bug fix, Step 2, Step 4, Step 10 re-verification, and Step 6.5.
+-   ****:
+    -   **Importance**: Individual summary documents for each completed V2 engine step.
+    -   **Changes**: , , and  were newly created.
+-   ****:
+    -   **Importance**: Comprehensive summary of all 13 V2 Engine steps.
+    -   **Changes**: Newly created and updated to reflect 100% success rates after all fixes.
+-   ****:
+    -   **Importance**: Summarizes work across different development sessions.
+    -   **Changes**: Newly created and updated with accurate test results (especially for Step 10, 2, and 4).
 </code_architecture>
 
 <pending_tasks>
-- **Content Library/Article Generation Issues**:
-    - Eliminate redundant Complete Overview article when an Introduction exists.
-    - Ensure title field is H1 (no duplication in body), and subsequent headings (H2, H3) are smaller.
-    - Improve links management for accurate navigation within the Knowledge Base.
-    - Clean source document titles from clutter.
-    - Correct nested list rendering (hierarchical numbering for ordered, alternating styles for bulleted).
-    - Remove article type text (e.g., ) next to links.
-    - Implement custom CSS for WYSIWYG editor toolbar tools for consistent styling.
-    - Enforce consistent styling/formatting (e.g., bold UI elements, bracket usage).
-    - Include links to *all* other related articles, not just one FAQ, in Related Links.
-    - Improve code block formatting: proper indentation, Prism.js (or equivalent) for syntax highlighting, and Copy Code button.
-    - Add mini Table of Contents (TOC) to every article.
-    - Implement contextual cross-references within articles.
-    - Adhere to Woolf Help Center styling standards for overall structure and appearance.
+-   Complete adding the diagnostic API endpoints for the  (Step 7.5).
+-   Update the  status to include the style processing endpoints and features.
+-   Test the new  implementation (Step 7.5) to ensure it enforces the structural and language rules effectively and does not introduce regressions.
 </pending_tasks>
 
 <current_work>
-Immediately prior to this summary, the AI engineer was engaged in a comprehensive bug-fixing and quality improvement cycle. The user repeatedly reported that previous fixes were not fully implemented or had introduced regressions, especially regarding the quality and formatting of generated articles in the Content Library.
-
-The last set of major issues addressed included:
-1.  **Ordered lists distortion**: Lists were not continuous and had text duplication.
-2.  **Article not scrollable in edit mode & title field unstable**: WYSIWYG editor regressions.
-3.  **Overview vs Complete Guide articles overlap**: Overview articles contained detailed steps.
-4.  **FAQs & Troubleshooting articles not standardized**: Lacked proper titles, cross-references, and related links.
-5.  **Missing use of editor features**: Callouts, mini-TOC, etc., were not being used.
-6.  **Broken images**: Images were placeholders or missing.
-7.  **Text deduplication issues**: Persistent text repetition within articles.
-8.  **HTML Wrapper cleaning**: Articles were incorrectly wrapped in full HTML document structures.
-
-The AI engineer identified the root causes for these issues, which often involved overly aggressive HTML cleaning, incorrect LLM prompt instructions, or improper handling of content types. The engineer then implemented various fixes, including:
-*   Refining LLM prompts to generate cleaner, WYSIWYG-friendly HTML, ensure proper list structures, and differentiate content for Overview vs. Complete Guide articles.
-*   Modifying HTML cleaning functions (, ) to prevent stripping legitimate content from code blocks and to correctly remove HTML document wrappers.
-*   Implementing -based deduplication to ensure unique content.
-*   Adjusting frontend CSS and component logic (, ) to resolve editor scrolling and title flickering.
-*   Enhancing FAQ generation to include subject-specific titles and internal cross-references.
-*   The AI engineer's last internal summary (Chat Message 433) declared all these issues as 100% Resolved and Production Ready.
-
-However, the user's *most recent message* (Chat Message 434) immediately contradicted this, stating none of my previous feedback seems to be implemented. The user then provided a comprehensive, detailed list of *new/re-surfaced* issues, indicating that the previous fixes either failed or introduced new problems. These issues largely align with the content quality, formatting, and UI/UX problems that the AI engineer previously claimed to have fixed.
-
-The AI engineer's current work involves acknowledging this critical feedback and preparing to systematically address the new list of issues provided by the user in Chat Message 434. The engineer has just finished confirming the new set of issues are indeed present in the content library.
+Immediately prior to this summary, the AI engineer was implementing the new **Step 7.5: Woolf-aligned Technical Writing Style + Structural Lint**. This involves creating a  class to act as a post-processor, enforcing specific structural, tone, and formatting rules from Woolf's Help Center standards and Microsoft Manual of Style. The  class has been implemented and integrated into the  pipeline, specifically positioned between Step 7 (Article Generation) and Step 8 (Validation). The current action being taken is to add the necessary style diagnostic API endpoints and update the overall engine status endpoint to reflect the new 's presence and capabilities. This is the last action observed in the trajectory.
 </current_work>
 
 <optional_next_step>
-The next step is to systematically implement all the comprehensive content library enhancements and fixes outlined by the user in the latest feedback.
+Complete adding the style diagnostic API endpoints and updating the engine status endpoint for Step 7.5.
 </optional_next_step>

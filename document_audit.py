@@ -139,7 +139,7 @@ def test_knowledge_engine_processing(docx_path):
     print(f"\n🧪 TESTING KNOWLEDGE ENGINE PROCESSING")
     print("=" * 60)
     
-    backend_url = "https://smartdoc-v2.preview.emergentagent.com/api"
+    backend_url = "https://woolf-style-lint.preview.emergentagent.com/api"
     
     try:
         # Upload the document

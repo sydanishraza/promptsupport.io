@@ -18,7 +18,7 @@ from PIL import Image
 import tempfile
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://smartdoc-v2.preview.emergentagent.com"
+BACKEND_URL = "https://woolf-style-lint.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test_result(message, status="INFO"):

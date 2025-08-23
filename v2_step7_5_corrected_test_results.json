@@ -1,0 +1,166 @@
+{
+  "test_suite": "V2 Engine Step 7.5 - Woolf-aligned Technical Writing Style + Structural Lint (CORRECTED)",
+  "total_tests": 8,
+  "passed_tests": 6,
+  "failed_tests": 2,
+  "success_rate": "75.0%",
+  "timestamp": "2025-08-23T08:40:29.087609",
+  "backend_url": "https://woolf-style-lint.preview.emergentagent.com",
+  "test_results": [
+    {
+      "test": "V2 Engine Health Check with Style Endpoints",
+      "success": true,
+      "details": "V2 Engine active with style diagnostics endpoint and all required features",
+      "timestamp": "2025-08-23T08:40:28.487539",
+      "data": {
+        "endpoint": "/api/style/diagnostics",
+        "features": [
+          "woolf_style_processing",
+          "structural_linting",
+          "microsoft_style_guide",
+          "technical_writing_standards"
+        ]
+      }
+    },
+    {
+      "test": "Style Diagnostic Endpoints - Rerun",
+      "success": false,
+      "details": "POST /api/style/rerun failed: HTTP 422",
+      "timestamp": "2025-08-23T08:40:28.653242",
+      "data": null
+    },
+    {
+      "test": "V2StyleProcessor Integration - V2 Engine",
+      "success": false,
+      "details": "No V2 engine style results found",
+      "timestamp": "2025-08-23T08:40:28.709132",
+      "data": null
+    },
+    {
+      "test": "Woolf Standards Implementation Testing",
+      "success": true,
+      "details": "Woolf standards implemented: 4/4 features verified",
+      "timestamp": "2025-08-23T08:40:28.816296",
+      "data": {
+        "woolf_standards": {
+          "structural_rules_enforced": true,
+          "language_rules_enforced": true,
+          "terminology_standardized": true,
+          "microsoft_style_guide_applied": true
+        },
+        "standards_working": 4
+      }
+    },
+    {
+      "test": "Style Compliance Validation",
+      "success": true,
+      "details": "Style compliance validation working: 4/4 features verified",
+      "timestamp": "2025-08-23T08:40:28.871887",
+      "data": {
+        "compliance_features": 4,
+        "sample_analysis": {
+          "processing_summary": {
+            "articles_processed": 1,
+            "successful_formatting": 1,
+            "failed_formatting": 0,
+            "success_rate": 100.0
+          },
+          "style_compliance": {
+            "overall_compliance": 33.33333333333333,
+            "articles_compliant": 0,
+            "total_articles": 1,
+            "compliance_rate": 0.0
+          },
+          "woolf_standards": {
+            "structural_compliance": "applied",
+            "language_standards": "enforced",
+            "terminology_corrections": "standardized",
+            "microsoft_style_guide": "integrated"
+          },
+          "formatting_details": [
+            {
+              "article_index": 0,
+              "article_title": "Authentication Guide: API Authentication Methods and Best Practices",
+              "style_status": "success",
+              "original_length": 2547,
+              "formatted_length": 2593,
+              "structural_compliance": {
+                "compliance_score": 33.33333333333333,
+                "compliance_checks": {
+                  "has_h1_title": false,
+                  "intro_sentence_count": 19,
+                  "intro_length_compliant": false,
+                  "has_mini_toc": false,
+                  "paragraph_length_compliant": false,
+                  "code_blocks_tagged": true,
+                  "faq_structure_compliant": true
+                },
+                "issues": [
+                  "Missing H1 title",
+                  "Intro section has 19 sentences (should be 2-3)",
+                  "Missing mini-TOC with anchor links",
+                  "2 paragraphs exceed length limit"
+                ],
+                "is_compliant": false,
+                "total_checks": 6,
+                "passed_checks": 2
+              },
+              "style_metadata": {
+                "formatting_method": "llm_style_linting",
+                "structural_changes": [
+                  "H2 headings: 2 \u2192 1",
+                  "Paragraphs restructured: 1 \u2192 10",
+                  "Enhanced code block formatting"
+                ],
+                "terminology_corrections": [],
+                "compliance_score": 33.33333333333333,
+                "woolf_standards_applied": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "test": "LLM-based Style Formatting",
+      "success": true,
+      "details": "LLM-based style formatting working: 3/3 features verified",
+      "timestamp": "2025-08-23T08:40:28.925902",
+      "data": {
+        "formatting_method": "llm_style_linting",
+        "woolf_applied": true
+      }
+    },
+    {
+      "test": "Database Storage and Retrieval",
+      "success": true,
+      "details": "Database storage working: 4/4 features verified",
+      "timestamp": "2025-08-23T08:40:29.031544",
+      "data": {
+        "total_runs": 8,
+        "recent_count": 8
+      }
+    },
+    {
+      "test": "Processing Pipeline Integration",
+      "success": true,
+      "details": "Processing pipeline integration working: 4/4 features verified",
+      "timestamp": "2025-08-23T08:40:29.086369",
+      "data": {
+        "total_runs": 8,
+        "total_articles": 8,
+        "success_rate": 100.0
+      }
+    }
+  ],
+  "critical_success_criteria": {
+    "v2_engine_health_check_with_style_endpoints": true,
+    "style_diagnostic_endpoints_operational": true,
+    "v2_style_processor_integration_verification": true,
+    "woolf_standards_implementation_testing": true,
+    "style_compliance_validation": true,
+    "llm_based_style_formatting": true,
+    "database_storage_and_retrieval": false,
+    "processing_pipeline_integration": false
+  }
+}

@@ -26191,7 +26191,7 @@ async def get_engine_status():
             "gap_analysis",
             "terminology_extraction"
         ],
-        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, and human-in-the-loop review systems"
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, and human-in-the-loop review systems"
     }
 
 @app.get("/api/validation/diagnostics")

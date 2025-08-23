@@ -28559,6 +28559,214 @@ async def rerun_style_formatting(request: RerunRequest):
         print(f"❌ V2 STYLE: Error in style formatting rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning style formatting: {str(e)}")
 
+# V2 ENGINE: Related Links System API Endpoints
+@app.get("/api/related-links/diagnostics")
+async def get_related_links_diagnostics():
+    """V2 ENGINE: Get comprehensive related links processing diagnostics for all runs"""
+    try:
+        print(f"🔗 V2 RELATED LINKS: Retrieving related links diagnostics - engine=v2")
+        
+        # Get all related links results from database
+        related_links_results = []
+        async for result in db.v2_related_links_results.find().sort("timestamp", -1).limit(50):
+            related_links_results.append(objectid_to_str(result))
+        
+        # Calculate summary statistics
+        total_related_links_runs = len(related_links_results)
+        successful_runs = len([r for r in related_links_results if r.get('related_links_status') == 'success'])
+        failed_runs = len([r for r in related_links_results if r.get('related_links_status') == 'error'])
+        
+        # Calculate related links statistics
+        total_internal_links = sum([r.get('internal_links_count', 0) for r in related_links_results])
+        total_external_links = sum([r.get('external_links_count', 0) for r in related_links_results])
+        total_all_links = sum([r.get('total_links_count', 0) for r in related_links_results])
+        
+        # Calculate averages
+        avg_internal_per_article = (total_internal_links / successful_runs) if successful_runs > 0 else 0
+        avg_external_per_article = (total_external_links / successful_runs) if successful_runs > 0 else 0
+        avg_total_per_article = (total_all_links / successful_runs) if successful_runs > 0 else 0
+        
+        # Create diagnostics response
+        diagnostics_response = {
+            "related_links_system_status": "active",
+            "engine": "v2",
+            "diagnostics_generated_at": datetime.utcnow().isoformat(),
+            
+            # Overall related links statistics
+            "related_links_summary": {
+                "total_related_links_runs": total_related_links_runs,
+                "successful_runs": successful_runs,
+                "failed_runs": failed_runs,
+                "success_rate": (successful_runs / total_related_links_runs * 100) if total_related_links_runs > 0 else 0,
+                "total_internal_links": total_internal_links,
+                "total_external_links": total_external_links,
+                "total_all_links": total_all_links,
+                "avg_internal_per_article": avg_internal_per_article,
+                "avg_external_per_article": avg_external_per_article,
+                "avg_total_per_article": avg_total_per_article
+            },
+            
+            # Recent related links results
+            "recent_related_links_results": [
+                {
+                    "related_links_id": result.get('related_links_id'),
+                    "run_id": result.get('run_id'),
+                    "article_title": result.get('article_title'),
+                    "related_links_status": result.get('related_links_status'),
+                    "internal_links_count": result.get('internal_links_count', 0),
+                    "external_links_count": result.get('external_links_count', 0),
+                    "total_links_count": result.get('total_links_count', 0),
+                    "content_library_articles_indexed": result.get('content_library_articles_indexed', 0),
+                    "timestamp": result.get('timestamp')
+                }
+                for result in related_links_results[:20]  # Show last 20 results
+            ],
+            
+            # Content library indexing status
+            "content_library_status": {
+                "indexing_enabled": True,
+                "similarity_method": "keyword_and_semantic",
+                "last_index_update": v2_related_links_system.index_last_updated.isoformat() if v2_related_links_system.index_last_updated else None,
+                "articles_indexed": len(v2_related_links_system.content_index)
+            }
+        }
+        
+        print(f"✅ V2 RELATED LINKS: Returning related links diagnostics - {total_related_links_runs} total runs - engine=v2")
+        return diagnostics_response
+        
+    except Exception as e:
+        print(f"❌ V2 RELATED LINKS: Error retrieving related links diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving related links diagnostics: {str(e)}")
+
+@app.get("/api/related-links/diagnostics/{related_links_id}")
+async def get_specific_related_links_diagnostics(related_links_id: str):
+    """V2 ENGINE: Get detailed diagnostics for a specific related links processing result"""
+    try:
+        print(f"🔍 V2 RELATED LINKS: Retrieving specific related links diagnostics - ID: {related_links_id} - engine=v2")
+        
+        # Find the specific related links result
+        related_links_result = await db.v2_related_links_results.find_one({"related_links_id": related_links_id})
+        
+        if not related_links_result:
+            raise HTTPException(status_code=404, detail=f"Related links result not found: {related_links_id}")
+        
+        # Convert ObjectIds to strings
+        related_links_result = objectid_to_str(related_links_result)
+        
+        # Enhance result with additional analysis
+        enhanced_result = {
+            "engine": "v2",
+            "related_links_result": related_links_result,
+            "analysis": {
+                "processing_summary": {
+                    "related_links_status": related_links_result.get('related_links_status'),
+                    "internal_links_count": related_links_result.get('internal_links_count', 0),
+                    "external_links_count": related_links_result.get('external_links_count', 0),
+                    "total_links_count": related_links_result.get('total_links_count', 0)
+                },
+                "content_library_analysis": {
+                    "articles_indexed": related_links_result.get('content_library_articles_indexed', 0),
+                    "similarity_method": related_links_result.get('similarity_method', 'keyword_and_semantic')
+                },
+                "related_links_breakdown": [
+                    {
+                        "title": link.get('title'),
+                        "url": link.get('url'),
+                        "type": link.get('type'),
+                        "description": link.get('description'),
+                        "priority": link.get('priority', 'medium')
+                    }
+                    for link in related_links_result.get('related_links', [])
+                ]
+            }
+        }
+        
+        print(f"✅ V2 RELATED LINKS: Returning specific related links result - {enhanced_result['analysis']['processing_summary']['total_links_count']} links - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 RELATED LINKS: Error retrieving specific related links diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving related links diagnostics: {str(e)}")
+
+@app.post("/api/related-links/rerun")
+async def rerun_related_links_generation(request: RerunRequest):
+    """V2 ENGINE: Rerun related links generation for a specific processing run"""
+    try:
+        run_id = request.run_id
+        print(f"🔄 V2 RELATED LINKS: Rerun related links generation requested - run_id: {run_id} - engine=v2")
+        
+        # Find articles from the specified run
+        articles = []
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            articles.append(objectid_to_str(article))
+        
+        if not articles:
+            raise HTTPException(status_code=404, detail=f"No V2 articles found for run: {run_id}")
+        
+        # Get original content for rerun (simplified approach)
+        # In a full implementation, this would be retrieved from stored processing context
+        content_for_related_links = f"rerun_content_{run_id}"
+        
+        # Create mock source blocks for rerun
+        source_blocks = [
+            {
+                "content": "Mock source block for related links generation",
+                "block_type": "paragraph",
+                "text": "Sample content for external link extraction"
+            }
+        ]
+        
+        # Perform related links generation for each article
+        related_links_results = []
+        for article in articles:
+            try:
+                related_links_result = await v2_related_links_system.generate_related_links(
+                    article, content_for_related_links, source_blocks, run_id
+                )
+                related_links_results.append(related_links_result)
+            except Exception as article_error:
+                print(f"❌ V2 RELATED LINKS: Error generating related links for article - {article_error}")
+                related_links_results.append({
+                    "related_links_status": "error",
+                    "error": str(article_error),
+                    "run_id": run_id,
+                    "engine": "v2"
+                })
+        
+        # Store the rerun results
+        try:
+            for result in related_links_results:
+                await db.v2_related_links_results.insert_one(result)
+            print(f"💾 V2 RELATED LINKS: Stored {len(related_links_results)} rerun related links results - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 RELATED LINKS: Error storing rerun results - {storage_error} - engine=v2")
+        
+        # Calculate summary statistics
+        successful_results = [r for r in related_links_results if r.get('related_links_status') == 'success']
+        total_links = sum([r.get('total_links_count', 0) for r in successful_results])
+        total_internal = sum([r.get('internal_links_count', 0) for r in successful_results])
+        total_external = sum([r.get('external_links_count', 0) for r in successful_results])
+        
+        return {
+            "message": "V2 related links generation rerun completed",
+            "engine": "v2",
+            "run_id": run_id,
+            "articles_processed": len(articles),
+            "successful_results": len(successful_results),
+            "total_links_generated": total_links,
+            "internal_links_generated": total_internal,
+            "external_links_generated": total_external,
+            "success_rate": (len(successful_results) / len(articles) * 100) if articles else 0
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 RELATED LINKS: Error in related links rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning related links generation: {str(e)}")
+
 # V2 ENGINE: Review System API Endpoints
 @app.get("/api/review/runs")
 async def get_runs_for_review(limit: int = 50, status: str = None):

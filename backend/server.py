@@ -3359,9 +3359,16 @@ class V2PrewriteSystem:
             article_title = article.get('title', f'Article {article_index + 1}')
             print(f"📝 V2 PREWRITE: Processing prewrite for '{article_title}' - engine=v2")
             
-            # Get article outline
-            article_outline = per_article_outlines.get(f'article_{article_index}', {})
-            sections = article_outline.get('sections', [])
+            # Get article outline - handle both dict and list structures
+            if isinstance(per_article_outlines, dict):
+                article_outline = per_article_outlines.get(f'article_{article_index}', {})
+            else:
+                # Handle case where per_article_outlines is a list or other structure
+                article_outline = {}
+                if isinstance(per_article_outlines, list) and article_index < len(per_article_outlines):
+                    article_outline = per_article_outlines[article_index]
+            
+            sections = article_outline.get('sections', []) if isinstance(article_outline, dict) else []
             
             if not sections:
                 print(f"⚠️ V2 PREWRITE: No outline sections found for article {article_index} - engine=v2")

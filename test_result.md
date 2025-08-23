@@ -3523,7 +3523,7 @@ backend:
 
 ## test_plan:
   current_focus:
-    - "V2 ENGINE COMPREHENSIVE FRONTEND TESTING"
+    - "V2 ENGINE STEP 6.5 SECTION-GROUNDED PREWRITE PASS IMPLEMENTATION"
   stuck_tasks: []
   test_all: false
   test_priority: "critical_first"

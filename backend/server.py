@@ -13621,6 +13621,9 @@ class SaveArticleRequest(BaseModel):
     content: str
     status: str = "draft"  # draft, published
 
+class RerunRequest(BaseModel):
+    run_id: str
+
 # V2 ENGINE: NORMALIZED DOCUMENT SCHEMA
 class SourcePointer(BaseModel):
     """V2 Schema: Tracks the exact source location of content"""

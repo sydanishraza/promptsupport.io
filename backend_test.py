@@ -1,733 +1,714 @@
 #!/usr/bin/env python3
 """
-V2 Engine Step 13 Implementation Testing - Review UI (Human-in-the-loop QA)
-Comprehensive testing of review system API endpoints, quality badges, approval/rejection workflow, and re-run capabilities
+V2 Engine Related Links System Comprehensive Testing
+Testing content library indexing, similarity matching, and related links generation
 """
 
-import asyncio
-import json
 import requests
-import os
+import json
+import time
+import sys
 from datetime import datetime
-from typing import Dict, Any, List
 
-# Get backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://woolf-style-lint.preview.emergentagent.com')
-API_BASE = f"{BACKEND_URL}/api"
+# Configuration
+BACKEND_URL = "https://woolf-style-lint.preview.emergentagent.com/api"
 
-class V2ReviewSystemTester:
-    """Comprehensive tester for V2 Engine Step 13 Review System"""
-    
+class V2RelatedLinksSystemTester:
     def __init__(self):
-        self.test_results = []
-        self.test_run_id = None
-        self.sample_run_ids = []
-        
-    def log_test(self, test_name: str, success: bool, details: str, data: Any = None):
-        """Log test results"""
-        result = {
-            "test": test_name,
-            "success": success,
-            "details": details,
-            "timestamp": datetime.utcnow().isoformat(),
-            "data": data
+        self.backend_url = BACKEND_URL
+        self.test_results = {
+            "total_tests": 0,
+            "passed_tests": 0,
+            "failed_tests": 0,
+            "test_details": []
         }
-        self.test_results.append(result)
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status}: {test_name} - {details}")
         
-    def test_engine_health_check(self) -> bool:
-        """Test V2 Engine health check includes review endpoints"""
+    def log_test(self, test_name, passed, details=""):
+        """Log test result"""
+        self.test_results["total_tests"] += 1
+        if passed:
+            self.test_results["passed_tests"] += 1
+            status = "✅ PASSED"
+        else:
+            self.test_results["failed_tests"] += 1
+            status = "❌ FAILED"
+            
+        print(f"{status}: {test_name}")
+        if details:
+            print(f"   Details: {details}")
+            
+        self.test_results["test_details"].append({
+            "test_name": test_name,
+            "status": "passed" if passed else "failed",
+            "details": details,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def test_v2_engine_health_check(self):
+        """Test V2 Engine health check with related links endpoints"""
         try:
-            print(f"\n🔍 TESTING V2 ENGINE HEALTH CHECK WITH REVIEW ENDPOINTS")
+            print("\n🔍 TESTING: V2 Engine Health Check with Related Links Endpoints")
             
-            response = requests.get(f"{API_BASE}/engine", timeout=30)
+            response = requests.get(f"{self.backend_url}/engine")
             
-            if response.status_code != 200:
-                self.log_test("Engine Health Check", False, f"HTTP {response.status_code}: {response.text}")
+            if response.status_code == 200:
+                engine_data = response.json()
+                
+                # Check engine status
+                engine_status = engine_data.get('engine')
+                if engine_status == 'v2':
+                    self.log_test("V2 Engine Status Check", True, f"Engine status: {engine_status}")
+                else:
+                    self.log_test("V2 Engine Status Check", False, f"Expected 'v2', got: {engine_status}")
+                    return False
+                
+                # Check related links endpoints
+                endpoints = engine_data.get('endpoints', {})
+                required_endpoints = [
+                    'related_links_diagnostics'
+                ]
+                
+                missing_endpoints = []
+                for endpoint in required_endpoints:
+                    if endpoint not in endpoints:
+                        missing_endpoints.append(endpoint)
+                
+                if not missing_endpoints:
+                    self.log_test("Related Links Endpoints Check", True, f"All required endpoints present: {required_endpoints}")
+                else:
+                    self.log_test("Related Links Endpoints Check", False, f"Missing endpoints: {missing_endpoints}")
+                    return False
+                
+                # Check related links features
+                features = engine_data.get('features', [])
+                required_features = [
+                    'content_library_indexing',
+                    'similarity_matching',
+                    'internal_links_discovery',
+                    'external_links_extraction'
+                ]
+                
+                missing_features = []
+                for feature in required_features:
+                    if feature not in features:
+                        missing_features.append(feature)
+                
+                if not missing_features:
+                    self.log_test("Related Links Features Check", True, f"All required features present: {required_features}")
+                else:
+                    self.log_test("Related Links Features Check", False, f"Missing features: {missing_features}")
+                    return False
+                
+                return True
+            else:
+                self.log_test("V2 Engine Health Check", False, f"HTTP {response.status_code}: {response.text}")
                 return False
                 
-            data = response.json()
-            
-            # Verify V2 engine status
-            if data.get('engine') != 'v2':
-                self.log_test("Engine Health Check", False, f"Expected engine=v2, got {data.get('engine')}")
-                return False
-                
-            # Verify review endpoints are present
-            endpoints = data.get('endpoints', {})
-            required_review_endpoints = [
-                'review_runs', 'review_approve', 'review_reject', 'review_rerun'
-            ]
-            
-            missing_endpoints = []
-            for endpoint in required_review_endpoints:
-                if endpoint not in endpoints:
-                    missing_endpoints.append(endpoint)
-                    
-            if missing_endpoints:
-                self.log_test("Engine Health Check", False, f"Missing review endpoints: {missing_endpoints}")
-                return False
-                
-            # Verify review features are present
-            features = data.get('features', [])
-            required_review_features = [
-                'human_in_the_loop_review', 'quality_badges', 'approval_workflow', 
-                'rejection_tracking', 'step_rerun_capability'
-            ]
-            
-            missing_features = []
-            for feature in required_review_features:
-                if feature not in features:
-                    missing_features.append(feature)
-                    
-            if missing_features:
-                self.log_test("Engine Health Check", False, f"Missing review features: {missing_features}")
-                return False
-                
-            self.log_test("Engine Health Check", True, 
-                         f"V2 Engine active with review endpoints: {required_review_endpoints} and features: {required_review_features}",
-                         data)
-            return True
-            
         except Exception as e:
-            self.log_test("Engine Health Check", False, f"Exception: {str(e)}")
+            self.log_test("V2 Engine Health Check", False, f"Exception: {str(e)}")
             return False
     
-    def test_get_runs_for_review(self) -> bool:
-        """Test GET /api/review/runs for runs list with quality badges"""
+    def test_seed_articles_creation(self):
+        """Test seed articles creation for similarity testing"""
         try:
-            print(f"\n📋 TESTING GET RUNS FOR REVIEW WITH QUALITY BADGES")
+            print("\n🌱 TESTING: Seed Articles Creation")
             
-            response = requests.get(f"{API_BASE}/review/runs?limit=10", timeout=30)
+            response = requests.post(f"{self.backend_url}/seed/create-test-articles")
             
-            if response.status_code != 200:
-                self.log_test("Get Runs for Review", False, f"HTTP {response.status_code}: {response.text}")
-                return False
+            if response.status_code == 200:
+                seed_data = response.json()
                 
-            data = response.json()
-            
-            # Verify response structure
-            required_fields = ['review_system_status', 'engine', 'summary', 'runs']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                self.log_test("Get Runs for Review", False, f"Missing required fields: {missing_fields}")
-                return False
-                
-            # Verify engine is v2
-            if data.get('engine') != 'v2':
-                self.log_test("Get Runs for Review", False, f"Expected engine=v2, got {data.get('engine')}")
-                return False
-                
-            # Verify review system status
-            if data.get('review_system_status') != 'active':
-                self.log_test("Get Runs for Review", False, f"Review system not active: {data.get('review_system_status')}")
-                return False
-                
-            # Check summary statistics structure
-            summary = data.get('summary', {})
-            summary_fields = ['total_runs', 'pending_review', 'approved', 'rejected', 'published', 'approval_rate']
-            missing_summary_fields = [field for field in summary_fields if field not in summary]
-            
-            if missing_summary_fields:
-                self.log_test("Get Runs for Review", False, f"Missing summary fields: {missing_summary_fields}")
-                return False
-                
-            # Check runs structure and quality badges
-            runs = data.get('runs', [])
-            total_runs = len(runs)
-            
-            if total_runs > 0:
-                # Store sample run IDs for later tests
-                self.sample_run_ids = [run.get('run_id') for run in runs[:3] if run.get('run_id')]
-                
-                # Verify first run has required structure
-                first_run = runs[0]
-                required_run_fields = ['run_id', 'review_status', 'badges', 'articles', 'processing_results']
-                missing_run_fields = [field for field in required_run_fields if field not in first_run]
-                
-                if missing_run_fields:
-                    self.log_test("Get Runs for Review", False, f"Missing run fields: {missing_run_fields}")
+                # Check seed creation status
+                status = seed_data.get('status')
+                if status == 'success':
+                    self.log_test("Seed Articles Creation Status", True, f"Status: {status}")
+                else:
+                    self.log_test("Seed Articles Creation Status", False, f"Expected 'success', got: {status}")
                     return False
-                    
-                # Verify quality badges structure
-                badges = first_run.get('badges', {})
-                expected_badges = ['coverage', 'fidelity', 'redundancy', 'granularity', 'placeholders']
                 
-                badge_issues = []
-                for badge_name in expected_badges:
-                    if badge_name in badges:
-                        badge = badges[badge_name]
-                        if not all(key in badge for key in ['value', 'status', 'tooltip']):
-                            badge_issues.append(f"{badge_name} missing required fields")
-                        if badge['status'] not in ['excellent', 'good', 'warning']:
-                            badge_issues.append(f"{badge_name} invalid status: {badge['status']}")
+                # Check articles created
+                articles_created = seed_data.get('articles_created', 0)
+                if articles_created >= 5:
+                    self.log_test("Seed Articles Count", True, f"Created {articles_created} articles")
+                else:
+                    self.log_test("Seed Articles Count", False, f"Expected >= 5 articles, got: {articles_created}")
+                    return False
+                
+                # Check article titles
+                article_titles = seed_data.get('article_titles', [])
+                expected_titles = [
+                    'Integration Process',
+                    'API Integration', 
+                    'Getting Started',
+                    'Error Handling',
+                    'Whisk Studio'
+                ]
+                
+                found_titles = 0
+                for expected in expected_titles:
+                    for actual in article_titles:
+                        if expected.lower() in actual.lower():
+                            found_titles += 1
+                            break
+                
+                if found_titles >= 4:
+                    self.log_test("Seed Articles Titles Check", True, f"Found {found_titles}/5 expected titles")
+                else:
+                    self.log_test("Seed Articles Titles Check", False, f"Only found {found_titles}/5 expected titles")
+                    return False
+                
+                return True
+            else:
+                self.log_test("Seed Articles Creation", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Seed Articles Creation", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_content_library_indexing(self):
+        """Test content library indexing functionality"""
+        try:
+            print("\n🔍 TESTING: Content Library Indexing")
+            
+            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
+                
+                # Check content library status
+                content_library_status = diagnostics_data.get('content_library_status', {})
+                
+                # Check indexing enabled
+                indexing_enabled = content_library_status.get('indexing_enabled')
+                if indexing_enabled:
+                    self.log_test("Content Library Indexing Enabled", True, "Indexing is enabled")
+                else:
+                    self.log_test("Content Library Indexing Enabled", False, "Indexing is not enabled")
+                    return False
+                
+                # Check similarity method
+                similarity_method = content_library_status.get('similarity_method')
+                if similarity_method == 'keyword_and_semantic':
+                    self.log_test("Similarity Method Check", True, f"Method: {similarity_method}")
+                else:
+                    self.log_test("Similarity Method Check", False, f"Expected 'keyword_and_semantic', got: {similarity_method}")
+                    return False
+                
+                # Check articles indexed
+                articles_indexed = content_library_status.get('articles_indexed', 0)
+                if articles_indexed >= 5:
+                    self.log_test("Articles Indexed Count", True, f"Indexed {articles_indexed} articles")
+                else:
+                    self.log_test("Articles Indexed Count", False, f"Expected >= 5 articles, got: {articles_indexed}")
+                    return False
+                
+                # Check last index update
+                last_update = content_library_status.get('last_index_update')
+                if last_update:
+                    self.log_test("Index Update Timestamp", True, f"Last update: {last_update}")
+                else:
+                    self.log_test("Index Update Timestamp", False, "No index update timestamp found")
+                    return False
+                
+                return True
+            else:
+                self.log_test("Content Library Indexing", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Content Library Indexing", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_related_links_diagnostics(self):
+        """Test related links diagnostic endpoints"""
+        try:
+            print("\n📊 TESTING: Related Links Diagnostic Endpoints")
+            
+            # Test main diagnostics endpoint
+            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
+                
+                # Check system status
+                system_status = diagnostics_data.get('related_links_system_status')
+                if system_status == 'active':
+                    self.log_test("Related Links System Status", True, f"Status: {system_status}")
+                else:
+                    self.log_test("Related Links System Status", False, f"Expected 'active', got: {system_status}")
+                    return False
+                
+                # Check engine
+                engine = diagnostics_data.get('engine')
+                if engine == 'v2':
+                    self.log_test("Related Links Engine Check", True, f"Engine: {engine}")
+                else:
+                    self.log_test("Related Links Engine Check", False, f"Expected 'v2', got: {engine}")
+                    return False
+                
+                # Check summary statistics
+                summary = diagnostics_data.get('related_links_summary', {})
+                total_runs = summary.get('total_related_links_runs', 0)
+                
+                if total_runs >= 0:
+                    self.log_test("Related Links Summary Statistics", True, f"Total runs: {total_runs}")
+                else:
+                    self.log_test("Related Links Summary Statistics", False, "No summary statistics found")
+                    return False
+                
+                # Check recent results structure
+                recent_results = diagnostics_data.get('recent_related_links_results', [])
+                if isinstance(recent_results, list):
+                    self.log_test("Recent Results Structure", True, f"Found {len(recent_results)} recent results")
+                else:
+                    self.log_test("Recent Results Structure", False, "Recent results not in list format")
+                    return False
+                
+                return True
+            else:
+                self.log_test("Related Links Diagnostics", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Related Links Diagnostics", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_content_processing_with_related_links(self):
+        """Test content processing with related links generation (Step 7.7)"""
+        try:
+            print("\n🔗 TESTING: Content Processing with Related Links Generation")
+            
+            # Test content for processing
+            test_content = """
+            # Google Maps JavaScript API Integration Guide
+            
+            This comprehensive guide covers Google Maps API integration with JavaScript applications.
+            
+            ## Getting Started with Maps API
+            Learn how to set up your development environment and obtain API keys.
+            
+            ## Authentication and API Keys
+            Secure your API integration with proper authentication methods.
+            
+            ## Error Handling Best Practices
+            Implement robust error handling for production applications.
+            """
+            
+            # Process content through V2 engine
+            response = requests.post(f"{self.backend_url}/content/process", 
+                                   json={"content": test_content})
+            
+            if response.status_code == 200:
+                process_data = response.json()
+                
+                # Check processing status
+                status = process_data.get('status')
+                if status == 'completed':
+                    self.log_test("Content Processing Status", True, f"Status: {status}")
+                else:
+                    self.log_test("Content Processing Status", False, f"Expected 'completed', got: {status}")
+                    return False
+                
+                # Check engine confirmation
+                engine = process_data.get('engine')
+                if engine == 'v2':
+                    self.log_test("Processing Engine Check", True, f"Engine: {engine}")
+                else:
+                    self.log_test("Processing Engine Check", False, f"Expected 'v2', got: {engine}")
+                    return False
+                
+                # Check job ID for further testing
+                job_id = process_data.get('job_id')
+                if job_id:
+                    self.log_test("Job ID Generation", True, f"Job ID: {job_id}")
+                    
+                    # Wait a moment for processing to complete
+                    time.sleep(2)
+                    
+                    # Check if related links were generated
+                    return self.verify_related_links_generation(job_id)
+                else:
+                    self.log_test("Job ID Generation", False, "No job ID returned")
+                    return False
+                
+            else:
+                self.log_test("Content Processing", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Content Processing with Related Links", False, f"Exception: {str(e)}")
+            return False
+    
+    def verify_related_links_generation(self, job_id):
+        """Verify related links were generated for processed content"""
+        try:
+            print(f"\n🔍 VERIFYING: Related Links Generation for Job {job_id}")
+            
+            # Check diagnostics for recent related links results
+            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
+                recent_results = diagnostics_data.get('recent_related_links_results', [])
+                
+                # Look for results from our job
+                job_results = [r for r in recent_results if r.get('run_id') == job_id]
+                
+                if job_results:
+                    result = job_results[0]
+                    
+                    # Check related links status
+                    status = result.get('related_links_status')
+                    if status == 'success':
+                        self.log_test("Related Links Generation Status", True, f"Status: {status}")
+                    else:
+                        self.log_test("Related Links Generation Status", False, f"Expected 'success', got: {status}")
+                        return False
+                    
+                    # Check links counts
+                    internal_count = result.get('internal_links_count', 0)
+                    external_count = result.get('external_links_count', 0)
+                    total_count = result.get('total_links_count', 0)
+                    
+                    if total_count >= 3:
+                        self.log_test("Related Links Count Check", True, f"Total: {total_count} (Internal: {internal_count}, External: {external_count})")
+                    else:
+                        self.log_test("Related Links Count Check", False, f"Expected >= 3 links, got: {total_count}")
+                        return False
+                    
+                    # Test specific result endpoint
+                    related_links_id = result.get('related_links_id')
+                    if related_links_id:
+                        return self.test_specific_related_links_result(related_links_id)
+                    else:
+                        self.log_test("Related Links ID Check", False, "No related links ID found")
+                        return False
+                else:
+                    self.log_test("Related Links Generation Verification", False, f"No related links results found for job {job_id}")
+                    return False
+            else:
+                self.log_test("Related Links Verification", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Related Links Generation Verification", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_specific_related_links_result(self, related_links_id):
+        """Test specific related links result endpoint"""
+        try:
+            print(f"\n🔍 TESTING: Specific Related Links Result - {related_links_id}")
+            
+            response = requests.get(f"{self.backend_url}/related-links/diagnostics/{related_links_id}")
+            
+            if response.status_code == 200:
+                result_data = response.json()
+                
+                # Check engine
+                engine = result_data.get('engine')
+                if engine == 'v2':
+                    self.log_test("Specific Result Engine Check", True, f"Engine: {engine}")
+                else:
+                    self.log_test("Specific Result Engine Check", False, f"Expected 'v2', got: {engine}")
+                    return False
+                
+                # Check result structure
+                related_links_result = result_data.get('related_links_result', {})
+                if related_links_result:
+                    self.log_test("Related Links Result Structure", True, "Result structure present")
+                else:
+                    self.log_test("Related Links Result Structure", False, "No result structure found")
+                    return False
+                
+                # Check analysis section
+                analysis = result_data.get('analysis', {})
+                if analysis:
+                    self.log_test("Related Links Analysis Section", True, "Analysis section present")
+                    
+                    # Check processing summary
+                    processing_summary = analysis.get('processing_summary', {})
+                    if processing_summary:
+                        self.log_test("Processing Summary", True, "Processing summary present")
+                    else:
+                        self.log_test("Processing Summary", False, "No processing summary found")
+                        return False
+                    
+                    # Check related links breakdown
+                    links_breakdown = analysis.get('related_links_breakdown', [])
+                    if isinstance(links_breakdown, list):
+                        self.log_test("Related Links Breakdown", True, f"Found {len(links_breakdown)} links in breakdown")
+                    else:
+                        self.log_test("Related Links Breakdown", False, "Links breakdown not in list format")
+                        return False
+                else:
+                    self.log_test("Related Links Analysis Section", False, "No analysis section found")
+                    return False
+                
+                return True
+            else:
+                self.log_test("Specific Related Links Result", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Specific Related Links Result", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_related_links_rerun(self):
+        """Test related links rerun functionality"""
+        try:
+            print("\n🔄 TESTING: Related Links Rerun Functionality")
+            
+            # First, get a recent run ID from diagnostics
+            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
+                recent_results = diagnostics_data.get('recent_related_links_results', [])
+                
+                if recent_results:
+                    # Use the most recent run ID
+                    run_id = recent_results[0].get('run_id')
+                    
+                    if run_id:
+                        # Test rerun endpoint
+                        rerun_response = requests.post(f"{self.backend_url}/related-links/rerun",
+                                                     json={"run_id": run_id})
+                        
+                        if rerun_response.status_code == 200:
+                            rerun_data = rerun_response.json()
                             
-                if badge_issues:
-                    self.log_test("Get Runs for Review", False, f"Badge issues: {badge_issues}")
+                            # Check rerun status
+                            status = rerun_data.get('status')
+                            if status == 'completed':
+                                self.log_test("Related Links Rerun Status", True, f"Status: {status}")
+                            else:
+                                self.log_test("Related Links Rerun Status", False, f"Expected 'completed', got: {status}")
+                                return False
+                            
+                            # Check engine
+                            engine = rerun_data.get('engine')
+                            if engine == 'v2':
+                                self.log_test("Rerun Engine Check", True, f"Engine: {engine}")
+                            else:
+                                self.log_test("Rerun Engine Check", False, f"Expected 'v2', got: {engine}")
+                                return False
+                            
+                            # Check rerun results
+                            articles_processed = rerun_data.get('articles_processed', 0)
+                            if articles_processed > 0:
+                                self.log_test("Rerun Articles Processed", True, f"Processed {articles_processed} articles")
+                            else:
+                                self.log_test("Rerun Articles Processed", False, f"No articles processed in rerun")
+                                return False
+                            
+                            return True
+                        else:
+                            self.log_test("Related Links Rerun", False, f"HTTP {rerun_response.status_code}: {rerun_response.text}")
+                            return False
+                    else:
+                        self.log_test("Related Links Rerun", False, "No run ID found for rerun test")
+                        return False
+                else:
+                    self.log_test("Related Links Rerun", False, "No recent results found for rerun test")
                     return False
-                    
-            self.log_test("Get Runs for Review", True, 
-                         f"Retrieved {total_runs} runs with proper structure and quality badges. Summary: {summary}",
-                         data)
-            return True
-            
+            else:
+                self.log_test("Related Links Rerun Setup", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
         except Exception as e:
-            self.log_test("Get Runs for Review", False, f"Exception: {str(e)}")
+            self.log_test("Related Links Rerun", False, f"Exception: {str(e)}")
             return False
     
-    def test_get_run_details_for_review(self) -> bool:
-        """Test GET /api/review/runs/{run_id} for detailed run information"""
+    def test_database_storage_and_retrieval(self):
+        """Test database storage and retrieval of related links results"""
         try:
-            print(f"\n🔍 TESTING GET RUN DETAILS FOR REVIEW")
+            print("\n💾 TESTING: Database Storage and Retrieval")
             
-            if not self.sample_run_ids:
-                self.log_test("Get Run Details", False, "No sample run IDs available from previous test")
-                return False
+            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
                 
-            run_id = self.sample_run_ids[0]
-            response = requests.get(f"{API_BASE}/review/runs/{run_id}", timeout=30)
-            
-            if response.status_code == 404:
-                self.log_test("Get Run Details", True, f"Run {run_id} not found (expected for some test scenarios)")
-                return True
+                # Check recent results for database storage verification
+                recent_results = diagnostics_data.get('recent_related_links_results', [])
                 
-            if response.status_code != 200:
-                self.log_test("Get Run Details", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-            data = response.json()
-            
-            # Verify detailed run structure
-            required_fields = ['run_id', 'review_status', 'badges', 'articles', 'processing_results', 'media']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                self.log_test("Get Run Details", False, f"Missing required fields: {missing_fields}")
-                return False
-                
-            # Verify articles structure
-            articles = data.get('articles', {})
-            article_fields = ['count', 'titles', 'total_content_length', 'articles_data']
-            missing_article_fields = [field for field in article_fields if field not in articles]
-            
-            if missing_article_fields:
-                self.log_test("Get Run Details", False, f"Missing article fields: {missing_article_fields}")
-                return False
-                
-            # Verify processing results structure
-            processing_results = data.get('processing_results', {})
-            expected_steps = ['validation', 'qa', 'adjustment', 'publishing', 'versioning']
-            
-            for step in expected_steps:
-                if step not in processing_results:
-                    self.log_test("Get Run Details", False, f"Missing processing step: {step}")
+                if recent_results:
+                    self.log_test("Database Storage Verification", True, f"Found {len(recent_results)} stored results")
+                    
+                    # Check result structure for proper data preservation
+                    first_result = recent_results[0]
+                    required_fields = [
+                        'related_links_id',
+                        'run_id', 
+                        'article_title',
+                        'related_links_status',
+                        'timestamp'
+                    ]
+                    
+                    missing_fields = []
+                    for field in required_fields:
+                        if field not in first_result:
+                            missing_fields.append(field)
+                    
+                    if not missing_fields:
+                        self.log_test("Database Result Structure", True, f"All required fields present: {required_fields}")
+                    else:
+                        self.log_test("Database Result Structure", False, f"Missing fields: {missing_fields}")
+                        return False
+                    
+                    # Check ObjectId serialization (no ObjectId objects in response)
+                    result_str = json.dumps(first_result)
+                    if 'ObjectId' not in result_str:
+                        self.log_test("ObjectId Serialization", True, "No ObjectId serialization issues")
+                    else:
+                        self.log_test("ObjectId Serialization", False, "ObjectId serialization issues detected")
+                        return False
+                    
+                    return True
+                else:
+                    self.log_test("Database Storage Verification", False, "No stored results found")
                     return False
-                    
-                step_result = processing_results[step]
-                if 'status' not in step_result:
-                    self.log_test("Get Run Details", False, f"Step {step} missing status field")
+            else:
+                self.log_test("Database Storage and Retrieval", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Database Storage and Retrieval", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_engine_status_integration(self):
+        """Test related links integration in engine status"""
+        try:
+            print("\n⚙️ TESTING: Engine Status Integration")
+            
+            response = requests.get(f"{self.backend_url}/engine")
+            
+            if response.status_code == 200:
+                engine_data = response.json()
+                
+                # Check engine message includes related links
+                message = engine_data.get('message', '').lower()
+                if 'related links' in message or 'related_links' in message:
+                    self.log_test("Engine Message Integration", True, "Related links mentioned in engine message")
+                else:
+                    self.log_test("Engine Message Integration", False, "Related links not mentioned in engine message")
                     return False
-                    
-            self.log_test("Get Run Details", True, 
-                         f"Retrieved detailed run information for {run_id}. Articles: {articles['count']}, Processing steps: {len(processing_results)}",
-                         data)
-            return True
-            
-        except Exception as e:
-            self.log_test("Get Run Details", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_approval_workflow(self) -> bool:
-        """Test POST /api/review/approve for approval and publishing workflow"""
-        try:
-            print(f"\n✅ TESTING APPROVAL AND PUBLISHING WORKFLOW")
-            
-            if not self.sample_run_ids:
-                self.log_test("Approval Workflow", False, "No sample run IDs available")
-                return False
                 
-            run_id = self.sample_run_ids[0] if len(self.sample_run_ids) > 0 else "test_run_123"
-            
-            # Test approval request
-            approval_data = {
-                'run_id': run_id,
-                'reviewer_name': 'Test Reviewer',
-                'review_notes': 'Approved for testing purposes'
-            }
-            
-            response = requests.post(f"{API_BASE}/review/approve", data=approval_data, timeout=30)
-            
-            if response.status_code == 404:
-                self.log_test("Approval Workflow", True, f"Run {run_id} not found (expected for test scenario)")
-                return True
+                # Check features include related links capabilities
+                features = engine_data.get('features', [])
+                related_features = [f for f in features if 'related' in f.lower() or 'link' in f.lower()]
                 
-            if response.status_code != 200:
-                self.log_test("Approval Workflow", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-            data = response.json()
-            
-            # Verify approval response structure
-            required_fields = ['message', 'run_id', 'review_status', 'reviewer_name', 'articles_published', 'engine']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                self.log_test("Approval Workflow", False, f"Missing response fields: {missing_fields}")
-                return False
-                
-            # Verify approval details
-            if data.get('review_status') != 'approved':
-                self.log_test("Approval Workflow", False, f"Expected review_status=approved, got {data.get('review_status')}")
-                return False
-                
-            if data.get('engine') != 'v2':
-                self.log_test("Approval Workflow", False, f"Expected engine=v2, got {data.get('engine')}")
-                return False
-                
-            self.log_test("Approval Workflow", True, 
-                         f"Approval workflow completed. Run {run_id} approved by {data.get('reviewer_name')}, {data.get('articles_published')} articles published",
-                         data)
-            return True
-            
-        except Exception as e:
-            self.log_test("Approval Workflow", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_rejection_workflow(self) -> bool:
-        """Test POST /api/review/reject for rejection with structured reasons"""
-        try:
-            print(f"\n❌ TESTING REJECTION WORKFLOW WITH STRUCTURED REASONS")
-            
-            if not self.sample_run_ids:
-                run_id = "test_run_456"
-            else:
-                run_id = self.sample_run_ids[1] if len(self.sample_run_ids) > 1 else self.sample_run_ids[0]
-            
-            # Test rejection request with valid reason
-            rejection_data = {
-                'run_id': run_id,
-                'rejection_reason': 'quality_issues',
-                'reviewer_name': 'Test Reviewer',
-                'review_notes': 'Content quality needs improvement',
-                'suggested_actions': 'Review validation results and improve content fidelity'
-            }
-            
-            response = requests.post(f"{API_BASE}/review/reject", data=rejection_data, timeout=30)
-            
-            if response.status_code == 404:
-                self.log_test("Rejection Workflow", True, f"Run {run_id} not found (expected for test scenario)")
-                return True
-                
-            if response.status_code != 200:
-                self.log_test("Rejection Workflow", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-            data = response.json()
-            
-            # Verify rejection response structure
-            required_fields = ['message', 'run_id', 'review_status', 'rejection_reason', 'reviewer_name', 'articles_updated', 'engine']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                self.log_test("Rejection Workflow", False, f"Missing response fields: {missing_fields}")
-                return False
-                
-            # Verify rejection details
-            if data.get('review_status') != 'rejected':
-                self.log_test("Rejection Workflow", False, f"Expected review_status=rejected, got {data.get('review_status')}")
-                return False
-                
-            if data.get('rejection_reason') != 'quality_issues':
-                self.log_test("Rejection Workflow", False, f"Expected rejection_reason=quality_issues, got {data.get('rejection_reason')}")
-                return False
-                
-            # Test invalid rejection reason
-            invalid_rejection_data = {
-                'run_id': run_id,
-                'rejection_reason': 'invalid_reason',
-                'reviewer_name': 'Test Reviewer'
-            }
-            
-            invalid_response = requests.post(f"{API_BASE}/review/reject", data=invalid_rejection_data, timeout=30)
-            
-            if invalid_response.status_code != 400:
-                self.log_test("Rejection Workflow", False, f"Expected 400 for invalid reason, got {invalid_response.status_code}")
-                return False
-                
-            self.log_test("Rejection Workflow", True, 
-                         f"Rejection workflow completed. Run {run_id} rejected for {data.get('rejection_reason')}, {data.get('articles_updated')} articles updated. Invalid reason properly rejected.",
-                         data)
-            return True
-            
-        except Exception as e:
-            self.log_test("Rejection Workflow", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_rerun_capability(self) -> bool:
-        """Test POST /api/review/rerun for selected step re-processing"""
-        try:
-            print(f"\n🔄 TESTING STEP RERUN CAPABILITY")
-            
-            if not self.sample_run_ids:
-                run_id = "test_run_789"
-            else:
-                run_id = self.sample_run_ids[2] if len(self.sample_run_ids) > 2 else self.sample_run_ids[0]
-            
-            # Test rerun request with valid steps
-            rerun_data = {
-                'run_id': run_id,
-                'selected_steps': json.dumps(['validation', 'qa', 'publishing']),
-                'reviewer_name': 'Test Reviewer',
-                'rerun_reason': 'Quality improvement after content updates'
-            }
-            
-            response = requests.post(f"{API_BASE}/review/rerun", data=rerun_data, timeout=30)
-            
-            if response.status_code == 404:
-                self.log_test("Rerun Capability", True, f"Run {run_id} not found (expected for test scenario)")
-                return True
-                
-            if response.status_code != 200:
-                self.log_test("Rerun Capability", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-            data = response.json()
-            
-            # Verify rerun response structure
-            required_fields = ['message', 'run_id', 'rerun_steps', 'rerun_results', 'reviewer_name', 'engine']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                self.log_test("Rerun Capability", False, f"Missing response fields: {missing_fields}")
-                return False
-                
-            # Verify rerun steps
-            expected_steps = ['validation', 'qa', 'publishing']
-            actual_steps = data.get('rerun_steps', [])
-            
-            if set(expected_steps) != set(actual_steps):
-                self.log_test("Rerun Capability", False, f"Expected steps {expected_steps}, got {actual_steps}")
-                return False
-                
-            # Verify rerun results
-            rerun_results = data.get('rerun_results', {})
-            for step in expected_steps:
-                if step not in rerun_results:
-                    self.log_test("Rerun Capability", False, f"Missing rerun result for step: {step}")
+                if related_features:
+                    self.log_test("Related Links Features Integration", True, f"Found related features: {related_features}")
+                else:
+                    self.log_test("Related Links Features Integration", False, "No related links features found")
                     return False
-                    
-                step_result = rerun_results[step]
-                if step_result.get('status') != 'completed':
-                    self.log_test("Rerun Capability", False, f"Step {step} not completed: {step_result}")
+                
+                # Check endpoints include related links diagnostics
+                endpoints = engine_data.get('endpoints', {})
+                if 'related_links_diagnostics' in endpoints:
+                    self.log_test("Related Links Endpoints Integration", True, "Related links diagnostics endpoint present")
+                else:
+                    self.log_test("Related Links Endpoints Integration", False, "Related links diagnostics endpoint missing")
                     return False
-                    
-            # Test invalid steps
-            invalid_rerun_data = {
-                'run_id': run_id,
-                'selected_steps': json.dumps(['invalid_step', 'another_invalid']),
-                'reviewer_name': 'Test Reviewer'
-            }
-            
-            invalid_response = requests.post(f"{API_BASE}/review/rerun", data=invalid_rerun_data, timeout=30)
-            
-            if invalid_response.status_code != 400:
-                self.log_test("Rerun Capability", False, f"Expected 400 for invalid steps, got {invalid_response.status_code}")
-                return False
                 
-            self.log_test("Rerun Capability", True, 
-                         f"Rerun capability working. Run {run_id} reprocessed {len(expected_steps)} steps successfully. Invalid steps properly rejected.",
-                         data)
-            return True
-            
-        except Exception as e:
-            self.log_test("Rerun Capability", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_media_library_preview(self) -> bool:
-        """Test GET /api/review/media/{run_id} for media library preview"""
-        try:
-            print(f"\n🖼️ TESTING MEDIA LIBRARY PREVIEW")
-            
-            if not self.sample_run_ids:
-                run_id = "test_run_media"
-            else:
-                run_id = self.sample_run_ids[0]
-            
-            response = requests.get(f"{API_BASE}/review/media/{run_id}", timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("Media Library Preview", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-            data = response.json()
-            
-            # Verify media response structure
-            required_fields = ['run_id', 'media_summary', 'media_items', 'contextual_info', 'engine']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                self.log_test("Media Library Preview", False, f"Missing response fields: {missing_fields}")
-                return False
-                
-            # Verify media summary structure
-            media_summary = data.get('media_summary', {})
-            summary_fields = ['total_count', 'images_count', 'videos_count', 'documents_count']
-            missing_summary_fields = [field for field in summary_fields if field not in media_summary]
-            
-            if missing_summary_fields:
-                self.log_test("Media Library Preview", False, f"Missing media summary fields: {missing_summary_fields}")
-                return False
-                
-            # Verify contextual info
-            contextual_info = data.get('contextual_info', {})
-            context_fields = ['extraction_method', 'alt_text_generated', 'contextual_filenames']
-            missing_context_fields = [field for field in context_fields if field not in contextual_info]
-            
-            if missing_context_fields:
-                self.log_test("Media Library Preview", False, f"Missing contextual info fields: {missing_context_fields}")
-                return False
-                
-            if data.get('engine') != 'v2':
-                self.log_test("Media Library Preview", False, f"Expected engine=v2, got {data.get('engine')}")
-                return False
-                
-            self.log_test("Media Library Preview", True, 
-                         f"Media library preview working. Run {run_id} has {media_summary.get('total_count', 0)} media items",
-                         data)
-            return True
-            
-        except Exception as e:
-            self.log_test("Media Library Preview", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_quality_badges_calculation(self) -> bool:
-        """Test quality badge calculation and status determination"""
-        try:
-            print(f"\n🏆 TESTING QUALITY BADGES CALCULATION")
-            
-            # Get runs to test badge calculation
-            response = requests.get(f"{API_BASE}/review/runs?limit=5", timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("Quality Badges Calculation", False, f"Could not get runs: HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            runs = data.get('runs', [])
-            
-            if not runs:
-                self.log_test("Quality Badges Calculation", True, "No runs available for badge testing (expected in some scenarios)")
                 return True
-                
-            # Test badge calculation on first run
-            first_run = runs[0]
-            badges = first_run.get('badges', {})
-            
-            # Test each badge type
-            badge_tests = []
-            
-            # Coverage badge
-            if 'coverage' in badges:
-                coverage_badge = badges['coverage']
-                coverage_value = coverage_badge.get('value', '0%')
-                coverage_status = coverage_badge.get('status', 'warning')
-                
-                # Verify status logic
-                coverage_percent = float(coverage_value.replace('%', ''))
-                expected_status = 'excellent' if coverage_percent >= 95 else 'good' if coverage_percent >= 85 else 'warning'
-                
-                if coverage_status == expected_status:
-                    badge_tests.append(f"Coverage badge status correct: {coverage_percent}% -> {coverage_status}")
-                else:
-                    badge_tests.append(f"Coverage badge status incorrect: {coverage_percent}% -> {coverage_status} (expected {expected_status})")
-            
-            # Fidelity badge
-            if 'fidelity' in badges:
-                fidelity_badge = badges['fidelity']
-                fidelity_value = float(fidelity_badge.get('value', '0'))
-                fidelity_status = fidelity_badge.get('status', 'warning')
-                
-                expected_status = 'excellent' if fidelity_value >= 0.9 else 'good' if fidelity_value >= 0.7 else 'warning'
-                
-                if fidelity_status == expected_status:
-                    badge_tests.append(f"Fidelity badge status correct: {fidelity_value} -> {fidelity_status}")
-                else:
-                    badge_tests.append(f"Fidelity badge status incorrect: {fidelity_value} -> {fidelity_status} (expected {expected_status})")
-            
-            # Placeholders badge
-            if 'placeholders' in badges:
-                placeholders_badge = badges['placeholders']
-                placeholder_count = int(placeholders_badge.get('value', '0'))
-                placeholder_status = placeholders_badge.get('status', 'warning')
-                
-                expected_status = 'excellent' if placeholder_count == 0 else 'warning'
-                
-                if placeholder_status == expected_status:
-                    badge_tests.append(f"Placeholders badge status correct: {placeholder_count} -> {placeholder_status}")
-                else:
-                    badge_tests.append(f"Placeholders badge status incorrect: {placeholder_count} -> {placeholder_status} (expected {expected_status})")
-            
-            # Verify all badges have required fields
-            badge_field_tests = []
-            for badge_name, badge_data in badges.items():
-                required_badge_fields = ['value', 'status', 'tooltip']
-                missing_badge_fields = [field for field in required_badge_fields if field not in badge_data]
-                
-                if missing_badge_fields:
-                    badge_field_tests.append(f"{badge_name} missing fields: {missing_badge_fields}")
-                else:
-                    badge_field_tests.append(f"{badge_name} has all required fields")
-            
-            all_tests_passed = all('correct' in test or 'has all required fields' in test for test in badge_tests + badge_field_tests)
-            
-            self.log_test("Quality Badges Calculation", all_tests_passed, 
-                         f"Badge calculation tests: {badge_tests + badge_field_tests}",
-                         badges)
-            return all_tests_passed
-            
-        except Exception as e:
-            self.log_test("Quality Badges Calculation", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_review_workflow_integration(self) -> bool:
-        """Test review workflow integration with database collections"""
-        try:
-            print(f"\n🔄 TESTING REVIEW WORKFLOW INTEGRATION")
-            
-            # Test that review system provides comprehensive data
-            response = requests.get(f"{API_BASE}/review/runs?limit=3", timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("Review Workflow Integration", False, f"Could not get runs: HTTP {response.status_code}")
+            else:
+                self.log_test("Engine Status Integration", False, f"HTTP {response.status_code}: {response.text}")
                 return False
                 
-            data = response.json()
-            
-            # Verify integration components
-            integration_tests = []
-            
-            # Test summary statistics
-            summary = data.get('summary', {})
-            if all(field in summary for field in ['total_runs', 'pending_review', 'approved', 'rejected', 'published']):
-                integration_tests.append("Summary statistics properly calculated")
-            else:
-                integration_tests.append("Summary statistics missing fields")
-            
-            # Test runs data structure
-            runs = data.get('runs', [])
-            if runs:
-                first_run = runs[0]
-                
-                # Test processing results integration
-                processing_results = first_run.get('processing_results', {})
-                expected_steps = ['validation', 'qa', 'adjustment', 'publishing', 'versioning']
-                
-                if all(step in processing_results for step in expected_steps):
-                    integration_tests.append("All V2 processing steps integrated")
-                else:
-                    missing_steps = [step for step in expected_steps if step not in processing_results]
-                    integration_tests.append(f"Missing processing steps: {missing_steps}")
-                
-                # Test article data integration
-                articles = first_run.get('articles', {})
-                if all(field in articles for field in ['count', 'titles', 'articles_data']):
-                    integration_tests.append("Article data properly integrated")
-                else:
-                    integration_tests.append("Article data integration incomplete")
-                
-                # Test badge integration
-                badges = first_run.get('badges', {})
-                if badges and len(badges) >= 3:
-                    integration_tests.append("Quality badges properly integrated")
-                else:
-                    integration_tests.append("Quality badges integration incomplete")
-            
-            # Test engine identification
-            if data.get('engine') == 'v2' and data.get('review_system_status') == 'active':
-                integration_tests.append("V2 engine and review system properly identified")
-            else:
-                integration_tests.append("V2 engine or review system identification failed")
-            
-            all_integration_passed = all('properly' in test or 'All V2' in test for test in integration_tests)
-            
-            self.log_test("Review Workflow Integration", all_integration_passed, 
-                         f"Integration tests: {integration_tests}",
-                         data)
-            return all_integration_passed
-            
         except Exception as e:
-            self.log_test("Review Workflow Integration", False, f"Exception: {str(e)}")
+            self.log_test("Engine Status Integration", False, f"Exception: {str(e)}")
             return False
     
-    def run_comprehensive_tests(self) -> Dict[str, Any]:
-        """Run all V2 Engine Step 13 Review System tests"""
-        print(f"🚀 STARTING V2 ENGINE STEP 13 REVIEW SYSTEM COMPREHENSIVE TESTING")
-        print(f"🌐 Backend URL: {BACKEND_URL}")
-        print(f"📡 API Base: {API_BASE}")
+    def run_comprehensive_tests(self):
+        """Run all V2 Engine Related Links System tests"""
+        print("🚀 STARTING V2 ENGINE RELATED LINKS SYSTEM COMPREHENSIVE TESTING")
+        print("=" * 80)
         
-        test_methods = [
-            self.test_engine_health_check,
-            self.test_get_runs_for_review,
-            self.test_get_run_details_for_review,
-            self.test_approval_workflow,
-            self.test_rejection_workflow,
-            self.test_rerun_capability,
-            self.test_media_library_preview,
-            self.test_quality_badges_calculation,
-            self.test_review_workflow_integration
+        # Test sequence based on review requirements
+        test_sequence = [
+            ("V2 Engine Health Check", self.test_v2_engine_health_check),
+            ("Seed Articles Creation", self.test_seed_articles_creation),
+            ("Content Library Indexing", self.test_content_library_indexing),
+            ("Related Links Diagnostics", self.test_related_links_diagnostics),
+            ("Content Processing with Related Links", self.test_content_processing_with_related_links),
+            ("Related Links Rerun", self.test_related_links_rerun),
+            ("Database Storage and Retrieval", self.test_database_storage_and_retrieval),
+            ("Engine Status Integration", self.test_engine_status_integration)
         ]
         
-        passed_tests = 0
-        total_tests = len(test_methods)
-        
-        for test_method in test_methods:
+        for test_name, test_function in test_sequence:
             try:
-                if test_method():
-                    passed_tests += 1
+                print(f"\n{'='*60}")
+                print(f"🧪 RUNNING: {test_name}")
+                print(f"{'='*60}")
+                
+                success = test_function()
+                
+                if not success:
+                    print(f"⚠️ Test '{test_name}' failed - continuing with remaining tests")
+                    
             except Exception as e:
-                print(f"❌ CRITICAL ERROR in {test_method.__name__}: {str(e)}")
+                print(f"❌ CRITICAL ERROR in {test_name}: {str(e)}")
+                self.log_test(test_name, False, f"Critical error: {str(e)}")
         
-        # Calculate success rate
-        success_rate = (passed_tests / total_tests) * 100
+        # Print final summary
+        self.print_test_summary()
         
-        # Compile final results
-        results = {
-            "test_summary": {
-                "total_tests": total_tests,
-                "passed_tests": passed_tests,
-                "failed_tests": total_tests - passed_tests,
-                "success_rate": f"{success_rate:.1f}%",
-                "overall_status": "PASS" if success_rate >= 80 else "FAIL"
-            },
-            "test_details": self.test_results,
-            "backend_url": BACKEND_URL,
-            "test_timestamp": datetime.utcnow().isoformat(),
-            "engine_version": "v2",
-            "step_tested": "Step 13 - Review UI (Human-in-the-loop QA)"
-        }
+        return self.test_results
+    
+    def print_test_summary(self):
+        """Print comprehensive test summary"""
+        print("\n" + "="*80)
+        print("🎯 V2 ENGINE RELATED LINKS SYSTEM TESTING SUMMARY")
+        print("="*80)
         
-        print(f"\n" + "="*80)
-        print(f"🎯 V2 ENGINE STEP 13 REVIEW SYSTEM TESTING COMPLETE")
-        print(f"📊 RESULTS: {passed_tests}/{total_tests} tests passed ({success_rate:.1f}% success rate)")
-        print(f"🏆 OVERALL STATUS: {results['test_summary']['overall_status']}")
-        print(f"="*80)
+        total = self.test_results["total_tests"]
+        passed = self.test_results["passed_tests"]
+        failed = self.test_results["failed_tests"]
+        success_rate = (passed / total * 100) if total > 0 else 0
         
-        return results
+        print(f"📊 OVERALL RESULTS:")
+        print(f"   Total Tests: {total}")
+        print(f"   Passed: {passed} ✅")
+        print(f"   Failed: {failed} ❌")
+        print(f"   Success Rate: {success_rate:.1f}%")
+        
+        if success_rate >= 80:
+            print(f"🎉 EXCELLENT: Related Links System is working well!")
+        elif success_rate >= 60:
+            print(f"⚠️ GOOD: Related Links System is mostly functional with some issues")
+        else:
+            print(f"❌ NEEDS ATTENTION: Related Links System has significant issues")
+        
+        # Print failed tests details
+        if failed > 0:
+            print(f"\n❌ FAILED TESTS DETAILS:")
+            for test in self.test_results["test_details"]:
+                if test["status"] == "failed":
+                    print(f"   • {test['test_name']}: {test['details']}")
+        
+        print("\n" + "="*80)
 
 def main():
-    """Main test execution"""
-    tester = V2ReviewSystemTester()
+    """Main testing function"""
+    print("🔗 V2 ENGINE RELATED LINKS SYSTEM COMPREHENSIVE TESTING")
+    print("Testing content library indexing, similarity matching, and related links generation")
+    print(f"Backend URL: {BACKEND_URL}")
+    print("="*80)
+    
+    tester = V2RelatedLinksSystemTester()
     results = tester.run_comprehensive_tests()
     
-    # Print detailed results
-    print(f"\n📋 DETAILED TEST RESULTS:")
-    for result in results["test_details"]:
-        status = "✅" if result["success"] else "❌"
-        print(f"{status} {result['test']}: {result['details']}")
-    
-    return results
+    # Return appropriate exit code
+    if results["failed_tests"] == 0:
+        print("✅ ALL TESTS PASSED - Related Links System is fully operational!")
+        sys.exit(0)
+    else:
+        print(f"❌ {results['failed_tests']} TESTS FAILED - Related Links System needs attention")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

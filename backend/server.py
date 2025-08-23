@@ -26859,6 +26859,191 @@ async def rerun_versioning_analysis(run_id: str = Form(...)):
         print(f"❌ V2 VERSIONING: Error in versioning rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning versioning analysis: {str(e)}")
 
+# V2 ENGINE: Prewrite System API Endpoints
+@app.get("/api/prewrite/diagnostics")
+async def get_prewrite_diagnostics():
+    """V2 ENGINE: Get comprehensive prewrite diagnostics for all processing runs"""
+    try:
+        print(f"📊 V2 PREWRITE: Retrieving prewrite diagnostics - engine=v2")
+        
+        # Get all prewrite results from database
+        prewrite_results = []
+        async for prewrite_result in db.v2_prewrite_results.find().sort("timestamp", -1).limit(50):
+            prewrite_results.append(objectid_to_str(prewrite_result))
+        
+        # Calculate summary statistics
+        total_prewrite_runs = len(prewrite_results)
+        successful_runs = len([r for r in prewrite_results if r.get('prewrite_status') == 'success'])
+        partial_runs = len([r for r in prewrite_results if r.get('prewrite_status') == 'partial'])
+        failed_runs = len([r for r in prewrite_results if r.get('prewrite_status') in ['failed', 'error']])
+        
+        # Calculate fact extraction statistics
+        total_articles_processed = sum([r.get('articles_processed', 0) for r in prewrite_results])
+        total_successful_prewrites = sum([r.get('successful_prewrites', 0) for r in prewrite_results])
+        total_facts_extracted = 0
+        
+        for result in prewrite_results:
+            for prewrite_detail in result.get('prewrite_results', []):
+                total_facts_extracted += prewrite_detail.get('total_facts_extracted', 0)
+        
+        # Create diagnostics response
+        diagnostics_response = {
+            "prewrite_system_status": "active",
+            "engine": "v2",
+            "diagnostics_generated_at": datetime.utcnow().isoformat(),
+            
+            # Overall prewrite statistics
+            "prewrite_summary": {
+                "total_prewrite_runs": total_prewrite_runs,
+                "successful_runs": successful_runs,
+                "partial_runs": partial_runs,
+                "failed_runs": failed_runs,
+                "success_rate": (successful_runs / total_prewrite_runs * 100) if total_prewrite_runs > 0 else 0,
+                "total_articles_processed": total_articles_processed,
+                "total_successful_prewrites": total_successful_prewrites,
+                "total_facts_extracted": total_facts_extracted,
+                "average_facts_per_prewrite": (total_facts_extracted / total_successful_prewrites) if total_successful_prewrites > 0 else 0
+            },
+            
+            # Recent prewrite results
+            "recent_prewrite_results": [
+                {
+                    "prewrite_id": result.get('prewrite_id'),
+                    "run_id": result.get('run_id'),
+                    "prewrite_status": result.get('prewrite_status'),
+                    "articles_processed": result.get('articles_processed', 0),
+                    "successful_prewrites": result.get('successful_prewrites', 0),
+                    "success_rate": result.get('success_rate', 0),
+                    "content_type": result.get('content_analysis', {}).get('content_type', 'unknown'),
+                    "timestamp": result.get('timestamp')
+                }
+                for result in prewrite_results[:20]  # Show last 20 results
+            ]
+        }
+        
+        print(f"✅ V2 PREWRITE: Returning prewrite diagnostics - {total_prewrite_runs} total runs - engine=v2")
+        return diagnostics_response
+        
+    except Exception as e:
+        print(f"❌ V2 PREWRITE: Error retrieving prewrite diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving prewrite diagnostics: {str(e)}")
+
+@app.get("/api/prewrite/diagnostics/{prewrite_id}")
+async def get_specific_prewrite_diagnostics(prewrite_id: str):
+    """V2 ENGINE: Get detailed diagnostics for a specific prewrite result"""
+    try:
+        print(f"🔍 V2 PREWRITE: Retrieving specific prewrite diagnostics - ID: {prewrite_id} - engine=v2")
+        
+        # Find the specific prewrite result
+        prewrite_result = await db.v2_prewrite_results.find_one({"prewrite_id": prewrite_id})
+        
+        if not prewrite_result:
+            raise HTTPException(status_code=404, detail=f"Prewrite result not found: {prewrite_id}")
+        
+        # Convert ObjectIds to strings
+        prewrite_result = objectid_to_str(prewrite_result)
+        
+        # Enhance result with additional analysis
+        enhanced_result = {
+            "prewrite_result": prewrite_result,
+            "analysis": {
+                "prewrite_metadata": prewrite_result.get('content_analysis', {}),
+                "processing_summary": {
+                    "articles_processed": prewrite_result.get('articles_processed', 0),
+                    "successful_prewrites": prewrite_result.get('successful_prewrites', 0),
+                    "failed_prewrites": prewrite_result.get('failed_prewrites', 0),
+                    "success_rate": prewrite_result.get('success_rate', 0)
+                },
+                "fact_extraction_details": [
+                    {
+                        "article_index": detail.get('article_index'),
+                        "article_title": detail.get('article_title'),
+                        "prewrite_status": detail.get('prewrite_status'),
+                        "sections_processed": detail.get('sections_processed', 0),
+                        "total_facts_extracted": detail.get('total_facts_extracted', 0),
+                        "prewrite_file": detail.get('prewrite_file', '')
+                    }
+                    for detail in prewrite_result.get('prewrite_results', [])
+                ]
+            }
+        }
+        
+        print(f"✅ V2 PREWRITE: Returning specific prewrite result - {enhanced_result['analysis']['processing_summary']['articles_processed']} articles - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 PREWRITE: Error retrieving specific prewrite diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving prewrite diagnostics: {str(e)}")
+
+@app.post("/api/prewrite/rerun")
+async def rerun_prewrite_analysis(run_id: str = Form(...)):
+    """V2 ENGINE: Rerun prewrite analysis for a specific processing run"""
+    try:
+        print(f"🔄 V2 PREWRITE: Rerun prewrite analysis requested - run_id: {run_id} - engine=v2")
+        
+        # Find articles from the specified run
+        articles = []
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            articles.append(objectid_to_str(article))
+        
+        if not articles:
+            raise HTTPException(status_code=404, detail=f"No V2 articles found for run: {run_id}")
+        
+        # Get original processing context (simplified approach)
+        # In a full implementation, this would be retrieved from stored processing context
+        content_for_prewrite = f"rerun_content_{run_id}"
+        content_type = "rerun"
+        
+        # Create mock outlines for rerun (in full implementation, these would be retrieved)
+        per_article_outlines = {}
+        for i, article in enumerate(articles):
+            per_article_outlines[f'article_{i}'] = {
+                'sections': [
+                    {'title': 'Introduction', 'content_focus': 'General introduction'},
+                    {'title': 'Main Content', 'content_focus': 'Core information'},
+                    {'title': 'Conclusion', 'content_focus': 'Summary and conclusions'}
+                ]
+            }
+        
+        global_analysis = {
+            'audience': 'end_user',
+            'granularity': 'moderate',
+            'content_type': 'mixed'
+        }
+        
+        # Perform prewrite analysis
+        prewrite_result = await v2_prewrite_system.execute_prewrite_pass(
+            content_for_prewrite, content_type, articles, per_article_outlines, global_analysis, run_id
+        )
+        
+        # Store the rerun result
+        try:
+            await db.v2_prewrite_results.insert_one(prewrite_result)
+            print(f"💾 V2 PREWRITE: Stored rerun prewrite result - prewrite_id: {prewrite_result.get('prewrite_id')} - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 PREWRITE: Error storing rerun result - {storage_error} - engine=v2")
+        
+        prewrite_status = prewrite_result.get('prewrite_status', 'unknown')
+        successful_prewrites = prewrite_result.get('successful_prewrites', 0)
+        
+        return {
+            "message": "V2 prewrite analysis rerun completed",
+            "run_id": run_id,
+            "prewrite_id": prewrite_result.get('prewrite_id'),
+            "prewrite_status": prewrite_status,
+            "successful_prewrites": successful_prewrites,
+            "articles_processed": prewrite_result.get('articles_processed', 0),
+            "success_rate": prewrite_result.get('success_rate', 0)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 PREWRITE: Error in prewrite rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning prewrite analysis: {str(e)}")
+
 # V2 ENGINE: Review System API Endpoints
 @app.get("/api/review/runs")
 async def get_runs_for_review(limit: int = 50, status: str = None):

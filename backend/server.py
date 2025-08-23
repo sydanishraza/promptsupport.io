@@ -25425,7 +25425,35 @@ Source Information:
             # Extract per-article outlines
             per_article_outlines = per_article_outlines_result.get('per_article_outlines', []) if per_article_outlines_result else []
             
-            print(f"📋 V2 ENGINE: Per-article outlines created - {len(per_article_outlines)} detailed outlines - engine=v2")
+            print(f"✅ V2 ENGINE: Step 6 complete - Per-article outlines created for URL processing - engine=v2")
+            
+            # V2 STEP 6.5: Section-Grounded Prewrite Pass (facts → claims)
+            print(f"🔄 V2 ENGINE: Starting Step 6.5 - Section-grounded prewrite pass for URL processing - engine=v2")
+            
+            prewrite_result = await v2_prewrite_system.execute_prewrite_pass(
+                enriched_content, 'url', article_outlines, 
+                per_article_outlines_result.get('per_article_outlines', {}), 
+                analysis, run_id
+            )
+            
+            prewrite_status = prewrite_result.get('prewrite_status', 'unknown')
+            successful_prewrites = prewrite_result.get('successful_prewrites', 0)
+            
+            if prewrite_status == 'success':
+                print(f"✅ V2 ENGINE: Step 6.5 prewrite successful for URL - {successful_prewrites} articles prepared - engine=v2")
+            elif prewrite_status == 'partial':
+                print(f"⚠️ V2 ENGINE: Step 6.5 prewrite partial for URL - {successful_prewrites} articles prepared, some failed - engine=v2")
+            else:
+                print(f"❌ V2 ENGINE: Step 6.5 prewrite failed for URL - {prewrite_status} - engine=v2")
+            
+            # Store prewrite result for diagnostics
+            try:
+                await db.v2_prewrite_results.insert_one(prewrite_result)
+                print(f"💾 V2 ENGINE: Stored URL prewrite result for diagnostics - prewrite_id: {prewrite_result.get('prewrite_id')} - engine=v2")
+            except Exception as prewrite_storage_error:
+                print(f"❌ V2 ENGINE: Error storing URL prewrite result - {prewrite_storage_error} - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Step 6.5 complete - Section-grounded prewrite pass complete for URL - engine=v2")
             
             # V2 STEP 7: Generate final articles with strict format and audience-aware styling
             print(f"🎯 V2 ENGINE: Starting Step 7 - Final article generation with V2ArticleGenerator - engine=v2")

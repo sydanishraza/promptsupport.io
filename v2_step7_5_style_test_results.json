@@ -1,0 +1,151 @@
+{
+  "test_suite": "V2 Engine Step 7.5 - Woolf-aligned Technical Writing Style + Structural Lint",
+  "total_tests": 8,
+  "passed_tests": 2,
+  "failed_tests": 6,
+  "success_rate": "25.0%",
+  "timestamp": "2025-08-23T08:38:11.869757",
+  "backend_url": "https://woolf-style-lint.preview.emergentagent.com",
+  "test_results": [
+    {
+      "test": "V2 Engine Health Check with Style Endpoints",
+      "success": true,
+      "details": "V2 Engine active with style endpoints: ['style_diagnostics'] and features: ['woolf_style_processing', 'structural_linting', 'microsoft_style_guide', 'technical_writing_standards']",
+      "timestamp": "2025-08-23T08:34:45.562521",
+      "data": {
+        "engine": "v2",
+        "legacy": "disabled",
+        "status": "active",
+        "version": "2.0",
+        "endpoints": {
+          "text_processing": "/api/content/process",
+          "file_upload": "/api/content/upload",
+          "url_processing": "/api/content/process-url",
+          "recording_processing": "/api/content/process-recording",
+          "validation_diagnostics": "/api/validation/diagnostics",
+          "qa_diagnostics": "/api/qa/diagnostics",
+          "adjustment_diagnostics": "/api/adjustment/diagnostics",
+          "publishing_diagnostics": "/api/publishing/diagnostics",
+          "versioning_diagnostics": "/api/versioning/diagnostics",
+          "prewrite_diagnostics": "/api/prewrite/diagnostics",
+          "style_diagnostics": "/api/style/diagnostics",
+          "review_runs": "/api/review/runs",
+          "review_approve": "/api/review/approve",
+          "review_reject": "/api/review/reject",
+          "review_rerun": "/api/review/rerun"
+        },
+        "features": [
+          "multi_dimensional_analysis",
+          "adaptive_granularity",
+          "intelligent_chunking",
+          "cross_referencing",
+          "comprehensive_file_support",
+          "image_extraction",
+          "progress_tracking",
+          "comprehensive_validation",
+          "fidelity_checking",
+          "coverage_validation",
+          "placeholder_detection",
+          "style_guard",
+          "cross_article_qa",
+          "content_deduplication",
+          "link_validation",
+          "faq_consolidation",
+          "terminology_consistency",
+          "woolf_style_processing",
+          "structural_linting",
+          "microsoft_style_guide",
+          "technical_writing_standards",
+          "adaptive_adjustment",
+          "length_balancing",
+          "split_optimization",
+          "merge_suggestions",
+          "readability_optimization",
+          "v2_publishing_flow",
+          "content_library_persistence",
+          "comprehensive_metadata",
+          "provenance_mapping",
+          "media_reference_handling",
+          "version_management",
+          "content_versioning",
+          "diff_analysis",
+          "reprocessing_support",
+          "version_chain_tracking",
+          "human_in_the_loop_review",
+          "quality_badges",
+          "approval_workflow",
+          "rejection_tracking",
+          "step_rerun_capability",
+          "section_grounded_prewrite",
+          "fact_extraction",
+          "evidence_based_writing",
+          "concrete_examples_extraction",
+          "gap_analysis",
+          "terminology_extraction"
+        ],
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, Woolf-aligned style processing, and human-in-the-loop review systems"
+      }
+    },
+    {
+      "test": "Style Diagnostic Endpoints - General",
+      "success": false,
+      "details": "Missing required fields in diagnostics: ['total_style_runs']",
+      "timestamp": "2025-08-23T08:34:45.615396",
+      "data": null
+    },
+    {
+      "test": "V2StyleProcessor Integration - Storage",
+      "success": false,
+      "details": "Style results not found for job_id: d21bfe80-061e-4f37-aedd-daa5acda4efc",
+      "timestamp": "2025-08-23T08:35:25.134957",
+      "data": null
+    },
+    {
+      "test": "Woolf Standards Implementation",
+      "success": false,
+      "details": "Style processing result not found for job_id: 4e8765e2-7222-46c5-9649-65c333ec324f",
+      "timestamp": "2025-08-23T08:36:10.157515",
+      "data": null
+    },
+    {
+      "test": "Style Compliance Validation",
+      "success": false,
+      "details": "Insufficient compliance features: 1/4 working",
+      "timestamp": "2025-08-23T08:36:10.212796",
+      "data": null
+    },
+    {
+      "test": "LLM-based Style Formatting",
+      "success": false,
+      "details": "LLM formatting result not found for job_id: 341f79b2-ff95-4838-a4d5-bfc40dac5e15",
+      "timestamp": "2025-08-23T08:36:48.172494",
+      "data": null
+    },
+    {
+      "test": "Database Storage - Total Runs",
+      "success": false,
+      "details": "No style runs found in database",
+      "timestamp": "2025-08-23T08:36:48.228153",
+      "data": null
+    },
+    {
+      "test": "Processing Pipeline Integration",
+      "success": true,
+      "details": "Processing pipeline integration working: 3/3 pipelines verified",
+      "timestamp": "2025-08-23T08:38:11.868701",
+      "data": {
+        "pipelines_working": 3
+      }
+    }
+  ],
+  "critical_success_criteria": {
+    "v2_engine_health_check_with_style_endpoints": true,
+    "style_diagnostic_endpoints_operational": true,
+    "v2_style_processor_integration_verification": false,
+    "woolf_standards_implementation_testing": false,
+    "style_compliance_validation": false,
+    "llm_based_style_formatting": false,
+    "database_storage_and_retrieval": false,
+    "processing_pipeline_integration": false
+  }
+}

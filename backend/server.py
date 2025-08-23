@@ -26073,6 +26073,34 @@ Source Information:
             
             print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(chunks)} final articles from URL {url} - engine=v2")
             
+            # V2 STEP 7.5: Woolf-aligned Technical Writing Style + Structural Lint
+            print(f"🔄 V2 ENGINE: Starting Step 7.5 - Woolf-aligned style formatting - engine=v2")
+            
+            style_result = await v2_style_processor.apply_style_formatting(
+                enriched_content, 'url', chunks, 
+                generated_articles_result, analysis, run_id
+            )
+            
+            style_status = style_result.get('style_status', 'unknown')
+            successful_formatting = style_result.get('successful_formatting', 0)
+            style_compliance = style_result.get('style_compliance', {})
+            
+            if style_status == 'success':
+                print(f"✅ V2 ENGINE: Step 7.5 style formatting successful - {successful_formatting} articles formatted, {style_compliance.get('overall_compliance', 0):.1f}% compliance - engine=v2")
+            elif style_status == 'partial':
+                print(f"⚠️ V2 ENGINE: Step 7.5 style formatting partial - {successful_formatting} articles formatted, some failed - engine=v2")
+            else:
+                print(f"❌ V2 ENGINE: Step 7.5 style formatting failed - {style_status} - engine=v2")
+            
+            # Store style result for diagnostics
+            try:
+                await db.v2_style_results.insert_one(style_result)
+                print(f"💾 V2 ENGINE: Stored style result for diagnostics - style_id: {style_result.get('style_id')} - engine=v2")
+            except Exception as style_storage_error:
+                print(f"❌ V2 ENGINE: Error storing style result - {style_storage_error} - engine=v2")
+            
+            print(f"✅ V2 ENGINE: Step 7.5 complete - Woolf-aligned style formatting complete - engine=v2")
+            
             # V2 STEP 8: Implement Validators (fidelity, 100% coverage, placeholders, style)
             print(f"🔍 V2 ENGINE: Starting Step 8 - Comprehensive validation for URL processing - engine=v2")
             

@@ -27793,9 +27793,10 @@ async def get_specific_style_diagnostics(style_id: str):
         raise HTTPException(status_code=500, detail=f"Error retrieving style diagnostics: {str(e)}")
 
 @app.post("/api/style/rerun")
-async def rerun_style_formatting(run_id: str = Form(...)):
+async def rerun_style_formatting(request: RerunRequest):
     """V2 ENGINE: Rerun Woolf style formatting for a specific processing run"""
     try:
+        run_id = request.run_id
         print(f"🔄 V2 STYLE: Rerun style formatting requested - run_id: {run_id} - engine=v2")
         
         # Find articles from the specified run

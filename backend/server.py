@@ -21616,6 +21616,56 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"✅ V2 ENGINE: Step 7.5 complete - Woolf-aligned style formatting complete - engine=v2")
         
+        # V2 STEP 7.7: Related Links Generation (internal + external from source)
+        print(f"🔗 V2 ENGINE: Starting Step 7.7 - Related links generation with content library indexing - engine=v2")
+        
+        # Generate related links for each article using content library and source links
+        related_links_results = []
+        for i, article in enumerate(articles):
+            try:
+                related_links_result = await v2_related_links_system.generate_related_links(
+                    article, content, normalized_doc.blocks, run_id
+                )
+                
+                # Add related links to article
+                if related_links_result.get('related_links_status') == 'success':
+                    related_links = related_links_result.get('related_links', [])
+                    
+                    # Update article with related links
+                    article['related_links'] = related_links
+                    article.setdefault('metadata', {})['related_links_result'] = related_links_result
+                    article['related_links_count'] = len(related_links)
+                    
+                    internal_count = related_links_result.get('internal_links_count', 0)
+                    external_count = related_links_result.get('external_links_count', 0)
+                    print(f"✅ V2 ENGINE: Added {len(related_links)} related links to '{article['title'][:50]}...' ({internal_count} internal, {external_count} external) - engine=v2")
+                else:
+                    print(f"⚠️ V2 ENGINE: Failed to generate related links for '{article['title'][:50]}...' - engine=v2")
+                
+                related_links_results.append(related_links_result)
+                
+            except Exception as article_links_error:
+                print(f"❌ V2 ENGINE: Error generating related links for article {i+1} - {article_links_error} - engine=v2")
+                related_links_results.append({
+                    "related_links_status": "error",
+                    "error": str(article_links_error),
+                    "run_id": run_id,
+                    "engine": "v2"
+                })
+        
+        # Store related links results for diagnostics
+        try:
+            for result in related_links_results:
+                await db.v2_related_links_results.insert_one(result)
+            print(f"💾 V2 ENGINE: Stored {len(related_links_results)} related links results for diagnostics - engine=v2")
+        except Exception as related_links_storage_error:
+            print(f"❌ V2 ENGINE: Error storing related links results - {related_links_storage_error} - engine=v2")
+        
+        successful_related_links = len([r for r in related_links_results if r.get('related_links_status') == 'success'])
+        total_related_links = sum([r.get('total_links_count', 0) for r in related_links_results])
+        
+        print(f"✅ V2 ENGINE: Step 7.7 complete - Related links generation complete - {successful_related_links}/{len(articles)} articles, {total_related_links} total links - engine=v2")
+        
         # V2 STEP 8: Implement Validators (fidelity, 100% coverage, placeholders, style)  
         print(f"🔍 V2 ENGINE: Starting Step 8 - Comprehensive validation - engine=v2")
         

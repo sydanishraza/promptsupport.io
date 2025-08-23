@@ -3854,12 +3854,13 @@ ORIGINAL CONTENT:
 
 Apply Woolf Help Center style standards. Ensure:
 - Professional, concise tone matching live Help Center docs
-- Clear structure with proper headings and mini-TOC
+- Clear structure with proper headings and clickable mini-TOC
 - Active voice and specific instructions
 - Proper code formatting and table structure
 - Consistent terminology throughout
+- Mini-TOC uses format: "- [Section Name](#section-slug)" for all major sections
 
-Return the fully formatted article with improved clarity and structure."""
+Return the fully formatted article with improved clarity, structure, and clickable navigation."""
 
             # Call LLM for style formatting
             try:

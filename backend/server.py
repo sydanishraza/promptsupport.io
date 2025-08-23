@@ -4333,6 +4333,474 @@ Return the fully formatted article with improved clarity, structure, and clickab
 v2_style_processor = V2StyleProcessor()
 
 # ========================================
+# V2 ENGINE: RELATED LINKS SYSTEM
+# ========================================
+
+class V2RelatedLinksSystem:
+    """V2 Engine: Enhanced related links system with content library indexing and similarity matching"""
+    
+    def __init__(self):
+        self.content_index = {}  # Cache for content library index
+        self.index_last_updated = None
+        
+    async def generate_related_links(self, article: dict, source_content: str, 
+                                   source_blocks: list, run_id: str) -> dict:
+        """Generate comprehensive related links for an article"""
+        try:
+            article_title = article.get('title', 'Untitled')
+            print(f"🔗 V2 RELATED LINKS: Generating related links for '{article_title}' - engine=v2")
+            
+            # Step 1: Build/update content library index
+            await self._update_content_index()
+            
+            # Step 2: Find related internal articles
+            internal_links = await self._find_internal_related_articles(article)
+            
+            # Step 3: Extract external links from source content and blocks
+            external_links = await self._extract_source_external_links(source_content, source_blocks)
+            
+            # Step 4: Merge and format final related links
+            final_related_links = self._merge_and_format_links(internal_links, external_links)
+            
+            related_links_count = len(final_related_links)
+            internal_count = len([l for l in final_related_links if l.get('type') == 'internal'])
+            external_count = len([l for l in final_related_links if l.get('type') == 'external'])
+            
+            print(f"✅ V2 RELATED LINKS: Generated {related_links_count} links ({internal_count} internal, {external_count} external) for '{article_title}' - engine=v2")
+            
+            return {
+                "related_links_id": f"related_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "article_title": article_title,
+                "related_links_status": "success",
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                
+                # Related links data
+                "related_links": final_related_links,
+                "internal_links_count": internal_count,
+                "external_links_count": external_count,
+                "total_links_count": related_links_count,
+                
+                # Metadata
+                "content_library_articles_indexed": len(self.content_index),
+                "similarity_method": "keyword_and_semantic"
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error generating related links - {e} - engine=v2")
+            return {
+                "related_links_id": f"related_error_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "related_links_status": "error",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+    
+    async def _update_content_index(self):
+        """Build/update lightweight vector/keyword index over content_library"""
+        try:
+            # Check if index needs updating (update every 5 minutes)
+            now = datetime.utcnow()
+            if (self.index_last_updated and 
+                (now - self.index_last_updated).total_seconds() < 300):
+                return  # Index is still fresh
+            
+            print(f"🔍 V2 RELATED LINKS: Updating content library index - engine=v2")
+            
+            new_index = {}
+            
+            # Get all articles from content_library
+            articles_cursor = db.content_library.find({"engine": "v2"})
+            articles_count = 0
+            
+            async for article in articles_cursor:
+                try:
+                    article_id = str(article.get('_id', ''))
+                    title = article.get('title', '').strip()
+                    content = article.get('content', '') or article.get('html', '')
+                    
+                    if not title or not content:
+                        continue
+                    
+                    # Extract H2 headings for indexing
+                    h2_headings = self._extract_headings(content, level=2)
+                    
+                    # Create summary from first paragraph or first 200 chars
+                    summary = self._extract_summary(content)
+                    
+                    # Build keyword index
+                    keywords = self._extract_keywords(title, summary, h2_headings)
+                    
+                    new_index[article_id] = {
+                        "title": title,
+                        "summary": summary,
+                        "h2_headings": h2_headings,
+                        "keywords": keywords,
+                        "created_at": article.get('created_at'),
+                        "url": f"/content-library/article/{article_id}"
+                    }
+                    
+                    articles_count += 1
+                    
+                except Exception as article_error:
+                    print(f"❌ V2 RELATED LINKS: Error indexing article {article.get('_id')} - {article_error}")
+                    continue
+            
+            self.content_index = new_index
+            self.index_last_updated = now
+            
+            print(f"✅ V2 RELATED LINKS: Content index updated - {articles_count} articles indexed - engine=v2")
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error updating content index - {e} - engine=v2")
+    
+    def _extract_headings(self, content: str, level: int = 2) -> list:
+        """Extract headings of specified level from HTML/markdown content"""
+        import re
+        from bs4 import BeautifulSoup
+        
+        headings = []
+        
+        try:
+            # Try HTML parsing first
+            soup = BeautifulSoup(content, 'html.parser')
+            heading_tags = soup.find_all(f'h{level}')
+            
+            for tag in heading_tags:
+                heading_text = tag.get_text().strip()
+                if heading_text:
+                    headings.append(heading_text)
+            
+            # Also try markdown parsing
+            markdown_pattern = rf'^{"#" * level}\s+(.+)$'
+            markdown_headings = re.findall(markdown_pattern, content, re.MULTILINE)
+            headings.extend(markdown_headings)
+            
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_headings = []
+            for heading in headings:
+                if heading.lower() not in seen:
+                    seen.add(heading.lower())
+                    unique_headings.append(heading)
+            
+            return unique_headings[:10]  # Limit to first 10 headings
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error extracting headings - {e}")
+            return []
+    
+    def _extract_summary(self, content: str) -> str:
+        """Extract summary from article content (first paragraph or first 200 chars)"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            # Try to get first paragraph
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Look for first paragraph
+            first_para = soup.find('p')
+            if first_para:
+                summary = first_para.get_text().strip()
+                if len(summary) > 50:
+                    return summary[:200] + "..." if len(summary) > 200 else summary
+            
+            # Fallback: clean text and take first 200 chars
+            clean_text = soup.get_text().strip()
+            if clean_text:
+                return clean_text[:200] + "..." if len(clean_text) > 200 else clean_text
+            
+            return ""
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error extracting summary - {e}")
+            return ""
+    
+    def _extract_keywords(self, title: str, summary: str, headings: list) -> set:
+        """Extract keywords from title, summary, and headings for matching"""
+        import re
+        
+        keywords = set()
+        
+        # Common stop words to filter out
+        stop_words = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 
+            'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had',
+            'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can',
+            'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'
+        }
+        
+        # Extract from title (higher weight)
+        title_words = re.findall(r'\b[a-zA-Z]{3,}\b', title.lower())
+        keywords.update(word for word in title_words if word not in stop_words)
+        
+        # Extract from summary
+        summary_words = re.findall(r'\b[a-zA-Z]{3,}\b', summary.lower())
+        keywords.update(word for word in summary_words[:20] if word not in stop_words)  # Limit summary words
+        
+        # Extract from headings
+        for heading in headings:
+            heading_words = re.findall(r'\b[a-zA-Z]{3,}\b', heading.lower())
+            keywords.update(word for word in heading_words if word not in stop_words)
+        
+        return keywords
+    
+    async def _find_internal_related_articles(self, article: dict) -> list:
+        """Find top 5 related internal articles using keyword similarity"""
+        try:
+            article_title = article.get('title', '')
+            article_content = article.get('content', '') or article.get('html', '')
+            
+            if not article_title or not self.content_index:
+                return []
+            
+            # Extract keywords from current article
+            article_h2s = self._extract_headings(article_content, level=2)
+            article_summary = self._extract_summary(article_content)
+            article_keywords = self._extract_keywords(article_title, article_summary, article_h2s)
+            
+            # Calculate similarity scores
+            similarity_scores = []
+            
+            for indexed_id, indexed_article in self.content_index.items():
+                # Skip if it's the same article (by title comparison)
+                if indexed_article['title'].lower().strip() == article_title.lower().strip():
+                    continue
+                
+                indexed_keywords = indexed_article['keywords']
+                
+                # Calculate keyword overlap similarity
+                if not article_keywords or not indexed_keywords:
+                    similarity = 0
+                else:
+                    common_keywords = article_keywords.intersection(indexed_keywords)
+                    similarity = len(common_keywords) / max(len(article_keywords), len(indexed_keywords))
+                
+                # Boost score for title word matches
+                title_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', article_title.lower()))
+                indexed_title_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', indexed_article['title'].lower()))
+                title_overlap = len(title_words.intersection(indexed_title_words))
+                
+                final_score = similarity + (title_overlap * 0.3)  # Boost for title matches
+                
+                if final_score > 0.1:  # Only include articles with some relevance
+                    similarity_scores.append({
+                        "id": indexed_id,
+                        "title": indexed_article['title'],
+                        "url": indexed_article['url'],
+                        "summary": indexed_article['summary'],
+                        "similarity_score": final_score,
+                        "common_keywords": len(article_keywords.intersection(indexed_keywords)) if article_keywords and indexed_keywords else 0
+                    })
+            
+            # Sort by similarity score and take top 5
+            similarity_scores.sort(key=lambda x: x['similarity_score'], reverse=True)
+            top_related = similarity_scores[:5]
+            
+            # Filter same-topic duplicates (very similar titles)
+            filtered_related = []
+            used_title_words = set()
+            
+            for related in top_related:
+                related_title_words = set(re.findall(r'\b[a-zA-Z]{4,}\b', related['title'].lower()))
+                
+                # Check if this is too similar to already included articles
+                is_duplicate = False
+                for used_words in used_title_words:
+                    overlap = len(related_title_words.intersection(used_words))
+                    if overlap >= 2:  # 2+ shared significant words = duplicate topic
+                        is_duplicate = True
+                        break
+                
+                if not is_duplicate:
+                    filtered_related.append({
+                        "title": related['title'],
+                        "url": related['url'],
+                        "type": "internal",
+                        "description": related['summary'][:100] + "..." if len(related['summary']) > 100 else related['summary'],
+                        "similarity_score": related['similarity_score']
+                    })
+                    used_title_words.add(related_title_words)
+                
+                if len(filtered_related) >= 5:
+                    break
+            
+            return filtered_related
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error finding internal related articles - {e}")
+            return []
+    
+    async def _extract_source_external_links(self, source_content: str, source_blocks: list) -> list:
+        """Extract external links that are actually present in source content/blocks"""
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            external_links = []
+            found_urls = set()
+            
+            # Extract from source content
+            if source_content:
+                external_links.extend(self._extract_external_links_from_text(source_content, found_urls))
+            
+            # Extract from source blocks
+            for block in source_blocks[:50]:  # Limit to first 50 blocks for performance
+                block_content = block.get('content', '') or block.get('text', '')
+                if block_content:
+                    external_links.extend(self._extract_external_links_from_text(block_content, found_urls))
+            
+            # Limit to reasonable number and prioritize quality
+            unique_links = []
+            for link in external_links:
+                if link['url'] not in [existing['url'] for existing in unique_links]:
+                    unique_links.append(link)
+            
+            # Sort by title length (longer titles usually more descriptive)
+            unique_links.sort(key=lambda x: len(x.get('title', '')), reverse=True)
+            
+            return unique_links[:10]  # Limit to 10 external links
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error extracting source external links - {e}")
+            return []
+    
+    def _extract_external_links_from_text(self, text: str, found_urls: set) -> list:
+        """Extract external links from a piece of text"""
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            links = []
+            
+            # Try HTML parsing first
+            try:
+                soup = BeautifulSoup(text, 'html.parser')
+                html_links = soup.find_all('a', href=True)
+                
+                for link in html_links:
+                    href = link.get('href', '').strip()
+                    link_text = link.get_text().strip()
+                    
+                    if self._is_valid_external_url(href) and href not in found_urls:
+                        found_urls.add(href)
+                        links.append({
+                            "title": link_text or self._extract_domain_name(href),
+                            "url": href,
+                            "type": "external",
+                            "description": f"External link: {self._extract_domain_name(href)}"
+                        })
+            except:
+                pass
+            
+            # Also extract plain URLs from text
+            url_pattern = r'https?://[^\s<>"\'()\\]+[^\s<>"\'()\\.,;:]'
+            plain_urls = re.findall(url_pattern, text)
+            
+            for url in plain_urls:
+                if self._is_valid_external_url(url) and url not in found_urls:
+                    found_urls.add(url)
+                    links.append({
+                        "title": self._extract_domain_name(url),
+                        "url": url,
+                        "type": "external", 
+                        "description": f"External resource: {self._extract_domain_name(url)}"
+                    })
+            
+            return links[:5]  # Limit per text block
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error extracting links from text - {e}")
+            return []
+    
+    def _is_valid_external_url(self, url: str) -> bool:
+        """Check if URL is a valid external URL"""
+        if not url:
+            return False
+        
+        # Must be http/https
+        if not url.startswith(('http://', 'https://')):
+            return False
+        
+        # Skip internal/relative links  
+        if url.startswith('#') or url.startswith('/'):
+            return False
+        
+        # Skip common non-content URLs
+        skip_domains = {'example.com', 'test.com', 'localhost', 'placeholder'}
+        domain = self._extract_domain_name(url).lower()
+        
+        if any(skip in domain for skip in skip_domains):
+            return False
+        
+        # Must have valid domain structure
+        if '.' not in domain or len(domain) < 4:
+            return False
+        
+        return True
+    
+    def _extract_domain_name(self, url: str) -> str:
+        """Extract domain name from URL"""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc or parsed.path.split('/')[0]
+            return domain.replace('www.', '')
+        except:
+            return url[:50]  # Fallback to first 50 chars
+    
+    def _merge_and_format_links(self, internal_links: list, external_links: list) -> list:
+        """Merge internal and external links and format for final output"""
+        try:
+            merged_links = []
+            
+            # Add internal links (3-6 as specified)
+            for link in internal_links[:6]:
+                merged_links.append({
+                    "title": link['title'],
+                    "url": link['url'],
+                    "type": "internal",
+                    "description": link.get('description', ''),
+                    "priority": "high"  # Internal links get high priority
+                })
+            
+            # Add external links (any valid ones found in source)
+            for link in external_links:
+                merged_links.append({
+                    "title": link['title'],
+                    "url": link['url'],
+                    "type": "external",
+                    "description": link.get('description', ''),
+                    "priority": "medium"  # External links get medium priority
+                })
+            
+            # Ensure we have 3-6 total links by adjusting if needed
+            if len(merged_links) < 3 and len(internal_links) > 0:
+                # If we have fewer than 3, try to add more internal links
+                additional_internal = internal_links[len(internal_links[:6]):6]
+                for link in additional_internal:
+                    if len(merged_links) >= 6:
+                        break
+                    merged_links.append({
+                        "title": link['title'],
+                        "url": link['url'],
+                        "type": "internal",
+                        "description": link.get('description', ''),
+                        "priority": "medium"
+                    })
+            
+            return merged_links
+            
+        except Exception as e:
+            print(f"❌ V2 RELATED LINKS: Error merging links - {e}")
+            return []
+
+# Global V2 Related Links System instance
+v2_related_links_system = V2RelatedLinksSystem()
+
+# ========================================
 # V2 ENGINE: ARTICLE GENERATOR SYSTEM
 # ========================================
 

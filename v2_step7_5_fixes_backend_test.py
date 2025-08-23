@@ -106,7 +106,7 @@ class V2StyleFixesTester:
                 return False
                 
             # Verify enhanced metadata structure
-            required_fields = ['style_id', 'engine', 'style_result', 'processing_details']
+            required_fields = ['engine', 'style_result', 'analysis']
             missing_fields = [field for field in required_fields if field not in data]
             
             if missing_fields:

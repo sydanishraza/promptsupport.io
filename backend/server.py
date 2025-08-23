@@ -3869,17 +3869,24 @@ Return the fully formatted article with improved clarity and structure."""
                 if response is None:
                     raise Exception("LLM returned None response for style formatting")
                 
+                # Apply clickable anchor processing to Mini-TOC
+                anchor_result = self._process_clickable_anchors(response)
+                final_content = anchor_result.get('content', response)
+                
                 # Analyze what changes were made
-                structural_changes = self._analyze_style_changes(article_content, response)
+                structural_changes = self._analyze_style_changes(article_content, final_content)
+                structural_changes.extend(anchor_result.get('structural_changes', []))
                 
                 print(f"✅ V2 STYLE: LLM style formatting applied - {len(structural_changes)} changes made - engine=v2")
                 
                 return {
-                    "formatted_content": response,
+                    "formatted_content": final_content,
                     "method": "llm_style_linting",
                     "structural_changes": structural_changes,
                     "original_length": len(article_content),
-                    "formatted_length": len(response)
+                    "formatted_length": len(final_content),
+                    "toc_broken_links": anchor_result.get('toc_broken_links', []),
+                    "anchor_links_generated": anchor_result.get('anchor_links_generated', 0)
                 }
                 
             except Exception as llm_error:

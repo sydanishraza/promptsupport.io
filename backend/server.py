@@ -27847,6 +27847,7 @@ async def rerun_style_formatting(request: RerunRequest):
         
         return {
             "message": "V2 Woolf style formatting rerun completed",
+            "engine": "v2",
             "run_id": run_id,
             "style_id": style_result.get('style_id'),
             "style_status": style_status,

@@ -28278,9 +28278,14 @@ async def get_engine_status():
             "internal_links_discovery",
             "external_links_extraction",
             "similarity_matching",
-            "related_links_generation"
+            "related_links_generation",
+            "intelligent_gap_filling",
+            "in_corpus_retrieval",
+            "pattern_synthesis",
+            "missing_content_detection",
+            "safe_content_patching"
         ],
-        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, Woolf-aligned style processing, content library related links generation, and human-in-the-loop review systems"
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, Woolf-aligned style processing, content library related links generation, intelligent gap filling with in-corpus retrieval, and human-in-the-loop review systems"
     }
 
 @app.get("/api/validation/diagnostics")

@@ -30783,23 +30783,115 @@ async def rerun_style_formatting(request: RerunRequest):
         style_compliance = style_result.get('style_compliance', {})
         
         return {
-            "message": "V2 Woolf style formatting rerun completed",
-            "engine": "v2",
+            "message": "Style formatting rerun completed",
             "run_id": run_id,
             "style_id": style_result.get('style_id'),
-            "style_status": style_status,
-            "successful_formatting": successful_formatting,
-            "articles_processed": style_result.get('articles_processed', 0),
-            "success_rate": style_result.get('success_rate', 0),
-            "overall_compliance": style_compliance.get('overall_compliance', 0),
-            "compliance_rate": style_compliance.get('compliance_rate', 0)
+            "engine": "v2"
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ V2 STYLE: Error in style formatting rerun - {e} - engine=v2")
+        print(f"❌ V2 STYLE: Error in style rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning style formatting: {str(e)}")
+
+@app.post("/api/style/process-toc-links")
+async def process_toc_links():
+    """V2 ENGINE: Process Mini-TOC links for existing articles"""
+    try:
+        print(f"🔗 V2 STYLE: Processing Mini-TOC links for existing articles - engine=v2")
+        
+        # Find all V2 articles that might need TOC processing
+        processed_count = 0
+        updated_articles = []
+        
+        async for article in db.content_library.find({"engine": "v2"}):
+            try:
+                article_id = str(article["_id"])
+                article_title = article.get("title", "Untitled")
+                article_content = article.get("content", article.get("html", ""))
+                
+                if not article_content:
+                    continue
+                
+                print(f"🔍 V2 STYLE: Processing TOC links for '{article_title}' - article_id: {article_id}")
+                
+                # Apply clickable anchor processing
+                anchor_result = v2_style_processor._process_clickable_anchors(article_content)
+                processed_content = anchor_result.get('content', article_content)
+                
+                # Check if any changes were made
+                if processed_content != article_content:
+                    structural_changes = anchor_result.get('structural_changes', [])
+                    anchor_links_generated = anchor_result.get('anchor_links_generated', 0)
+                    toc_broken_links = anchor_result.get('toc_broken_links', [])
+                    
+                    print(f"✅ V2 STYLE: TOC processing successful for '{article_title}' - {anchor_links_generated} links, {len(toc_broken_links)} broken")
+                    
+                    # Update the article in the content library
+                    update_result = await db.content_library.update_one(
+                        {"_id": article["_id"]},
+                        {
+                            "$set": {
+                                "content": processed_content,
+                                "html": processed_content,
+                                "toc_processing": {
+                                    "processed_at": datetime.now().isoformat(),
+                                    "anchor_links_generated": anchor_links_generated,
+                                    "structural_changes": structural_changes,
+                                    "toc_broken_links": toc_broken_links,
+                                    "engine": "v2"
+                                }
+                            }
+                        }
+                    )
+                    
+                    if update_result.modified_count > 0:
+                        processed_count += 1
+                        updated_articles.append({
+                            "article_id": article_id,
+                            "title": article_title,
+                            "anchor_links_generated": anchor_links_generated,
+                            "structural_changes": structural_changes,
+                            "toc_broken_links": len(toc_broken_links)
+                        })
+                        print(f"💾 V2 STYLE: Updated article in content library - '{article_title}'")
+                    else:
+                        print(f"⚠️ V2 STYLE: Failed to update article in content library - '{article_title}'")
+                else:
+                    print(f"ℹ️ V2 STYLE: No TOC changes needed for '{article_title}'")
+                
+            except Exception as article_error:
+                print(f"❌ V2 STYLE: Error processing article '{article.get('title', 'Unknown')}' - {article_error}")
+                continue
+        
+        # Store processing result
+        toc_processing_result = {
+            "toc_processing_id": f"toc_proc_{int(time.time() * 1000)}",
+            "processed_at": datetime.now().isoformat(),
+            "articles_processed": processed_count,
+            "total_articles_checked": processed_count + sum(1 async for _ in db.content_library.find({"engine": "v2"})) - processed_count,
+            "updated_articles": updated_articles,
+            "engine": "v2"
+        }
+        
+        try:
+            await db.v2_style_results.insert_one(toc_processing_result)
+            print(f"💾 V2 STYLE: Stored TOC processing result - processed: {processed_count} articles")
+        except Exception as storage_error:
+            print(f"❌ V2 STYLE: Error storing TOC processing result - {storage_error}")
+        
+        return {
+            "message": "Mini-TOC links processing completed",
+            "articles_processed": processed_count,
+            "updated_articles": updated_articles,
+            "processing_id": toc_processing_result["toc_processing_id"],
+            "engine": "v2"
+        }
+        
+    except Exception as e:
+        print(f"❌ V2 STYLE: Error in TOC links processing - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error processing TOC links: {str(e)}")
 
 # V2 ENGINE: Related Links System API Endpoints
 @app.get("/api/related-links/diagnostics")

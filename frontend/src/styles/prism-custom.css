@@ -314,28 +314,28 @@ figure.code-block:focus-within {
    SCROLLBAR STYLING
    ======================================== */
 
-/* Custom scrollbars for code blocks */
-figure.code-block pre::-webkit-scrollbar {
+/* Custom scrollbars for minimal code blocks */
+pre[class*="language-"]::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-figure.code-block pre::-webkit-scrollbar-track {
+pre[class*="language-"]::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 4px;
 }
 
-figure.code-block pre::-webkit-scrollbar-thumb {
+pre[class*="language-"]::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
 
-figure.code-block pre::-webkit-scrollbar-thumb:hover {
+pre[class*="language-"]::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
 /* Firefox scrollbar styling */
-figure.code-block pre {
+pre[class*="language-"] {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f1f5f9;
 }

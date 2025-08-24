@@ -5791,6 +5791,534 @@ class V2EvidenceTaggingSystem:
 v2_evidence_tagging_system = V2EvidenceTaggingSystem()
 
 # ========================================
+# V2 ENGINE: CODE NORMALIZATION SYSTEM
+# ========================================
+
+class V2CodeNormalizationSystem:
+    """V2 Engine: Code normalization and beautification system for Prism-ready code blocks"""
+    
+    def __init__(self):
+        self.language_mappings = {
+            # Shell/Curl mappings
+            'bash': 'language-bash',
+            'sh': 'language-bash', 
+            'shell': 'language-bash',
+            'curl': 'language-bash',
+            
+            # HTTP mappings
+            'http': 'language-http',
+            'https': 'language-http',
+            'request': 'language-http',
+            'response': 'language-http',
+            
+            # Data format mappings
+            'json': 'language-json',
+            'yaml': 'language-yaml',
+            'yml': 'language-yaml',
+            'xml': 'language-xml',
+            
+            # Query language mappings
+            'graphql': 'language-graphql',
+            'sql': 'language-sql',
+            'mysql': 'language-sql',
+            'postgresql': 'language-sql',
+            
+            # Programming language mappings
+            'javascript': 'language-javascript',
+            'js': 'language-javascript',
+            'typescript': 'language-typescript',
+            'ts': 'language-typescript',
+            'python': 'language-python',
+            'py': 'language-python',
+            
+            # Other languages
+            'css': 'language-css',
+            'html': 'language-html',
+            'markdown': 'language-markdown',
+            'md': 'language-markdown'
+        }
+        
+    async def normalize_code_blocks(self, articles: list, source_blocks: list, 
+                                   prewrite_data: dict, run_id: str) -> dict:
+        """Normalize and beautify code blocks for Prism rendering"""
+        try:
+            print(f"🎨 V2 CODE NORMALIZATION: Starting code block normalization - engine=v2")
+            
+            code_normalization_results = []
+            total_code_blocks = 0
+            total_normalized_blocks = 0
+            
+            for i, article in enumerate(articles):
+                try:
+                    article_title = article.get('title', f'Article {i+1}')
+                    article_content = article.get('content', '') or article.get('html', '')
+                    
+                    if not article_content:
+                        continue
+                    
+                    # Step 1: Detect and extract code blocks
+                    code_blocks = self._extract_code_blocks(article_content)
+                    
+                    # Step 2: Normalize and beautify each code block
+                    normalized_content, normalization_stats = self._normalize_article_code_blocks(
+                        article_content, code_blocks, source_blocks, prewrite_data
+                    )
+                    
+                    # Update article with normalized content
+                    article['content'] = normalized_content
+                    article['html'] = normalized_content
+                    
+                    # Track statistics
+                    article_code_blocks = normalization_stats['total_code_blocks']
+                    article_normalized_blocks = normalization_stats['normalized_blocks']
+                    total_code_blocks += article_code_blocks
+                    total_normalized_blocks += article_normalized_blocks
+                    
+                    normalization_rate = (article_normalized_blocks / article_code_blocks * 100) if article_code_blocks > 0 else 100
+                    
+                    code_normalization_result = {
+                        "article_index": i,
+                        "article_title": article_title,
+                        "code_normalization_status": "success",
+                        "total_code_blocks": article_code_blocks,
+                        "normalized_blocks": article_normalized_blocks,
+                        "normalization_rate": normalization_rate,
+                        "language_distribution": normalization_stats['language_distribution'],
+                        "beautification_applied": normalization_stats['beautification_applied']
+                    }
+                    
+                    code_normalization_results.append(code_normalization_result)
+                    
+                    print(f"✅ V2 CODE NORMALIZATION: Processed '{article_title[:50]}...' - {article_normalized_blocks}/{article_code_blocks} blocks normalized ({normalization_rate:.1f}%) - engine=v2")
+                    
+                except Exception as article_error:
+                    print(f"❌ V2 CODE NORMALIZATION: Error processing article {i+1} - {article_error} - engine=v2")
+                    code_normalization_results.append({
+                        "article_index": i,
+                        "article_title": article.get('title', f'Article {i+1}'),
+                        "code_normalization_status": "error",
+                        "error": str(article_error),
+                        "total_code_blocks": 0,
+                        "normalized_blocks": 0
+                    })
+            
+            # Calculate overall statistics
+            overall_normalization_rate = (total_normalized_blocks / total_code_blocks * 100) if total_code_blocks > 0 else 100
+            successful_articles = len([r for r in code_normalization_results if r.get('code_normalization_status') == 'success'])
+            
+            return {
+                "code_normalization_id": f"code_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "code_normalization_status": "success",
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                
+                # Code normalization metrics
+                "articles_processed": len(articles),
+                "successful_articles": successful_articles,
+                "total_code_blocks": total_code_blocks,
+                "normalized_blocks": total_normalized_blocks,
+                "overall_normalization_rate": overall_normalization_rate,
+                
+                # Detailed results
+                "code_normalization_results": code_normalization_results,
+                "source_blocks_used": len(source_blocks)
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 CODE NORMALIZATION: Error in code normalization process - {e} - engine=v2")
+            return {
+                "code_normalization_id": f"code_error_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "code_normalization_status": "error",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+    
+    def _extract_code_blocks(self, content: str) -> list:
+        """Extract code blocks from HTML/markdown content"""
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            code_blocks = []
+            
+            # Try HTML parsing first
+            try:
+                soup = BeautifulSoup(content, 'html.parser')
+                
+                # Find existing code blocks (pre > code)
+                pre_tags = soup.find_all('pre')
+                for i, pre_tag in enumerate(pre_tags):
+                    code_tag = pre_tag.find('code')
+                    if code_tag:
+                        code_text = code_tag.get_text()
+                        
+                        # Extract language from class
+                        code_classes = code_tag.get('class', [])
+                        detected_lang = self._extract_language_from_classes(code_classes)
+                        
+                        code_blocks.append({
+                            "index": i,
+                            "type": "html_pre_code",
+                            "content": code_text,
+                            "detected_language": detected_lang,
+                            "original_html": str(pre_tag),
+                            "start_pos": content.find(str(pre_tag)),
+                            "end_pos": content.find(str(pre_tag)) + len(str(pre_tag))
+                        })
+                
+                # Find standalone code tags
+                standalone_code_tags = soup.find_all('code')
+                for i, code_tag in enumerate(standalone_code_tags):
+                    # Skip if already found in pre tag
+                    if code_tag.find_parent('pre'):
+                        continue
+                    
+                    code_text = code_tag.get_text()
+                    if len(code_text) > 50:  # Only process longer code snippets
+                        code_classes = code_tag.get('class', [])
+                        detected_lang = self._extract_language_from_classes(code_classes)
+                        
+                        code_blocks.append({
+                            "index": len(pre_tags) + i,
+                            "type": "html_code",
+                            "content": code_text,
+                            "detected_language": detected_lang,
+                            "original_html": str(code_tag),
+                            "start_pos": content.find(str(code_tag)),
+                            "end_pos": content.find(str(code_tag)) + len(str(code_tag))
+                        })
+                
+            except Exception as html_error:
+                print(f"❌ V2 CODE NORMALIZATION: HTML parsing error - {html_error}")
+            
+            # Also find markdown code blocks
+            markdown_code_blocks = re.findall(r'```(\w*)\n(.*?)\n```', content, re.DOTALL)
+            for i, (lang, code_content) in enumerate(markdown_code_blocks):
+                code_blocks.append({
+                    "index": len(code_blocks),
+                    "type": "markdown",
+                    "content": code_content.strip(),
+                    "detected_language": lang.lower() if lang else None,
+                    "original_html": f"```{lang}\n{code_content}\n```",
+                    "start_pos": content.find(f"```{lang}\n{code_content}\n```"),
+                    "end_pos": content.find(f"```{lang}\n{code_content}\n```") + len(f"```{lang}\n{code_content}\n```")
+                })
+            
+            return code_blocks
+            
+        except Exception as e:
+            print(f"❌ V2 CODE NORMALIZATION: Error extracting code blocks - {e}")
+            return []
+    
+    def _extract_language_from_classes(self, classes: list) -> str:
+        """Extract language from CSS classes"""
+        for class_name in classes:
+            if class_name.startswith('language-'):
+                return class_name.replace('language-', '')
+            elif class_name.startswith('lang-'):
+                return class_name.replace('lang-', '')
+        return None
+    
+    def _normalize_article_code_blocks(self, content: str, code_blocks: list, 
+                                      source_blocks: list, prewrite_data: dict) -> tuple:
+        """Normalize and beautify code blocks in article content"""
+        try:
+            normalized_content = content
+            normalized_count = 0
+            language_distribution = {}
+            beautification_applied = []
+            
+            # Sort code blocks by position in reverse order to maintain positions during replacement
+            sorted_code_blocks = sorted(code_blocks, key=lambda x: x.get('start_pos', 0), reverse=True)
+            
+            for code_block in sorted_code_blocks:
+                try:
+                    # Step 1: Detect language
+                    language = self._detect_code_language(code_block)
+                    
+                    # Step 2: Beautify code content
+                    beautified_code = self._beautify_code(code_block['content'], language)
+                    
+                    # Step 3: Generate evidence mapping
+                    evidence_blocks = self._find_code_evidence(code_block, source_blocks, prewrite_data)
+                    
+                    # Step 4: Create Prism-ready HTML
+                    prism_html = self._create_prism_html(
+                        beautified_code, language, evidence_blocks, 
+                        filename=None, caption=None
+                    )
+                    
+                    # Step 5: Replace in content
+                    original_html = code_block['original_html']
+                    if original_html in normalized_content:
+                        normalized_content = normalized_content.replace(original_html, prism_html)
+                        normalized_count += 1
+                        
+                        # Track language distribution
+                        language_distribution[language] = language_distribution.get(language, 0) + 1
+                        beautification_applied.append(language)
+                
+                except Exception as block_error:
+                    print(f"❌ V2 CODE NORMALIZATION: Error normalizing code block - {block_error}")
+                    continue
+            
+            return normalized_content, {
+                "total_code_blocks": len(code_blocks),
+                "normalized_blocks": normalized_count,
+                "language_distribution": language_distribution,
+                "beautification_applied": beautification_applied
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 CODE NORMALIZATION: Error in article code normalization - {e}")
+            return content, {
+                "total_code_blocks": len(code_blocks),
+                "normalized_blocks": 0,
+                "language_distribution": {},
+                "beautification_applied": []
+            }
+    
+    def _detect_code_language(self, code_block: dict) -> str:
+        """Detect programming language from code block"""
+        # Use detected language if available
+        detected_lang = code_block.get('detected_language')
+        if detected_lang:
+            return detected_lang.lower()
+        
+        # Fallback to content sniffing
+        code_content = code_block['content'].strip()
+        
+        # JSON detection
+        if code_content.startswith(('{', '[')):
+            try:
+                import json
+                json.loads(code_content)
+                return 'json'
+            except:
+                pass
+        
+        # YAML detection
+        if ':' in code_content and not code_content.startswith('<'):
+            return 'yaml'
+        
+        # XML detection
+        if code_content.startswith('<') and '>' in code_content:
+            return 'xml'
+        
+        # GraphQL detection
+        if any(keyword in code_content for keyword in ['query', 'mutation', 'subscription', 'fragment']):
+            return 'graphql'
+        
+        # SQL detection
+        if any(keyword in code_content.upper() for keyword in ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE']):
+            return 'sql'
+        
+        # Curl detection
+        if code_content.startswith('curl'):
+            return 'bash'
+        
+        # Python detection
+        if any(keyword in code_content for keyword in ['def ', 'import ', 'from ', 'print(']):
+            return 'python'
+        
+        # JavaScript detection
+        if any(keyword in code_content for keyword in ['function', 'const ', 'let ', 'var ', '=>']):
+            return 'javascript'
+        
+        # Default to generic
+        return 'text'
+    
+    def _beautify_code(self, code_content: str, language: str) -> str:
+        """Beautify code content based on language"""
+        try:
+            if language == 'json':
+                return self._beautify_json(code_content)
+            elif language in ['yaml', 'yml']:
+                return self._beautify_yaml(code_content)
+            elif language == 'xml':
+                return self._beautify_xml(code_content)
+            elif language == 'sql':
+                return self._beautify_sql(code_content)
+            elif language == 'bash' and 'curl' in code_content:
+                return self._beautify_curl(code_content)
+            else:
+                return self._beautify_generic(code_content)
+                
+        except Exception as e:
+            print(f"❌ V2 CODE NORMALIZATION: Error beautifying {language} code - {e}")
+            return self._beautify_generic(code_content)
+    
+    def _beautify_json(self, code_content: str) -> str:
+        """Beautify JSON content"""
+        try:
+            import json
+            parsed = json.loads(code_content)
+            return json.dumps(parsed, indent=2, ensure_ascii=False)
+        except:
+            return code_content.strip()
+    
+    def _beautify_yaml(self, code_content: str) -> str:
+        """Beautify YAML content"""
+        try:
+            import yaml
+            parsed = yaml.safe_load(code_content)
+            return yaml.dump(parsed, indent=2, default_flow_style=False, allow_unicode=True)
+        except:
+            return code_content.strip()
+    
+    def _beautify_xml(self, code_content: str) -> str:
+        """Beautify XML content"""
+        try:
+            import xml.dom.minidom
+            dom = xml.dom.minidom.parseString(code_content)
+            return dom.toprettyxml(indent="  ")[23:]  # Skip XML declaration
+        except:
+            return code_content.strip()
+    
+    def _beautify_sql(self, code_content: str) -> str:
+        """Beautify SQL content"""
+        try:
+            import sqlparse
+            return sqlparse.format(code_content, reindent=True, keyword_case='upper', indent_width=2)
+        except:
+            return code_content.strip()
+    
+    def _beautify_curl(self, code_content: str) -> str:
+        """Beautify curl commands with proper line breaks"""
+        try:
+            lines = code_content.strip().split('\n')
+            beautified_lines = []
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith('curl'):
+                    beautified_lines.append(line + ' \\')
+                elif line.startswith('-'):
+                    beautified_lines.append('  ' + line + ' \\')
+                else:
+                    beautified_lines.append('  ' + line)
+            
+            # Remove trailing backslash from last line
+            if beautified_lines and beautified_lines[-1].endswith(' \\'):
+                beautified_lines[-1] = beautified_lines[-1][:-2]
+            
+            return '\n'.join(beautified_lines)
+        except:
+            return code_content.strip()
+    
+    def _beautify_generic(self, code_content: str) -> str:
+        """Generic code beautification"""
+        # Normalize whitespace and indentation
+        lines = code_content.split('\n')
+        normalized_lines = []
+        
+        for line in lines:
+            # Convert tabs to 2 spaces
+            line = line.expandtabs(2)
+            # Remove trailing whitespace
+            line = line.rstrip()
+            normalized_lines.append(line)
+        
+        # Ensure final newline
+        result = '\n'.join(normalized_lines).strip() + '\n'
+        return result
+    
+    def _find_code_evidence(self, code_block: dict, source_blocks: list, prewrite_data: dict) -> list:
+        """Find evidence blocks for code examples"""
+        try:
+            code_content = code_block['content']
+            evidence_blocks = []
+            
+            # Simple keyword matching for code evidence
+            code_keywords = self._extract_code_keywords(code_content)
+            
+            for i, block in enumerate(source_blocks[:20]):  # Limit for performance
+                block_content = block.get('content', '') or block.get('text', '')
+                
+                if not block_content:
+                    continue
+                
+                # Check if this block contains code or technical content
+                if any(keyword in block_content.lower() for keyword in code_keywords):
+                    evidence_blocks.append(f"b{i}")
+                
+                if len(evidence_blocks) >= 2:  # Limit to 2 evidence blocks per code
+                    break
+            
+            return evidence_blocks
+            
+        except Exception as e:
+            print(f"❌ V2 CODE NORMALIZATION: Error finding code evidence - {e}")
+            return []
+    
+    def _extract_code_keywords(self, code_content: str) -> list:
+        """Extract keywords from code content for evidence matching"""
+        import re
+        
+        # Extract meaningful identifiers and function names
+        keywords = re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]{2,}\b', code_content)
+        
+        # Filter out common words and keep significant terms
+        significant_keywords = []
+        for keyword in keywords:
+            if len(keyword) > 3 and keyword.lower() not in ['function', 'return', 'const', 'true', 'false']:
+                significant_keywords.append(keyword.lower())
+        
+        return list(set(significant_keywords))[:5]  # Return top 5 unique keywords
+    
+    def _create_prism_html(self, code_content: str, language: str, evidence_blocks: list, 
+                          filename: str = None, caption: str = None) -> str:
+        """Create Prism-ready HTML markup for code blocks"""
+        try:
+            import html
+            
+            # HTML escape the code content
+            escaped_code = html.escape(code_content)
+            
+            # Map language to Prism class
+            prism_class = self.language_mappings.get(language, f'language-{language}')
+            
+            # Create evidence comment if evidence blocks exist
+            evidence_comment = ""
+            if evidence_blocks:
+                evidence_comment = f'<!-- evidence: {json.dumps(evidence_blocks)} -->\n'
+            
+            # Create language display name
+            display_lang = language.upper()
+            
+            # Create filename attribute
+            filename_attr = f' data-filename="{filename}"' if filename else ''
+            
+            # Build the complete HTML structure
+            prism_html = f'''{evidence_comment}<figure class="code-block" data-lang="{display_lang}"{filename_attr}>
+  <div class="code-toolbar">
+    <span class="code-lang">{display_lang}</span>
+    <!-- Prism toolbar will inject copy button on the frontend -->
+  </div>
+  <pre class="line-numbers" data-start="1">
+    <code class="{prism_class}">{escaped_code}</code>
+  </pre>'''
+            
+            # Add caption if provided
+            if caption:
+                prism_html += f'\n  <figcaption class="code-caption">{html.escape(caption)}</figcaption>'
+            
+            prism_html += '\n</figure>'
+            
+            return prism_html
+            
+        except Exception as e:
+            print(f"❌ V2 CODE NORMALIZATION: Error creating Prism HTML - {e}")
+            # Fallback to simple code block
+            return f'<pre><code class="language-{language}">{html.escape(code_content)}</code></pre>'
+
+# Global V2 Code Normalization System instance
+v2_code_normalization_system = V2CodeNormalizationSystem()
+
+# ========================================
 # V2 ENGINE: ARTICLE GENERATOR SYSTEM
 # ========================================
 

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
-Backend Testing Suite for Mini-TOC Linking Issue Debug
-Focus: V2StyleProcessor clickable anchors and content structure analysis
+Backend Test Suite for Mini-TOC Links Processing Endpoint
+Testing the new POST /api/style/process-toc-links endpoint functionality
 """
 
-import requests
+import asyncio
+import aiohttp
 import json
-import sys
+import os
 from datetime import datetime
-import re
-from bs4 import BeautifulSoup
+import sys
 
-# Backend URL from environment
-BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com/api"
+# Configuration
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-pipeline-5.preview.emergentagent.com')
+API_BASE = f"{BACKEND_URL}/api"
 
 def print_test_header(test_name):
     """Print formatted test header"""

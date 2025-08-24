@@ -37,8 +37,8 @@ const PrismCodeBlock = ({
 
 /**
  * HTMLContent Component
- * Safely renders HTML content with Prism highlighting
- * Ideal for content from V2 Engine that contains code blocks
+ * Safely renders HTML content with Prism highlighting and markdown link processing
+ * Ideal for content from V2 Engine that contains code blocks and Mini-TOC links
  */
 const HTMLContent = ({ 
   html, 
@@ -47,10 +47,47 @@ const HTMLContent = ({
 }) => {
   const contentRef = useRef(null);
 
+  const processMarkdownLinks = (content) => {
+    // Convert markdown-style anchor links [text](#anchor) to HTML links
+    return content.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, '<a href="#$2" class="toc-link text-blue-600 hover:text-blue-800 hover:underline">$1</a>');
+  };
+
+  const addSmoothScrolling = (container) => {
+    // Add click handlers for anchor links to enable smooth scrolling
+    const anchorLinks = container.querySelectorAll('a[href^="#"]');
+    anchorLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = link.getAttribute('href').substring(1);
+        const targetElement = document.getElementById(targetId);
+        
+        if (targetElement) {
+          targetElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+          
+          // Add temporary highlight to target heading
+          targetElement.style.transition = 'background-color 0.3s ease';
+          targetElement.style.backgroundColor = '#fef3c7';
+          setTimeout(() => {
+            targetElement.style.backgroundColor = '';
+          }, 2000);
+        }
+      });
+    });
+  };
+
   useEffect(() => {
     if (contentRef.current && html) {
-      // Set the HTML content
-      contentRef.current.innerHTML = html;
+      // Process markdown links first
+      const processedHtml = processMarkdownLinks(html);
+      
+      // Set the processed HTML content
+      contentRef.current.innerHTML = processedHtml;
+      
+      // Add smooth scrolling to anchor links
+      addSmoothScrolling(contentRef.current);
       
       // Highlight any code blocks
       prismManager.highlightAllUnder(contentRef.current);

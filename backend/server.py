@@ -31369,6 +31369,246 @@ async def rerun_evidence_tagging(request: RerunRequest):
         print(f"❌ V2 EVIDENCE TAGGING: Error in evidence tagging rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning evidence tagging: {str(e)}")
 
+# V2 ENGINE: Code Normalization System API Endpoints
+@app.get("/api/code-normalization/diagnostics")
+async def get_code_normalization_diagnostics():
+    """V2 ENGINE: Get comprehensive code normalization diagnostics for Prism-ready code blocks"""
+    try:
+        print(f"🎨 V2 CODE NORMALIZATION: Retrieving code normalization diagnostics - engine=v2")
+        
+        # Get all code normalization results from database
+        code_normalization_results = []
+        async for result in db.v2_code_normalization_results.find().sort("timestamp", -1).limit(50):
+            code_normalization_results.append(objectid_to_str(result))
+        
+        # Calculate summary statistics
+        total_code_runs = len(code_normalization_results)
+        successful_runs = len([r for r in code_normalization_results if r.get('code_normalization_status') == 'success'])
+        failed_runs = len([r for r in code_normalization_results if r.get('code_normalization_status') == 'error'])
+        
+        # Calculate code normalization statistics
+        total_code_blocks = sum([r.get('total_code_blocks', 0) for r in code_normalization_results])
+        total_normalized_blocks = sum([r.get('normalized_blocks', 0) for r in code_normalization_results])
+        
+        # Calculate averages
+        avg_normalization_rate = (total_normalized_blocks / total_code_blocks * 100) if total_code_blocks > 0 else 100
+        avg_blocks_per_run = (total_code_blocks / successful_runs) if successful_runs > 0 else 0
+        
+        # Calculate language distribution
+        language_stats = {}
+        for result in code_normalization_results:
+            for article_result in result.get('code_normalization_results', []):
+                lang_dist = article_result.get('language_distribution', {})
+                for lang, count in lang_dist.items():
+                    language_stats[lang] = language_stats.get(lang, 0) + count
+        
+        # Create diagnostics response
+        diagnostics_response = {
+            "code_normalization_system_status": "active",
+            "engine": "v2",
+            "diagnostics_generated_at": datetime.utcnow().isoformat(),
+            
+            # Overall code normalization statistics
+            "code_normalization_summary": {
+                "total_code_runs": total_code_runs,
+                "successful_runs": successful_runs,
+                "failed_runs": failed_runs,
+                "success_rate": (successful_runs / total_code_runs * 100) if total_code_runs > 0 else 0,
+                "total_code_blocks": total_code_blocks,
+                "total_normalized_blocks": total_normalized_blocks,
+                "overall_normalization_rate": avg_normalization_rate,
+                "avg_blocks_per_run": avg_blocks_per_run,
+                "language_distribution": language_stats
+            },
+            
+            # Recent code normalization results
+            "recent_code_results": [
+                {
+                    "code_normalization_id": result.get('code_normalization_id'),
+                    "run_id": result.get('run_id'),
+                    "code_normalization_status": result.get('code_normalization_status'),
+                    "articles_processed": result.get('articles_processed', 0),
+                    "total_code_blocks": result.get('total_code_blocks', 0),
+                    "normalized_blocks": result.get('normalized_blocks', 0),
+                    "overall_normalization_rate": result.get('overall_normalization_rate', 0),
+                    "source_blocks_used": result.get('source_blocks_used', 0),
+                    "timestamp": result.get('timestamp')
+                }
+                for result in code_normalization_results[:20]  # Show last 20 results
+            ],
+            
+            # Code normalization system capabilities
+            "system_capabilities": {
+                "supported_languages": list(v2_code_normalization_system.language_mappings.keys()),
+                "beautification_features": ["JSON pretty-print", "YAML formatting", "XML pretty-print", "SQL formatting", "Curl line breaks"],
+                "prism_integration": "Line numbers and copy-to-clipboard ready",
+                "evidence_attribution": "Code block evidence mapping",
+                "html_escaping": "Safe HTML content escaping",
+                "language_detection": "Automatic language detection and mapping"
+            }
+        }
+        
+        print(f"✅ V2 CODE NORMALIZATION: Returning code normalization diagnostics - {total_code_runs} total runs - engine=v2")
+        return diagnostics_response
+        
+    except Exception as e:
+        print(f"❌ V2 CODE NORMALIZATION: Error retrieving code normalization diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving code normalization diagnostics: {str(e)}")
+
+@app.get("/api/code-normalization/diagnostics/{code_normalization_id}")
+async def get_specific_code_normalization_diagnostics(code_normalization_id: str):
+    """V2 ENGINE: Get detailed diagnostics for a specific code normalization result"""
+    try:
+        print(f"🔍 V2 CODE NORMALIZATION: Retrieving specific code normalization diagnostics - ID: {code_normalization_id} - engine=v2")
+        
+        # Find the specific code normalization result
+        code_normalization_result = await db.v2_code_normalization_results.find_one({"code_normalization_id": code_normalization_id})
+        
+        if not code_normalization_result:
+            raise HTTPException(status_code=404, detail=f"Code normalization result not found: {code_normalization_id}")
+        
+        # Convert ObjectIds to strings
+        code_normalization_result = objectid_to_str(code_normalization_result)
+        
+        # Enhance result with additional analysis
+        enhanced_result = {
+            "engine": "v2",
+            "code_normalization_result": code_normalization_result,
+            "analysis": {
+                "processing_summary": {
+                    "code_normalization_status": code_normalization_result.get('code_normalization_status'),
+                    "articles_processed": code_normalization_result.get('articles_processed', 0),
+                    "total_code_blocks": code_normalization_result.get('total_code_blocks', 0),
+                    "normalized_blocks": code_normalization_result.get('normalized_blocks', 0),
+                    "overall_normalization_rate": code_normalization_result.get('overall_normalization_rate', 0),
+                    "source_blocks_used": code_normalization_result.get('source_blocks_used', 0)
+                },
+                "article_breakdown": [
+                    {
+                        "article_index": article.get('article_index'),
+                        "article_title": article.get('article_title'),
+                        "code_normalization_status": article.get('code_normalization_status'),
+                        "total_code_blocks": article.get('total_code_blocks', 0),
+                        "normalized_blocks": article.get('normalized_blocks', 0),
+                        "normalization_rate": article.get('normalization_rate', 0),
+                        "language_distribution": article.get('language_distribution', {}),
+                        "beautification_applied": article.get('beautification_applied', [])
+                    }
+                    for article in code_normalization_result.get('code_normalization_results', [])
+                ],
+                "language_analysis": {
+                    "total_languages_detected": 0,
+                    "most_common_language": "none",
+                    "beautification_coverage": 0
+                }
+            }
+        }
+        
+        # Analyze language usage
+        all_languages = []
+        all_beautification = []
+        for article in code_normalization_result.get('code_normalization_results', []):
+            all_languages.extend(article.get('language_distribution', {}).keys())
+            all_beautification.extend(article.get('beautification_applied', []))
+        
+        if all_languages:
+            enhanced_result['analysis']['language_analysis']['total_languages_detected'] = len(set(all_languages))
+            from collections import Counter
+            lang_counter = Counter(all_languages)
+            enhanced_result['analysis']['language_analysis']['most_common_language'] = lang_counter.most_common(1)[0][0]
+        
+        if all_beautification:
+            enhanced_result['analysis']['language_analysis']['beautification_coverage'] = len(all_beautification)
+        
+        print(f"✅ V2 CODE NORMALIZATION: Returning specific code normalization result - {enhanced_result['analysis']['processing_summary']['normalized_blocks']} blocks normalized - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 CODE NORMALIZATION: Error retrieving specific code normalization diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving code normalization diagnostics: {str(e)}")
+
+@app.post("/api/code-normalization/rerun")
+async def rerun_code_normalization(request: RerunRequest):
+    """V2 ENGINE: Rerun code normalization for a specific processing run"""
+    try:
+        run_id = request.run_id
+        print(f"🔄 V2 CODE NORMALIZATION: Rerun code normalization requested - run_id: {run_id} - engine=v2")
+        
+        # Find articles from the specified run
+        articles = []
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            articles.append(objectid_to_str(article))
+        
+        if not articles:
+            # Handle case where no articles exist - create a graceful response
+            print(f"⚠️ V2 CODE NORMALIZATION: No V2 articles found for run {run_id}, returning empty result - engine=v2")
+            return {
+                "message": "V2 code normalization rerun completed - no articles found for processing",
+                "engine": "v2",
+                "run_id": run_id,
+                "articles_processed": 0,
+                "code_blocks_normalized": 0,
+                "normalization_rate": 0,
+                "note": "No V2 articles found for the specified run_id"
+            }
+        
+        # Create mock source blocks and prewrite data for rerun
+        source_blocks = [
+            {
+                "content": "Mock source block for code normalization",
+                "block_type": "code",
+                "text": "Sample code content for normalization"
+            }
+        ]
+        
+        prewrite_data = {
+            "prewrite_results": [
+                {
+                    "article_title": article.get('title', ''),
+                    "prewrite_data": {
+                        "must_include_examples": [
+                            {
+                                "type": "code",
+                                "language": "json",
+                                "content": '{"example": "data"}'
+                            }
+                        ]
+                    }
+                }
+                for article in articles
+            ]
+        }
+        
+        # Perform code normalization for the articles
+        code_normalization_result = await v2_code_normalization_system.normalize_code_blocks(
+            articles, source_blocks, prewrite_data, run_id
+        )
+        
+        # Store the rerun result
+        try:
+            await db.v2_code_normalization_results.insert_one(code_normalization_result)
+            print(f"💾 V2 CODE NORMALIZATION: Stored code normalization rerun result - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 CODE NORMALIZATION: Error storing rerun result - {storage_error} - engine=v2")
+        
+        return {
+            "message": "V2 code normalization rerun completed",
+            "engine": "v2",
+            "run_id": run_id,
+            "articles_processed": code_normalization_result.get('articles_processed', 0),
+            "code_blocks_normalized": code_normalization_result.get('normalized_blocks', 0),
+            "normalization_rate": code_normalization_result.get('overall_normalization_rate', 0),
+            "code_normalization_status": code_normalization_result.get('code_normalization_status', 'unknown')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 CODE NORMALIZATION: Error in code normalization rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning code normalization: {str(e)}")
+
 # V2 ENGINE: Review System API Endpoints
 @app.get("/api/review/runs")
 async def get_runs_for_review(limit: int = 50, status: str = None):

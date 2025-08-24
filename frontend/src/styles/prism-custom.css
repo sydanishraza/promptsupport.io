@@ -241,11 +241,7 @@ pre[class*="language-"]:focus-within {
     border-color: #000000;
   }
 
-  pre[data-lang]:before {
-    background: #000000;
-    color: #ffffff;
-    border-color: #000000;
-  }
+  /* Language label removed - no high contrast overrides needed */
 }
 
 /* Reduced motion support */

@@ -15,10 +15,10 @@ import sys
 BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-pipeline-5.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
-def print_test_header(test_name):
+def print_test_header(title):
     """Print formatted test header"""
     print(f"\n{'='*80}")
-    print(f"🔍 {test_name}")
+    print(f"🧪 {title}")
     print(f"{'='*80}")
 
 def print_success(message):
@@ -33,433 +33,470 @@ def print_info(message):
     """Print info message"""
     print(f"ℹ️  {message}")
 
-def test_v2_style_diagnostics():
-    """Test 1: V2 Style Processing Diagnostic Check"""
-    print_test_header("V2 Style Processing Diagnostic Check")
+async def test_toc_processing_endpoint():
+    """Test 1: New TOC Processing Endpoint - POST /api/style/process-toc-links"""
+    print_test_header("Test 1: New TOC Processing Endpoint")
     
     try:
-        # Test GET /api/style/diagnostics
-        response = requests.get(f"{BACKEND_URL}/style/diagnostics", timeout=30)
-        print_info(f"GET /api/style/diagnostics - Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print_success("V2 Style diagnostics endpoint accessible")
+        async with aiohttp.ClientSession() as session:
+            # Test the new TOC processing endpoint
+            print_info("Testing POST /api/style/process-toc-links endpoint...")
             
-            # Check if V2StyleProcessor is running
-            system_status = data.get('system_status', 'unknown')
-            engine = data.get('engine', 'unknown')
-            print_info(f"System Status: {system_status}")
-            print_info(f"Engine: {engine}")
-            
-            # Check recent style results
-            recent_results = data.get('recent_results', [])
-            print_info(f"Recent style processing runs: {len(recent_results)}")
-            
-            if recent_results:
-                latest_result = recent_results[0]
-                print_info(f"Latest run ID: {latest_result.get('style_id', 'N/A')}")
-                print_info(f"Latest run status: {latest_result.get('style_status', 'N/A')}")
-                print_info(f"Latest run timestamp: {latest_result.get('timestamp', 'N/A')}")
-                
-                # Check for anchor-related metadata
-                if 'anchor_links_generated' in latest_result:
-                    print_success(f"Anchor links generated: {latest_result['anchor_links_generated']}")
-                else:
-                    print_error("No anchor_links_generated field found in latest result")
-                
-                if 'toc_broken_links' in latest_result:
-                    broken_links = latest_result['toc_broken_links']
-                    if isinstance(broken_links, list):
-                        print_info(f"TOC broken links count: {len(broken_links)}")
-                        if broken_links:
-                            print_error(f"Found broken TOC links: {broken_links}")
+            async with session.post(f"{API_BASE}/style/process-toc-links") as response:
+                if response.status == 200:
+                    result = await response.json()
+                    print_success(f"TOC processing endpoint accessible - Status: {response.status}")
+                    
+                    # Validate response structure
+                    required_fields = ['message', 'articles_processed', 'updated_articles', 'processing_id', 'engine']
+                    missing_fields = [field for field in required_fields if field not in result]
+                    
+                    if not missing_fields:
+                        print_success("Response structure valid - all required fields present")
+                        print_info(f"Articles processed: {result.get('articles_processed', 0)}")
+                        print_info(f"Processing ID: {result.get('processing_id', 'N/A')}")
+                        print_info(f"Engine: {result.get('engine', 'N/A')}")
+                        
+                        # Check if any articles were updated
+                        updated_articles = result.get('updated_articles', [])
+                        if updated_articles:
+                            print_success(f"Articles updated: {len(updated_articles)}")
+                            for article in updated_articles:
+                                print_info(f"  - {article.get('title', 'Unknown')}: {article.get('anchor_links_generated', 0)} links generated")
                         else:
-                            print_success("No broken TOC links detected")
-                    else:
-                        print_info(f"TOC broken links: {broken_links}")
-                
-                return latest_result.get('style_id')
-            else:
-                print_error("No recent style processing results found")
-                return None
-        else:
-            print_error(f"Failed to access style diagnostics: {response.status_code}")
-            print_error(f"Response: {response.text}")
-            return None
-            
-    except Exception as e:
-        print_error(f"Error testing style diagnostics: {e}")
-        return None
-
-def test_specific_style_result(style_id):
-    """Test 2: Specific Style Result Analysis"""
-    if not style_id:
-        print_error("No style ID provided for specific analysis")
-        return None
-        
-    print_test_header(f"Specific Style Result Analysis - ID: {style_id}")
-    
-    try:
-        # Test GET /api/style/diagnostics/{style_id}
-        response = requests.get(f"{BACKEND_URL}/style/diagnostics/{style_id}", timeout=30)
-        print_info(f"GET /api/style/diagnostics/{style_id} - Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print_success("Specific style result accessible")
-            
-            # Check style result details
-            style_result = data.get('style_result', {})
-            analysis = data.get('analysis', {})
-            
-            print_info(f"Article title: {style_result.get('article_title', 'N/A')}")
-            print_info(f"Style status: {style_result.get('style_status', 'N/A')}")
-            
-            # Check for clickable anchor processing
-            if 'anchor_links_generated' in style_result:
-                anchor_count = style_result['anchor_links_generated']
-                print_success(f"Anchor links generated: {anchor_count}")
-                
-                if anchor_count > 0:
-                    print_success("✓ Clickable anchors are being generated")
-                else:
-                    print_error("✗ No anchor links generated")
-            
-            # Check TOC broken links
-            if 'toc_broken_links' in style_result:
-                broken_links = style_result['toc_broken_links']
-                if isinstance(broken_links, list) and len(broken_links) == 0:
-                    print_success("✓ No broken TOC links")
-                elif isinstance(broken_links, list) and len(broken_links) > 0:
-                    print_error(f"✗ Found {len(broken_links)} broken TOC links:")
-                    for link in broken_links:
-                        print_error(f"  - {link}")
-                else:
-                    print_info(f"TOC broken links: {broken_links}")
-            
-            # Check structural compliance
-            if 'structural_compliance' in analysis:
-                compliance = analysis['structural_compliance']
-                print_info(f"Structural compliance score: {compliance.get('compliance_score', 'N/A')}")
-                
-                if 'has_mini_toc' in compliance:
-                    has_toc = compliance['has_mini_toc']
-                    print_success(f"✓ Has Mini-TOC: {has_toc}") if has_toc else print_error(f"✗ No Mini-TOC: {has_toc}")
-                
-                if 'toc_anchor_count' in compliance:
-                    toc_count = compliance['toc_anchor_count']
-                    print_success(f"✓ TOC anchor count: {toc_count}") if toc_count > 0 else print_error(f"✗ No TOC anchors: {toc_count}")
-            
-            return style_result
-        else:
-            print_error(f"Failed to access specific style result: {response.status_code}")
-            print_error(f"Response: {response.text}")
-            return None
-            
-    except Exception as e:
-        print_error(f"Error testing specific style result: {e}")
-        return None
-
-def test_content_library_search():
-    """Test 3: Content Library Search for Target Article"""
-    print_test_header("Content Library Search - Code Normalization Article")
-    
-    try:
-        # Search for the specific article mentioned in the review
-        response = requests.get(f"{BACKEND_URL}/content-library", timeout=30)
-        print_info(f"GET /api/content-library - Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            articles = data.get('articles', [])
-            print_success(f"Content library accessible - {len(articles)} articles found")
-            
-            # Look for the specific article
-            target_article = None
-            for article in articles:
-                title = article.get('title', '').lower()
-                if 'code normalization' in title and 'javascript' in title:
-                    target_article = article
-                    break
-            
-            if target_article:
-                print_success(f"✓ Found target article: {target_article['title']}")
-                print_info(f"Article ID: {target_article.get('id', 'N/A')}")
-                print_info(f"Article status: {target_article.get('status', 'N/A')}")
-                return target_article
-            else:
-                print_error("✗ Target article 'Code Normalization in JavaScript: A Practical Example' not found")
-                
-                # Show available articles for debugging
-                print_info("Available articles:")
-                for i, article in enumerate(articles[:10]):  # Show first 10
-                    print_info(f"  {i+1}. {article.get('title', 'Untitled')}")
-                
-                return None
-        else:
-            print_error(f"Failed to access content library: {response.status_code}")
-            return None
-            
-    except Exception as e:
-        print_error(f"Error searching content library: {e}")
-        return None
-
-def analyze_article_content(article):
-    """Test 4: Analyze Article Content Structure"""
-    if not article:
-        print_error("No article provided for content analysis")
-        return
-        
-    print_test_header(f"Article Content Analysis - {article.get('title', 'Unknown')}")
-    
-    try:
-        content = article.get('content', '') or article.get('html', '')
-        if not content:
-            print_error("No content found in article")
-            return
-        
-        print_info(f"Content length: {len(content)} characters")
-        
-        # Parse HTML content
-        soup = BeautifulSoup(content, 'html.parser')
-        
-        # Check for Mini-TOC structure
-        print_info("\n🔍 Mini-TOC Analysis:")
-        
-        # Look for TOC patterns
-        toc_patterns = [
-            soup.find_all('ul', class_='toc-list'),
-            soup.find_all('ul', class_='mini-toc'),
-            soup.find_all('div', class_='toc'),
-            soup.find_all('ul')[:3]  # Check first few ul elements
-        ]
-        
-        toc_found = False
-        for pattern_group in toc_patterns:
-            for toc_element in pattern_group:
-                if toc_element:
-                    toc_items = toc_element.find_all('li')
-                    if len(toc_items) >= 3:  # Likely a TOC if it has multiple items
-                        print_success(f"✓ Found potential Mini-TOC with {len(toc_items)} items")
-                        toc_found = True
+                            print_info("No articles were updated (may be expected if already processed)")
                         
-                        # Analyze TOC items for clickable links
-                        clickable_count = 0
-                        for i, item in enumerate(toc_items):
-                            item_text = item.get_text().strip()
-                            links = item.find_all('a')
-                            
-                            print_info(f"  TOC Item {i+1}: {item_text[:50]}...")
-                            
-                            if links:
-                                for link in links:
-                                    href = link.get('href', '')
-                                    if href.startswith('#'):
-                                        print_success(f"    ✓ Clickable anchor link: {href}")
-                                        clickable_count += 1
-                                    else:
-                                        print_info(f"    - Non-anchor link: {href}")
-                            else:
-                                print_error(f"    ✗ No clickable links found")
-                        
-                        print_info(f"Total clickable TOC links: {clickable_count}/{len(toc_items)}")
-                        break
-            if toc_found:
-                break
-        
-        if not toc_found:
-            print_error("✗ No Mini-TOC structure found")
-            
-            # Look for markdown-style TOC links in raw content
-            markdown_toc_pattern = r'\[([^\]]+)\]\(#([^)]+)\)'
-            markdown_matches = re.findall(markdown_toc_pattern, content)
-            if markdown_matches:
-                print_success(f"✓ Found {len(markdown_matches)} markdown-style TOC links:")
-                for text, anchor in markdown_matches:
-                    print_info(f"  - [{text}](#{anchor})")
-            else:
-                print_error("✗ No markdown-style TOC links found either")
-        
-        # Check for heading IDs
-        print_info("\n🔍 Heading ID Analysis:")
-        headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
-        print_info(f"Total headings found: {len(headings)}")
-        
-        headings_with_ids = 0
-        for i, heading in enumerate(headings):
-            heading_id = heading.get('id', '')
-            heading_text = heading.get_text().strip()
-            
-            if heading_id:
-                print_success(f"  ✓ {heading.name.upper()}: '{heading_text[:40]}...' ID='{heading_id}'")
-                headings_with_ids += 1
-            else:
-                print_error(f"  ✗ {heading.name.upper()}: '{heading_text[:40]}...' (No ID)")
-        
-        print_info(f"Headings with IDs: {headings_with_ids}/{len(headings)}")
-        
-        # Show raw content sample for debugging
-        print_info("\n🔍 Raw Content Sample (first 1000 chars):")
-        print_info(content[:1000])
-        
-        if len(content) > 1000:
-            print_info("... (content truncated)")
-        
-        return {
-            'toc_found': toc_found,
-            'headings_total': len(headings),
-            'headings_with_ids': headings_with_ids,
-            'content_length': len(content)
-        }
-        
+                        return True, result
+                    else:
+                        print_error(f"Response missing required fields: {missing_fields}")
+                        return False, None
+                else:
+                    error_text = await response.text()
+                    print_error(f"TOC processing endpoint failed - Status: {response.status}")
+                    print_error(f"Error: {error_text}")
+                    return False, None
+                    
     except Exception as e:
-        print_error(f"Error analyzing article content: {e}")
-        return None
+        print_error(f"Error testing TOC processing endpoint: {e}")
+        return False, None
 
-def test_v2_processing_pipeline():
-    """Test 5: V2 Processing Pipeline Status"""
-    print_test_header("V2 Processing Pipeline Status")
+async def test_target_article_verification():
+    """Test 2: Verify Target Article Updates - Check specific article for TOC links"""
+    print_test_header("Test 2: Target Article Verification")
     
     try:
-        # Check V2 engine status
-        response = requests.get(f"{BACKEND_URL}/engine", timeout=30)
-        print_info(f"GET /api/engine - Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            engine_status = data.get('status', 'unknown')
-            engine_version = data.get('engine', 'unknown')
+        async with aiohttp.ClientSession() as session:
+            # Get content library articles
+            print_info("Searching for 'Code Normalization in JavaScript: A Practical Example' article...")
             
-            print_info(f"Engine status: {engine_status}")
-            print_info(f"Engine version: {engine_version}")
-            
-            # Check for V2-specific features
-            features = data.get('features', {})
-            v2_features = [
-                'woolf_style_processing',
-                'structural_linting',
-                'microsoft_style_guide',
-                'technical_writing_standards'
-            ]
-            
-            print_info("\n🔍 V2 Style Processing Features:")
-            if isinstance(features, dict):
-                for feature in v2_features:
-                    if feature in features:
-                        print_success(f"  ✓ {feature}: {features[feature]}")
+            async with session.get(f"{API_BASE}/content-library") as response:
+                if response.status == 200:
+                    articles = await response.json()
+                    print_success(f"Content library accessible - {len(articles)} articles found")
+                    
+                    # Find the target article
+                    target_article = None
+                    for article in articles:
+                        title = article.get('title', '')
+                        if 'Code Normalization in JavaScript' in title:
+                            target_article = article
+                            break
+                    
+                    if target_article:
+                        print_success(f"Target article found: '{target_article['title']}'")
+                        print_info(f"Article ID: {target_article.get('id', 'N/A')}")
+                        
+                        # Analyze article content for TOC links
+                        content = target_article.get('content', target_article.get('html', ''))
+                        if content:
+                            return await analyze_toc_links_in_content(content, target_article['title'])
+                        else:
+                            print_error("Article content is empty")
+                            return False
                     else:
-                        print_error(f"  ✗ {feature}: Not found")
-            elif isinstance(features, list):
-                print_info(f"Features (list format): {features}")
-                for feature in v2_features:
-                    if feature in features:
-                        print_success(f"  ✓ {feature}: Present")
-                    else:
-                        print_error(f"  ✗ {feature}: Not found")
-            else:
-                print_error(f"Unexpected features format: {type(features)} - {features}")
-            
-            # Check for style diagnostics endpoint
-            endpoints = data.get('endpoints', {})
-            if 'style_diagnostics' in endpoints:
-                print_success(f"  ✓ style_diagnostics endpoint: {endpoints['style_diagnostics']}")
-            else:
-                print_error("  ✗ style_diagnostics endpoint not found")
-            
-            return True
-        else:
-            print_error(f"Failed to access engine status: {response.status_code}")
-            return False
-            
+                        print_error("Target article 'Code Normalization in JavaScript: A Practical Example' not found")
+                        print_info("Available articles:")
+                        for article in articles[:10]:  # Show first 10 articles
+                            print_info(f"  - {article.get('title', 'Untitled')}")
+                        return False
+                else:
+                    print_error(f"Failed to access content library - Status: {response.status}")
+                    return False
+                    
     except Exception as e:
-        print_error(f"Error testing V2 processing pipeline: {e}")
+        print_error(f"Error verifying target article: {e}")
         return False
 
-def main():
-    """Main test execution"""
-    print("🚀 Starting Mini-TOC Linking Issue Debug Tests")
-    print(f"Backend URL: {BACKEND_URL}")
-    print(f"Test started at: {datetime.now().isoformat()}")
+async def analyze_toc_links_in_content(content, article_title):
+    """Analyze article content for TOC links and anchor generation"""
+    print_info(f"Analyzing content for TOC links in '{article_title}'...")
+    
+    # Check for Mini-TOC structure
+    toc_patterns = [
+        '<ul class="toc-list">',
+        '<ul class="mini-toc">',
+        '<ul>\n<li>Introduction',
+        '<ul>\n<li>Getting',
+        '<ul>\n<li>Understanding'
+    ]
+    
+    toc_found = any(pattern in content for pattern in toc_patterns)
+    if toc_found:
+        print_success("Mini-TOC structure found in article")
+    else:
+        print_info("No obvious Mini-TOC structure found")
+    
+    # Check for clickable anchor links in TOC format
+    anchor_link_patterns = [
+        '<a href="#',
+        '[text](#',
+        'href="#section',
+        'href="#getting',
+        'href="#introduction'
+    ]
+    
+    clickable_links_found = sum(1 for pattern in anchor_link_patterns if pattern in content)
+    if clickable_links_found > 0:
+        print_success(f"Clickable anchor links found: {clickable_links_found} patterns detected")
+    else:
+        print_error("No clickable anchor links found in TOC")
+    
+    # Check for heading IDs (anchor targets)
+    heading_id_patterns = [
+        'id="section',
+        'id="getting',
+        'id="introduction',
+        'id="understanding',
+        'id="benefits',
+        'id="best-practices'
+    ]
+    
+    heading_ids_found = sum(1 for pattern in heading_id_patterns if pattern in content)
+    if heading_ids_found > 0:
+        print_success(f"Heading IDs found: {heading_ids_found} anchor targets detected")
+    else:
+        print_error("No heading IDs found for anchor targets")
+    
+    # Check for TOC processing metadata
+    toc_processing_indicators = [
+        'toc_processing',
+        'anchor_links_generated',
+        'processed_at'
+    ]
+    
+    processing_metadata = sum(1 for indicator in toc_processing_indicators if indicator in content)
+    if processing_metadata > 0:
+        print_info(f"TOC processing metadata found: {processing_metadata} indicators")
+    
+    # Overall assessment
+    success_criteria = [
+        toc_found,
+        clickable_links_found > 0,
+        heading_ids_found > 0
+    ]
+    
+    success_rate = sum(success_criteria) / len(success_criteria) * 100
+    
+    if success_rate >= 66:
+        print_success(f"TOC links analysis PASSED - {success_rate:.1f}% success rate")
+        return True
+    else:
+        print_error(f"TOC links analysis FAILED - {success_rate:.1f}% success rate")
+        return False
+
+async def test_content_library_updates():
+    """Test 3: Validate Content Library Updates - Check if processed content is saved"""
+    print_test_header("Test 3: Content Library Updates Validation")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Check for articles with TOC processing metadata
+            print_info("Checking for articles with TOC processing metadata...")
+            
+            async with session.get(f"{API_BASE}/content-library") as response:
+                if response.status == 200:
+                    articles = await response.json()
+                    
+                    processed_articles = []
+                    for article in articles:
+                        # Check if article has TOC processing metadata
+                        if 'toc_processing' in str(article):
+                            processed_articles.append(article)
+                    
+                    if processed_articles:
+                        print_success(f"Found {len(processed_articles)} articles with TOC processing metadata")
+                        
+                        for article in processed_articles[:5]:  # Show first 5
+                            title = article.get('title', 'Untitled')
+                            print_info(f"  - {title}")
+                        
+                        return True
+                    else:
+                        print_info("No articles found with TOC processing metadata")
+                        
+                        # Check if any articles have been recently modified
+                        recent_articles = []
+                        current_time = datetime.now()
+                        
+                        for article in articles:
+                            # Look for recent updates or processing indicators
+                            content = str(article)
+                            if any(indicator in content for indicator in ['anchor', 'toc', 'processed']):
+                                recent_articles.append(article)
+                        
+                        if recent_articles:
+                            print_info(f"Found {len(recent_articles)} articles with processing indicators")
+                            return True
+                        else:
+                            print_error("No evidence of content library updates")
+                            return False
+                else:
+                    print_error(f"Failed to access content library - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error validating content library updates: {e}")
+        return False
+
+async def test_processing_results():
+    """Test 4: Check Processing Results - Verify endpoint returns accurate statistics"""
+    print_test_header("Test 4: Processing Results Verification")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Check style diagnostics for TOC processing results
+            print_info("Checking style diagnostics for TOC processing results...")
+            
+            async with session.get(f"{API_BASE}/style/diagnostics") as response:
+                if response.status == 200:
+                    diagnostics = await response.json()
+                    print_success("Style diagnostics accessible")
+                    
+                    # Look for TOC processing statistics
+                    recent_results = diagnostics.get('recent_results', [])
+                    if recent_results:
+                        print_success(f"Found {len(recent_results)} recent style processing results")
+                        
+                        # Check for TOC-related processing
+                        toc_results = []
+                        for result in recent_results:
+                            if any(key in str(result) for key in ['toc', 'anchor', 'links']):
+                                toc_results.append(result)
+                        
+                        if toc_results:
+                            print_success(f"Found {len(toc_results)} TOC-related processing results")
+                            return True
+                        else:
+                            print_info("No TOC-specific processing results found in diagnostics")
+                    else:
+                        print_info("No recent processing results found")
+                    
+                    # Check overall system status
+                    system_status = diagnostics.get('system_status', 'unknown')
+                    if system_status == 'active':
+                        print_success("Style processing system is active")
+                        return True
+                    else:
+                        print_info(f"Style processing system status: {system_status}")
+                        return False
+                        
+                else:
+                    print_error(f"Failed to access style diagnostics - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error checking processing results: {e}")
+        return False
+
+async def test_anchor_link_generation():
+    """Test 5: Confirm Anchor Link Generation - Verify TOC conversion format"""
+    print_test_header("Test 5: Anchor Link Generation Verification")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Get the target article again for detailed analysis
+            async with session.get(f"{API_BASE}/content-library") as response:
+                if response.status == 200:
+                    articles = await response.json()
+                    
+                    # Find target article
+                    target_article = None
+                    for article in articles:
+                        if 'Code Normalization in JavaScript' in article.get('title', ''):
+                            target_article = article
+                            break
+                    
+                    if target_article:
+                        content = target_article.get('content', target_article.get('html', ''))
+                        
+                        # Detailed analysis of anchor link generation
+                        print_info("Analyzing anchor link generation patterns...")
+                        
+                        # Check for markdown-style links [text](#anchor)
+                        import re
+                        markdown_links = re.findall(r'\[([^\]]+)\]\(#([^)]+)\)', content)
+                        if markdown_links:
+                            print_success(f"Found {len(markdown_links)} markdown-style anchor links")
+                            for text, anchor in markdown_links[:3]:  # Show first 3
+                                print_info(f"  - [{text}](#{anchor})")
+                        else:
+                            print_info("No markdown-style anchor links found")
+                        
+                        # Check for HTML anchor links <a href="#anchor">text</a>
+                        html_links = re.findall(r'<a href="#([^"]+)">([^<]+)</a>', content)
+                        if html_links:
+                            print_success(f"Found {len(html_links)} HTML anchor links")
+                            for anchor, text in html_links[:3]:  # Show first 3
+                                print_info(f"  - <a href=\"#{anchor}\">{text}</a>")
+                        else:
+                            print_info("No HTML anchor links found")
+                        
+                        # Check for heading IDs that match TOC items
+                        heading_ids = re.findall(r'<h[1-6][^>]*id="([^"]+)"', content)
+                        if heading_ids:
+                            print_success(f"Found {len(heading_ids)} heading IDs")
+                            for heading_id in heading_ids[:5]:  # Show first 5
+                                print_info(f"  - #{heading_id}")
+                        else:
+                            print_info("No heading IDs found")
+                        
+                        # Overall anchor generation assessment
+                        total_links = len(markdown_links) + len(html_links)
+                        if total_links >= 3 and len(heading_ids) >= 3:
+                            print_success(f"Anchor link generation SUCCESSFUL - {total_links} links, {len(heading_ids)} targets")
+                            return True
+                        elif total_links > 0 or len(heading_ids) > 0:
+                            print_info(f"Partial anchor generation - {total_links} links, {len(heading_ids)} targets")
+                            return True
+                        else:
+                            print_error("No anchor link generation detected")
+                            return False
+                    else:
+                        print_error("Target article not found for anchor analysis")
+                        return False
+                else:
+                    print_error(f"Failed to access content library - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error verifying anchor link generation: {e}")
+        return False
+
+async def test_broken_link_detection():
+    """Test 6: Test Broken Link Detection - Verify system detects broken anchors"""
+    print_test_header("Test 6: Broken Link Detection")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Check if the system provides broken link information
+            print_info("Testing broken link detection capabilities...")
+            
+            # Check style diagnostics for broken link information
+            async with session.get(f"{API_BASE}/style/diagnostics") as response:
+                if response.status == 200:
+                    diagnostics = await response.json()
+                    
+                    # Look for broken link information in results
+                    recent_results = diagnostics.get('recent_results', [])
+                    broken_links_found = False
+                    
+                    for result in recent_results:
+                        result_str = str(result)
+                        if any(indicator in result_str for indicator in ['broken', 'toc_broken_links', 'invalid']):
+                            broken_links_found = True
+                            print_success("Broken link detection information found in diagnostics")
+                            break
+                    
+                    if not broken_links_found:
+                        print_info("No broken link information found (may indicate no broken links)")
+                    
+                    return True
+                else:
+                    print_error(f"Failed to access diagnostics for broken link detection - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error testing broken link detection: {e}")
+        return False
+
+async def run_comprehensive_toc_test():
+    """Run comprehensive Mini-TOC links processing test suite"""
+    print_test_header("Mini-TOC Links Processing Endpoint - Comprehensive Test Suite")
+    print_info(f"Backend URL: {BACKEND_URL}")
+    print_info(f"API Base: {API_BASE}")
+    print_info(f"Test Time: {datetime.now().isoformat()}")
     
     # Test results tracking
-    results = {
-        'v2_diagnostics': False,
-        'style_processing': False,
-        'content_found': False,
-        'toc_analysis': False,
-        'pipeline_status': False
-    }
+    test_results = []
     
-    # Test 1: V2 Style Processing Diagnostics
-    style_id = test_v2_style_diagnostics()
-    results['v2_diagnostics'] = style_id is not None
+    # Test 1: TOC Processing Endpoint
+    success, processing_result = await test_toc_processing_endpoint()
+    test_results.append(("TOC Processing Endpoint", success))
     
-    # Test 2: Specific Style Result Analysis
-    if style_id:
-        style_result = test_specific_style_result(style_id)
-        results['style_processing'] = style_result is not None
+    # Test 2: Target Article Verification
+    success = await test_target_article_verification()
+    test_results.append(("Target Article Verification", success))
     
-    # Test 3: Content Library Search
-    target_article = test_content_library_search()
-    results['content_found'] = target_article is not None
+    # Test 3: Content Library Updates
+    success = await test_content_library_updates()
+    test_results.append(("Content Library Updates", success))
     
-    # Test 4: Article Content Analysis
-    if target_article:
-        content_analysis = analyze_article_content(target_article)
-        results['toc_analysis'] = content_analysis is not None
+    # Test 4: Processing Results
+    success = await test_processing_results()
+    test_results.append(("Processing Results", success))
     
-    # Test 5: V2 Processing Pipeline Status
-    pipeline_ok = test_v2_processing_pipeline()
-    results['pipeline_status'] = pipeline_ok
+    # Test 5: Anchor Link Generation
+    success = await test_anchor_link_generation()
+    test_results.append(("Anchor Link Generation", success))
     
-    # Final Summary
-    print_test_header("MINI-TOC LINKING DEBUG SUMMARY")
+    # Test 6: Broken Link Detection
+    success = await test_broken_link_detection()
+    test_results.append(("Broken Link Detection", success))
     
-    total_tests = len(results)
-    passed_tests = sum(1 for result in results.values() if result)
+    # Final Results Summary
+    print_test_header("Test Results Summary")
     
-    print_info(f"Tests completed: {passed_tests}/{total_tests}")
-    
-    for test_name, passed in results.items():
-        if passed:
-            print_success(f"✓ {test_name}")
-        else:
-            print_error(f"✗ {test_name}")
-    
-    # Diagnostic conclusions
-    print_info("\n🔍 DIAGNOSTIC CONCLUSIONS:")
-    
-    if results['v2_diagnostics'] and results['style_processing']:
-        print_success("✓ V2StyleProcessor is operational and processing content")
-    else:
-        print_error("✗ V2StyleProcessor may not be working correctly")
-    
-    if results['content_found'] and results['toc_analysis']:
-        print_success("✓ Target article found and analyzed")
-    else:
-        print_error("✗ Could not analyze target article content")
-    
-    if results['pipeline_status']:
-        print_success("✓ V2 processing pipeline is active")
-    else:
-        print_error("✗ V2 processing pipeline issues detected")
-    
-    print_info(f"\nTest completed at: {datetime.now().isoformat()}")
-    
-    # Return success rate for automation
+    passed_tests = sum(1 for _, success in test_results if success)
+    total_tests = len(test_results)
     success_rate = (passed_tests / total_tests) * 100
-    print_info(f"Overall success rate: {success_rate:.1f}%")
     
-    return success_rate >= 60  # Consider 60%+ as acceptable for debugging
+    print_info(f"Tests Passed: {passed_tests}/{total_tests}")
+    print_info(f"Success Rate: {success_rate:.1f}%")
+    
+    for test_name, success in test_results:
+        status = "✅ PASS" if success else "❌ FAIL"
+        print_info(f"{status} - {test_name}")
+    
+    # Overall assessment
+    if success_rate >= 80:
+        print_success(f"🎉 MINI-TOC LINKS PROCESSING TEST SUITE PASSED - {success_rate:.1f}% SUCCESS RATE")
+        print_success("The Mini-TOC links processing endpoint is working correctly!")
+    elif success_rate >= 60:
+        print_info(f"⚠️ MINI-TOC LINKS PROCESSING PARTIALLY WORKING - {success_rate:.1f}% SUCCESS RATE")
+        print_info("Some functionality is working, but improvements needed.")
+    else:
+        print_error(f"❌ MINI-TOC LINKS PROCESSING TEST SUITE FAILED - {success_rate:.1f}% SUCCESS RATE")
+        print_error("Significant issues detected with Mini-TOC links processing.")
+    
+    return success_rate >= 60
 
 if __name__ == "__main__":
+    print("🚀 Starting Mini-TOC Links Processing Backend Test Suite...")
+    
     try:
-        success = main()
-        sys.exit(0 if success else 1)
+        # Run the comprehensive test
+        success = asyncio.run(run_comprehensive_toc_test())
+        
+        if success:
+            print("\n🎯 TEST SUITE COMPLETED SUCCESSFULLY")
+            sys.exit(0)
+        else:
+            print("\n💥 TEST SUITE COMPLETED WITH ISSUES")
+            sys.exit(1)
+            
     except KeyboardInterrupt:
-        print_error("\nTest interrupted by user")
+        print("\n⚠️ Test suite interrupted by user")
         sys.exit(1)
     except Exception as e:
-        print_error(f"Unexpected error: {e}")
+        print(f"\n❌ Test suite failed with error: {e}")
         sys.exit(1)

@@ -27550,6 +27550,40 @@ Source Information:
             
             print(f"✅ V2 ENGINE: Step 7.7 complete for URL processing - Related links generation complete - {successful_related_links}/{len(chunks)} articles, {total_related_links} total links - engine=v2")
             
+            # V2 STEP 7.8: Intelligent Gap Filling for URL processing
+            print(f"🔍 V2 ENGINE: Starting Step 7.8 - Intelligent gap filling for URL processing - engine=v2")
+            
+            # Fill gaps in chunks using in-corpus retrieval and pattern synthesis
+            gap_filling_result = await v2_gap_filling_system.fill_content_gaps(
+                chunks, enriched_content, normalized_doc.blocks, run_id, enrich_mode="internal"
+            )
+            
+            gap_filling_status = gap_filling_result.get('gap_filling_status', 'unknown')
+            if gap_filling_status == 'success':
+                total_gaps_found = gap_filling_result.get('total_gaps_found', 0)
+                total_gaps_filled = gap_filling_result.get('total_gaps_filled', 0)
+                gap_fill_rate = gap_filling_result.get('gap_fill_rate', 0)
+                
+                print(f"✅ V2 ENGINE: Step 7.8 gap filling successful for URL processing - {total_gaps_filled}/{total_gaps_found} gaps filled ({gap_fill_rate:.1f}% success rate) - engine=v2")
+            else:
+                print(f"⚠️ V2 ENGINE: Step 7.8 gap filling failed for URL processing - Status: {gap_filling_status} - engine=v2")
+            
+            # Store gap filling result for diagnostics
+            try:
+                await db.v2_gap_filling_results.insert_one(gap_filling_result)
+                print(f"💾 V2 ENGINE: Stored gap filling result for URL processing diagnostics - gap_filling_id: {gap_filling_result.get('gap_filling_id')} - engine=v2")
+            except Exception as gap_storage_error:
+                print(f"❌ V2 ENGINE: Error storing gap filling result for URL processing - {gap_storage_error} - engine=v2")
+            
+            # Add gap filling metadata to chunks
+            for i, chunk in enumerate(chunks):
+                gap_result = next((r for r in gap_filling_result.get('gap_filling_results', []) if r.get('article_index') == i), None)
+                if gap_result:
+                    chunk.setdefault('metadata', {})['gap_filling_result'] = gap_result
+                    chunk['gaps_filled'] = gap_result.get('gaps_filled', 0)
+            
+            print(f"✅ V2 ENGINE: Step 7.8 complete for URL processing - Intelligent gap filling complete - engine=v2")
+            
             # V2 STEP 8: Implement Validators (fidelity, 100% coverage, placeholders, style)
             print(f"🔍 V2 ENGINE: Starting Step 8 - Comprehensive validation for URL processing - engine=v2")
             

@@ -20,12 +20,18 @@ pre[class*="language-"] {
   position: relative;
 }
 
-/* Code element styling */
+/* Code element styling with improved font rendering */
 pre[class*="language-"] code {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: #374151;
+  font-weight: 400;
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga" 0;
 }
 
 /* Language label using data-lang attribute */

@@ -44,26 +44,7 @@ pre[class*="language-"] code {
   image-rendering: -webkit-optimize-contrast;
 }
 
-/* Language label using data-lang attribute - positioned to avoid copy button overlap */
-pre[data-lang]:before {
-  content: attr(data-lang);
-  position: absolute;
-  top: 8px;
-  right: 80px;
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #e5e7eb;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  z-index: 5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* Language label removed as requested - only copy button remains */
 
 /* Code caption styling - separate paragraph */
 p.code-caption {

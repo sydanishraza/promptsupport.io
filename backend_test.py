@@ -13,7 +13,7 @@ from datetime import datetime
 # Configuration
 BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com/api"
 
-class V2RelatedLinksSystemTester:
+class V2CodeNormalizationTester:
     def __init__(self):
         self.backend_url = BACKEND_URL
         self.test_results = {

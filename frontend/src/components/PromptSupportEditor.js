@@ -4028,16 +4028,22 @@ const PromptSupportEditor = ({
             overflow: 'hidden'
           }}>
             {!isEditing ? (
-              // View mode: safely render HTML content with proper styling
-              <HTMLContent 
-                html={content || '<p>No content available</p>'}
-                className="h-full p-6 overflow-y-auto wysiwyg-content max-w-none"
-                style={{
-                  minHeight: '400px',
-                  lineHeight: '1.7',
-                  fontSize: '16px'
-                }}
-              />
+              // View mode: safely render HTML content with article title as H1
+              <div className="h-full p-6 overflow-y-auto wysiwyg-content max-w-none" style={{ minHeight: '400px' }}>
+                {title && (
+                  <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">
+                    {title}
+                  </h1>
+                )}
+                <HTMLContent 
+                  html={content || '<p>No content available</p>'}
+                  className=""
+                  style={{
+                    lineHeight: '1.7',
+                    fontSize: '16px'
+                  }}
+                />
+              </div>
             ) : (
               // ISSUE 3 FIX: Simplified edit mode with clean layout
               <>

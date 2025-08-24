@@ -532,10 +532,8 @@ const TinyMCEEditor = ({
               />
             ) : (
               <div className="prose prose-lg max-w-none">
-                <div 
-                  dangerouslySetInnerHTML={{ 
-                    __html: viewMode === 'markdown' ? markdownToHtml(content) : content 
-                  }}
+                <HTMLContent 
+                  html={viewMode === 'markdown' ? markdownToHtml(content) : content}
                 />
               </div>
             )}

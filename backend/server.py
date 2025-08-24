@@ -30901,62 +30901,65 @@ async def process_toc_links():
         # Find all V2 articles that might need TOC processing
         processed_count = 0
         updated_articles = []
+        total_articles_checked = 0
         
         async for article in db.content_library.find({"engine": "v2"}):
             try:
+                total_articles_checked += 1
                 article_id = str(article["_id"])
                 article_title = article.get("title", "Untitled")
                 article_content = article.get("content", article.get("html", ""))
                 
+                print(f"🔍 V2 STYLE: Checking article '{article_title}' - article_id: {article_id}")
+                
                 if not article_content:
+                    print(f"⚠️ V2 STYLE: No content found for '{article_title}' - skipping")
                     continue
                 
-                print(f"🔍 V2 STYLE: Processing TOC links for '{article_title}' - article_id: {article_id}")
+                print(f"📄 V2 STYLE: Processing TOC links for '{article_title}' - content length: {len(article_content)}")
                 
-                # Apply clickable anchor processing
+                # Apply clickable anchor processing - FORCE reprocess by not checking for existing changes
                 anchor_result = v2_style_processor._process_clickable_anchors(article_content)
                 processed_content = anchor_result.get('content', article_content)
                 
-                # Check if any changes were made
-                if processed_content != article_content:
-                    structural_changes = anchor_result.get('structural_changes', [])
-                    anchor_links_generated = anchor_result.get('anchor_links_generated', 0)
-                    toc_broken_links = anchor_result.get('toc_broken_links', [])
-                    
-                    print(f"✅ V2 STYLE: TOC processing successful for '{article_title}' - {anchor_links_generated} links, {len(toc_broken_links)} broken")
-                    
-                    # Update the article in the content library
-                    update_result = await db.content_library.update_one(
-                        {"_id": article["_id"]},
-                        {
-                            "$set": {
-                                "content": processed_content,
-                                "html": processed_content,
-                                "toc_processing": {
-                                    "processed_at": datetime.now().isoformat(),
-                                    "anchor_links_generated": anchor_links_generated,
-                                    "structural_changes": structural_changes,
-                                    "toc_broken_links": toc_broken_links,
-                                    "engine": "v2"
-                                }
+                # Log processing results
+                structural_changes = anchor_result.get('structural_changes', [])
+                anchor_links_generated = anchor_result.get('anchor_links_generated', 0)
+                toc_broken_links = anchor_result.get('toc_broken_links', [])
+                
+                print(f"🔧 V2 STYLE: Processing results for '{article_title}' - {anchor_links_generated} links, {len(toc_broken_links)} broken, {len(structural_changes)} changes")
+                
+                # Always update articles to ensure processing is applied (even if no changes detected)
+                update_result = await db.content_library.update_one(
+                    {"_id": article["_id"]},
+                    {
+                        "$set": {
+                            "content": processed_content,
+                            "html": processed_content,
+                            "toc_processing": {
+                                "processed_at": datetime.now().isoformat(),
+                                "anchor_links_generated": anchor_links_generated,
+                                "structural_changes": structural_changes,
+                                "toc_broken_links": toc_broken_links,
+                                "engine": "v2",
+                                "force_processed": True
                             }
                         }
-                    )
-                    
-                    if update_result.modified_count > 0:
-                        processed_count += 1
-                        updated_articles.append({
-                            "article_id": article_id,
-                            "title": article_title,
-                            "anchor_links_generated": anchor_links_generated,
-                            "structural_changes": structural_changes,
-                            "toc_broken_links": len(toc_broken_links)
-                        })
-                        print(f"💾 V2 STYLE: Updated article in content library - '{article_title}'")
-                    else:
-                        print(f"⚠️ V2 STYLE: Failed to update article in content library - '{article_title}'")
+                    }
+                )
+                
+                if update_result.modified_count > 0:
+                    processed_count += 1
+                    updated_articles.append({
+                        "article_id": article_id,
+                        "title": article_title,
+                        "anchor_links_generated": anchor_links_generated,
+                        "structural_changes": structural_changes,
+                        "toc_broken_links": len(toc_broken_links)
+                    })
+                    print(f"✅ V2 STYLE: Updated article in content library - '{article_title}'")
                 else:
-                    print(f"ℹ️ V2 STYLE: No TOC changes needed for '{article_title}'")
+                    print(f"⚠️ V2 STYLE: No database changes for '{article_title}' - may already be identical")
                 
             except Exception as article_error:
                 print(f"❌ V2 STYLE: Error processing article '{article.get('title', 'Unknown')}' - {article_error}")

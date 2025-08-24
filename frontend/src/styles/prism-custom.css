@@ -34,12 +34,12 @@ pre[class*="language-"] code {
   font-feature-settings: "liga" 0;
 }
 
-/* Language label using data-lang attribute */
+/* Language label using data-lang attribute - positioned to avoid copy button overlap */
 pre[data-lang]:before {
   content: attr(data-lang);
   position: absolute;
   top: 8px;
-  right: 8px;
+  right: 80px;
   background: #f8fafc;
   color: #64748b;
   font-size: 11px;
@@ -51,6 +51,8 @@ pre[data-lang]:before {
   letter-spacing: 0.05em;
   font-family: ui-sans-serif, system-ui, sans-serif;
   z-index: 5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Code caption styling - separate paragraph */

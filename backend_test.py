@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Mini-TOC Links Processing Endpoint
-Testing the new POST /api/style/process-toc-links endpoint functionality
+Backend Test Suite for Enhanced TOC Matching Fix
+Testing the enhanced TOC processing with improved ID matching algorithm
+Focus: POST /api/style/process-toc-links endpoint with enhanced matching
 """
 
 import asyncio
 import aiohttp
 import json
 import os
+import re
 from datetime import datetime
 import sys
 

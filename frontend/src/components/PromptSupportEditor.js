@@ -4029,14 +4029,14 @@ const PromptSupportEditor = ({
           }}>
             {!isEditing ? (
               // View mode: safely render HTML content with proper styling
-              <div 
+              <HTMLContent 
+                html={content || '<p>No content available</p>'}
                 className="h-full p-6 overflow-y-auto wysiwyg-content max-w-none"
                 style={{
                   minHeight: '400px',
                   lineHeight: '1.7',
                   fontSize: '16px'
                 }}
-                dangerouslySetInnerHTML={{ __html: content || '<p>No content available</p>' }} 
               />
             ) : (
               // ISSUE 3 FIX: Simplified edit mode with clean layout

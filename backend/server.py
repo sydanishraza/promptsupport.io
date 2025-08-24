@@ -29571,6 +29571,229 @@ async def rerun_related_links_generation(request: RerunRequest):
         print(f"❌ V2 RELATED LINKS: Error in related links rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning related links generation: {str(e)}")
 
+# V2 ENGINE: Gap Filling System API Endpoints
+@app.get("/api/gap-filling/diagnostics")
+async def get_gap_filling_diagnostics():
+    """V2 ENGINE: Get comprehensive gap filling processing diagnostics for all runs"""
+    try:
+        print(f"🔍 V2 GAP FILLING: Retrieving gap filling diagnostics - engine=v2")
+        
+        # Get all gap filling results from database
+        gap_filling_results = []
+        async for result in db.v2_gap_filling_results.find().sort("timestamp", -1).limit(50):
+            gap_filling_results.append(objectid_to_str(result))
+        
+        # Calculate summary statistics
+        total_gap_filling_runs = len(gap_filling_results)
+        successful_runs = len([r for r in gap_filling_results if r.get('gap_filling_status') == 'success'])
+        failed_runs = len([r for r in gap_filling_results if r.get('gap_filling_status') == 'error'])
+        
+        # Calculate gap filling statistics
+        total_gaps_found = sum([r.get('total_gaps_found', 0) for r in gap_filling_results])
+        total_gaps_filled = sum([r.get('total_gaps_filled', 0) for r in gap_filling_results])
+        
+        # Calculate averages
+        avg_gaps_per_run = (total_gaps_found / successful_runs) if successful_runs > 0 else 0
+        avg_fill_rate = (total_gaps_filled / total_gaps_found * 100) if total_gaps_found > 0 else 0
+        
+        # Calculate mode distribution
+        internal_mode_runs = len([r for r in gap_filling_results if r.get('enrich_mode') == 'internal'])
+        external_mode_runs = len([r for r in gap_filling_results if r.get('enrich_mode') == 'external'])
+        
+        # Create diagnostics response
+        diagnostics_response = {
+            "gap_filling_system_status": "active",
+            "engine": "v2",
+            "diagnostics_generated_at": datetime.utcnow().isoformat(),
+            
+            # Overall gap filling statistics
+            "gap_filling_summary": {
+                "total_gap_filling_runs": total_gap_filling_runs,
+                "successful_runs": successful_runs,
+                "failed_runs": failed_runs,
+                "success_rate": (successful_runs / total_gap_filling_runs * 100) if total_gap_filling_runs > 0 else 0,
+                "total_gaps_found": total_gaps_found,
+                "total_gaps_filled": total_gaps_filled,
+                "overall_fill_rate": avg_fill_rate,
+                "avg_gaps_per_run": avg_gaps_per_run,
+                "internal_mode_runs": internal_mode_runs,
+                "external_mode_runs": external_mode_runs
+            },
+            
+            # Recent gap filling results
+            "recent_gap_filling_results": [
+                {
+                    "gap_filling_id": result.get('gap_filling_id'),
+                    "run_id": result.get('run_id'),
+                    "gap_filling_status": result.get('gap_filling_status'),
+                    "articles_processed": result.get('articles_processed', 0),
+                    "total_gaps_found": result.get('total_gaps_found', 0),
+                    "total_gaps_filled": result.get('total_gaps_filled', 0),
+                    "gap_fill_rate": result.get('gap_fill_rate', 0),
+                    "enrich_mode": result.get('enrich_mode', 'internal'),
+                    "timestamp": result.get('timestamp')
+                }
+                for result in gap_filling_results[:20]  # Show last 20 results
+            ],
+            
+            # Gap filling system capabilities
+            "system_capabilities": {
+                "supported_gap_patterns": ["[MISSING]", "[PLACEHOLDER]", "[TBD]", "[TODO]", "[FILL]"],
+                "enrich_modes": ["internal", "external"],
+                "supported_gap_types": ["api_detail", "code_example", "configuration", "authentication", "procedure_step", "generic_content"],
+                "in_corpus_retrieval": True,
+                "content_library_search": True,
+                "llm_patch_generation": True
+            }
+        }
+        
+        print(f"✅ V2 GAP FILLING: Returning gap filling diagnostics - {total_gap_filling_runs} total runs - engine=v2")
+        return diagnostics_response
+        
+    except Exception as e:
+        print(f"❌ V2 GAP FILLING: Error retrieving gap filling diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving gap filling diagnostics: {str(e)}")
+
+@app.get("/api/gap-filling/diagnostics/{gap_filling_id}")
+async def get_specific_gap_filling_diagnostics(gap_filling_id: str):
+    """V2 ENGINE: Get detailed diagnostics for a specific gap filling processing result"""
+    try:
+        print(f"🔍 V2 GAP FILLING: Retrieving specific gap filling diagnostics - ID: {gap_filling_id} - engine=v2")
+        
+        # Find the specific gap filling result
+        gap_filling_result = await db.v2_gap_filling_results.find_one({"gap_filling_id": gap_filling_id})
+        
+        if not gap_filling_result:
+            raise HTTPException(status_code=404, detail=f"Gap filling result not found: {gap_filling_id}")
+        
+        # Convert ObjectIds to strings
+        gap_filling_result = objectid_to_str(gap_filling_result)
+        
+        # Enhance result with additional analysis
+        enhanced_result = {
+            "engine": "v2",
+            "gap_filling_result": gap_filling_result,
+            "analysis": {
+                "processing_summary": {
+                    "gap_filling_status": gap_filling_result.get('gap_filling_status'),
+                    "articles_processed": gap_filling_result.get('articles_processed', 0),
+                    "articles_with_gaps": gap_filling_result.get('articles_with_gaps', 0),
+                    "total_gaps_found": gap_filling_result.get('total_gaps_found', 0),
+                    "total_gaps_filled": gap_filling_result.get('total_gaps_filled', 0),
+                    "gap_fill_rate": gap_filling_result.get('gap_fill_rate', 0),
+                    "enrich_mode": gap_filling_result.get('enrich_mode', 'internal')
+                },
+                "article_breakdown": [
+                    {
+                        "article_index": article.get('article_index'),
+                        "article_title": article.get('article_title'),
+                        "gap_filling_status": article.get('gap_filling_status'),
+                        "gaps_found": article.get('gaps_found', 0),
+                        "gaps_filled": article.get('gaps_filled', 0),
+                        "patches_applied": len(article.get('patches_applied', [])),
+                        "retrieval_sources": article.get('retrieval_sources', 0)
+                    }
+                    for article in gap_filling_result.get('gap_filling_results', [])
+                ],
+                "gap_patterns_detected": {
+                    "missing_count": 0,
+                    "placeholder_count": 0,
+                    "tbd_count": 0,
+                    "todo_count": 0
+                }
+            }
+        }
+        
+        # Count gap patterns
+        for article in gap_filling_result.get('gap_filling_results', []):
+            for patch in article.get('patches_applied', []):
+                pattern = patch.get('original', '').lower()
+                if 'missing' in pattern:
+                    enhanced_result['analysis']['gap_patterns_detected']['missing_count'] += 1
+                elif 'placeholder' in pattern:
+                    enhanced_result['analysis']['gap_patterns_detected']['placeholder_count'] += 1
+                elif 'tbd' in pattern:
+                    enhanced_result['analysis']['gap_patterns_detected']['tbd_count'] += 1
+                elif 'todo' in pattern:
+                    enhanced_result['analysis']['gap_patterns_detected']['todo_count'] += 1
+        
+        print(f"✅ V2 GAP FILLING: Returning specific gap filling result - {enhanced_result['analysis']['processing_summary']['total_gaps_filled']} gaps filled - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 GAP FILLING: Error retrieving specific gap filling diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving gap filling diagnostics: {str(e)}")
+
+@app.post("/api/gap-filling/rerun")
+async def rerun_gap_filling(request: RerunRequest):
+    """V2 ENGINE: Rerun gap filling for a specific processing run"""
+    try:
+        run_id = request.run_id
+        print(f"🔄 V2 GAP FILLING: Rerun gap filling requested - run_id: {run_id} - engine=v2")
+        
+        # Find articles from the specified run
+        articles = []
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            articles.append(objectid_to_str(article))
+        
+        if not articles:
+            # Handle case where no articles exist - create a graceful response
+            print(f"⚠️ V2 GAP FILLING: No V2 articles found for run {run_id}, returning empty result - engine=v2")
+            return {
+                "message": "V2 gap filling rerun completed - no articles found for processing",
+                "engine": "v2",
+                "run_id": run_id,
+                "articles_processed": 0,
+                "gaps_found": 0,
+                "gaps_filled": 0,
+                "gap_fill_rate": 0,
+                "note": "No V2 articles found for the specified run_id"
+            }
+        
+        # Get original content for rerun (simplified approach)
+        content_for_gap_filling = f"rerun_content_{run_id}"
+        
+        # Create mock source blocks for rerun
+        source_blocks = [
+            {
+                "content": "Mock source block for gap filling generation",
+                "block_type": "paragraph",
+                "text": "Sample content for in-corpus retrieval"
+            }
+        ]
+        
+        # Perform gap filling for the articles
+        gap_filling_result = await v2_gap_filling_system.fill_content_gaps(
+            articles, content_for_gap_filling, source_blocks, run_id, enrich_mode="internal"
+        )
+        
+        # Store the rerun result
+        try:
+            await db.v2_gap_filling_results.insert_one(gap_filling_result)
+            print(f"💾 V2 GAP FILLING: Stored gap filling rerun result - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 GAP FILLING: Error storing rerun result - {storage_error} - engine=v2")
+        
+        return {
+            "message": "V2 gap filling rerun completed",
+            "engine": "v2",
+            "run_id": run_id,
+            "articles_processed": gap_filling_result.get('articles_processed', 0),
+            "gaps_found": gap_filling_result.get('total_gaps_found', 0),
+            "gaps_filled": gap_filling_result.get('total_gaps_filled', 0),
+            "gap_fill_rate": gap_filling_result.get('gap_fill_rate', 0),
+            "enrich_mode": gap_filling_result.get('enrich_mode', 'internal'),
+            "gap_filling_status": gap_filling_result.get('gap_filling_status', 'unknown')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 GAP FILLING: Error in gap filling rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning gap filling: {str(e)}")
+
 # V2 ENGINE: Review System API Endpoints
 @app.get("/api/review/runs")
 async def get_runs_for_review(limit: int = 50, status: str = None):

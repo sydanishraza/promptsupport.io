@@ -188,24 +188,23 @@ pre[class*="language-"].line-numbers {
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
-  figure.code-block {
+  pre[class*="language-"] {
     margin: 1rem 0;
     border-radius: 4px;
-  }
-
-  figure.code-block .code-toolbar {
-    padding: 6px 8px;
-    font-size: 11px;
-  }
-
-  figure.code-block pre {
     padding: 0.75rem !important;
     max-height: 300px;
   }
 
+  pre[data-lang]:before {
+    font-size: 10px;
+    padding: 3px 6px;
+    top: 4px;
+    right: 4px;
+  }
+
   .prism-toolbar {
     right: 4px !important;
-    top: 4px !important;
+    top: 30px !important;
   }
 
   .prism-toolbar button,

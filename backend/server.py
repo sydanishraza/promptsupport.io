@@ -29550,6 +29550,7 @@ async def get_engine_status():
             "related_links_diagnostics": "/api/related-links/diagnostics",
             "gap_filling_diagnostics": "/api/gap-filling/diagnostics",
             "evidence_tagging_diagnostics": "/api/evidence-tagging/diagnostics",
+            "code_normalization_diagnostics": "/api/code-normalization/diagnostics",
             "review_runs": "/api/review/runs",
             "review_approve": "/api/review/approve",
             "review_reject": "/api/review/reject",

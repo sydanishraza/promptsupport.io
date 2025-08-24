@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { html as beautifyHtml } from 'js-beautify';
+import { HTMLContent } from './PrismCodeBlock';
 
 // Simple debounce utility function
 const debounce = (func, delay) => {

@@ -4239,17 +4239,44 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 matching_slug = None
                 best_match_score = 0
                 
-                for heading_text, slug in heading_ids.items():
-                    clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
-                    
-                    # Calculate simple similarity score
-                    similarity = len(set(clean_toc_text.lower().split()) & set(clean_heading.lower().split()))
-                    if similarity > best_match_score:
-                        best_match_score = similarity
-                        matching_slug = slug
+                # First, look for existing heading IDs by scanning for exact or partial text matches
+                existing_heading_pattern = r'<h[2-6][^>]*id="([^"]+)"[^>]*>([^<]+)</h[2-6]>'
+                existing_headings = re.findall(existing_heading_pattern, processed_content, re.IGNORECASE)
                 
-                # If no good match found, create a slug from TOC text
-                if not matching_slug or best_match_score == 0:
+                for heading_id, heading_text in existing_headings:
+                    clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
+                    clean_toc = re.sub(r'[^\w\s-]', '', toc_text).strip()
+                    
+                    # Calculate similarity score
+                    toc_words = set(clean_toc.lower().split())
+                    heading_words = set(clean_heading.lower().split())
+                    
+                    if toc_words and heading_words:
+                        similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                        
+                        # Check for exact match or high similarity
+                        if similarity >= 0.7 or clean_toc.lower() in clean_heading.lower() or clean_heading.lower() in clean_toc.lower():
+                            if similarity > best_match_score:
+                                best_match_score = similarity
+                                matching_slug = heading_id
+                
+                # Fallback to generated heading IDs if found during processing
+                if not matching_slug:
+                    for heading_text, slug in heading_ids.items():
+                        clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
+                        clean_toc = re.sub(r'[^\w\s-]', '', toc_text).strip()
+                        
+                        toc_words = set(clean_toc.lower().split())
+                        heading_words = set(clean_heading.lower().split())
+                        
+                        if toc_words and heading_words:
+                            similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                            if similarity > best_match_score:
+                                best_match_score = similarity
+                                matching_slug = slug
+                
+                # If still no match found, create a slug but mark as potentially broken
+                if not matching_slug or best_match_score < 0.3:
                     matching_slug = generate_slug(toc_text)
                     # Check if this slug actually exists in content
                     if f'id="{matching_slug}"' not in processed_content:

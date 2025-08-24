@@ -6311,6 +6311,112 @@ class V2CodeNormalizationSystem:
             print(f"❌ V2 CODE NORMALIZATION: Error creating Prism HTML - {e}")
             # Fallback to simple code block
             return f'<pre class="line-numbers" data-start="1"><code class="language-{language}">{html.escape(code_content)}</code></pre>'
+    
+    def sanitize_legacy_code_blocks(self, content: str) -> str:
+        """
+        Migration sanitizer to rewrite legacy code blocks to minimal markup.
+        Removes figure wrappers, toolbars, and nested pre elements.
+        """
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            print(f"🧹 V2 CODE NORMALIZATION: Sanitizing legacy code blocks")
+            
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Find all figure.code-block elements (legacy format)
+            figures = soup.find_all('figure', class_='code-block')
+            
+            for figure in figures:
+                try:
+                    # Extract data attributes from figure
+                    data_lang = figure.get('data-lang', 'TEXT')
+                    data_filename = figure.get('data-filename')
+                    
+                    # Find the inner pre and code elements
+                    pre_element = figure.find('pre')
+                    if not pre_element:
+                        continue
+                        
+                    code_element = pre_element.find('code')
+                    if not code_element:
+                        continue
+                    
+                    # Extract code content
+                    code_content = code_element.get_text()
+                    
+                    # Extract language class
+                    code_classes = code_element.get('class', [])
+                    language_class = 'language-text'
+                    for cls in code_classes:
+                        if cls.startswith('language-'):
+                            language_class = cls
+                            break
+                    
+                    # Build data attributes for new pre element
+                    data_attrs = []
+                    data_attrs.append(f'data-lang="{data_lang}"')
+                    data_attrs.append('data-start="1"')
+                    if data_filename:
+                        data_attrs.append(f'data-filename="{data_filename}"')
+                    
+                    # Create new minimal markup
+                    new_pre = soup.new_tag('pre', **{
+                        'class': 'line-numbers',
+                        'data-lang': data_lang,
+                        'data-start': '1'
+                    })
+                    if data_filename:
+                        new_pre['data-filename'] = data_filename
+                    
+                    new_code = soup.new_tag('code', **{'class': language_class})
+                    new_code.string = code_content
+                    new_pre.append(new_code)
+                    
+                    # Handle caption if exists
+                    figcaption = figure.find('figcaption', class_='code-caption')
+                    if figcaption:
+                        caption_p = soup.new_tag('p', **{'class': 'code-caption'})
+                        caption_em = soup.new_tag('em')
+                        caption_em.string = figcaption.get_text()
+                        caption_p.append(caption_em)
+                        figure.insert_after(caption_p)
+                    
+                    # Replace figure with minimal pre element
+                    figure.replace_with(new_pre)
+                    
+                except Exception as figure_error:
+                    print(f"❌ V2 CODE NORMALIZATION: Error sanitizing figure - {figure_error}")
+                    continue
+            
+            # Find any nested pre elements (outer pre wrapping figure)
+            nested_pres = soup.find_all('pre')
+            for pre in nested_pres:
+                # Check if this pre contains a figure or another pre
+                inner_figure = pre.find('figure', class_='code-block')
+                inner_pre = pre.find('pre')
+                
+                if inner_figure or inner_pre:
+                    # This is a wrapper pre, extract the inner content
+                    if inner_figure:
+                        # Extract from figure as above
+                        continue
+                    elif inner_pre and inner_pre != pre:
+                        # Replace wrapper with inner pre
+                        pre.replace_with(inner_pre)
+            
+            sanitized_content = str(soup)
+            
+            # Clean up any extra whitespace and formatting
+            sanitized_content = re.sub(r'\n\s*\n\s*\n', '\n\n', sanitized_content)
+            
+            print(f"✅ V2 CODE NORMALIZATION: Legacy code block sanitization complete")
+            return sanitized_content
+            
+        except Exception as e:
+            print(f"❌ V2 CODE NORMALIZATION: Error in legacy sanitization - {e}")
+            return content  # Return original content if sanitization fails
 
 # Global V2 Code Normalization System instance
 v2_code_normalization_system = V2CodeNormalizationSystem()

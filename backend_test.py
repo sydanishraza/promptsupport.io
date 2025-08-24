@@ -1,53 +1,40 @@
 #!/usr/bin/env python3
 """
-V2 Engine Code Normalization System Comprehensive Testing
-Testing V2 Engine Code Normalization System to verify Prism-ready HTML generation
+Backend Testing Suite for Mini-TOC Linking Issue Debug
+Focus: V2StyleProcessor clickable anchors and content structure analysis
 """
 
 import requests
 import json
-import time
 import sys
 from datetime import datetime
+import re
+from bs4 import BeautifulSoup
 
-# Configuration
+# Backend URL from environment
 BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com/api"
 
-class V2CodeNormalizationTester:
-    def __init__(self):
-        self.backend_url = BACKEND_URL
-        self.test_results = {
-            "total_tests": 0,
-            "passed_tests": 0,
-            "failed_tests": 0,
-            "test_details": []
-        }
-        
-    def log_test(self, test_name, passed, details=""):
-        """Log test result"""
-        self.test_results["total_tests"] += 1
-        if passed:
-            self.test_results["passed_tests"] += 1
-            status = "✅ PASSED"
-        else:
-            self.test_results["failed_tests"] += 1
-            status = "❌ FAILED"
-            
-        print(f"{status}: {test_name}")
-        if details:
-            print(f"   Details: {details}")
-            
-        self.test_results["test_details"].append({
-            "test_name": test_name,
-            "status": "passed" if passed else "failed",
-            "details": details,
-            "timestamp": datetime.now().isoformat()
-        })
-    
-    def test_code_normalization_health_check(self):
-        """Test 1: Code Normalization System Health Check - Verify V2 Engine is active"""
-        try:
-            print("\n🔍 TESTING: Code Normalization System Health Check")
+def print_test_header(test_name):
+    """Print formatted test header"""
+    print(f"\n{'='*80}")
+    print(f"🔍 {test_name}")
+    print(f"{'='*80}")
+
+def print_success(message):
+    """Print success message"""
+    print(f"✅ {message}")
+
+def print_error(message):
+    """Print error message"""
+    print(f"❌ {message}")
+
+def print_info(message):
+    """Print info message"""
+    print(f"ℹ️  {message}")
+
+def test_v2_style_diagnostics():
+    """Test 1: V2 Style Processing Diagnostic Check"""
+    print_test_header("V2 Style Processing Diagnostic Check")
             
             response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
             

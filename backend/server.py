@@ -7281,6 +7281,17 @@ Return ONLY JSON in this exact format:
                     "details": []
                 })
             
+            # Evidence tagging diagnostics
+            evidence_tagging_rate = evidence.get('overall_tagging_rate', 100.0)
+            if evidence_tagging_rate < 95.0:
+                untagged_count = evidence.get('untagged_paragraphs', 0)
+                diagnostics.append({
+                    "type": "evidence_warning",
+                    "message": f"Evidence tagging below 95% threshold ({evidence_tagging_rate:.1f}%)",
+                    "action": f"Add evidence block IDs to {untagged_count} untagged paragraphs for fidelity enforcement",
+                    "details": [f"{untagged_count} paragraphs missing evidence attribution"]
+                })
+            
             return diagnostics
             
         except Exception as e:

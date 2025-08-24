@@ -4283,7 +4283,8 @@ Return the fully formatted article with improved clarity, structure, and clickab
                         toc_broken_links.append({
                             "toc_text": toc_text,
                             "expected_slug": matching_slug,
-                            "reason": "no_matching_heading"
+                            "reason": "no_matching_heading",
+                            "match_score": best_match_score
                         })
                 
                 anchor_links_generated += 1
@@ -4351,7 +4352,8 @@ Return the fully formatted article with improved clarity, structure, and clickab
                         toc_broken_links.append({
                             "toc_text": toc_text,
                             "expected_slug": matching_slug,
-                            "reason": "no_matching_heading"
+                            "reason": "no_matching_heading",
+                            "match_score": best_match_score
                         })
                 
                 anchor_links_generated += 1

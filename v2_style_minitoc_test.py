@@ -37,11 +37,34 @@ def test_style_rerun_endpoint():
     print_test_header("Test POST /api/style/rerun - Trigger V2StyleProcessor")
     
     try:
-        # Test POST /api/style/rerun with JSON payload
+        # First, get a valid run_id from recent processing
+        print_info("Getting valid run_id from recent V2 processing...")
+        
+        # Check content library for V2 articles with run_id
+        content_response = requests.get(f"{BACKEND_URL}/content-library", timeout=30)
+        if content_response.status_code != 200:
+            print_error("Failed to access content library for run_id")
+            return None
+        
+        content_data = content_response.json()
+        articles = content_data.get('articles', [])
+        
+        # Look for V2 articles with run_id in metadata
+        valid_run_id = None
+        for article in articles:
+            metadata = article.get('metadata', {})
+            if metadata.get('engine') == 'v2' and 'run_id' in metadata:
+                valid_run_id = metadata['run_id']
+                print_info(f"Found valid run_id: {valid_run_id}")
+                break
+        
+        if not valid_run_id:
+            print_error("No valid run_id found in V2 articles")
+            return None
+        
+        # Test POST /api/style/rerun with correct payload format
         payload = {
-            "target_article": "Code Normalization in JavaScript",
-            "force_reprocess": True,
-            "focus": "mini_toc_anchors"
+            "run_id": valid_run_id
         }
         
         response = requests.post(

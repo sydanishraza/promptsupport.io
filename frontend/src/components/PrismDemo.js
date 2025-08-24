@@ -12,19 +12,14 @@ const PrismDemo = () => {
   const { highlightAll, reinitialize } = useCodeHighlighter();
   const [activeTab, setActiveTab] = useState('backend-generated');
 
-  // Example HTML content that matches V2CodeNormalizationSystem output
+  // Example HTML content that matches V2CodeNormalizationSystem simplified output
   const v2BackendGeneratedHTML = `
     <h2>API Integration Example</h2>
     <p>This example shows how to make API calls with proper error handling and authentication.</p>
     
     <!-- evidence: ["b12","b34"] -->
-    <figure class="code-block" data-lang="JSON">
-      <div class="code-toolbar">
-        <span class="code-lang">JSON</span>
-        <!-- Prism toolbar will inject copy button on the frontend -->
-      </div>
-      <pre class="line-numbers" data-start="1">
-        <code class="language-json">{
+    <pre class="line-numbers" data-lang="JSON" data-start="1">
+<code class="language-json">{
   "api_key": "your-api-key-here",
   "endpoint": "https://api.example.com/v1/users",
   "method": "POST",
@@ -38,18 +33,13 @@ const PrismDemo = () => {
     "role": "user"
   }
 }</code>
-      </pre>
-    </figure>
+</pre>
 
     <p>Here's the corresponding curl command:</p>
     
     <!-- evidence: ["b12","b45"] -->
-    <figure class="code-block" data-lang="BASH">
-      <div class="code-toolbar">
-        <span class="code-lang">BASH</span>
-      </div>
-      <pre class="line-numbers" data-start="1">
-        <code class="language-bash">curl -X POST \\
+    <pre class="line-numbers" data-lang="BASH" data-start="1">
+<code class="language-bash">curl -X POST \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-token-here" \\
   -d '{
@@ -58,18 +48,13 @@ const PrismDemo = () => {
     "role": "user"
   }' \\
   https://api.example.com/v1/users</code>
-      </pre>
-    </figure>
+</pre>
 
     <p>And here's the Python implementation:</p>
     
     <!-- evidence: ["b56","b78"] -->
-    <figure class="code-block" data-lang="PYTHON">
-      <div class="code-toolbar">
-        <span class="code-lang">PYTHON</span>
-      </div>
-      <pre class="line-numbers" data-start="1">
-        <code class="language-python">import requests
+    <pre class="line-numbers" data-lang="PYTHON" data-start="1">
+<code class="language-python">import requests
 import json
 
 def create_user(api_key, user_data):
@@ -91,8 +76,9 @@ def create_user(api_key, user_data):
         return response.json()
     else:
         raise Exception(f'API Error: {response.status_code}')</code>
-      </pre>
-    </figure>
+</pre>
+
+    <p class="code-caption"><em>Complete Python function with error handling and proper authentication</em></p>
   `;
 
   const sqlExample = `SELECT u.id, u.name, u.email, p.title as project_title

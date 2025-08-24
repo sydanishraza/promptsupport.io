@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import { motion } from 'framer-motion';
+import { HTMLContent } from './PrismCodeBlock';
 import { 
   Eye, 
   Edit, 

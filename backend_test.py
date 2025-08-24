@@ -343,11 +343,21 @@ def test_v2_processing_pipeline():
             ]
             
             print_info("\n🔍 V2 Style Processing Features:")
-            for feature in v2_features:
-                if feature in features:
-                    print_success(f"  ✓ {feature}: {features[feature]}")
-                else:
-                    print_error(f"  ✗ {feature}: Not found")
+            if isinstance(features, dict):
+                for feature in v2_features:
+                    if feature in features:
+                        print_success(f"  ✓ {feature}: {features[feature]}")
+                    else:
+                        print_error(f"  ✗ {feature}: Not found")
+            elif isinstance(features, list):
+                print_info(f"Features (list format): {features}")
+                for feature in v2_features:
+                    if feature in features:
+                        print_success(f"  ✓ {feature}: Present")
+                    else:
+                        print_error(f"  ✗ {feature}: Not found")
+            else:
+                print_error(f"Unexpected features format: {type(features)} - {features}")
             
             # Check for style diagnostics endpoint
             endpoints = data.get('endpoints', {})

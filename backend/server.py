@@ -5856,12 +5856,15 @@ class V2CodeNormalizationSystem:
                     if not article_content:
                         continue
                     
+                    # Step 0: Sanitize legacy code blocks to minimal markup
+                    sanitized_content = self.sanitize_legacy_code_blocks(article_content)
+                    
                     # Step 1: Detect and extract code blocks
-                    code_blocks = self._extract_code_blocks(article_content)
+                    code_blocks = self._extract_code_blocks(sanitized_content)
                     
                     # Step 2: Normalize and beautify each code block
                     normalized_content, normalization_stats = self._normalize_article_code_blocks(
-                        article_content, code_blocks, source_blocks, prewrite_data
+                        sanitized_content, code_blocks, source_blocks, prewrite_data
                     )
                     
                     # Update article with normalized content

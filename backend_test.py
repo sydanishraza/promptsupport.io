@@ -133,81 +133,80 @@ async def test_id_matching_improvement():
         print_error(f"Error verifying ID matching improvement: {e}")
         return False
 
-async def analyze_toc_links_in_content(content, article_title):
-    """Analyze article content for TOC links and anchor generation"""
-    print_info(f"Analyzing content for TOC links in '{article_title}'...")
+async def analyze_id_matching_improvement(content, article_title):
+    """Analyze content for improved ID matching - actual heading IDs vs slugified IDs"""
+    print_info(f"Analyzing ID matching improvement in '{article_title}'...")
     
-    # Check for Mini-TOC structure
-    toc_patterns = [
-        '<ul class="toc-list">',
-        '<ul class="mini-toc">',
-        '<ul>\n<li>Introduction',
-        '<ul>\n<li>Getting',
-        '<ul>\n<li>Understanding'
-    ]
+    # Extract all heading IDs from the content
+    heading_ids = re.findall(r'<h[1-6][^>]*id="([^"]+)"', content)
+    print_info(f"Found {len(heading_ids)} heading IDs: {heading_ids}")
     
-    toc_found = any(pattern in content for pattern in toc_patterns)
-    if toc_found:
-        print_success("Mini-TOC structure found in article")
+    # Check for expected actual heading IDs (section1, section2, etc.)
+    actual_id_patterns = ['section1', 'section2', 'section3', 'section4', 'section5']
+    actual_ids_found = [hid for hid in heading_ids if hid in actual_id_patterns]
+    
+    if actual_ids_found:
+        print_success(f"Actual heading IDs found: {actual_ids_found}")
     else:
-        print_info("No obvious Mini-TOC structure found")
+        print_info("No standard actual heading IDs (section1, section2, etc.) found")
     
-    # Check for clickable anchor links in TOC format
-    anchor_link_patterns = [
-        '<a href="#',
-        '[text](#',
-        'href="#section',
-        'href="#getting',
-        'href="#introduction'
-    ]
-    
-    clickable_links_found = sum(1 for pattern in anchor_link_patterns if pattern in content)
-    if clickable_links_found > 0:
-        print_success(f"Clickable anchor links found: {clickable_links_found} patterns detected")
+    # Check for slugified IDs (hyphenated, lowercase)
+    slugified_ids = [hid for hid in heading_ids if '-' in hid and hid.islower()]
+    if slugified_ids:
+        print_info(f"Slugified IDs found: {slugified_ids}")
     else:
-        print_error("No clickable anchor links found in TOC")
+        print_info("No slugified IDs found")
     
-    # Check for heading IDs (anchor targets)
-    heading_id_patterns = [
-        'id="section',
-        'id="getting',
-        'id="introduction',
-        'id="understanding',
-        'id="benefits',
-        'id="best-practices'
-    ]
+    # Extract TOC links and their targets
+    toc_links = re.findall(r'<a href="#([^"]+)"[^>]*>([^<]+)</a>', content)
+    markdown_links = re.findall(r'\[([^\]]+)\]\(#([^)]+)\)', content)
     
-    heading_ids_found = sum(1 for pattern in heading_id_patterns if pattern in content)
-    if heading_ids_found > 0:
-        print_success(f"Heading IDs found: {heading_ids_found} anchor targets detected")
+    all_toc_links = toc_links + [(text, anchor) for text, anchor in markdown_links]
+    
+    if all_toc_links:
+        print_success(f"TOC links found: {len(all_toc_links)}")
+        for text, anchor in all_toc_links[:5]:  # Show first 5
+            print_info(f"  - '{text}' -> #{anchor}")
     else:
-        print_error("No heading IDs found for anchor targets")
+        print_error("No TOC links found")
     
-    # Check for TOC processing metadata
-    toc_processing_indicators = [
-        'toc_processing',
-        'anchor_links_generated',
-        'processed_at'
-    ]
+    # Verify TOC links point to existing heading IDs
+    valid_links = 0
+    broken_links = 0
     
-    processing_metadata = sum(1 for indicator in toc_processing_indicators if indicator in content)
-    if processing_metadata > 0:
-        print_info(f"TOC processing metadata found: {processing_metadata} indicators")
+    for text, anchor in all_toc_links:
+        if anchor in heading_ids:
+            valid_links += 1
+            print_success(f"Valid link: '{text}' -> #{anchor}")
+        else:
+            broken_links += 1
+            print_error(f"Broken link: '{text}' -> #{anchor} (target not found)")
     
-    # Overall assessment
+    # Check for improved matching (using actual IDs like section1, section2)
+    improved_matching = any(anchor in actual_id_patterns for _, anchor in all_toc_links)
+    
+    # Assessment criteria
     success_criteria = [
-        toc_found,
-        clickable_links_found > 0,
-        heading_ids_found > 0
+        len(actual_ids_found) >= 2,  # At least 2 actual heading IDs
+        len(all_toc_links) >= 3,     # At least 3 TOC links
+        valid_links > broken_links,   # More valid than broken links
+        improved_matching             # Uses actual IDs instead of slugified
     ]
     
     success_rate = sum(success_criteria) / len(success_criteria) * 100
     
-    if success_rate >= 66:
-        print_success(f"TOC links analysis PASSED - {success_rate:.1f}% success rate")
+    print_info(f"ID Matching Analysis Results:")
+    print_info(f"  - Actual heading IDs: {len(actual_ids_found)}")
+    print_info(f"  - TOC links: {len(all_toc_links)}")
+    print_info(f"  - Valid links: {valid_links}")
+    print_info(f"  - Broken links: {broken_links}")
+    print_info(f"  - Uses improved matching: {improved_matching}")
+    
+    if success_rate >= 75:
+        print_success(f"ID matching improvement VERIFIED - {success_rate:.1f}% success rate")
         return True
     else:
-        print_error(f"TOC links analysis FAILED - {success_rate:.1f}% success rate")
+        print_error(f"ID matching improvement FAILED - {success_rate:.1f}% success rate")
         return False
 
 async def test_content_library_updates():

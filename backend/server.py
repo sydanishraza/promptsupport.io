@@ -29617,9 +29617,15 @@ async def get_engine_status():
             "evidence_paragraph_tagging",
             "block_id_attribution",
             "fidelity_enforcement",
-            "source_traceability"
+            "source_traceability",
+            "code_block_normalization",
+            "prism_integration",
+            "syntax_highlighting_ready",
+            "language_detection",
+            "code_beautification",
+            "copy_to_clipboard_ready"
         ],
-        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, Woolf-aligned style processing, content library related links generation, intelligent gap filling with in-corpus retrieval, evidence tagging for fidelity enforcement, and human-in-the-loop review systems"
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, Woolf-aligned style processing, content library related links generation, intelligent gap filling with in-corpus retrieval, evidence tagging for fidelity enforcement, code normalization for Prism rendering, and human-in-the-loop review systems"
     }
 
 @app.get("/api/validation/diagnostics")

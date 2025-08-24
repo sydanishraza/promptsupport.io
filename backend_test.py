@@ -35,510 +35,420 @@ def print_info(message):
 def test_v2_style_diagnostics():
     """Test 1: V2 Style Processing Diagnostic Check"""
     print_test_header("V2 Style Processing Diagnostic Check")
-            
-            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                
-                # Check V2 Engine is active
-                engine = diagnostics_data.get('engine')
-                system_status = diagnostics_data.get('code_normalization_system_status')
-                
-                if engine == 'v2' and system_status == 'active':
-                    self.log_test("V2 Engine Active with Code Normalization", True, f"Engine: {engine}, Status: {system_status}")
-                    
-                    # Check required features
-                    capabilities = diagnostics_data.get('system_capabilities', {})
-                    required_features = [
-                        'supported_languages',
-                        'beautification_features', 
-                        'prism_integration',
-                        'language_detection'
-                    ]
-                    
-                    missing_features = []
-                    for feature in required_features:
-                        if feature not in capabilities:
-                            missing_features.append(feature)
-                    
-                    if not missing_features:
-                        self.log_test("All Required Features Operational", True, f"Features: {list(capabilities.keys())}")
-                        return True
-                    else:
-                        self.log_test("All Required Features Operational", False, f"Missing: {missing_features}")
-                        return False
-                else:
-                    self.log_test("V2 Engine Active with Code Normalization", False, f"Engine: {engine}, Status: {system_status}")
-                    return False
-            else:
-                self.log_test("Code Normalization Health Check", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Code Normalization Health Check", False, f"Exception: {str(e)}")
-            return False
     
-    def test_language_detection_and_prism_mapping(self):
-        """Test 2: Language Detection and Prism Class Mapping - Test 26+ supported languages"""
-        try:
-            print("\n🔍 TESTING: Language Detection and Prism Class Mapping")
-            
-            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                capabilities = diagnostics_data.get('system_capabilities', {})
-                
-                # Check supported languages (26+ requirement)
-                supported_languages = capabilities.get('supported_languages', [])
-                expected_languages = [
-                    'bash', 'json', 'yaml', 'xml', 'sql', 'javascript', 'python',
-                    'java', 'csharp', 'cpp', 'php', 'ruby', 'go', 'rust', 'typescript',
-                    'css', 'html', 'markdown', 'graphql', 'curl', 'http'
-                ]
-                
-                found_languages = 0
-                for lang in expected_languages:
-                    if lang in supported_languages:
-                        found_languages += 1
-                
-                if len(supported_languages) >= 26 and found_languages >= 15:
-                    self.log_test("26+ Supported Languages", True, f"Total: {len(supported_languages)}, Key languages: {found_languages}/{len(expected_languages)}")
-                else:
-                    self.log_test("26+ Supported Languages", False, f"Total: {len(supported_languages)}, Key languages: {found_languages}/{len(expected_languages)}")
-                    return False
-                
-                # Check language detection methods
-                language_detection = capabilities.get('language_detection')
-                if language_detection:
-                    self.log_test("Language Detection Methods", True, f"Detection: {language_detection}")
-                else:
-                    self.log_test("Language Detection Methods", False, "No language detection info")
-                    return False
-                
-                # Verify actual language detection in practice
-                recent_results = diagnostics_data.get('recent_code_results', [])
-                if recent_results:
-                    first_result = recent_results[0]
-                    summary = diagnostics_data.get('code_normalization_summary', {})
-                    language_dist = summary.get('language_distribution', {})
-                    
-                    if language_dist:
-                        detected_langs = list(language_dist.keys())
-                        self.log_test("Language Detection in Practice", True, f"Languages detected: {detected_langs}")
-                        return True
-                    else:
-                        self.log_test("Language Detection in Practice", False, "No languages detected in recent processing")
-                        return False
-                else:
-                    self.log_test("Language Detection in Practice", False, "No recent processing results")
-                    return False
-            else:
-                self.log_test("Language Detection and Prism Mapping", False, f"HTTP {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Language Detection and Prism Mapping", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_beautification_engine(self):
-        """Test 3: Beautification Engine - Verify JSON, YAML, XML, SQL, curl formatting"""
-        try:
-            print("\n🎨 TESTING: Beautification Engine")
-            
-            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                capabilities = diagnostics_data.get('system_capabilities', {})
-                
-                # Check beautification features
-                beautification_features = capabilities.get('beautification_features', [])
-                expected_features = [
-                    'JSON pretty-print',
-                    'YAML formatting', 
-                    'XML pretty-print',
-                    'SQL formatting',
-                    'Curl line breaks'
-                ]
-                
-                found_features = 0
-                for feature in expected_features:
-                    if feature in beautification_features:
-                        found_features += 1
-                
-                if found_features >= 4:  # At least 4 of 5 beautification features
-                    self.log_test("Beautification Features Available", True, f"Found {found_features}/{len(expected_features)} features")
-                else:
-                    self.log_test("Beautification Features Available", False, f"Only {found_features}/{len(expected_features)} features")
-                    return False
-                
-                # Check actual beautification in recent processing
-                summary = diagnostics_data.get('code_normalization_summary', {})
-                normalized_blocks = summary.get('total_normalized_blocks', 0)
-                normalization_rate = summary.get('overall_normalization_rate', 0)
-                
-                if normalized_blocks > 0 and normalization_rate > 0:
-                    self.log_test("Beautification Applied in Practice", True, f"Normalized {normalized_blocks} blocks at {normalization_rate}% rate")
-                    return True
-                else:
-                    self.log_test("Beautification Applied in Practice", False, f"No beautification applied: {normalized_blocks} blocks, {normalization_rate}% rate")
-                    return False
-            else:
-                self.log_test("Beautification Engine", False, f"HTTP {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Beautification Engine", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_prism_ready_html_generation(self):
-        """Test 4: Prism-Ready HTML Generation - Verify proper figure structure with code-toolbar, line-numbers"""
-        try:
-            print("\n🏗️ TESTING: Prism-Ready HTML Generation")
-            
-            # Get articles with code blocks to verify HTML structure
-            response = requests.get(f"{self.backend_url}/content-library?limit=20")
-            
-            if response.status_code == 200:
-                articles_data = response.json()
-                articles = articles_data.get('articles', [])
-                
-                # Find articles with Prism-ready code blocks
-                prism_ready_articles = []
-                for article in articles:
-                    content = article.get('content', '')
-                    title = article.get('title', '')
-                    
-                    # Check for Prism-ready structure
-                    if 'figure class="code-block"' in content:
-                        prism_checks = {
-                            'figure_wrapper': 'figure class="code-block"' in content,
-                            'pre_line_numbers': 'pre class="line-numbers"' in content,
-                            'code_language_class': 'code class="language-' in content,
-                            'code_toolbar': 'code-toolbar' in content,
-                            'safe_html_escaping': any(char in content for char in ['&lt;', '&gt;', '&amp;', '&quot;'])
-                        }
-                        
-                        passed_checks = sum(prism_checks.values())
-                        if passed_checks >= 4:  # At least 4 of 5 structure elements
-                            prism_ready_articles.append({
-                                'title': title,
-                                'checks': prism_checks,
-                                'passed': passed_checks
-                            })
-                
-                if prism_ready_articles:
-                    best_article = max(prism_ready_articles, key=lambda x: x['passed'])
-                    self.log_test("Prism-Ready HTML Structure Found", True, f"Article: '{best_article['title']}' has {best_article['passed']}/5 Prism elements")
-                    
-                    # Verify specific structure elements
-                    checks = best_article['checks']
-                    if checks['figure_wrapper']:
-                        self.log_test("Figure Wrapper with code-block class", True, "Complete figure wrapper found")
-                    if checks['pre_line_numbers']:
-                        self.log_test("Pre element with line-numbers class", True, "Line numbers class confirmed")
-                    if checks['code_language_class']:
-                        self.log_test("Code element with language classes", True, "Language classes for syntax highlighting")
-                    if checks['code_toolbar']:
-                        self.log_test("Code-toolbar div for Prism integration", True, "Toolbar div for copy button")
-                    if checks['safe_html_escaping']:
-                        self.log_test("Safe HTML escaping implemented", True, "HTML content properly escaped")
-                    
-                    return True
-                else:
-                    self.log_test("Prism-Ready HTML Structure Found", False, "No articles with proper Prism structure found")
-                    return False
-            else:
-                self.log_test("Prism-Ready HTML Generation", False, f"HTTP {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Prism-Ready HTML Generation", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_processing_pipeline_integration(self):
-        """Test 5: Processing Pipeline Integration - Verify Step 7.9 integration between Gap Filling and Validation"""
-        try:
-            print("\n🔗 TESTING: Processing Pipeline Integration (Step 7.9)")
-            
-            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                
-                # Check integration in all 3 processing pipelines
-                recent_results = diagnostics_data.get('recent_code_results', [])
-                if recent_results:
-                    first_result = recent_results[0]
-                    
-                    # Check pipeline integration indicators
-                    pipeline_indicators = {
-                        'run_id_present': 'run_id' in first_result,
-                        'status_tracking': 'code_normalization_status' in first_result,
-                        'timestamp_tracking': 'timestamp' in first_result,
-                        'article_processing': 'articles_processed' in first_result
-                    }
-                    
-                    passed_indicators = sum(pipeline_indicators.values())
-                    
-                    if passed_indicators >= 3:
-                        self.log_test("Pipeline Integration Indicators", True, f"Found {passed_indicators}/4 integration indicators")
-                    else:
-                        self.log_test("Pipeline Integration Indicators", False, f"Only {passed_indicators}/4 integration indicators")
-                        return False
-                    
-                    # Check database storage working
-                    summary = diagnostics_data.get('code_normalization_summary', {})
-                    total_runs = summary.get('total_code_runs', 0)
-                    
-                    if total_runs > 0:
-                        self.log_test("Database Storage Working", True, f"Found {total_runs} processing runs")
-                    else:
-                        self.log_test("Database Storage Working", False, "No processing runs in database")
-                        return False
-                    
-                    # Check comprehensive error handling
-                    success_rate = summary.get('success_rate', 0)
-                    if success_rate >= 0:  # Should be a valid percentage
-                        self.log_test("Error Handling and Status Tracking", True, f"Success rate: {success_rate}%")
-                        return True
-                    else:
-                        self.log_test("Error Handling and Status Tracking", False, "Invalid success rate")
-                        return False
-                else:
-                    self.log_test("Processing Pipeline Integration", False, "No recent processing results found")
-                    return False
-            else:
-                self.log_test("Processing Pipeline Integration", False, f"HTTP {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Processing Pipeline Integration", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_diagnostic_endpoints(self):
-        """Test 6: Diagnostic Endpoints - Test GET /api/code-normalization/diagnostics and specific ID endpoints"""
-        try:
-            print("\n📊 TESTING: Diagnostic Endpoints")
-            
-            # Test main diagnostics endpoint
-            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                
-                # Check main diagnostics structure
-                required_sections = [
-                    'code_normalization_system_status',
-                    'engine',
-                    'code_normalization_summary',
-                    'system_capabilities'
-                ]
-                
-                missing_sections = []
-                for section in required_sections:
-                    if section not in diagnostics_data:
-                        missing_sections.append(section)
-                
-                if not missing_sections:
-                    self.log_test("GET /api/code-normalization/diagnostics", True, f"All sections present: {required_sections}")
-                else:
-                    self.log_test("GET /api/code-normalization/diagnostics", False, f"Missing sections: {missing_sections}")
-                    return False
-                
-                # Test specific result endpoint if available
-                recent_results = diagnostics_data.get('recent_code_results', [])
-                if recent_results:
-                    code_id = recent_results[0].get('code_normalization_id')
-                    if code_id:
-                        specific_response = requests.get(f"{self.backend_url}/code-normalization/diagnostics/{code_id}")
-                        
-                        if specific_response.status_code == 200:
-                            specific_data = specific_response.json()
-                            
-                            # Check specific endpoint structure
-                            required_fields = ['engine', 'code_normalization_result', 'analysis']
-                            missing_fields = []
-                            for field in required_fields:
-                                if field not in specific_data:
-                                    missing_fields.append(field)
-                            
-                            if not missing_fields:
-                                self.log_test("GET /api/code-normalization/diagnostics/{id}", True, f"All fields present: {required_fields}")
-                                return True
-                            else:
-                                self.log_test("GET /api/code-normalization/diagnostics/{id}", False, f"Missing fields: {missing_fields}")
-                                return False
-                        else:
-                            self.log_test("GET /api/code-normalization/diagnostics/{id}", False, f"HTTP {specific_response.status_code}")
-                            return False
-                    else:
-                        self.log_test("Specific Endpoint Test", False, "No code normalization ID found")
-                        return False
-                else:
-                    self.log_test("Specific Endpoint Test", False, "No recent results for specific endpoint test")
-                    return False
-            else:
-                self.log_test("Diagnostic Endpoints", False, f"HTTP {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Diagnostic Endpoints", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_database_storage(self):
-        """Test 7: Database Storage - Verify code normalization results stored in v2_code_normalization_results collection"""
-        try:
-            print("\n💾 TESTING: Database Storage")
-            
-            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                
-                # Check database storage verification
-                recent_results = diagnostics_data.get('recent_code_results', [])
-                
-                if recent_results:
-                    self.log_test("Database Storage Verification", True, f"Found {len(recent_results)} stored results")
-                    
-                    # Check result structure for proper data preservation
-                    first_result = recent_results[0]
-                    required_fields = [
-                        'code_normalization_id',
-                        'run_id',
-                        'code_normalization_status',
-                        'timestamp'
-                    ]
-                    
-                    missing_fields = []
-                    for field in required_fields:
-                        if field not in first_result:
-                            missing_fields.append(field)
-                    
-                    if not missing_fields:
-                        self.log_test("Database Result Structure", True, f"All required fields present: {required_fields}")
-                    else:
-                        self.log_test("Database Result Structure", False, f"Missing fields: {missing_fields}")
-                        return False
-                    
-                    # Check language distribution tracking
-                    summary = diagnostics_data.get('code_normalization_summary', {})
-                    language_dist = summary.get('language_distribution', {})
-                    
-                    if language_dist:
-                        self.log_test("Language Distribution Tracking", True, f"Languages tracked: {list(language_dist.keys())}")
-                    else:
-                        self.log_test("Language Distribution Tracking", False, "No language distribution tracking")
-                        return False
-                    
-                    # Check beautification statistics
-                    normalized_blocks = summary.get('total_normalized_blocks', 0)
-                    if normalized_blocks >= 0:
-                        self.log_test("Beautification Statistics Maintained", True, f"Statistics: {normalized_blocks} blocks normalized")
-                        return True
-                    else:
-                        self.log_test("Beautification Statistics Maintained", False, "No beautification statistics")
-                        return False
-                else:
-                    self.log_test("Database Storage Verification", False, "No stored results found")
-                    return False
-            else:
-                self.log_test("Database Storage", False, f"HTTP {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Database Storage", False, f"Exception: {str(e)}")
-            return False
-    
-    def run_comprehensive_tests(self):
-        """Run all V2 Engine Code Normalization System tests"""
-        print("🚀 STARTING V2 ENGINE CODE NORMALIZATION SYSTEM COMPREHENSIVE TESTING")
-        print("=" * 80)
+    try:
+        # Test GET /api/style/diagnostics
+        response = requests.get(f"{BACKEND_URL}/style/diagnostics", timeout=30)
+        print_info(f"GET /api/style/diagnostics - Status: {response.status_code}")
         
-        # Test sequence based on review requirements
-        test_sequence = [
-            ("Code Normalization System Health Check", self.test_code_normalization_health_check),
-            ("Language Detection and Prism Class Mapping", self.test_language_detection_and_prism_mapping),
-            ("Beautification Engine", self.test_beautification_engine),
-            ("Prism-Ready HTML Generation", self.test_prism_ready_html_generation),
-            ("Processing Pipeline Integration (Step 7.9)", self.test_processing_pipeline_integration),
-            ("Diagnostic Endpoints", self.test_diagnostic_endpoints),
-            ("Database Storage", self.test_database_storage)
+        if response.status_code == 200:
+            data = response.json()
+            print_success("V2 Style diagnostics endpoint accessible")
+            
+            # Check if V2StyleProcessor is running
+            system_status = data.get('system_status', 'unknown')
+            engine = data.get('engine', 'unknown')
+            print_info(f"System Status: {system_status}")
+            print_info(f"Engine: {engine}")
+            
+            # Check recent style results
+            recent_results = data.get('recent_results', [])
+            print_info(f"Recent style processing runs: {len(recent_results)}")
+            
+            if recent_results:
+                latest_result = recent_results[0]
+                print_info(f"Latest run ID: {latest_result.get('style_id', 'N/A')}")
+                print_info(f"Latest run status: {latest_result.get('style_status', 'N/A')}")
+                print_info(f"Latest run timestamp: {latest_result.get('timestamp', 'N/A')}")
+                
+                # Check for anchor-related metadata
+                if 'anchor_links_generated' in latest_result:
+                    print_success(f"Anchor links generated: {latest_result['anchor_links_generated']}")
+                else:
+                    print_error("No anchor_links_generated field found in latest result")
+                
+                if 'toc_broken_links' in latest_result:
+                    broken_links = latest_result['toc_broken_links']
+                    if isinstance(broken_links, list):
+                        print_info(f"TOC broken links count: {len(broken_links)}")
+                        if broken_links:
+                            print_error(f"Found broken TOC links: {broken_links}")
+                        else:
+                            print_success("No broken TOC links detected")
+                    else:
+                        print_info(f"TOC broken links: {broken_links}")
+                
+                return latest_result.get('style_id')
+            else:
+                print_error("No recent style processing results found")
+                return None
+        else:
+            print_error(f"Failed to access style diagnostics: {response.status_code}")
+            print_error(f"Response: {response.text}")
+            return None
+            
+    except Exception as e:
+        print_error(f"Error testing style diagnostics: {e}")
+        return None
+
+def test_specific_style_result(style_id):
+    """Test 2: Specific Style Result Analysis"""
+    if not style_id:
+        print_error("No style ID provided for specific analysis")
+        return None
+        
+    print_test_header(f"Specific Style Result Analysis - ID: {style_id}")
+    
+    try:
+        # Test GET /api/style/diagnostics/{style_id}
+        response = requests.get(f"{BACKEND_URL}/style/diagnostics/{style_id}", timeout=30)
+        print_info(f"GET /api/style/diagnostics/{style_id} - Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print_success("Specific style result accessible")
+            
+            # Check style result details
+            style_result = data.get('style_result', {})
+            analysis = data.get('analysis', {})
+            
+            print_info(f"Article title: {style_result.get('article_title', 'N/A')}")
+            print_info(f"Style status: {style_result.get('style_status', 'N/A')}")
+            
+            # Check for clickable anchor processing
+            if 'anchor_links_generated' in style_result:
+                anchor_count = style_result['anchor_links_generated']
+                print_success(f"Anchor links generated: {anchor_count}")
+                
+                if anchor_count > 0:
+                    print_success("✓ Clickable anchors are being generated")
+                else:
+                    print_error("✗ No anchor links generated")
+            
+            # Check TOC broken links
+            if 'toc_broken_links' in style_result:
+                broken_links = style_result['toc_broken_links']
+                if isinstance(broken_links, list) and len(broken_links) == 0:
+                    print_success("✓ No broken TOC links")
+                elif isinstance(broken_links, list) and len(broken_links) > 0:
+                    print_error(f"✗ Found {len(broken_links)} broken TOC links:")
+                    for link in broken_links:
+                        print_error(f"  - {link}")
+                else:
+                    print_info(f"TOC broken links: {broken_links}")
+            
+            # Check structural compliance
+            if 'structural_compliance' in analysis:
+                compliance = analysis['structural_compliance']
+                print_info(f"Structural compliance score: {compliance.get('compliance_score', 'N/A')}")
+                
+                if 'has_mini_toc' in compliance:
+                    has_toc = compliance['has_mini_toc']
+                    print_success(f"✓ Has Mini-TOC: {has_toc}") if has_toc else print_error(f"✗ No Mini-TOC: {has_toc}")
+                
+                if 'toc_anchor_count' in compliance:
+                    toc_count = compliance['toc_anchor_count']
+                    print_success(f"✓ TOC anchor count: {toc_count}") if toc_count > 0 else print_error(f"✗ No TOC anchors: {toc_count}")
+            
+            return style_result
+        else:
+            print_error(f"Failed to access specific style result: {response.status_code}")
+            print_error(f"Response: {response.text}")
+            return None
+            
+    except Exception as e:
+        print_error(f"Error testing specific style result: {e}")
+        return None
+
+def test_content_library_search():
+    """Test 3: Content Library Search for Target Article"""
+    print_test_header("Content Library Search - Code Normalization Article")
+    
+    try:
+        # Search for the specific article mentioned in the review
+        response = requests.get(f"{BACKEND_URL}/content-library", timeout=30)
+        print_info(f"GET /api/content-library - Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            articles = data.get('articles', [])
+            print_success(f"Content library accessible - {len(articles)} articles found")
+            
+            # Look for the specific article
+            target_article = None
+            for article in articles:
+                title = article.get('title', '').lower()
+                if 'code normalization' in title and 'javascript' in title:
+                    target_article = article
+                    break
+            
+            if target_article:
+                print_success(f"✓ Found target article: {target_article['title']}")
+                print_info(f"Article ID: {target_article.get('id', 'N/A')}")
+                print_info(f"Article status: {target_article.get('status', 'N/A')}")
+                return target_article
+            else:
+                print_error("✗ Target article 'Code Normalization in JavaScript: A Practical Example' not found")
+                
+                # Show available articles for debugging
+                print_info("Available articles:")
+                for i, article in enumerate(articles[:10]):  # Show first 10
+                    print_info(f"  {i+1}. {article.get('title', 'Untitled')}")
+                
+                return None
+        else:
+            print_error(f"Failed to access content library: {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print_error(f"Error searching content library: {e}")
+        return None
+
+def analyze_article_content(article):
+    """Test 4: Analyze Article Content Structure"""
+    if not article:
+        print_error("No article provided for content analysis")
+        return
+        
+    print_test_header(f"Article Content Analysis - {article.get('title', 'Unknown')}")
+    
+    try:
+        content = article.get('content', '') or article.get('html', '')
+        if not content:
+            print_error("No content found in article")
+            return
+        
+        print_info(f"Content length: {len(content)} characters")
+        
+        # Parse HTML content
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Check for Mini-TOC structure
+        print_info("\n🔍 Mini-TOC Analysis:")
+        
+        # Look for TOC patterns
+        toc_patterns = [
+            soup.find_all('ul', class_='toc-list'),
+            soup.find_all('ul', class_='mini-toc'),
+            soup.find_all('div', class_='toc'),
+            soup.find_all('ul')[:3]  # Check first few ul elements
         ]
         
-        for test_name, test_function in test_sequence:
-            try:
-                print(f"\n{'='*60}")
-                print(f"🧪 RUNNING: {test_name}")
-                print(f"{'='*60}")
-                
-                success = test_function()
-                
-                if not success:
-                    print(f"⚠️ Test '{test_name}' failed - continuing with remaining tests")
-                    
-            except Exception as e:
-                print(f"❌ CRITICAL ERROR in {test_name}: {str(e)}")
-                self.log_test(test_name, False, f"Critical error: {str(e)}")
+        toc_found = False
+        for pattern_group in toc_patterns:
+            for toc_element in pattern_group:
+                if toc_element:
+                    toc_items = toc_element.find_all('li')
+                    if len(toc_items) >= 3:  # Likely a TOC if it has multiple items
+                        print_success(f"✓ Found potential Mini-TOC with {len(toc_items)} items")
+                        toc_found = True
+                        
+                        # Analyze TOC items for clickable links
+                        clickable_count = 0
+                        for i, item in enumerate(toc_items):
+                            item_text = item.get_text().strip()
+                            links = item.find_all('a')
+                            
+                            print_info(f"  TOC Item {i+1}: {item_text[:50]}...")
+                            
+                            if links:
+                                for link in links:
+                                    href = link.get('href', '')
+                                    if href.startswith('#'):
+                                        print_success(f"    ✓ Clickable anchor link: {href}")
+                                        clickable_count += 1
+                                    else:
+                                        print_info(f"    - Non-anchor link: {href}")
+                            else:
+                                print_error(f"    ✗ No clickable links found")
+                        
+                        print_info(f"Total clickable TOC links: {clickable_count}/{len(toc_items)}")
+                        break
+            if toc_found:
+                break
         
-        # Print final summary
-        self.print_test_summary()
+        if not toc_found:
+            print_error("✗ No Mini-TOC structure found")
+            
+            # Look for markdown-style TOC links in raw content
+            markdown_toc_pattern = r'\[([^\]]+)\]\(#([^)]+)\)'
+            markdown_matches = re.findall(markdown_toc_pattern, content)
+            if markdown_matches:
+                print_success(f"✓ Found {len(markdown_matches)} markdown-style TOC links:")
+                for text, anchor in markdown_matches:
+                    print_info(f"  - [{text}](#{anchor})")
+            else:
+                print_error("✗ No markdown-style TOC links found either")
         
-        return self.test_results
+        # Check for heading IDs
+        print_info("\n🔍 Heading ID Analysis:")
+        headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        print_info(f"Total headings found: {len(headings)}")
+        
+        headings_with_ids = 0
+        for i, heading in enumerate(headings):
+            heading_id = heading.get('id', '')
+            heading_text = heading.get_text().strip()
+            
+            if heading_id:
+                print_success(f"  ✓ {heading.name.upper()}: '{heading_text[:40]}...' ID='{heading_id}'")
+                headings_with_ids += 1
+            else:
+                print_error(f"  ✗ {heading.name.upper()}: '{heading_text[:40]}...' (No ID)")
+        
+        print_info(f"Headings with IDs: {headings_with_ids}/{len(headings)}")
+        
+        # Show raw content sample for debugging
+        print_info("\n🔍 Raw Content Sample (first 1000 chars):")
+        print_info(content[:1000])
+        
+        if len(content) > 1000:
+            print_info("... (content truncated)")
+        
+        return {
+            'toc_found': toc_found,
+            'headings_total': len(headings),
+            'headings_with_ids': headings_with_ids,
+            'content_length': len(content)
+        }
+        
+    except Exception as e:
+        print_error(f"Error analyzing article content: {e}")
+        return None
+
+def test_v2_processing_pipeline():
+    """Test 5: V2 Processing Pipeline Status"""
+    print_test_header("V2 Processing Pipeline Status")
     
-    def print_test_summary(self):
-        """Print comprehensive test summary"""
-        print("\n" + "="*80)
-        print("🎯 V2 ENGINE CODE NORMALIZATION SYSTEM TESTING SUMMARY")
-        print("="*80)
+    try:
+        # Check V2 engine status
+        response = requests.get(f"{BACKEND_URL}/engine", timeout=30)
+        print_info(f"GET /api/engine - Status: {response.status_code}")
         
-        total = self.test_results["total_tests"]
-        passed = self.test_results["passed_tests"]
-        failed = self.test_results["failed_tests"]
-        success_rate = (passed / total * 100) if total > 0 else 0
-        
-        print(f"📊 OVERALL RESULTS:")
-        print(f"   Total Tests: {total}")
-        print(f"   Passed: {passed} ✅")
-        print(f"   Failed: {failed} ❌")
-        print(f"   Success Rate: {success_rate:.1f}%")
-        
-        if success_rate >= 80:
-            print(f"🎉 EXCELLENT: Code Normalization System is working well!")
-        elif success_rate >= 60:
-            print(f"⚠️ GOOD: Code Normalization System is mostly functional with some issues")
+        if response.status_code == 200:
+            data = response.json()
+            engine_status = data.get('status', 'unknown')
+            engine_version = data.get('engine', 'unknown')
+            
+            print_info(f"Engine status: {engine_status}")
+            print_info(f"Engine version: {engine_version}")
+            
+            # Check for V2-specific features
+            features = data.get('features', {})
+            v2_features = [
+                'woolf_style_processing',
+                'structural_linting',
+                'microsoft_style_guide',
+                'technical_writing_standards'
+            ]
+            
+            print_info("\n🔍 V2 Style Processing Features:")
+            for feature in v2_features:
+                if feature in features:
+                    print_success(f"  ✓ {feature}: {features[feature]}")
+                else:
+                    print_error(f"  ✗ {feature}: Not found")
+            
+            # Check for style diagnostics endpoint
+            endpoints = data.get('endpoints', {})
+            if 'style_diagnostics' in endpoints:
+                print_success(f"  ✓ style_diagnostics endpoint: {endpoints['style_diagnostics']}")
+            else:
+                print_error("  ✗ style_diagnostics endpoint not found")
+            
+            return True
         else:
-            print(f"❌ NEEDS ATTENTION: Code Normalization System has significant issues")
-        
-        # Print failed tests details
-        if failed > 0:
-            print(f"\n❌ FAILED TESTS DETAILS:")
-            for test in self.test_results["test_details"]:
-                if test["status"] == "failed":
-                    print(f"   • {test['test_name']}: {test['details']}")
-        
-        print("\n" + "="*80)
+            print_error(f"Failed to access engine status: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print_error(f"Error testing V2 processing pipeline: {e}")
+        return False
 
 def main():
-    """Main testing function"""
-    print("🎨 V2 ENGINE CODE NORMALIZATION SYSTEM COMPREHENSIVE TESTING")
-    print("Testing V2 Engine Code Normalization System to verify Prism-ready HTML generation")
+    """Main test execution"""
+    print("🚀 Starting Mini-TOC Linking Issue Debug Tests")
     print(f"Backend URL: {BACKEND_URL}")
-    print("="*80)
+    print(f"Test started at: {datetime.now().isoformat()}")
     
-    tester = V2CodeNormalizationTester()
-    results = tester.run_comprehensive_tests()
+    # Test results tracking
+    results = {
+        'v2_diagnostics': False,
+        'style_processing': False,
+        'content_found': False,
+        'toc_analysis': False,
+        'pipeline_status': False
+    }
     
-    # Return appropriate exit code
-    if results["failed_tests"] == 0:
-        print("✅ ALL TESTS PASSED - Code Normalization System is fully operational!")
-        sys.exit(0)
+    # Test 1: V2 Style Processing Diagnostics
+    style_id = test_v2_style_diagnostics()
+    results['v2_diagnostics'] = style_id is not None
+    
+    # Test 2: Specific Style Result Analysis
+    if style_id:
+        style_result = test_specific_style_result(style_id)
+        results['style_processing'] = style_result is not None
+    
+    # Test 3: Content Library Search
+    target_article = test_content_library_search()
+    results['content_found'] = target_article is not None
+    
+    # Test 4: Article Content Analysis
+    if target_article:
+        content_analysis = analyze_article_content(target_article)
+        results['toc_analysis'] = content_analysis is not None
+    
+    # Test 5: V2 Processing Pipeline Status
+    pipeline_ok = test_v2_processing_pipeline()
+    results['pipeline_status'] = pipeline_ok
+    
+    # Final Summary
+    print_test_header("MINI-TOC LINKING DEBUG SUMMARY")
+    
+    total_tests = len(results)
+    passed_tests = sum(1 for result in results.values() if result)
+    
+    print_info(f"Tests completed: {passed_tests}/{total_tests}")
+    
+    for test_name, passed in results.items():
+        if passed:
+            print_success(f"✓ {test_name}")
+        else:
+            print_error(f"✗ {test_name}")
+    
+    # Diagnostic conclusions
+    print_info("\n🔍 DIAGNOSTIC CONCLUSIONS:")
+    
+    if results['v2_diagnostics'] and results['style_processing']:
+        print_success("✓ V2StyleProcessor is operational and processing content")
     else:
-        print(f"❌ {results['failed_tests']} TESTS FAILED - Code Normalization System needs attention")
-        sys.exit(1)
+        print_error("✗ V2StyleProcessor may not be working correctly")
+    
+    if results['content_found'] and results['toc_analysis']:
+        print_success("✓ Target article found and analyzed")
+    else:
+        print_error("✗ Could not analyze target article content")
+    
+    if results['pipeline_status']:
+        print_success("✓ V2 processing pipeline is active")
+    else:
+        print_error("✗ V2 processing pipeline issues detected")
+    
+    print_info(f"\nTest completed at: {datetime.now().isoformat()}")
+    
+    # Return success rate for automation
+    success_rate = (passed_tests / total_tests) * 100
+    print_info(f"Overall success rate: {success_rate:.1f}%")
+    
+    return success_rate >= 60  # Consider 60%+ as acceptable for debugging
 
 if __name__ == "__main__":
-    main()
+    try:
+        success = main()
+        sys.exit(0 if success else 1)
+    except KeyboardInterrupt:
+        print_error("\nTest interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print_error(f"Unexpected error: {e}")
+        sys.exit(1)

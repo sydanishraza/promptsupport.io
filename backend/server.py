@@ -28799,9 +28799,13 @@ async def get_engine_status():
             "in_corpus_retrieval",
             "pattern_synthesis",
             "missing_content_detection",
-            "safe_content_patching"
+            "safe_content_patching",
+            "evidence_paragraph_tagging",
+            "block_id_attribution",
+            "fidelity_enforcement",
+            "source_traceability"
         ],
-        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, Woolf-aligned style processing, content library related links generation, intelligent gap filling with in-corpus retrieval, and human-in-the-loop review systems"
+        "message": "V2 Engine is active with comprehensive validation, cross-article QA, adaptive adjustment, V2-only publishing, version management, section-grounded prewrite pass, Woolf-aligned style processing, content library related links generation, intelligent gap filling with in-corpus retrieval, evidence tagging for fidelity enforcement, and human-in-the-loop review systems"
     }
 
 @app.get("/api/validation/diagnostics")

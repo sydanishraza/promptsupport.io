@@ -6965,7 +6965,7 @@ Return ONLY JSON in this exact format:
             print(f"❌ V2 VALIDATION: Error calculating average article length - {e}")
             return 0
     
-    def _consolidate_validation_results(self, fidelity_coverage: dict, placeholder: dict, style: dict, metrics: dict, run_id: str) -> dict:
+    def _consolidate_validation_results(self, fidelity_coverage: dict, placeholder: dict, style: dict, evidence: dict, metrics: dict, run_id: str) -> dict:
         """Consolidate all validation results into final validation decision"""
         try:
             # Extract key metrics
@@ -6973,15 +6973,17 @@ Return ONLY JSON in this exact format:
             coverage_percent = fidelity_coverage.get('coverage_percent', 0.0)
             placeholder_count = len(placeholder.get('placeholders', []))
             style_compliance = style.get('overall_compliance', 0.0)
+            evidence_tagging_rate = evidence.get('overall_tagging_rate', 0.0)
             
             # Apply quality thresholds
             fidelity_passed = fidelity_score >= self.quality_thresholds['fidelity_score']
             coverage_passed = coverage_percent >= self.quality_thresholds['coverage_percent']
             placeholder_passed = placeholder_count <= self.quality_thresholds['max_placeholders']
             style_passed = style_compliance >= 0.8  # 80% structural compliance required
+            evidence_passed = evidence.get('validation_passed', True)  # ≥95% evidence tagging required
             
             # Overall validation status
-            all_passed = all([fidelity_passed, coverage_passed, placeholder_passed, style_passed])
+            all_passed = all([fidelity_passed, coverage_passed, placeholder_passed, style_passed, evidence_passed])
             
             if all_passed:
                 validation_status = "passed"
@@ -6997,6 +6999,8 @@ Return ONLY JSON in this exact format:
                     failed_checks.append(f"placeholder_count ({placeholder_count} > {self.quality_thresholds['max_placeholders']})")
                 if not style_passed:
                     failed_checks.append(f"style_compliance ({style_compliance:.2f} < 0.8)")
+                if not evidence_passed:
+                    failed_checks.append(f"evidence_tagging ({evidence_tagging_rate:.1f}% < 95%)")
                 
                 status_message = f"Failed checks: {', '.join(failed_checks)}"
             
@@ -7013,6 +7017,7 @@ Return ONLY JSON in this exact format:
                 "fidelity_coverage": fidelity_coverage,
                 "placeholder_detection": placeholder,
                 "style_guard": style,
+                "evidence_tagging": evidence,
                 "validation_metrics": metrics,
                 
                 # Summary scores
@@ -7021,6 +7026,7 @@ Return ONLY JSON in this exact format:
                     "coverage_percent": coverage_percent,  
                     "placeholder_count": placeholder_count,
                     "style_compliance": style_compliance,
+                    "evidence_tagging_rate": evidence_tagging_rate,
                     "redundancy_score": metrics.get('redundancy_score', 0.0),
                     "granularity_alignment": metrics.get('granularity_alignment_score', 0.0),
                     "complexity_alignment": metrics.get('complexity_alignment_score', 0.0)
@@ -7031,12 +7037,13 @@ Return ONLY JSON in this exact format:
                     "fidelity_passed": fidelity_passed,
                     "coverage_passed": coverage_passed,
                     "placeholder_passed": placeholder_passed,
-                    "style_passed": style_passed
+                    "style_passed": style_passed,
+                    "evidence_passed": evidence_passed
                 },
                 
                 # Actionable diagnostics for failed runs
                 "diagnostics": self._generate_actionable_diagnostics(
-                    fidelity_coverage, placeholder, style, metrics, validation_status
+                    fidelity_coverage, placeholder, style, evidence, metrics, validation_status
                 )
             }
             

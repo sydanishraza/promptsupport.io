@@ -328,9 +328,8 @@ async def generate_enhanced_html_content(article_data: dict, template_data: dict
     """Generate HTML content for an article"""
     html_parts = []
     
-    # Add title
-    if article_data['title']:
-        html_parts.append(f"<h1>{article_data['title']}</h1>")
+    # Skip adding title as H1 - let frontend handle article title display
+    # Article title should be displayed by frontend components, not embedded in content
     
     # Process content blocks
     image_index = 0

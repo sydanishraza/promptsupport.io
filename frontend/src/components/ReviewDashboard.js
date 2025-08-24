@@ -538,10 +538,15 @@ const ArticlesTab = ({ run }) => {
                             {selectedArticle === article.id && (
                                 <div className="mt-4 border-t pt-4">
                                     <div className="max-h-96 overflow-y-auto bg-white p-4 border rounded">
-                                        <HTMLContent 
-                                            html={article.content || '<p>No content available</p>'}
-                                            className="prose prose-sm max-w-none"
-                                        />
+                                        <div className="prose prose-sm max-w-none">
+                                            <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">
+                                                {article.title}
+                                            </h1>
+                                            <HTMLContent 
+                                                html={article.content || '<p>No content available</p>'}
+                                                className=""
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}

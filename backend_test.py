@@ -85,9 +85,9 @@ async def test_enhanced_toc_processing():
         print_error(f"Error in enhanced TOC processing: {e}")
         return False, None
 
-async def test_target_article_verification():
-    """Test 2: Verify Target Article Updates - Check specific article for TOC links"""
-    print_test_header("Test 2: Target Article Verification")
+async def test_id_matching_improvement():
+    """Test 2: Verify ID Matching Improvement - Check actual heading IDs vs slugified IDs"""
+    print_test_header("Test 2: ID Matching Improvement Verification")
     
     try:
         async with aiohttp.ClientSession() as session:
@@ -112,10 +112,10 @@ async def test_target_article_verification():
                         print_success(f"Target article found: '{target_article['title']}'")
                         print_info(f"Article ID: {target_article.get('id', 'N/A')}")
                         
-                        # Analyze article content for TOC links
+                        # Analyze content for improved ID matching
                         content = target_article.get('content', target_article.get('html', ''))
                         if content:
-                            return await analyze_toc_links_in_content(content, target_article['title'])
+                            return await analyze_id_matching_improvement(content, target_article['title'])
                         else:
                             print_error("Article content is empty")
                             return False
@@ -130,7 +130,7 @@ async def test_target_article_verification():
                     return False
                     
     except Exception as e:
-        print_error(f"Error verifying target article: {e}")
+        print_error(f"Error verifying ID matching improvement: {e}")
         return False
 
 async def analyze_toc_links_in_content(content, article_title):

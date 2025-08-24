@@ -6271,7 +6271,7 @@ class V2CodeNormalizationSystem:
     
     def _create_prism_html(self, code_content: str, language: str, evidence_blocks: list, 
                           filename: str = None, caption: str = None) -> str:
-        """Create Prism-ready HTML markup for code blocks"""
+        """Create minimal Prism-ready HTML markup for code blocks"""
         try:
             import html
             
@@ -6286,34 +6286,31 @@ class V2CodeNormalizationSystem:
             if evidence_blocks:
                 evidence_comment = f'<!-- evidence: {json.dumps(evidence_blocks)} -->\n'
             
-            # Create language display name
+            # Create language display name for data-lang attribute
             display_lang = language.upper()
             
-            # Create filename attribute
-            filename_attr = f' data-filename="{filename}"' if filename else ''
+            # Build data attributes
+            data_attrs = []
+            data_attrs.append(f'data-lang="{display_lang}"')
+            data_attrs.append('data-start="1"')
+            if filename:
+                data_attrs.append(f'data-filename="{filename}"')
             
-            # Build the complete HTML structure
-            prism_html = f'''{evidence_comment}<figure class="code-block" data-lang="{display_lang}"{filename_attr}>
-  <div class="code-toolbar">
-    <span class="code-lang">{display_lang}</span>
-    <!-- Prism toolbar will inject copy button on the frontend -->
-  </div>
-  <pre class="line-numbers" data-start="1">
-    <code class="{prism_class}">{escaped_code}</code>
-  </pre>'''
+            # Build minimal HTML structure - just pre and code
+            prism_html = f'''{evidence_comment}<pre class="line-numbers" {' '.join(data_attrs)}>
+<code class="{prism_class}">{escaped_code}</code>
+</pre>'''
             
-            # Add caption if provided
+            # Add caption as separate paragraph if provided
             if caption:
-                prism_html += f'\n  <figcaption class="code-caption">{html.escape(caption)}</figcaption>'
-            
-            prism_html += '\n</figure>'
+                prism_html += f'\n<p class="code-caption"><em>{html.escape(caption)}</em></p>'
             
             return prism_html
             
         except Exception as e:
             print(f"❌ V2 CODE NORMALIZATION: Error creating Prism HTML - {e}")
             # Fallback to simple code block
-            return f'<pre><code class="language-{language}">{html.escape(code_content)}</code></pre>'
+            return f'<pre class="line-numbers" data-start="1"><code class="language-{language}">{html.escape(code_content)}</code></pre>'
 
 # Global V2 Code Normalization System instance
 v2_code_normalization_system = V2CodeNormalizationSystem()

@@ -26970,6 +26970,42 @@ File Information:
             
             print(f"✅ V2 ENGINE: Step 7 complete - Generated {len(chunks)} final articles from {file.filename} - engine=v2")
             
+            # V2 STEP 7.6: Evidence Tagging for file upload
+            print(f"🏷️ V2 ENGINE: Starting Step 7.6 - Evidence tagging for file upload - engine=v2")
+            
+            # Tag paragraphs with evidence block IDs using prewrite data
+            evidence_tagging_result = await v2_evidence_tagging_system.tag_content_with_evidence(
+                chunks, normalized_doc.blocks, prewrite_result, run_id
+            )
+            
+            evidence_tagging_status = evidence_tagging_result.get('evidence_tagging_status', 'unknown')
+            if evidence_tagging_status == 'success':
+                total_paragraphs = evidence_tagging_result.get('total_paragraphs', 0)
+                tagged_paragraphs = evidence_tagging_result.get('tagged_paragraphs', 0)
+                tagging_rate = evidence_tagging_result.get('overall_tagging_rate', 0)
+                target_achieved = evidence_tagging_result.get('target_achieved', False)
+                
+                print(f"✅ V2 ENGINE: Step 7.6 evidence tagging successful for file upload - {tagged_paragraphs}/{total_paragraphs} paragraphs tagged ({tagging_rate:.1f}%) - Target ≥95%: {'✅' if target_achieved else '⚠️'} - engine=v2")
+            else:
+                print(f"⚠️ V2 ENGINE: Step 7.6 evidence tagging failed for file upload - Status: {evidence_tagging_status} - engine=v2")
+            
+            # Store evidence tagging result for diagnostics
+            try:
+                await db.v2_evidence_tagging_results.insert_one(evidence_tagging_result)
+                print(f"💾 V2 ENGINE: Stored evidence tagging result for file upload diagnostics - evidence_tagging_id: {evidence_tagging_result.get('evidence_tagging_id')} - engine=v2")
+            except Exception as evidence_storage_error:
+                print(f"❌ V2 ENGINE: Error storing evidence tagging result for file upload - {evidence_storage_error} - engine=v2")
+            
+            # Add evidence tagging metadata to chunks
+            for i, chunk in enumerate(chunks):
+                evidence_result = next((r for r in evidence_tagging_result.get('evidence_tagging_results', []) if r.get('article_index') == i), None)
+                if evidence_result:
+                    chunk.setdefault('metadata', {})['evidence_tagging_result'] = evidence_result
+                    chunk['tagged_paragraphs'] = evidence_result.get('tagged_paragraphs', 0)
+                    chunk['tagging_rate'] = evidence_result.get('tagging_rate', 0)
+            
+            print(f"✅ V2 ENGINE: Step 7.6 complete for file upload - Evidence tagging complete - engine=v2")
+            
             # V2 STEP 7.5: Woolf-aligned Technical Writing Style + Structural Lint
             print(f"🔄 V2 ENGINE: Starting Step 7.5 - Woolf-aligned style formatting - engine=v2")
             

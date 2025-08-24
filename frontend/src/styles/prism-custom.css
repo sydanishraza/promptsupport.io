@@ -211,12 +211,12 @@ pre[class*="language-"].line-numbers {
     font-size: 10px;
     padding: 3px 6px;
     top: 4px;
-    right: 4px;
+    right: 60px;
   }
 
   .prism-toolbar {
     right: 4px !important;
-    top: 30px !important;
+    top: 4px !important;
   }
 
   .prism-toolbar button,

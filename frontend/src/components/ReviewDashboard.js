@@ -538,9 +538,9 @@ const ArticlesTab = ({ run }) => {
                             {selectedArticle === article.id && (
                                 <div className="mt-4 border-t pt-4">
                                     <div className="max-h-96 overflow-y-auto bg-white p-4 border rounded">
-                                        <div 
+                                        <HTMLContent 
+                                            html={article.content || '<p>No content available</p>'}
                                             className="prose prose-sm max-w-none"
-                                            dangerouslySetInnerHTML={{ __html: article.content || '<p>No content available</p>' }}
                                         />
                                     </div>
                                 </div>

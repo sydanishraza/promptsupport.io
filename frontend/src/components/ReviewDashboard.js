@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { HTMLContent } from './PrismCodeBlock';
 
 const ReviewDashboard = () => {
     const [runs, setRuns] = useState([]);

@@ -605,14 +605,17 @@ async def run_enhanced_toc_matching_test():
     
     # Overall assessment
     if success_rate >= 80:
-        print_success(f"🎉 MINI-TOC LINKS PROCESSING TEST SUITE PASSED - {success_rate:.1f}% SUCCESS RATE")
-        print_success("The Mini-TOC links processing endpoint is working correctly!")
+        print_success(f"🎉 ENHANCED TOC MATCHING FIX TEST SUITE PASSED - {success_rate:.1f}% SUCCESS RATE")
+        print_success("The enhanced TOC matching algorithm is working correctly!")
+        print_success("✅ TOC links now use actual heading IDs (section1, section2, etc.)")
+        print_success("✅ Improved similarity scoring is operational")
+        print_success("✅ Broken TOC links have been reduced")
     elif success_rate >= 60:
-        print_info(f"⚠️ MINI-TOC LINKS PROCESSING PARTIALLY WORKING - {success_rate:.1f}% SUCCESS RATE")
-        print_info("Some functionality is working, but improvements needed.")
+        print_info(f"⚠️ ENHANCED TOC MATCHING PARTIALLY WORKING - {success_rate:.1f}% SUCCESS RATE")
+        print_info("Some enhanced functionality is working, but improvements needed.")
     else:
-        print_error(f"❌ MINI-TOC LINKS PROCESSING TEST SUITE FAILED - {success_rate:.1f}% SUCCESS RATE")
-        print_error("Significant issues detected with Mini-TOC links processing.")
+        print_error(f"❌ ENHANCED TOC MATCHING FIX TEST SUITE FAILED - {success_rate:.1f}% SUCCESS RATE")
+        print_error("Significant issues detected with enhanced TOC matching.")
     
     return success_rate >= 60
 

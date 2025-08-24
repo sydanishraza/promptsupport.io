@@ -30970,7 +30970,7 @@ async def process_toc_links():
             "toc_processing_id": f"toc_proc_{int(time.time() * 1000)}",
             "processed_at": datetime.now().isoformat(),
             "articles_processed": processed_count,
-            "total_articles_checked": await db.content_library.count_documents({"engine": "v2"}),
+            "total_articles_checked": total_articles_checked,
             "updated_articles": updated_articles,
             "engine": "v2"
         }

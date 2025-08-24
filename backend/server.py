@@ -4294,6 +4294,46 @@ Return the fully formatted article with improved clarity, structure, and clickab
             
             processed_content = '\n'.join(converted_lines)
             
+            # Step 2b: Convert HTML TOC items to clickable anchor links
+            def convert_html_toc_item(match):
+                """Convert HTML TOC list item to clickable anchor link"""
+                nonlocal anchor_links_generated
+                toc_text = match.group(1).strip()  # Text inside <li>
+                
+                # Clean the TOC text for matching
+                clean_toc_text = re.sub(r'[^\w\s-]', '', toc_text).strip()
+                
+                # Try to find matching heading
+                matching_slug = None
+                best_match_score = 0
+                
+                for heading_text, slug in heading_ids.items():
+                    clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
+                    
+                    # Calculate simple similarity score
+                    similarity = len(set(clean_toc_text.lower().split()) & set(clean_heading.lower().split()))
+                    if similarity > best_match_score:
+                        best_match_score = similarity
+                        matching_slug = slug
+                
+                # If no good match found, create a slug from TOC text
+                if not matching_slug or best_match_score == 0:
+                    matching_slug = generate_slug(toc_text)
+                    # Check if this slug actually exists in content
+                    if f'id="{matching_slug}"' not in processed_content:
+                        toc_broken_links.append({
+                            "toc_text": toc_text,
+                            "expected_slug": matching_slug,
+                            "reason": "no_matching_heading"
+                        })
+                
+                anchor_links_generated += 1
+                return f'<li><a href="#{matching_slug}">{toc_text}</a></li>'
+            
+            # Convert HTML TOC items: <li>Text</li> -> <li><a href="#slug">Text</a></li>
+            html_toc_pattern = r'<li>([^<]+)</li>'
+            processed_content = re.sub(html_toc_pattern, convert_html_toc_item, processed_content, flags=re.IGNORECASE)
+            
             if anchor_links_generated > 0:
                 structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable anchors")
             

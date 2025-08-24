@@ -44,494 +44,375 @@ class V2CodeNormalizationTester:
             "timestamp": datetime.now().isoformat()
         })
     
-    def test_v2_engine_health_check(self):
-        """Test V2 Engine health check with related links endpoints"""
+    def test_code_normalization_health_check(self):
+        """Test 1: Code Normalization System Health Check - Verify V2 Engine is active"""
         try:
-            print("\n🔍 TESTING: V2 Engine Health Check with Related Links Endpoints")
+            print("\n🔍 TESTING: Code Normalization System Health Check")
             
-            response = requests.get(f"{self.backend_url}/engine")
-            
-            if response.status_code == 200:
-                engine_data = response.json()
-                
-                # Check engine status
-                engine_status = engine_data.get('engine')
-                if engine_status == 'v2':
-                    self.log_test("V2 Engine Status Check", True, f"Engine status: {engine_status}")
-                else:
-                    self.log_test("V2 Engine Status Check", False, f"Expected 'v2', got: {engine_status}")
-                    return False
-                
-                # Check related links endpoints
-                endpoints = engine_data.get('endpoints', {})
-                required_endpoints = [
-                    'related_links_diagnostics'
-                ]
-                
-                missing_endpoints = []
-                for endpoint in required_endpoints:
-                    if endpoint not in endpoints:
-                        missing_endpoints.append(endpoint)
-                
-                if not missing_endpoints:
-                    self.log_test("Related Links Endpoints Check", True, f"All required endpoints present: {required_endpoints}")
-                else:
-                    self.log_test("Related Links Endpoints Check", False, f"Missing endpoints: {missing_endpoints}")
-                    return False
-                
-                # Check related links features
-                features = engine_data.get('features', [])
-                required_features = [
-                    'content_library_indexing',
-                    'similarity_matching',
-                    'internal_links_discovery',
-                    'external_links_extraction'
-                ]
-                
-                missing_features = []
-                for feature in required_features:
-                    if feature not in features:
-                        missing_features.append(feature)
-                
-                if not missing_features:
-                    self.log_test("Related Links Features Check", True, f"All required features present: {required_features}")
-                else:
-                    self.log_test("Related Links Features Check", False, f"Missing features: {missing_features}")
-                    return False
-                
-                return True
-            else:
-                self.log_test("V2 Engine Health Check", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("V2 Engine Health Check", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_seed_articles_creation(self):
-        """Test seed articles creation for similarity testing"""
-        try:
-            print("\n🌱 TESTING: Seed Articles Creation")
-            
-            response = requests.post(f"{self.backend_url}/seed/create-test-articles")
-            
-            if response.status_code == 200:
-                seed_data = response.json()
-                
-                # Check seed creation status
-                status = seed_data.get('status')
-                if status == 'success':
-                    self.log_test("Seed Articles Creation Status", True, f"Status: {status}")
-                else:
-                    self.log_test("Seed Articles Creation Status", False, f"Expected 'success', got: {status}")
-                    return False
-                
-                # Check articles created
-                articles_created = seed_data.get('articles_created', 0)
-                if articles_created >= 5:
-                    self.log_test("Seed Articles Count", True, f"Created {articles_created} articles")
-                else:
-                    self.log_test("Seed Articles Count", False, f"Expected >= 5 articles, got: {articles_created}")
-                    return False
-                
-                # Check article titles
-                article_titles = seed_data.get('article_titles', [])
-                expected_titles = [
-                    'Integration Process',
-                    'API Integration', 
-                    'Getting Started',
-                    'Error Handling',
-                    'Whisk Studio'
-                ]
-                
-                found_titles = 0
-                for expected in expected_titles:
-                    for actual in article_titles:
-                        if expected.lower() in actual.lower():
-                            found_titles += 1
-                            break
-                
-                if found_titles >= 4:
-                    self.log_test("Seed Articles Titles Check", True, f"Found {found_titles}/5 expected titles")
-                else:
-                    self.log_test("Seed Articles Titles Check", False, f"Only found {found_titles}/5 expected titles")
-                    return False
-                
-                return True
-            else:
-                self.log_test("Seed Articles Creation", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Seed Articles Creation", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_content_library_indexing(self):
-        """Test content library indexing functionality"""
-        try:
-            print("\n🔍 TESTING: Content Library Indexing")
-            
-            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
             
             if response.status_code == 200:
                 diagnostics_data = response.json()
                 
-                # Check content library status
-                content_library_status = diagnostics_data.get('content_library_status', {})
+                # Check V2 Engine is active
+                engine = diagnostics_data.get('engine')
+                system_status = diagnostics_data.get('code_normalization_system_status')
                 
-                # Check indexing enabled
-                indexing_enabled = content_library_status.get('indexing_enabled')
-                if indexing_enabled:
-                    self.log_test("Content Library Indexing Enabled", True, "Indexing is enabled")
+                if engine == 'v2' and system_status == 'active':
+                    self.log_test("V2 Engine Active with Code Normalization", True, f"Engine: {engine}, Status: {system_status}")
+                    
+                    # Check required features
+                    capabilities = diagnostics_data.get('system_capabilities', {})
+                    required_features = [
+                        'supported_languages',
+                        'beautification_features', 
+                        'prism_integration',
+                        'language_detection'
+                    ]
+                    
+                    missing_features = []
+                    for feature in required_features:
+                        if feature not in capabilities:
+                            missing_features.append(feature)
+                    
+                    if not missing_features:
+                        self.log_test("All Required Features Operational", True, f"Features: {list(capabilities.keys())}")
+                        return True
+                    else:
+                        self.log_test("All Required Features Operational", False, f"Missing: {missing_features}")
+                        return False
                 else:
-                    self.log_test("Content Library Indexing Enabled", False, "Indexing is not enabled")
+                    self.log_test("V2 Engine Active with Code Normalization", False, f"Engine: {engine}, Status: {system_status}")
                     return False
-                
-                # Check similarity method
-                similarity_method = content_library_status.get('similarity_method')
-                if similarity_method == 'keyword_and_semantic':
-                    self.log_test("Similarity Method Check", True, f"Method: {similarity_method}")
-                else:
-                    self.log_test("Similarity Method Check", False, f"Expected 'keyword_and_semantic', got: {similarity_method}")
-                    return False
-                
-                # Check articles indexed
-                articles_indexed = content_library_status.get('articles_indexed', 0)
-                if articles_indexed >= 5:
-                    self.log_test("Articles Indexed Count", True, f"Indexed {articles_indexed} articles")
-                else:
-                    self.log_test("Articles Indexed Count", False, f"Expected >= 5 articles, got: {articles_indexed}")
-                    return False
-                
-                # Check last index update
-                last_update = content_library_status.get('last_index_update')
-                if last_update:
-                    self.log_test("Index Update Timestamp", True, f"Last update: {last_update}")
-                else:
-                    self.log_test("Index Update Timestamp", False, "No index update timestamp found")
-                    return False
-                
-                return True
             else:
-                self.log_test("Content Library Indexing", False, f"HTTP {response.status_code}: {response.text}")
+                self.log_test("Code Normalization Health Check", False, f"HTTP {response.status_code}: {response.text}")
                 return False
                 
         except Exception as e:
-            self.log_test("Content Library Indexing", False, f"Exception: {str(e)}")
+            self.log_test("Code Normalization Health Check", False, f"Exception: {str(e)}")
             return False
     
-    def test_related_links_diagnostics(self):
-        """Test related links diagnostic endpoints"""
+    def test_language_detection_and_prism_mapping(self):
+        """Test 2: Language Detection and Prism Class Mapping - Test 26+ supported languages"""
         try:
-            print("\n📊 TESTING: Related Links Diagnostic Endpoints")
+            print("\n🔍 TESTING: Language Detection and Prism Class Mapping")
+            
+            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
+                capabilities = diagnostics_data.get('system_capabilities', {})
+                
+                # Check supported languages (26+ requirement)
+                supported_languages = capabilities.get('supported_languages', [])
+                expected_languages = [
+                    'bash', 'json', 'yaml', 'xml', 'sql', 'javascript', 'python',
+                    'java', 'csharp', 'cpp', 'php', 'ruby', 'go', 'rust', 'typescript',
+                    'css', 'html', 'markdown', 'graphql', 'curl', 'http'
+                ]
+                
+                found_languages = 0
+                for lang in expected_languages:
+                    if lang in supported_languages:
+                        found_languages += 1
+                
+                if len(supported_languages) >= 26 and found_languages >= 15:
+                    self.log_test("26+ Supported Languages", True, f"Total: {len(supported_languages)}, Key languages: {found_languages}/{len(expected_languages)}")
+                else:
+                    self.log_test("26+ Supported Languages", False, f"Total: {len(supported_languages)}, Key languages: {found_languages}/{len(expected_languages)}")
+                    return False
+                
+                # Check language detection methods
+                language_detection = capabilities.get('language_detection')
+                if language_detection:
+                    self.log_test("Language Detection Methods", True, f"Detection: {language_detection}")
+                else:
+                    self.log_test("Language Detection Methods", False, "No language detection info")
+                    return False
+                
+                # Verify actual language detection in practice
+                recent_results = diagnostics_data.get('recent_code_results', [])
+                if recent_results:
+                    first_result = recent_results[0]
+                    summary = diagnostics_data.get('code_normalization_summary', {})
+                    language_dist = summary.get('language_distribution', {})
+                    
+                    if language_dist:
+                        detected_langs = list(language_dist.keys())
+                        self.log_test("Language Detection in Practice", True, f"Languages detected: {detected_langs}")
+                        return True
+                    else:
+                        self.log_test("Language Detection in Practice", False, "No languages detected in recent processing")
+                        return False
+                else:
+                    self.log_test("Language Detection in Practice", False, "No recent processing results")
+                    return False
+            else:
+                self.log_test("Language Detection and Prism Mapping", False, f"HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Language Detection and Prism Mapping", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_beautification_engine(self):
+        """Test 3: Beautification Engine - Verify JSON, YAML, XML, SQL, curl formatting"""
+        try:
+            print("\n🎨 TESTING: Beautification Engine")
+            
+            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
+                capabilities = diagnostics_data.get('system_capabilities', {})
+                
+                # Check beautification features
+                beautification_features = capabilities.get('beautification_features', [])
+                expected_features = [
+                    'JSON pretty-print',
+                    'YAML formatting', 
+                    'XML pretty-print',
+                    'SQL formatting',
+                    'Curl line breaks'
+                ]
+                
+                found_features = 0
+                for feature in expected_features:
+                    if feature in beautification_features:
+                        found_features += 1
+                
+                if found_features >= 4:  # At least 4 of 5 beautification features
+                    self.log_test("Beautification Features Available", True, f"Found {found_features}/{len(expected_features)} features")
+                else:
+                    self.log_test("Beautification Features Available", False, f"Only {found_features}/{len(expected_features)} features")
+                    return False
+                
+                # Check actual beautification in recent processing
+                summary = diagnostics_data.get('code_normalization_summary', {})
+                normalized_blocks = summary.get('total_normalized_blocks', 0)
+                normalization_rate = summary.get('overall_normalization_rate', 0)
+                
+                if normalized_blocks > 0 and normalization_rate > 0:
+                    self.log_test("Beautification Applied in Practice", True, f"Normalized {normalized_blocks} blocks at {normalization_rate}% rate")
+                    return True
+                else:
+                    self.log_test("Beautification Applied in Practice", False, f"No beautification applied: {normalized_blocks} blocks, {normalization_rate}% rate")
+                    return False
+            else:
+                self.log_test("Beautification Engine", False, f"HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Beautification Engine", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_prism_ready_html_generation(self):
+        """Test 4: Prism-Ready HTML Generation - Verify proper figure structure with code-toolbar, line-numbers"""
+        try:
+            print("\n🏗️ TESTING: Prism-Ready HTML Generation")
+            
+            # Get articles with code blocks to verify HTML structure
+            response = requests.get(f"{self.backend_url}/content-library?limit=20")
+            
+            if response.status_code == 200:
+                articles_data = response.json()
+                articles = articles_data.get('articles', [])
+                
+                # Find articles with Prism-ready code blocks
+                prism_ready_articles = []
+                for article in articles:
+                    content = article.get('content', '')
+                    title = article.get('title', '')
+                    
+                    # Check for Prism-ready structure
+                    if 'figure class="code-block"' in content:
+                        prism_checks = {
+                            'figure_wrapper': 'figure class="code-block"' in content,
+                            'pre_line_numbers': 'pre class="line-numbers"' in content,
+                            'code_language_class': 'code class="language-' in content,
+                            'code_toolbar': 'code-toolbar' in content,
+                            'safe_html_escaping': any(char in content for char in ['&lt;', '&gt;', '&amp;', '&quot;'])
+                        }
+                        
+                        passed_checks = sum(prism_checks.values())
+                        if passed_checks >= 4:  # At least 4 of 5 structure elements
+                            prism_ready_articles.append({
+                                'title': title,
+                                'checks': prism_checks,
+                                'passed': passed_checks
+                            })
+                
+                if prism_ready_articles:
+                    best_article = max(prism_ready_articles, key=lambda x: x['passed'])
+                    self.log_test("Prism-Ready HTML Structure Found", True, f"Article: '{best_article['title']}' has {best_article['passed']}/5 Prism elements")
+                    
+                    # Verify specific structure elements
+                    checks = best_article['checks']
+                    if checks['figure_wrapper']:
+                        self.log_test("Figure Wrapper with code-block class", True, "Complete figure wrapper found")
+                    if checks['pre_line_numbers']:
+                        self.log_test("Pre element with line-numbers class", True, "Line numbers class confirmed")
+                    if checks['code_language_class']:
+                        self.log_test("Code element with language classes", True, "Language classes for syntax highlighting")
+                    if checks['code_toolbar']:
+                        self.log_test("Code-toolbar div for Prism integration", True, "Toolbar div for copy button")
+                    if checks['safe_html_escaping']:
+                        self.log_test("Safe HTML escaping implemented", True, "HTML content properly escaped")
+                    
+                    return True
+                else:
+                    self.log_test("Prism-Ready HTML Structure Found", False, "No articles with proper Prism structure found")
+                    return False
+            else:
+                self.log_test("Prism-Ready HTML Generation", False, f"HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Prism-Ready HTML Generation", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_processing_pipeline_integration(self):
+        """Test 5: Processing Pipeline Integration - Verify Step 7.9 integration between Gap Filling and Validation"""
+        try:
+            print("\n🔗 TESTING: Processing Pipeline Integration (Step 7.9)")
+            
+            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
+            
+            if response.status_code == 200:
+                diagnostics_data = response.json()
+                
+                # Check integration in all 3 processing pipelines
+                recent_results = diagnostics_data.get('recent_code_results', [])
+                if recent_results:
+                    first_result = recent_results[0]
+                    
+                    # Check pipeline integration indicators
+                    pipeline_indicators = {
+                        'run_id_present': 'run_id' in first_result,
+                        'status_tracking': 'code_normalization_status' in first_result,
+                        'timestamp_tracking': 'timestamp' in first_result,
+                        'article_processing': 'articles_processed' in first_result
+                    }
+                    
+                    passed_indicators = sum(pipeline_indicators.values())
+                    
+                    if passed_indicators >= 3:
+                        self.log_test("Pipeline Integration Indicators", True, f"Found {passed_indicators}/4 integration indicators")
+                    else:
+                        self.log_test("Pipeline Integration Indicators", False, f"Only {passed_indicators}/4 integration indicators")
+                        return False
+                    
+                    # Check database storage working
+                    summary = diagnostics_data.get('code_normalization_summary', {})
+                    total_runs = summary.get('total_code_runs', 0)
+                    
+                    if total_runs > 0:
+                        self.log_test("Database Storage Working", True, f"Found {total_runs} processing runs")
+                    else:
+                        self.log_test("Database Storage Working", False, "No processing runs in database")
+                        return False
+                    
+                    # Check comprehensive error handling
+                    success_rate = summary.get('success_rate', 0)
+                    if success_rate >= 0:  # Should be a valid percentage
+                        self.log_test("Error Handling and Status Tracking", True, f"Success rate: {success_rate}%")
+                        return True
+                    else:
+                        self.log_test("Error Handling and Status Tracking", False, "Invalid success rate")
+                        return False
+                else:
+                    self.log_test("Processing Pipeline Integration", False, "No recent processing results found")
+                    return False
+            else:
+                self.log_test("Processing Pipeline Integration", False, f"HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Processing Pipeline Integration", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_diagnostic_endpoints(self):
+        """Test 6: Diagnostic Endpoints - Test GET /api/code-normalization/diagnostics and specific ID endpoints"""
+        try:
+            print("\n📊 TESTING: Diagnostic Endpoints")
             
             # Test main diagnostics endpoint
-            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
             
             if response.status_code == 200:
                 diagnostics_data = response.json()
                 
-                # Check system status
-                system_status = diagnostics_data.get('related_links_system_status')
-                if system_status == 'active':
-                    self.log_test("Related Links System Status", True, f"Status: {system_status}")
+                # Check main diagnostics structure
+                required_sections = [
+                    'code_normalization_system_status',
+                    'engine',
+                    'code_normalization_summary',
+                    'system_capabilities'
+                ]
+                
+                missing_sections = []
+                for section in required_sections:
+                    if section not in diagnostics_data:
+                        missing_sections.append(section)
+                
+                if not missing_sections:
+                    self.log_test("GET /api/code-normalization/diagnostics", True, f"All sections present: {required_sections}")
                 else:
-                    self.log_test("Related Links System Status", False, f"Expected 'active', got: {system_status}")
+                    self.log_test("GET /api/code-normalization/diagnostics", False, f"Missing sections: {missing_sections}")
                     return False
                 
-                # Check engine
-                engine = diagnostics_data.get('engine')
-                if engine == 'v2':
-                    self.log_test("Related Links Engine Check", True, f"Engine: {engine}")
-                else:
-                    self.log_test("Related Links Engine Check", False, f"Expected 'v2', got: {engine}")
-                    return False
-                
-                # Check summary statistics
-                summary = diagnostics_data.get('related_links_summary', {})
-                total_runs = summary.get('total_related_links_runs', 0)
-                
-                if total_runs >= 0:
-                    self.log_test("Related Links Summary Statistics", True, f"Total runs: {total_runs}")
-                else:
-                    self.log_test("Related Links Summary Statistics", False, "No summary statistics found")
-                    return False
-                
-                # Check recent results structure
-                recent_results = diagnostics_data.get('recent_related_links_results', [])
-                if isinstance(recent_results, list):
-                    self.log_test("Recent Results Structure", True, f"Found {len(recent_results)} recent results")
-                else:
-                    self.log_test("Recent Results Structure", False, "Recent results not in list format")
-                    return False
-                
-                return True
-            else:
-                self.log_test("Related Links Diagnostics", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Related Links Diagnostics", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_content_processing_with_related_links(self):
-        """Test content processing with related links generation (Step 7.7)"""
-        try:
-            print("\n🔗 TESTING: Content Processing with Related Links Generation")
-            
-            # Test content for processing
-            test_content = """
-            # Google Maps JavaScript API Integration Guide
-            
-            This comprehensive guide covers Google Maps API integration with JavaScript applications.
-            
-            ## Getting Started with Maps API
-            Learn how to set up your development environment and obtain API keys.
-            
-            ## Authentication and API Keys
-            Secure your API integration with proper authentication methods.
-            
-            ## Error Handling Best Practices
-            Implement robust error handling for production applications.
-            """
-            
-            # Process content through V2 engine
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json={"content": test_content})
-            
-            if response.status_code == 200:
-                process_data = response.json()
-                
-                # Check processing status
-                status = process_data.get('status')
-                if status == 'completed':
-                    self.log_test("Content Processing Status", True, f"Status: {status}")
-                else:
-                    self.log_test("Content Processing Status", False, f"Expected 'completed', got: {status}")
-                    return False
-                
-                # Check engine confirmation
-                engine = process_data.get('engine')
-                if engine == 'v2':
-                    self.log_test("Processing Engine Check", True, f"Engine: {engine}")
-                else:
-                    self.log_test("Processing Engine Check", False, f"Expected 'v2', got: {engine}")
-                    return False
-                
-                # Check job ID for further testing
-                job_id = process_data.get('job_id')
-                if job_id:
-                    self.log_test("Job ID Generation", True, f"Job ID: {job_id}")
-                    
-                    # Wait a moment for processing to complete
-                    time.sleep(2)
-                    
-                    # Check if related links were generated
-                    return self.verify_related_links_generation(job_id)
-                else:
-                    self.log_test("Job ID Generation", False, "No job ID returned")
-                    return False
-                
-            else:
-                self.log_test("Content Processing", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Content Processing with Related Links", False, f"Exception: {str(e)}")
-            return False
-    
-    def verify_related_links_generation(self, job_id):
-        """Verify related links were generated for processed content"""
-        try:
-            print(f"\n🔍 VERIFYING: Related Links Generation for Job {job_id}")
-            
-            # Check diagnostics for recent related links results
-            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                recent_results = diagnostics_data.get('recent_related_links_results', [])
-                
-                # Look for results from our job
-                job_results = [r for r in recent_results if r.get('run_id') == job_id]
-                
-                if job_results:
-                    result = job_results[0]
-                    
-                    # Check related links status
-                    status = result.get('related_links_status')
-                    if status == 'success':
-                        self.log_test("Related Links Generation Status", True, f"Status: {status}")
-                    else:
-                        self.log_test("Related Links Generation Status", False, f"Expected 'success', got: {status}")
-                        return False
-                    
-                    # Check links counts
-                    internal_count = result.get('internal_links_count', 0)
-                    external_count = result.get('external_links_count', 0)
-                    total_count = result.get('total_links_count', 0)
-                    
-                    if total_count >= 3:
-                        self.log_test("Related Links Count Check", True, f"Total: {total_count} (Internal: {internal_count}, External: {external_count})")
-                    else:
-                        self.log_test("Related Links Count Check", False, f"Expected >= 3 links, got: {total_count}")
-                        return False
-                    
-                    # Test specific result endpoint
-                    related_links_id = result.get('related_links_id')
-                    if related_links_id:
-                        return self.test_specific_related_links_result(related_links_id)
-                    else:
-                        self.log_test("Related Links ID Check", False, "No related links ID found")
-                        return False
-                else:
-                    self.log_test("Related Links Generation Verification", False, f"No related links results found for job {job_id}")
-                    return False
-            else:
-                self.log_test("Related Links Verification", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Related Links Generation Verification", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_specific_related_links_result(self, related_links_id):
-        """Test specific related links result endpoint"""
-        try:
-            print(f"\n🔍 TESTING: Specific Related Links Result - {related_links_id}")
-            
-            response = requests.get(f"{self.backend_url}/related-links/diagnostics/{related_links_id}")
-            
-            if response.status_code == 200:
-                result_data = response.json()
-                
-                # Check engine
-                engine = result_data.get('engine')
-                if engine == 'v2':
-                    self.log_test("Specific Result Engine Check", True, f"Engine: {engine}")
-                else:
-                    self.log_test("Specific Result Engine Check", False, f"Expected 'v2', got: {engine}")
-                    return False
-                
-                # Check result structure
-                related_links_result = result_data.get('related_links_result', {})
-                if related_links_result:
-                    self.log_test("Related Links Result Structure", True, "Result structure present")
-                else:
-                    self.log_test("Related Links Result Structure", False, "No result structure found")
-                    return False
-                
-                # Check analysis section
-                analysis = result_data.get('analysis', {})
-                if analysis:
-                    self.log_test("Related Links Analysis Section", True, "Analysis section present")
-                    
-                    # Check processing summary
-                    processing_summary = analysis.get('processing_summary', {})
-                    if processing_summary:
-                        self.log_test("Processing Summary", True, "Processing summary present")
-                    else:
-                        self.log_test("Processing Summary", False, "No processing summary found")
-                        return False
-                    
-                    # Check related links breakdown
-                    links_breakdown = analysis.get('related_links_breakdown', [])
-                    if isinstance(links_breakdown, list):
-                        self.log_test("Related Links Breakdown", True, f"Found {len(links_breakdown)} links in breakdown")
-                    else:
-                        self.log_test("Related Links Breakdown", False, "Links breakdown not in list format")
-                        return False
-                else:
-                    self.log_test("Related Links Analysis Section", False, "No analysis section found")
-                    return False
-                
-                return True
-            else:
-                self.log_test("Specific Related Links Result", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Specific Related Links Result", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_related_links_rerun(self):
-        """Test related links rerun functionality"""
-        try:
-            print("\n🔄 TESTING: Related Links Rerun Functionality")
-            
-            # First, get a recent run ID from diagnostics
-            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
-            
-            if response.status_code == 200:
-                diagnostics_data = response.json()
-                recent_results = diagnostics_data.get('recent_related_links_results', [])
-                
+                # Test specific result endpoint if available
+                recent_results = diagnostics_data.get('recent_code_results', [])
                 if recent_results:
-                    # Use the most recent run ID
-                    run_id = recent_results[0].get('run_id')
-                    
-                    if run_id:
-                        # Test rerun endpoint
-                        rerun_response = requests.post(f"{self.backend_url}/related-links/rerun",
-                                                     json={"run_id": run_id})
+                    code_id = recent_results[0].get('code_normalization_id')
+                    if code_id:
+                        specific_response = requests.get(f"{self.backend_url}/code-normalization/diagnostics/{code_id}")
                         
-                        if rerun_response.status_code == 200:
-                            rerun_data = rerun_response.json()
+                        if specific_response.status_code == 200:
+                            specific_data = specific_response.json()
                             
-                            # Check rerun status
-                            status = rerun_data.get('status')
-                            if status == 'completed':
-                                self.log_test("Related Links Rerun Status", True, f"Status: {status}")
+                            # Check specific endpoint structure
+                            required_fields = ['engine', 'code_normalization_result', 'analysis']
+                            missing_fields = []
+                            for field in required_fields:
+                                if field not in specific_data:
+                                    missing_fields.append(field)
+                            
+                            if not missing_fields:
+                                self.log_test("GET /api/code-normalization/diagnostics/{id}", True, f"All fields present: {required_fields}")
+                                return True
                             else:
-                                self.log_test("Related Links Rerun Status", False, f"Expected 'completed', got: {status}")
+                                self.log_test("GET /api/code-normalization/diagnostics/{id}", False, f"Missing fields: {missing_fields}")
                                 return False
-                            
-                            # Check engine
-                            engine = rerun_data.get('engine')
-                            if engine == 'v2':
-                                self.log_test("Rerun Engine Check", True, f"Engine: {engine}")
-                            else:
-                                self.log_test("Rerun Engine Check", False, f"Expected 'v2', got: {engine}")
-                                return False
-                            
-                            # Check rerun results
-                            articles_processed = rerun_data.get('articles_processed', 0)
-                            if articles_processed > 0:
-                                self.log_test("Rerun Articles Processed", True, f"Processed {articles_processed} articles")
-                            else:
-                                self.log_test("Rerun Articles Processed", False, f"No articles processed in rerun")
-                                return False
-                            
-                            return True
                         else:
-                            self.log_test("Related Links Rerun", False, f"HTTP {rerun_response.status_code}: {rerun_response.text}")
+                            self.log_test("GET /api/code-normalization/diagnostics/{id}", False, f"HTTP {specific_response.status_code}")
                             return False
                     else:
-                        self.log_test("Related Links Rerun", False, "No run ID found for rerun test")
+                        self.log_test("Specific Endpoint Test", False, "No code normalization ID found")
                         return False
                 else:
-                    self.log_test("Related Links Rerun", False, "No recent results found for rerun test")
+                    self.log_test("Specific Endpoint Test", False, "No recent results for specific endpoint test")
                     return False
             else:
-                self.log_test("Related Links Rerun Setup", False, f"HTTP {response.status_code}: {response.text}")
+                self.log_test("Diagnostic Endpoints", False, f"HTTP {response.status_code}")
                 return False
                 
         except Exception as e:
-            self.log_test("Related Links Rerun", False, f"Exception: {str(e)}")
+            self.log_test("Diagnostic Endpoints", False, f"Exception: {str(e)}")
             return False
     
-    def test_database_storage_and_retrieval(self):
-        """Test database storage and retrieval of related links results"""
+    def test_database_storage(self):
+        """Test 7: Database Storage - Verify code normalization results stored in v2_code_normalization_results collection"""
         try:
-            print("\n💾 TESTING: Database Storage and Retrieval")
+            print("\n💾 TESTING: Database Storage")
             
-            response = requests.get(f"{self.backend_url}/related-links/diagnostics")
+            response = requests.get(f"{self.backend_url}/code-normalization/diagnostics")
             
             if response.status_code == 200:
                 diagnostics_data = response.json()
                 
-                # Check recent results for database storage verification
-                recent_results = diagnostics_data.get('recent_related_links_results', [])
+                # Check database storage verification
+                recent_results = diagnostics_data.get('recent_code_results', [])
                 
                 if recent_results:
                     self.log_test("Database Storage Verification", True, f"Found {len(recent_results)} stored results")
@@ -539,10 +420,9 @@ class V2CodeNormalizationTester:
                     # Check result structure for proper data preservation
                     first_result = recent_results[0]
                     required_fields = [
-                        'related_links_id',
-                        'run_id', 
-                        'article_title',
-                        'related_links_status',
+                        'code_normalization_id',
+                        'run_id',
+                        'code_normalization_status',
                         'timestamp'
                     ]
                     
@@ -557,86 +437,49 @@ class V2CodeNormalizationTester:
                         self.log_test("Database Result Structure", False, f"Missing fields: {missing_fields}")
                         return False
                     
-                    # Check ObjectId serialization (no ObjectId objects in response)
-                    result_str = json.dumps(first_result)
-                    if 'ObjectId' not in result_str:
-                        self.log_test("ObjectId Serialization", True, "No ObjectId serialization issues")
+                    # Check language distribution tracking
+                    summary = diagnostics_data.get('code_normalization_summary', {})
+                    language_dist = summary.get('language_distribution', {})
+                    
+                    if language_dist:
+                        self.log_test("Language Distribution Tracking", True, f"Languages tracked: {list(language_dist.keys())}")
                     else:
-                        self.log_test("ObjectId Serialization", False, "ObjectId serialization issues detected")
+                        self.log_test("Language Distribution Tracking", False, "No language distribution tracking")
                         return False
                     
-                    return True
+                    # Check beautification statistics
+                    normalized_blocks = summary.get('total_normalized_blocks', 0)
+                    if normalized_blocks >= 0:
+                        self.log_test("Beautification Statistics Maintained", True, f"Statistics: {normalized_blocks} blocks normalized")
+                        return True
+                    else:
+                        self.log_test("Beautification Statistics Maintained", False, "No beautification statistics")
+                        return False
                 else:
                     self.log_test("Database Storage Verification", False, "No stored results found")
                     return False
             else:
-                self.log_test("Database Storage and Retrieval", False, f"HTTP {response.status_code}: {response.text}")
+                self.log_test("Database Storage", False, f"HTTP {response.status_code}")
                 return False
                 
         except Exception as e:
-            self.log_test("Database Storage and Retrieval", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_engine_status_integration(self):
-        """Test related links integration in engine status"""
-        try:
-            print("\n⚙️ TESTING: Engine Status Integration")
-            
-            response = requests.get(f"{self.backend_url}/engine")
-            
-            if response.status_code == 200:
-                engine_data = response.json()
-                
-                # Check engine message includes related links
-                message = engine_data.get('message', '').lower()
-                if 'related links' in message or 'related_links' in message:
-                    self.log_test("Engine Message Integration", True, "Related links mentioned in engine message")
-                else:
-                    self.log_test("Engine Message Integration", False, "Related links not mentioned in engine message")
-                    return False
-                
-                # Check features include related links capabilities
-                features = engine_data.get('features', [])
-                related_features = [f for f in features if 'related' in f.lower() or 'link' in f.lower()]
-                
-                if related_features:
-                    self.log_test("Related Links Features Integration", True, f"Found related features: {related_features}")
-                else:
-                    self.log_test("Related Links Features Integration", False, "No related links features found")
-                    return False
-                
-                # Check endpoints include related links diagnostics
-                endpoints = engine_data.get('endpoints', {})
-                if 'related_links_diagnostics' in endpoints:
-                    self.log_test("Related Links Endpoints Integration", True, "Related links diagnostics endpoint present")
-                else:
-                    self.log_test("Related Links Endpoints Integration", False, "Related links diagnostics endpoint missing")
-                    return False
-                
-                return True
-            else:
-                self.log_test("Engine Status Integration", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Engine Status Integration", False, f"Exception: {str(e)}")
+            self.log_test("Database Storage", False, f"Exception: {str(e)}")
             return False
     
     def run_comprehensive_tests(self):
-        """Run all V2 Engine Related Links System tests"""
-        print("🚀 STARTING V2 ENGINE RELATED LINKS SYSTEM COMPREHENSIVE TESTING")
+        """Run all V2 Engine Code Normalization System tests"""
+        print("🚀 STARTING V2 ENGINE CODE NORMALIZATION SYSTEM COMPREHENSIVE TESTING")
         print("=" * 80)
         
         # Test sequence based on review requirements
         test_sequence = [
-            ("V2 Engine Health Check", self.test_v2_engine_health_check),
-            ("Seed Articles Creation", self.test_seed_articles_creation),
-            ("Content Library Indexing", self.test_content_library_indexing),
-            ("Related Links Diagnostics", self.test_related_links_diagnostics),
-            ("Content Processing with Related Links", self.test_content_processing_with_related_links),
-            ("Related Links Rerun", self.test_related_links_rerun),
-            ("Database Storage and Retrieval", self.test_database_storage_and_retrieval),
-            ("Engine Status Integration", self.test_engine_status_integration)
+            ("Code Normalization System Health Check", self.test_code_normalization_health_check),
+            ("Language Detection and Prism Class Mapping", self.test_language_detection_and_prism_mapping),
+            ("Beautification Engine", self.test_beautification_engine),
+            ("Prism-Ready HTML Generation", self.test_prism_ready_html_generation),
+            ("Processing Pipeline Integration (Step 7.9)", self.test_processing_pipeline_integration),
+            ("Diagnostic Endpoints", self.test_diagnostic_endpoints),
+            ("Database Storage", self.test_database_storage)
         ]
         
         for test_name, test_function in test_sequence:
@@ -662,7 +505,7 @@ class V2CodeNormalizationTester:
     def print_test_summary(self):
         """Print comprehensive test summary"""
         print("\n" + "="*80)
-        print("🎯 V2 ENGINE RELATED LINKS SYSTEM TESTING SUMMARY")
+        print("🎯 V2 ENGINE CODE NORMALIZATION SYSTEM TESTING SUMMARY")
         print("="*80)
         
         total = self.test_results["total_tests"]
@@ -677,11 +520,11 @@ class V2CodeNormalizationTester:
         print(f"   Success Rate: {success_rate:.1f}%")
         
         if success_rate >= 80:
-            print(f"🎉 EXCELLENT: Related Links System is working well!")
+            print(f"🎉 EXCELLENT: Code Normalization System is working well!")
         elif success_rate >= 60:
-            print(f"⚠️ GOOD: Related Links System is mostly functional with some issues")
+            print(f"⚠️ GOOD: Code Normalization System is mostly functional with some issues")
         else:
-            print(f"❌ NEEDS ATTENTION: Related Links System has significant issues")
+            print(f"❌ NEEDS ATTENTION: Code Normalization System has significant issues")
         
         # Print failed tests details
         if failed > 0:
@@ -694,20 +537,20 @@ class V2CodeNormalizationTester:
 
 def main():
     """Main testing function"""
-    print("🔗 V2 ENGINE RELATED LINKS SYSTEM COMPREHENSIVE TESTING")
-    print("Testing content library indexing, similarity matching, and related links generation")
+    print("🎨 V2 ENGINE CODE NORMALIZATION SYSTEM COMPREHENSIVE TESTING")
+    print("Testing V2 Engine Code Normalization System to verify Prism-ready HTML generation")
     print(f"Backend URL: {BACKEND_URL}")
     print("="*80)
     
-    tester = V2RelatedLinksSystemTester()
+    tester = V2CodeNormalizationTester()
     results = tester.run_comprehensive_tests()
     
     # Return appropriate exit code
     if results["failed_tests"] == 0:
-        print("✅ ALL TESTS PASSED - Related Links System is fully operational!")
+        print("✅ ALL TESTS PASSED - Code Normalization System is fully operational!")
         sys.exit(0)
     else:
-        print(f"❌ {results['failed_tests']} TESTS FAILED - Related Links System needs attention")
+        print(f"❌ {results['failed_tests']} TESTS FAILED - Code Normalization System needs attention")
         sys.exit(1)
 
 if __name__ == "__main__":

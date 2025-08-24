@@ -7046,7 +7046,165 @@ Return ONLY JSON in this exact format:
             print(f"❌ V2 VALIDATION: Error consolidating validation results - {e} - run {run_id} - engine=v2")
             return self._create_validation_result("error", run_id, {"consolidation_error": str(e)})
     
-    def _generate_actionable_diagnostics(self, fidelity_coverage: dict, placeholder: dict, style: dict, metrics: dict, status: str) -> list:
+    async def _validate_evidence_tagging(self, generated_articles: list, normalized_doc, run_id: str) -> dict:
+        """Validate that paragraphs have proper evidence tagging for fidelity enforcement"""
+        try:
+            print(f"🏷️ V2 VALIDATION: Validating evidence tagging - run {run_id} - engine=v2")
+            
+            evidence_results = []
+            total_paragraphs = 0
+            total_tagged_paragraphs = 0
+            total_untagged_paragraphs = 0
+            
+            for generated_article in generated_articles:
+                article_id = generated_article.get('article_id', 'unknown')
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                if not html_content:
+                    continue
+                
+                # Parse paragraphs from content
+                paragraphs = self._parse_validation_paragraphs(html_content)
+                
+                # Check evidence tagging for each paragraph
+                tagged_count = 0
+                untagged_paragraphs = []
+                
+                for paragraph in paragraphs:
+                    if paragraph.get('is_faq', False):
+                        continue  # Skip FAQ paragraphs
+                    
+                    total_paragraphs += 1
+                    
+                    # Check for evidence attributes
+                    has_evidence = self._check_paragraph_evidence(paragraph)
+                    
+                    if has_evidence:
+                        tagged_count += 1
+                        total_tagged_paragraphs += 1
+                    else:
+                        untagged_paragraphs.append({
+                            "text": paragraph.get('text', '')[:100],
+                            "position": paragraph.get('position', 0)
+                        })
+                        total_untagged_paragraphs += 1
+                
+                # Calculate tagging rate for this article
+                article_paragraphs = len([p for p in paragraphs if not p.get('is_faq', False)])
+                article_tagging_rate = (tagged_count / article_paragraphs * 100) if article_paragraphs > 0 else 100
+                
+                evidence_results.append({
+                    "article_id": article_id,
+                    "total_paragraphs": article_paragraphs,
+                    "tagged_paragraphs": tagged_count,
+                    "untagged_paragraphs": len(untagged_paragraphs),
+                    "tagging_rate": article_tagging_rate,
+                    "untagged_examples": untagged_paragraphs[:3],  # First 3 examples
+                    "validation_passed": article_tagging_rate >= 95.0
+                })
+            
+            # Calculate overall evidence validation metrics
+            overall_tagging_rate = (total_tagged_paragraphs / total_paragraphs * 100) if total_paragraphs > 0 else 100
+            validation_passed = overall_tagging_rate >= 95.0
+            
+            # Check if source blocks are available for evidence
+            source_blocks_available = len(normalized_doc.blocks) > 0
+            
+            evidence_validation_result = {
+                "validation_type": "evidence_tagging",
+                "validation_passed": validation_passed,
+                "total_paragraphs": total_paragraphs,
+                "tagged_paragraphs": total_tagged_paragraphs,
+                "untagged_paragraphs": total_untagged_paragraphs,
+                "overall_tagging_rate": overall_tagging_rate,
+                "target_threshold": 95.0,
+                "source_blocks_available": source_blocks_available,
+                "source_blocks_count": len(normalized_doc.blocks),
+                "article_results": evidence_results,
+                "summary": f"Evidence tagging: {total_tagged_paragraphs}/{total_paragraphs} paragraphs tagged ({overall_tagging_rate:.1f}%)"
+            }
+            
+            # Fail validation if evidence tagging is insufficient and source blocks exist
+            if not validation_passed and source_blocks_available:
+                evidence_validation_result["validation_message"] = f"Evidence tagging below 95% threshold ({overall_tagging_rate:.1f}%) - fidelity enforcement failed"
+                print(f"❌ V2 VALIDATION: Evidence tagging failed - {overall_tagging_rate:.1f}% < 95% threshold - run {run_id} - engine=v2")
+            else:
+                evidence_validation_result["validation_message"] = f"Evidence tagging passed - {overall_tagging_rate:.1f}% paragraphs tagged"
+                print(f"✅ V2 VALIDATION: Evidence tagging passed - {overall_tagging_rate:.1f}% paragraphs tagged - run {run_id} - engine=v2")
+            
+            return evidence_validation_result
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error validating evidence tagging - {e} - run {run_id} - engine=v2")
+            return {
+                "validation_type": "evidence_tagging",
+                "validation_passed": False,
+                "error": str(e),
+                "summary": "Evidence tagging validation failed due to error"
+            }
+    
+    def _parse_validation_paragraphs(self, html_content: str) -> list:
+        """Parse paragraphs from HTML content for validation"""
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            paragraphs = []
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Find all paragraph elements
+            p_tags = soup.find_all('p')
+            
+            for i, p_tag in enumerate(p_tags):
+                paragraph_text = p_tag.get_text().strip()
+                
+                if len(paragraph_text) < 20:  # Skip very short paragraphs
+                    continue
+                
+                # Check if this is a FAQ paragraph
+                is_faq = any(indicator in paragraph_text.lower() for indicator in 
+                           ['faq', 'q:', 'question:', 'a:', 'answer:'])
+                
+                paragraphs.append({
+                    "index": i,
+                    "text": paragraph_text,
+                    "html": str(p_tag),
+                    "is_faq": is_faq,
+                    "position": html_content.find(str(p_tag))
+                })
+            
+            return paragraphs
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error parsing paragraphs for validation - {e}")
+            return []
+    
+    def _check_paragraph_evidence(self, paragraph: dict) -> bool:
+        """Check if a paragraph has proper evidence attribution"""
+        try:
+            paragraph_html = paragraph.get('html', '')
+            
+            # Check for data-evidence attribute
+            if 'data-evidence=' in paragraph_html:
+                return True
+            
+            # Check for HTML comment with evidence
+            if '<!-- data-evidence=' in paragraph_html:
+                return True
+            
+            # Check for any block ID references
+            import re
+            if re.search(r'data-evidence="\[.*?\]"', paragraph_html):
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error checking paragraph evidence - {e}")
+            return False
+    
+    def _generate_actionable_diagnostics(self, fidelity_coverage: dict, placeholder: dict, style: dict, evidence: dict, metrics: dict, status: str) -> list:
         """Generate actionable diagnostics for validation failures"""
         diagnostics = []
         

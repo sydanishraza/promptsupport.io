@@ -7,21 +7,22 @@
    MINIMAL PRE CODE BLOCK STYLES
    ======================================== */
 
-/* Simplified pre element styling with improved rendering */
+/* Simplified pre element styling with crystal clear rendering */
 pre[class*="language-"] {
   margin: 1.25rem 0;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  background: #ffffff !important;
+  background: #f8fafc !important;
   max-height: 520px;
   overflow: auto;
   position: relative;
   padding: 1rem;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  /* Use browser default font smoothing for clearest text */
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: auto;
 }
 
 /* Code element styling with enhanced clarity and no distortion */

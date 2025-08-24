@@ -272,11 +272,7 @@ pre[class*="language-"]:focus-within {
     background: #1f2937 !important;
   }
 
-  pre[data-lang]:before {
-    background: #111827;
-    border-color: #374151;
-    color: #9ca3af;
-  }
+  /* Language label removed - no dark theme overrides needed */
 
   p.code-caption {
     background: #111827;

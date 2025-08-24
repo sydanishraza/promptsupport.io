@@ -36,6 +36,12 @@ pre[class*="language-"] code {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "liga" 0;
+  /* Fix for pixelated text on different displays */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  /* Ensure crisp text rendering */
+  image-rendering: crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 /* Language label using data-lang attribute - positioned to avoid copy button overlap */

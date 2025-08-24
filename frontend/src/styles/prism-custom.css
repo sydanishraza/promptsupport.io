@@ -24,24 +24,25 @@ pre[class*="language-"] {
   text-rendering: optimizeLegibility;
 }
 
-/* Code element styling with improved font rendering */
+/* Code element styling with enhanced clarity and no distortion */
 pre[class*="language-"] code {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #374151;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #2d3748;
   font-weight: 400;
   font-variant-ligatures: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  font-feature-settings: "liga" 0;
-  /* Fix for pixelated text on different displays */
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  /* Ensure crisp text rendering */
-  image-rendering: crisp-edges;
-  image-rendering: -webkit-optimize-contrast;
+  -webkit-font-smoothing: subpixel-antialiased;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: optimizeSpeed;
+  font-feature-settings: normal;
+  letter-spacing: 0;
+  word-spacing: normal;
+  tab-size: 2;
+  /* Remove transform that may cause distortion */
+  transform: none;
+  /* Ensure pixel-perfect rendering */
+  image-rendering: auto;
 }
 
 /* Language label removed as requested - only copy button remains */

@@ -72,7 +72,7 @@ const HTMLContent = ({
 
 /**
  * StaticCodeBlock Component  
- * For rendering individual code blocks with known language
+ * For rendering individual code blocks with known language using simplified markup
  */
 const StaticCodeBlock = ({ 
   code, 
@@ -92,13 +92,19 @@ const StaticCodeBlock = ({
 
   const languageClass = `language-${language}`;
   const preClass = showLineNumbers ? 'line-numbers' : '';
+  
+  // Build data attributes
+  const dataAttrs = {
+    'data-lang': language.toUpperCase(),
+    'data-start': '1'
+  };
+  if (filename) {
+    dataAttrs['data-filename'] = filename;
+  }
 
   return (
-    <figure className={`code-block ${className}`} data-lang={language.toUpperCase()}>
-      <div className="code-toolbar">
-        <span className="code-lang">{language.toUpperCase()}</span>
-      </div>
-      <pre className={preClass} data-start="1">
+    <div className={className}>
+      <pre className={preClass} {...dataAttrs}>
         <code 
           ref={codeRef}
           className={languageClass}
@@ -107,9 +113,9 @@ const StaticCodeBlock = ({
         </code>
       </pre>
       {caption && (
-        <figcaption className="code-caption">{caption}</figcaption>
+        <p className="code-caption"><em>{caption}</em></p>
       )}
-    </figure>
+    </div>
   );
 };
 

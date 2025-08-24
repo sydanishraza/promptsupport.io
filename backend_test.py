@@ -318,7 +318,8 @@ async def test_anchor_link_generation():
             # Get the target article again for detailed analysis
             async with session.get(f"{API_BASE}/content-library") as response:
                 if response.status == 200:
-                    articles = await response.json()
+                    data = await response.json()
+                    articles = data.get('articles', []) if isinstance(data, dict) else data
                     
                     # Find target article
                     target_article = None

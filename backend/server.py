@@ -4205,6 +4205,11 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 
                 # Check if ID already exists
                 if 'id=' in match.group(0):
+                    # If ID already exists, extract it and add to our mapping for TOC matching
+                    existing_id_match = re.search(r'id="([^"]+)"', match.group(0))
+                    if existing_id_match:
+                        existing_id = existing_id_match.group(1)
+                        heading_ids[heading_text.strip()] = existing_id
                     return match.group(0)  # Return unchanged if ID already exists
                 
                 slug = generate_slug(heading_text)

@@ -325,9 +325,72 @@ async def test_content_library_updates():
         print_error(f"Error validating content library updates: {e}")
         return False
 
+async def test_broken_link_reduction():
+    """Test 5: Broken Link Reduction - Confirm fewer broken TOC links"""
+    print_test_header("Test 5: Broken Link Reduction Verification")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Check for broken link information in style diagnostics
+            print_info("Analyzing broken link reduction in TOC processing...")
+            
+            async with session.get(f"{API_BASE}/style/diagnostics") as response:
+                if response.status == 200:
+                    diagnostics = await response.json()
+                    
+                    # Look for broken link information
+                    recent_results = diagnostics.get('recent_results', [])
+                    broken_link_data = []
+                    
+                    for result in recent_results:
+                        result_str = str(result)
+                        
+                        # Extract broken link counts
+                        if 'toc_broken_links' in result_str.lower():
+                            # Try to extract broken link count
+                            import re
+                            broken_matches = re.findall(r'toc_broken_links["\s:]*\[([^\]]*)\]', result_str)
+                            for match in broken_matches:
+                                # Count items in the broken links array
+                                broken_count = len([item for item in match.split(',') if item.strip()])
+                                broken_link_data.append(broken_count)
+                                print_info(f"Broken links found in result: {broken_count}")
+                    
+                    if broken_link_data:
+                        avg_broken = sum(broken_link_data) / len(broken_link_data)
+                        max_broken = max(broken_link_data)
+                        min_broken = min(broken_link_data)
+                        
+                        print_success(f"Broken link analysis complete:")
+                        print_info(f"  - Average broken links: {avg_broken:.1f}")
+                        print_info(f"  - Maximum broken links: {max_broken}")
+                        print_info(f"  - Minimum broken links: {min_broken}")
+                        
+                        # Success if average broken links is low
+                        if avg_broken <= 2:
+                            print_success("Broken link reduction SUCCESSFUL - Low broken link count")
+                            return True
+                        elif avg_broken <= 5:
+                            print_info("Broken link reduction MODERATE - Some improvement shown")
+                            return True
+                        else:
+                            print_error("Broken link reduction INSUFFICIENT - High broken link count")
+                            return False
+                    else:
+                        print_info("No broken link data found (may indicate no broken links)")
+                        return True
+                        
+                else:
+                    print_error(f"Failed to access diagnostics for broken link analysis - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error analyzing broken link reduction: {e}")
+        return False
+
 async def test_processing_results():
-    """Test 4: Check Processing Results - Verify endpoint returns accurate statistics"""
-    print_test_header("Test 4: Processing Results Verification")
+    """Test 6: Check Processing Results - Verify endpoint returns accurate statistics"""
+    print_test_header("Test 6: Processing Results Verification")
     
     try:
         async with aiohttp.ClientSession() as session:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-V2 Engine Related Links System Comprehensive Testing
-Testing content library indexing, similarity matching, and related links generation
+V2 Engine Code Normalization System Comprehensive Testing
+Testing V2 Engine Code Normalization System to verify Prism-ready HTML generation
 """
 
 import requests

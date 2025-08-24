@@ -200,12 +200,7 @@ pre[class*="language-"].line-numbers {
     max-height: 300px;
   }
 
-  pre[data-lang]:before {
-    font-size: 10px;
-    padding: 3px 6px;
-    top: 4px;
-    right: 60px;
-  }
+  /* Language label removed - no mobile overrides needed */
 
   .prism-toolbar {
     right: 4px !important;

@@ -92,8 +92,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "*",  # Allow all origins for development
-        "https://woolf-style-lint.preview.emergentagent.com",
-        "https://woolf-style-lint.preview.emergentagent.com", 
+        "https://content-pipeline-5.preview.emergentagent.com",
+        "https://content-pipeline-5.preview.emergentagent.com", 
         "http://localhost:3000",
         "http://127.0.0.1:3000"
     ],

@@ -24,7 +24,7 @@ import os
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://woolf-style-lint.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-pipeline-5.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class V2ValidationTester:

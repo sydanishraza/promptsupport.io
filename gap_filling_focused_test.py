@@ -9,7 +9,7 @@ import json
 import time
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://woolf-style-lint.preview.emergentagent.com/api"
+BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com/api"
 
 def test_gap_filling_comprehensive():
     """Comprehensive Gap Filling System Testing"""

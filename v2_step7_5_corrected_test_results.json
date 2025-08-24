@@ -5,7 +5,7 @@
   "failed_tests": 2,
   "success_rate": "75.0%",
   "timestamp": "2025-08-23T08:40:29.087609",
-  "backend_url": "https://woolf-style-lint.preview.emergentagent.com",
+  "backend_url": "https://content-pipeline-5.preview.emergentagent.com",
   "test_results": [
     {
       "test": "V2 Engine Health Check with Style Endpoints",

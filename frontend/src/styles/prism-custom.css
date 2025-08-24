@@ -108,10 +108,10 @@ pre[class*="language-"].line-numbers {
    PRISM TOOLBAR ENHANCEMENTS
    ======================================== */
 
-/* Toolbar positioning and styling for minimal markup */
+/* Toolbar positioning and styling for minimal markup - positioned to avoid language label overlap */
 .prism-toolbar {
   position: absolute !important;
-  right: 50px !important;
+  right: 8px !important;
   top: 8px !important;
   z-index: 10;
 }

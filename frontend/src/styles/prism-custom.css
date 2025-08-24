@@ -7,7 +7,7 @@
    MINIMAL PRE CODE BLOCK STYLES
    ======================================== */
 
-/* Simplified pre element styling - matches minimal V2CodeNormalizationSystem output */
+/* Simplified pre element styling with improved rendering */
 pre[class*="language-"] {
   margin: 1.25rem 0;
   border: 1px solid #e5e7eb;
@@ -18,6 +18,10 @@ pre[class*="language-"] {
   max-height: 520px;
   overflow: auto;
   position: relative;
+  padding: 1rem;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Code element styling with improved font rendering */

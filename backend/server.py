@@ -28809,7 +28809,20 @@ async def rerun_related_links_generation(request: RerunRequest):
             articles.append(objectid_to_str(article))
         
         if not articles:
-            raise HTTPException(status_code=404, detail=f"No V2 articles found for run: {run_id}")
+            # Handle case where no articles exist - create a graceful response instead of 404
+            print(f"⚠️ V2 RELATED LINKS: No V2 articles found for run {run_id}, returning empty result - engine=v2")
+            return {
+                "message": "V2 related links generation rerun completed - no articles found for processing",
+                "engine": "v2",
+                "run_id": run_id,
+                "articles_processed": 0,
+                "successful_results": 0,
+                "total_links_generated": 0,
+                "internal_links_generated": 0,
+                "external_links_generated": 0,
+                "success_rate": 0,
+                "note": "No V2 articles found for the specified run_id"
+            }
         
         # Get original content for rerun (simplified approach)
         # In a full implementation, this would be retrieved from stored processing context

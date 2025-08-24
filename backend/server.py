@@ -4391,6 +4391,9 @@ Return the fully formatted article with improved clarity, structure, and clickab
                             "match_score": best_match_score
                         })
                 
+                # DEBUG: Log the matching process
+                print(f"🔗 V2 STYLE: HTML TOC matching '{toc_text}' -> '{matching_slug}' (score: {best_match_score:.2f})")
+                
                 anchor_links_generated += 1
                 return f'<li><a href="#{matching_slug}">{toc_text}</a></li>'
             

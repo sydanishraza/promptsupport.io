@@ -35,51 +35,54 @@ def print_info(message):
     """Print info message"""
     print(f"ℹ️  {message}")
 
-async def test_toc_processing_endpoint():
-    """Test 1: New TOC Processing Endpoint - POST /api/style/process-toc-links"""
-    print_test_header("Test 1: New TOC Processing Endpoint")
+async def test_enhanced_toc_processing():
+    """Test 1: Enhanced TOC Processing - Apply improved matching algorithm"""
+    print_test_header("Test 1: Enhanced TOC Processing with Improved Matching")
     
     try:
         async with aiohttp.ClientSession() as session:
-            # Test the new TOC processing endpoint
-            print_info("Testing POST /api/style/process-toc-links endpoint...")
+            # Call POST /api/style/process-toc-links to apply enhanced matching
+            print_info("Calling POST /api/style/process-toc-links to apply enhanced matching algorithm...")
             
             async with session.post(f"{API_BASE}/style/process-toc-links") as response:
                 if response.status == 200:
                     result = await response.json()
-                    print_success(f"TOC processing endpoint accessible - Status: {response.status}")
+                    print_success(f"Enhanced TOC processing completed - Status: {response.status}")
                     
-                    # Validate response structure
+                    # Validate enhanced response structure
                     required_fields = ['message', 'articles_processed', 'updated_articles', 'processing_id', 'engine']
                     missing_fields = [field for field in required_fields if field not in result]
                     
                     if not missing_fields:
-                        print_success("Response structure valid - all required fields present")
+                        print_success("Enhanced processing response structure valid")
                         print_info(f"Articles processed: {result.get('articles_processed', 0)}")
                         print_info(f"Processing ID: {result.get('processing_id', 'N/A')}")
                         print_info(f"Engine: {result.get('engine', 'N/A')}")
                         
-                        # Check if any articles were updated
+                        # Check enhanced processing results
                         updated_articles = result.get('updated_articles', [])
                         if updated_articles:
-                            print_success(f"Articles updated: {len(updated_articles)}")
+                            print_success(f"Articles updated with enhanced matching: {len(updated_articles)}")
                             for article in updated_articles:
-                                print_info(f"  - {article.get('title', 'Unknown')}: {article.get('anchor_links_generated', 0)} links generated")
+                                title = article.get('title', 'Unknown')
+                                links_generated = article.get('anchor_links_generated', 0)
+                                broken_links = article.get('toc_broken_links', [])
+                                print_info(f"  - {title}: {links_generated} links, {len(broken_links)} broken")
                         else:
-                            print_info("No articles were updated (may be expected if already processed)")
+                            print_info("No articles updated (may indicate already processed or no TOC content)")
                         
                         return True, result
                     else:
-                        print_error(f"Response missing required fields: {missing_fields}")
+                        print_error(f"Enhanced processing response missing fields: {missing_fields}")
                         return False, None
                 else:
                     error_text = await response.text()
-                    print_error(f"TOC processing endpoint failed - Status: {response.status}")
+                    print_error(f"Enhanced TOC processing failed - Status: {response.status}")
                     print_error(f"Error: {error_text}")
                     return False, None
                     
     except Exception as e:
-        print_error(f"Error testing TOC processing endpoint: {e}")
+        print_error(f"Error in enhanced TOC processing: {e}")
         return False, None
 
 async def test_target_article_verification():

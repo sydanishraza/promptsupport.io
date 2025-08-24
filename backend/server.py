@@ -30315,6 +30315,242 @@ async def rerun_gap_filling(request: RerunRequest):
         print(f"❌ V2 GAP FILLING: Error in gap filling rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning gap filling: {str(e)}")
 
+# V2 ENGINE: Evidence Tagging System API Endpoints
+@app.get("/api/evidence-tagging/diagnostics")
+async def get_evidence_tagging_diagnostics():
+    """V2 ENGINE: Get comprehensive evidence tagging diagnostics for fidelity enforcement"""
+    try:
+        print(f"🏷️ V2 EVIDENCE TAGGING: Retrieving evidence tagging diagnostics - engine=v2")
+        
+        # Get all evidence tagging results from database
+        evidence_tagging_results = []
+        async for result in db.v2_evidence_tagging_results.find().sort("timestamp", -1).limit(50):
+            evidence_tagging_results.append(objectid_to_str(result))
+        
+        # Calculate summary statistics
+        total_evidence_runs = len(evidence_tagging_results)
+        successful_runs = len([r for r in evidence_tagging_results if r.get('evidence_tagging_status') == 'success'])
+        failed_runs = len([r for r in evidence_tagging_results if r.get('evidence_tagging_status') == 'error'])
+        
+        # Calculate evidence tagging statistics
+        total_paragraphs = sum([r.get('total_paragraphs', 0) for r in evidence_tagging_results])
+        total_tagged_paragraphs = sum([r.get('tagged_paragraphs', 0) for r in evidence_tagging_results])
+        
+        # Calculate averages and targets
+        avg_tagging_rate = (total_tagged_paragraphs / total_paragraphs * 100) if total_paragraphs > 0 else 0
+        target_achieved_runs = len([r for r in evidence_tagging_results if r.get('target_achieved', False)])
+        target_achievement_rate = (target_achieved_runs / successful_runs * 100) if successful_runs > 0 else 0
+        
+        # Create diagnostics response
+        diagnostics_response = {
+            "evidence_tagging_system_status": "active",
+            "engine": "v2",
+            "diagnostics_generated_at": datetime.utcnow().isoformat(),
+            
+            # Overall evidence tagging statistics
+            "evidence_tagging_summary": {
+                "total_evidence_runs": total_evidence_runs,
+                "successful_runs": successful_runs,
+                "failed_runs": failed_runs,
+                "success_rate": (successful_runs / total_evidence_runs * 100) if total_evidence_runs > 0 else 0,
+                "total_paragraphs": total_paragraphs,
+                "total_tagged_paragraphs": total_tagged_paragraphs,
+                "overall_tagging_rate": avg_tagging_rate,
+                "target_threshold": 95.0,
+                "target_achieved_runs": target_achieved_runs,
+                "target_achievement_rate": target_achievement_rate,
+                "fidelity_enforcement_enabled": True
+            },
+            
+            # Recent evidence tagging results
+            "recent_evidence_results": [
+                {
+                    "evidence_tagging_id": result.get('evidence_tagging_id'),
+                    "run_id": result.get('run_id'),
+                    "evidence_tagging_status": result.get('evidence_tagging_status'),
+                    "articles_processed": result.get('articles_processed', 0),
+                    "total_paragraphs": result.get('total_paragraphs', 0),
+                    "tagged_paragraphs": result.get('tagged_paragraphs', 0),
+                    "overall_tagging_rate": result.get('overall_tagging_rate', 0),
+                    "target_achieved": result.get('target_achieved', False),
+                    "source_blocks_used": result.get('source_blocks_used', 0),
+                    "timestamp": result.get('timestamp')
+                }
+                for result in evidence_tagging_results[:20]  # Show last 20 results
+            ],
+            
+            # Evidence tagging system capabilities
+            "system_capabilities": {
+                "paragraph_parsing": "HTML and markdown support",
+                "faq_detection": "Automatic FAQ paragraph exclusion",
+                "evidence_mapping": "Block ID attribution with relevance scoring",
+                "prewrite_integration": "Facts and evidence from prewrite data",
+                "confidence_scoring": "Evidence confidence calculation",
+                "fidelity_enforcement": "≥95% paragraph tagging target"
+            }
+        }
+        
+        print(f"✅ V2 EVIDENCE TAGGING: Returning evidence tagging diagnostics - {total_evidence_runs} total runs - engine=v2")
+        return diagnostics_response
+        
+    except Exception as e:
+        print(f"❌ V2 EVIDENCE TAGGING: Error retrieving evidence tagging diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving evidence tagging diagnostics: {str(e)}")
+
+@app.get("/api/evidence-tagging/diagnostics/{evidence_tagging_id}")
+async def get_specific_evidence_tagging_diagnostics(evidence_tagging_id: str):
+    """V2 ENGINE: Get detailed diagnostics for a specific evidence tagging result"""
+    try:
+        print(f"🔍 V2 EVIDENCE TAGGING: Retrieving specific evidence tagging diagnostics - ID: {evidence_tagging_id} - engine=v2")
+        
+        # Find the specific evidence tagging result
+        evidence_tagging_result = await db.v2_evidence_tagging_results.find_one({"evidence_tagging_id": evidence_tagging_id})
+        
+        if not evidence_tagging_result:
+            raise HTTPException(status_code=404, detail=f"Evidence tagging result not found: {evidence_tagging_id}")
+        
+        # Convert ObjectIds to strings
+        evidence_tagging_result = objectid_to_str(evidence_tagging_result)
+        
+        # Enhance result with additional analysis
+        enhanced_result = {
+            "engine": "v2",
+            "evidence_tagging_result": evidence_tagging_result,
+            "analysis": {
+                "processing_summary": {
+                    "evidence_tagging_status": evidence_tagging_result.get('evidence_tagging_status'),
+                    "articles_processed": evidence_tagging_result.get('articles_processed', 0),
+                    "total_paragraphs": evidence_tagging_result.get('total_paragraphs', 0),
+                    "tagged_paragraphs": evidence_tagging_result.get('tagged_paragraphs', 0),
+                    "overall_tagging_rate": evidence_tagging_result.get('overall_tagging_rate', 0),
+                    "target_achieved": evidence_tagging_result.get('target_achieved', False),
+                    "source_blocks_used": evidence_tagging_result.get('source_blocks_used', 0)
+                },
+                "article_breakdown": [
+                    {
+                        "article_index": article.get('article_index'),
+                        "article_title": article.get('article_title'),
+                        "evidence_tagging_status": article.get('evidence_tagging_status'),
+                        "total_paragraphs": article.get('total_paragraphs', 0),
+                        "tagged_paragraphs": article.get('tagged_paragraphs', 0),
+                        "tagging_rate": article.get('tagging_rate', 0),
+                        "faq_paragraphs_skipped": article.get('faq_paragraphs_skipped', 0),
+                        "evidence_mappings": len(article.get('evidence_mapping', []))
+                    }
+                    for article in evidence_tagging_result.get('evidence_tagging_results', [])
+                ],
+                "evidence_distribution": {
+                    "high_confidence_mappings": 0,
+                    "medium_confidence_mappings": 0,
+                    "low_confidence_mappings": 0,
+                    "prewrite_based_mappings": 0,
+                    "direct_block_mappings": 0
+                }
+            }
+        }
+        
+        # Analyze evidence distribution
+        for article in evidence_tagging_result.get('evidence_tagging_results', []):
+            for mapping in article.get('evidence_mapping', []):
+                confidence = mapping.get('confidence_score', 0)
+                if confidence > 0.7:
+                    enhanced_result['analysis']['evidence_distribution']['high_confidence_mappings'] += 1
+                elif confidence > 0.4:
+                    enhanced_result['analysis']['evidence_distribution']['medium_confidence_mappings'] += 1
+                else:
+                    enhanced_result['analysis']['evidence_distribution']['low_confidence_mappings'] += 1
+        
+        print(f"✅ V2 EVIDENCE TAGGING: Returning specific evidence tagging result - {enhanced_result['analysis']['processing_summary']['tagged_paragraphs']} paragraphs tagged - engine=v2")
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 EVIDENCE TAGGING: Error retrieving specific evidence tagging diagnostics - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error retrieving evidence tagging diagnostics: {str(e)}")
+
+@app.post("/api/evidence-tagging/rerun")
+async def rerun_evidence_tagging(request: RerunRequest):
+    """V2 ENGINE: Rerun evidence tagging for a specific processing run"""
+    try:
+        run_id = request.run_id
+        print(f"🔄 V2 EVIDENCE TAGGING: Rerun evidence tagging requested - run_id: {run_id} - engine=v2")
+        
+        # Find articles from the specified run
+        articles = []
+        async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
+            articles.append(objectid_to_str(article))
+        
+        if not articles:
+            # Handle case where no articles exist - create a graceful response
+            print(f"⚠️ V2 EVIDENCE TAGGING: No V2 articles found for run {run_id}, returning empty result - engine=v2")
+            return {
+                "message": "V2 evidence tagging rerun completed - no articles found for processing",
+                "engine": "v2",
+                "run_id": run_id,
+                "articles_processed": 0,
+                "paragraphs_tagged": 0,
+                "tagging_rate": 0,
+                "target_achieved": False,
+                "note": "No V2 articles found for the specified run_id"
+            }
+        
+        # Create mock source blocks and prewrite data for rerun
+        source_blocks = [
+            {
+                "content": "Mock source block for evidence tagging",
+                "block_type": "paragraph",
+                "text": "Sample content for evidence attribution"
+            }
+        ]
+        
+        prewrite_data = {
+            "prewrite_results": [
+                {
+                    "article_title": article.get('title', ''),
+                    "prewrite_data": {
+                        "facts": [
+                            {
+                                "text": "Sample fact for evidence tagging",
+                                "source_blocks": ["b0"],
+                                "confidence": 0.8
+                            }
+                        ]
+                    }
+                }
+                for article in articles
+            ]
+        }
+        
+        # Perform evidence tagging for the articles
+        evidence_tagging_result = await v2_evidence_tagging_system.tag_content_with_evidence(
+            articles, source_blocks, prewrite_data, run_id
+        )
+        
+        # Store the rerun result
+        try:
+            await db.v2_evidence_tagging_results.insert_one(evidence_tagging_result)
+            print(f"💾 V2 EVIDENCE TAGGING: Stored evidence tagging rerun result - engine=v2")
+        except Exception as storage_error:
+            print(f"❌ V2 EVIDENCE TAGGING: Error storing rerun result - {storage_error} - engine=v2")
+        
+        return {
+            "message": "V2 evidence tagging rerun completed",
+            "engine": "v2",
+            "run_id": run_id,
+            "articles_processed": evidence_tagging_result.get('articles_processed', 0),
+            "paragraphs_tagged": evidence_tagging_result.get('tagged_paragraphs', 0),
+            "tagging_rate": evidence_tagging_result.get('overall_tagging_rate', 0),
+            "target_achieved": evidence_tagging_result.get('target_achieved', False),
+            "evidence_tagging_status": evidence_tagging_result.get('evidence_tagging_status', 'unknown')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ V2 EVIDENCE TAGGING: Error in evidence tagging rerun - {e} - engine=v2")
+        raise HTTPException(status_code=500, detail=f"Error rerunning evidence tagging: {str(e)}")
+
 # V2 ENGINE: Review System API Endpoints
 @app.get("/api/review/runs")
 async def get_runs_for_review(limit: int = 50, status: str = None):

@@ -30158,8 +30158,10 @@ async def create_seed_articles():
         print(f"🌱 Successfully created {len(created_articles)} seed articles for related links testing")
         
         return {
+            "status": "success",
             "success": True,
             "message": f"Successfully created {len(created_articles)} seed articles",
+            "articles_created": len(created_articles),
             "articles": [
                 {
                     "id": article["id"],

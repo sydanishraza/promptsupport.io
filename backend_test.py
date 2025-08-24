@@ -91,7 +91,8 @@ async def test_target_article_verification():
             
             async with session.get(f"{API_BASE}/content-library") as response:
                 if response.status == 200:
-                    articles = await response.json()
+                    data = await response.json()
+                    articles = data.get('articles', []) if isinstance(data, dict) else data
                     print_success(f"Content library accessible - {len(articles)} articles found")
                     
                     # Find the target article

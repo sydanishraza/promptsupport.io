@@ -3,6 +3,10 @@ import './App.css';
 import MainLayout from './components/MainLayout';
 import QuickSetupWizard from './components/QuickSetupWizard';
 
+// Import Prism.js setup for syntax highlighting
+import './utils/prismSetup';
+import './styles/prism-custom.css';
+
 function App() {
   const [isFirstLogin, setIsFirstLogin] = useState(false); // Changed to false to bypass wizard for testing
   const [showSetupWizard, setShowSetupWizard] = useState(false); // Disabled for testing

@@ -229,25 +229,22 @@ pre[class*="language-"].line-numbers {
    ======================================== */
 
 /* Focus states for keyboard navigation */
-figure.code-block:focus-within {
+pre[class*="language-"]:focus-within {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  figure.code-block {
+  pre[class*="language-"] {
     border-width: 2px;
     border-color: #000000;
   }
 
-  figure.code-block .code-toolbar {
+  pre[data-lang]:before {
     background: #000000;
     color: #ffffff;
-  }
-
-  figure.code-block .code-lang {
-    color: #ffffff;
+    border-color: #000000;
   }
 }
 

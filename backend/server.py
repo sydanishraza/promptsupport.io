@@ -23434,6 +23434,41 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         
         print(f"✅ V2 ENGINE: Step 7.8 complete - Intelligent gap filling complete - engine=v2")
         
+        # V2 STEP 7.9: Code Block Normalization & Beautification (Prism-ready)
+        print(f"🎨 V2 ENGINE: Starting Step 7.9 - Code block normalization for Prism rendering - engine=v2")
+        
+        # Normalize and beautify code blocks for Prism rendering
+        code_normalization_result = await v2_code_normalization_system.normalize_code_blocks(
+            articles, normalized_doc.blocks, prewrite_result, run_id
+        )
+        
+        code_normalization_status = code_normalization_result.get('code_normalization_status', 'unknown')
+        if code_normalization_status == 'success':
+            total_code_blocks = code_normalization_result.get('total_code_blocks', 0)
+            normalized_blocks = code_normalization_result.get('normalized_blocks', 0)
+            normalization_rate = code_normalization_result.get('overall_normalization_rate', 0)
+            
+            print(f"✅ V2 ENGINE: Step 7.9 code normalization successful - {normalized_blocks}/{total_code_blocks} blocks normalized ({normalization_rate:.1f}%) - engine=v2")
+        else:
+            print(f"⚠️ V2 ENGINE: Step 7.9 code normalization failed - Status: {code_normalization_status} - engine=v2")
+        
+        # Store code normalization result for diagnostics
+        try:
+            await db.v2_code_normalization_results.insert_one(code_normalization_result)
+            print(f"💾 V2 ENGINE: Stored code normalization result for diagnostics - code_normalization_id: {code_normalization_result.get('code_normalization_id')} - engine=v2")
+        except Exception as code_storage_error:
+            print(f"❌ V2 ENGINE: Error storing code normalization result - {code_storage_error} - engine=v2")
+        
+        # Add code normalization metadata to articles
+        for i, article in enumerate(articles):
+            code_result = next((r for r in code_normalization_result.get('code_normalization_results', []) if r.get('article_index') == i), None)
+            if code_result:
+                article.setdefault('metadata', {})['code_normalization_result'] = code_result
+                article['normalized_code_blocks'] = code_result.get('normalized_blocks', 0)
+                article['code_normalization_rate'] = code_result.get('normalization_rate', 0)
+        
+        print(f"✅ V2 ENGINE: Step 7.9 complete - Code block normalization and beautification complete - engine=v2")
+        
         # V2 STEP 8: Implement Validators (fidelity, 100% coverage, placeholders, style)  
         print(f"🔍 V2 ENGINE: Starting Step 8 - Comprehensive validation - engine=v2")
         

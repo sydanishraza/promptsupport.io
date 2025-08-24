@@ -550,39 +550,44 @@ async def test_broken_link_detection():
         print_error(f"Error testing broken link detection: {e}")
         return False
 
-async def run_comprehensive_toc_test():
-    """Run comprehensive Mini-TOC links processing test suite"""
-    print_test_header("Mini-TOC Links Processing Endpoint - Comprehensive Test Suite")
+async def run_enhanced_toc_matching_test():
+    """Run comprehensive Enhanced TOC Matching Fix test suite"""
+    print_test_header("Enhanced TOC Matching Fix - Comprehensive Test Suite")
     print_info(f"Backend URL: {BACKEND_URL}")
     print_info(f"API Base: {API_BASE}")
     print_info(f"Test Time: {datetime.now().isoformat()}")
+    print_info("Focus: Testing enhanced TOC processing with improved ID matching algorithm")
     
     # Test results tracking
     test_results = []
     
-    # Test 1: TOC Processing Endpoint
-    success, processing_result = await test_toc_processing_endpoint()
-    test_results.append(("TOC Processing Endpoint", success))
+    # Test 1: Enhanced TOC Processing
+    success, processing_result = await test_enhanced_toc_processing()
+    test_results.append(("Enhanced TOC Processing", success))
     
-    # Test 2: Target Article Verification
-    success = await test_target_article_verification()
-    test_results.append(("Target Article Verification", success))
+    # Test 2: ID Matching Improvement
+    success = await test_id_matching_improvement()
+    test_results.append(("ID Matching Improvement", success))
     
-    # Test 3: Content Library Updates
+    # Test 3: Match Score Validation
+    success = await test_match_score_validation()
+    test_results.append(("Match Score Validation", success))
+    
+    # Test 4: Content Library Updates
     success = await test_content_library_updates()
     test_results.append(("Content Library Updates", success))
     
-    # Test 4: Processing Results
+    # Test 5: Broken Link Reduction
+    success = await test_broken_link_reduction()
+    test_results.append(("Broken Link Reduction", success))
+    
+    # Test 6: Processing Results
     success = await test_processing_results()
     test_results.append(("Processing Results", success))
     
-    # Test 5: Anchor Link Generation
+    # Test 7: Anchor Link Generation
     success = await test_anchor_link_generation()
     test_results.append(("Anchor Link Generation", success))
-    
-    # Test 6: Broken Link Detection
-    success = await test_broken_link_detection()
-    test_results.append(("Broken Link Detection", success))
     
     # Final Results Summary
     print_test_header("Test Results Summary")

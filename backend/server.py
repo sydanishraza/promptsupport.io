@@ -6445,16 +6445,20 @@ class V2ValidationSystem:
             # Step 3: Style Guard Validation
             style_result = await self._validate_style_guard(generated_articles, run_id)
             
-            # Step 4: Metrics Calculation
+            # Step 4: Evidence Tagging Validation
+            evidence_result = await self._validate_evidence_tagging(generated_articles, normalized_doc, run_id)
+            
+            # Step 5: Metrics Calculation
             metrics_result = await self._calculate_validation_metrics(
                 normalized_doc, generated_articles, analysis, run_id
             )
             
-            # Step 5: Overall Validation Decision
+            # Step 6: Overall Validation Decision
             validation_result = self._consolidate_validation_results(
                 fidelity_coverage_result,
                 placeholder_result,
                 style_result,
+                evidence_result,
                 metrics_result,
                 run_id
             )

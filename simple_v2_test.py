@@ -123,7 +123,7 @@ def test_process_text():
             "engine": "v2"
         }
         
-        response = requests.post(f"{API_BASE}/process-text", json=payload, timeout=30)
+        response = requests.post(f"{API_BASE}/content/process", json=payload, timeout=30)
         
         if response.status_code == 200:
             result = response.json()

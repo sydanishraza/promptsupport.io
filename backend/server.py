@@ -3924,15 +3924,10 @@ Return the fully formatted article with improved clarity, structure, and clickab
     def _apply_fallback_style_formatting(self, article_title: str, article_content: str) -> dict:
         """Apply basic style formatting as fallback when LLM fails"""
         try:
-            # First, clean H1 tags from content
-            h1_cleaned_content = self._remove_h1_from_content(article_content)
-            
-            # Fix list types
-            list_fixed_content = self._fix_list_types(h1_cleaned_content)
-            
-            # Fix code block rendering
-            formatted_content = self._fix_code_block_rendering(list_fixed_content)
-            structural_changes = []
+            # Apply comprehensive post-processing (same as LLM path)
+            post_processed_result = await self._apply_comprehensive_post_processing(article_content, article_title)
+            formatted_content = post_processed_result.get('content', article_content)
+            structural_changes = post_processed_result.get('changes_applied', [])
             
             # Basic structural improvements
             

@@ -4176,6 +4176,34 @@ Return the fully formatted article with improved clarity, structure, and clickab
             print(f"❌ V2 STYLE: Error calculating style compliance - {e}")
             return {"overall_compliance": 0, "articles_compliant": 0, "error": str(e)}
     
+    def _remove_h1_from_content(self, content: str) -> str:
+        """Remove H1 tags from article content - title should be handled by frontend"""
+        try:
+            import re
+            from bs4 import BeautifulSoup
+            
+            # Parse content with BeautifulSoup
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Find all H1 tags
+            h1_tags = soup.find_all('h1')
+            
+            for h1 in h1_tags:
+                # Convert H1 to H2 to preserve content but fix hierarchy
+                h1.name = 'h2'
+                print(f"🏷️ V2 STYLE: Converted H1 to H2 - '{h1.get_text()[:50]}...'")
+            
+            cleaned_content = str(soup)
+            
+            if len(h1_tags) > 0:
+                print(f"✅ V2 STYLE: Cleaned {len(h1_tags)} H1 tags from content")
+            
+            return cleaned_content
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error cleaning H1 tags - {e}")
+            return content
+
     def _process_clickable_anchors(self, content: str) -> dict:
         """Convert Mini-TOC to clickable anchors and add IDs to headings"""
         try:

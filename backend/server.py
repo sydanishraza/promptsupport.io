@@ -7055,21 +7055,49 @@ REQUIREMENTS:
 - Do **not** embed media; only reference media IDs
 - Return JSON only: {{"html":"...","summary":"..."}}
 
-The HTML should include:
-1. NO <h1> tags in content (title handled by frontend)
-2. Introductory paragraph explaining the article's purpose
-3. Mini-TOC as clickable anchor links: <ul><li><a href="#section1">Section Name</a></li></ul>
-4. Use <ol> ordered lists for procedural steps (create, add, configure, etc.)
-5. Consolidate related code into single blocks instead of fragmenting
-6. Main sections with anchor IDs: <h2 id="section1">Section Name</h2>
-7. Comprehensive FAQs section with Q&A pairs
-8. Related links section as bulleted list
+MANDATORY HTML STRUCTURE (follow EXACTLY):
 
-Return ONLY JSON in this exact format:
+EXAMPLE of CORRECT HTML format:
 {{
-  "html": "<p>Introduction...</p><ul><li><a href='#section1'>...</a></li></ul><h2 id='section1'>...</h2>...",
+  "html": "<p>This tutorial demonstrates how to build a basic Google Map using its JavaScript API. You will learn how to create an HTML page, add a map with a custom marker, and authenticate the map using an API key.</p>
+<ul>
+  <li><a href='#section1'>Using Google Map Javascript API</a></li>
+  <li><a href='#section2'>Create an HTML Page</a></li>
+  <li><a href='#section3'>Add a Map with a Custom Marker</a></li>
+  <li><a href='#section4'>Authenticate the Map</a></li>
+  <li><a href='#section5'>Result</a></li>
+</ul>
+<h2 id='section1'>Using Google Map Javascript API</h2>
+<p>Section content here...</p>
+<h2 id='section2'>Create an HTML Page</h2>
+<h3 id='section21'>Steps to Create the HTML Page</h3>
+<ol>
+  <li>Use any text editor of your choice and add a basic HTML structure</li>
+  <li>Add the following meta tag inside the head element</li>
+  <li>Add a title for the HTML page inside the head element</li>
+</ol>
+<pre class='line-numbers' data-lang='HTML' data-start='1'>
+<code class='language-html'>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset='UTF8'&gt;
+  &lt;title&gt;Google Maps JavaScript API Tutorial&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div id='my_map' style='height:900px; width:100%'&gt;&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code>
+</pre>",
   "summary": "Brief summary of what this article covers and its key takeaways"
-}}"""
+}}
+
+CRITICAL REQUIREMENTS:
+1. NEVER use <h1> tags - START with introduction paragraph <p>
+2. Mini-TOC MUST use <a href='#sectionX'> format with clickable links
+3. Use <ol> for procedural steps (create, add, configure, install, etc.)
+4. Use <ul> only for non-procedural lists
+5. Consolidate code into single <pre><code> blocks
+6. Section headings MUST have id='sectionX' format matching TOC links"""
 
             print(f"🤖 V2 ARTICLE GEN: Sending article generation request to LLM - {audience} audience - engine=v2")
             

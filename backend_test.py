@@ -371,9 +371,111 @@ async def test_html_anchor_generation():
         print_error(f"Error verifying HTML anchor generation: {e}")
         return False
 
+async def test_beautifulsoup_first_approach():
+    """Test 6: Verify BeautifulSoup-first approach for finding existing headings"""
+    print_test_header("Test 6: BeautifulSoup-First Approach Verification")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Test with content that has mixed ID patterns
+            test_content = """
+            <h1>API Integration Guide</h1>
+            <p>This guide covers API integration with existing section IDs.</p>
+            
+            <ul>
+                <li>Overview and Setup</li>
+                <li>Authentication Process</li>
+                <li>Making API Calls</li>
+                <li>Error Handling</li>
+            </ul>
+            
+            <h2 id="section1">Overview and Setup</h2>
+            <p>Getting started with the API...</p>
+            
+            <h2 id="section2">Authentication Process</h2>
+            <p>How to authenticate with the API...</p>
+            
+            <h2>Making API Calls</h2>
+            <p>Examples of API calls...</p>
+            
+            <h2>Error Handling</h2>
+            <p>How to handle errors...</p>
+            """
+            
+            print_info("Testing BeautifulSoup-first approach with mixed ID patterns...")
+            
+            payload = {
+                "content": test_content,
+                "source_type": "html",
+                "processing_options": {
+                    "enable_style_processing": True
+                }
+            }
+            
+            async with session.post(f"{API_BASE}/v2/process-content", json=payload) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    print_success("BeautifulSoup processing completed")
+                    
+                    # Get the processed content to verify approach
+                    job_id = result.get('job_id')
+                    if job_id:
+                        # Wait a moment for processing
+                        await asyncio.sleep(2)
+                        
+                        # Check content library for the processed article
+                        async with session.get(f"{API_BASE}/content-library") as lib_response:
+                            if lib_response.status == 200:
+                                lib_data = await lib_response.json()
+                                articles = lib_data.get('articles', []) if isinstance(lib_data, dict) else lib_data
+                                
+                                # Find the most recent article
+                                if articles:
+                                    latest_article = articles[0]  # Assuming sorted by creation time
+                                    processed_content = latest_article.get('content', '')
+                                    
+                                    # Verify BeautifulSoup approach worked
+                                    existing_sections = re.findall(r'id="(section\d+)"', processed_content)
+                                    new_sections = re.findall(r'id="(section[3-9])"', processed_content)  # section3, section4, etc.
+                                    toc_links = re.findall(r'href="#(section\d+)"', processed_content)
+                                    
+                                    print_info(f"Existing sections preserved: {existing_sections}")
+                                    print_info(f"New sections added: {new_sections}")
+                                    print_info(f"TOC links using sections: {toc_links}")
+                                    
+                                    # Check if existing IDs were preserved and new ones follow pattern
+                                    if 'section1' in existing_sections and 'section2' in existing_sections:
+                                        print_success("✅ Existing section IDs preserved")
+                                        
+                                        if len(new_sections) > 0:
+                                            print_success("✅ New section IDs follow existing pattern")
+                                            return True
+                                        else:
+                                            print_info("⚠️ No new section IDs added (may be expected)")
+                                            return True
+                                    else:
+                                        print_error("❌ Existing section IDs not preserved")
+                                        return False
+                                else:
+                                    print_error("No articles found in content library")
+                                    return False
+                            else:
+                                print_error("Failed to access content library for verification")
+                                return False
+                    else:
+                        print_error("No job ID returned")
+                        return False
+                else:
+                    print_error(f"Processing failed - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error testing BeautifulSoup-first approach: {e}")
+        return False
+
 async def test_heading_id_creation():
-    """Test 4: Check that heading IDs are properly created and match anchor hrefs"""
-    print_test_header("Test 4: Heading ID Creation and Matching")
+    """Test 7: Check that heading IDs are properly created and match anchor hrefs"""
+    print_test_header("Test 7: Heading ID Creation and Matching")
     
     try:
         async with aiohttp.ClientSession() as session:

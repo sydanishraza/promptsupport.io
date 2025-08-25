@@ -4436,6 +4436,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 simple_heading_pattern = r'<h[2-6][^>]*>([^<]+)</h[2-6]>'
                 simple_headings = re.findall(simple_heading_pattern, processed_content, re.IGNORECASE)
                 
+                # Process headings with existing IDs first (priority)
                 for heading_id, heading_text in existing_headings:
                     clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
                     clean_toc = re.sub(r'[^\w\s-]', '', toc_text).strip()
@@ -4452,6 +4453,34 @@ Return the fully formatted article with improved clarity, structure, and clickab
                             if similarity > best_match_score:
                                 best_match_score = similarity
                                 matching_slug = heading_id
+                
+                # If no good match with existing IDs, try simple headings and generate IDs
+                if not matching_slug or best_match_score < 0.7:
+                    for heading_text in simple_headings:
+                        clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
+                        clean_toc = re.sub(r'[^\w\s-]', '', toc_text).strip()
+                        
+                        # Calculate similarity score
+                        toc_words = set(clean_toc.lower().split())
+                        heading_words = set(clean_heading.lower().split())
+                        
+                        if toc_words and heading_words:
+                            similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                            
+                            # Check for exact match or high similarity
+                            if similarity >= 0.7 or clean_toc.lower() in clean_heading.lower() or clean_heading.lower() in clean_toc.lower():
+                                if similarity > best_match_score:
+                                    best_match_score = similarity
+                                    # Generate an ID for this heading
+                                    matching_slug = generate_slug(heading_text)
+                                    
+                                    # Add the ID to the heading in content
+                                    old_heading = f'<h{re.search(r"<h([2-6])", processed_content).group(1)}>{heading_text}</h'
+                                    new_heading = f'<h{re.search(r"<h([2-6])", processed_content).group(1)} id="{matching_slug}">{heading_text}</h'
+                                    if old_heading in processed_content:
+                                        processed_content = processed_content.replace(old_heading, new_heading, 1)
+                                        print(f"🆔 V2 STYLE: Added ID '{matching_slug}' to heading '{heading_text}'")
+                                    break
                 
                 # Fallback to generated heading IDs if found during processing
                 if not matching_slug:

@@ -7219,8 +7219,8 @@ Return ONLY JSON in this exact format:
             
             html_parts = []
             
-            # 1. H1 Title
-            html_parts.append(f'<h1>{title}</h1>')
+            # 1. H1 Title - REMOVED (frontend will handle title as H1)
+            # html_parts.append(f'<h1>{title}</h1>')
             
             # 2. Intro paragraph
             audience_intro = {

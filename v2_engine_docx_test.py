@@ -91,14 +91,13 @@ async def test_v2_engine_status():
                     
                     # Check for V2 features
                     v2_features = [
-                        'v2_processing_pipeline',
-                        'prewrite_analysis',
-                        'style_processing',
-                        'code_normalization',
-                        'evidence_tagging',
-                        'gap_filling',
-                        'related_links',
-                        'publishing_system'
+                        'woolf_style_processing',
+                        'section_grounded_prewrite',
+                        'code_block_normalization',
+                        'evidence_paragraph_tagging',
+                        'intelligent_gap_filling',
+                        'content_library_indexing',
+                        'v2_publishing_flow'
                     ]
                     
                     features = engine_status.get('features', [])

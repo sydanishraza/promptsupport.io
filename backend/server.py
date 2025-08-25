@@ -4180,6 +4180,59 @@ Return the fully formatted article with improved clarity, structure, and clickab
             print(f"❌ V2 STYLE: Error calculating style compliance - {e}")
             return {"overall_compliance": 0, "articles_compliant": 0, "error": str(e)}
     
+    def _fix_list_types(self, content: str) -> str:
+        """Fix list types by detecting sequential/ordered content and converting to proper list types"""
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Find all unordered lists
+            ul_tags = soup.find_all('ul')
+            lists_converted = 0
+            
+            for ul in ul_tags:
+                list_items = ul.find_all('li')
+                if len(list_items) < 2:
+                    continue
+                
+                # Check if list items indicate sequential/ordered content
+                sequential_indicators = 0
+                total_items = len(list_items)
+                
+                for li in list_items:
+                    text = li.get_text().lower().strip()
+                    
+                    # Check for sequential indicators
+                    if any(indicator in text for indicator in [
+                        'first', 'second', 'third', 'fourth', 'fifth',
+                        'then', 'next', 'after', 'following', 'finally',
+                        'step', 'stage', 'phase', 'initially',
+                        'authenticate', 'configure', 'install', 'setup',
+                        'create', 'add', 'enable', 'save', 'run', 'execute'
+                    ]):
+                        sequential_indicators += 1
+                    
+                    # Check for numbered patterns
+                    if re.match(r'^\d+[.)]\s+', text) or re.match(r'^[a-z][.)]\s+', text):
+                        sequential_indicators += 1
+                
+                # If more than 50% of items have sequential indicators, convert to ordered list
+                if sequential_indicators >= (total_items * 0.5):
+                    ul.name = 'ol'
+                    lists_converted += 1
+                    print(f"🔢 V2 STYLE: Converted UL to OL - {sequential_indicators}/{total_items} sequential indicators")
+            
+            if lists_converted > 0:
+                print(f"✅ V2 STYLE: Converted {lists_converted} unordered lists to ordered lists")
+            
+            return str(soup)
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error fixing list types - {e}")
+            return content
+
     def _remove_h1_from_content(self, content: str) -> str:
         """Remove H1 tags from article content - title should be handled by frontend"""
         try:

@@ -7061,13 +7061,13 @@ The HTML should include:
 3. Mini-TOC as clickable anchor links: <ul><li><a href="#section1">Section Name</a></li></ul>
 4. Use <ol> ordered lists for procedural steps (create, add, configure, etc.)
 5. Consolidate related code into single blocks instead of fragmenting
-4. Main sections with anchor IDs: <h2 id="section-1">Section Name</h2>
-5. Comprehensive FAQs section with Q&A pairs
-6. Related links section as bulleted list
+6. Main sections with anchor IDs: <h2 id="section1">Section Name</h2>
+7. Comprehensive FAQs section with Q&A pairs
+8. Related links section as bulleted list
 
 Return ONLY JSON in this exact format:
 {{
-  "html": "<h1>Article Title</h1><p>Introduction...</p><ul><li><a href='#section-1'>...</a></li></ul><h2 id='section-1'>...</h2>...",
+  "html": "<p>Introduction...</p><ul><li><a href='#section1'>...</a></li></ul><h2 id='section1'>...</h2>...",
   "summary": "Brief summary of what this article covers and its key takeaways"
 }}"""
 

@@ -7061,16 +7061,16 @@ EXAMPLE of CORRECT HTML format:
 {{
   "html": "<p>This tutorial demonstrates how to build a basic Google Map using its JavaScript API. You will learn how to create an HTML page, add a map with a custom marker, and authenticate the map using an API key.</p>
 <ul>
-  <li><a href='#section1'>Using Google Map Javascript API</a></li>
-  <li><a href='#section2'>Create an HTML Page</a></li>
-  <li><a href='#section3'>Add a Map with a Custom Marker</a></li>
-  <li><a href='#section4'>Authenticate the Map</a></li>
-  <li><a href='#section5'>Result</a></li>
+  <li>Using Google Map Javascript API</li>
+  <li>Create an HTML Page</li>
+  <li>Add a Map with a Custom Marker</li>
+  <li>Authenticate the Map</li>
+  <li>Result</li>
 </ul>
-<h2 id='section1'>Using Google Map Javascript API</h2>
+<h2>Using Google Map Javascript API</h2>
 <p>Section content here...</p>
-<h2 id='section2'>Create an HTML Page</h2>
-<h3 id='section21'>Steps to Create the HTML Page</h3>
+<h2>Create an HTML Page</h2>
+<h3>Steps to Create the HTML Page</h3>
 <ol>
   <li>Use any text editor of your choice and add a basic HTML structure</li>
   <li>Add the following meta tag inside the head element</li>

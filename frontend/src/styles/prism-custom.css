@@ -24,10 +24,15 @@ pre.responsive-code {
   -webkit-font-smoothing: auto;
   -moz-osx-font-smoothing: auto;
   text-rendering: auto;
-  /* Responsive design for mobile */
+  /* Enhanced responsive design for mobile */
   max-width: 100%;
+  width: 100%;
   word-break: break-word;
   overflow-wrap: break-word;
+  box-sizing: border-box;
+  /* Force responsive behavior */
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 /* Code element styling with enhanced clarity and no distortion */

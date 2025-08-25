@@ -990,17 +990,17 @@ async def run_id_coordination_test():
     return success_rate >= 60
 
 if __name__ == "__main__":
-    print("🚀 Starting Mini-TOC Links Fix Backend Test Suite...")
+    print("🚀 Starting ID Coordination System Backend Test Suite...")
     
     try:
-        # Run the Mini-TOC links test
-        success = asyncio.run(run_mini_toc_links_test())
+        # Run the ID coordination test
+        success = asyncio.run(run_id_coordination_test())
         
         if success:
-            print("\n🎯 MINI-TOC LINKS TEST SUITE COMPLETED SUCCESSFULLY")
+            print("\n🎯 ID COORDINATION SYSTEM TEST SUITE COMPLETED SUCCESSFULLY")
             sys.exit(0)
         else:
-            print("\n💥 MINI-TOC LINKS TEST SUITE COMPLETED WITH ISSUES")
+            print("\n💥 ID COORDINATION SYSTEM TEST SUITE COMPLETED WITH ISSUES")
             sys.exit(1)
             
     except KeyboardInterrupt:

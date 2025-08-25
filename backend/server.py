@@ -3929,60 +3929,13 @@ Return the fully formatted article with improved clarity, structure, and clickab
             formatted_content = post_processed_result.get('content', article_content)
             structural_changes = post_processed_result.get('changes_applied', [])
             
-            # Basic structural improvements
+            # Basic structural improvements already applied by comprehensive post-processing
             
-            # 1. Ensure proper heading structure
-            if not formatted_content.startswith(f'<h1>{article_title}</h1>'):
-                formatted_content = f'<h1>{article_title}</h1>\n\n{formatted_content}'
-                structural_changes.append("Added H1 title")
-            
-            # 2. Apply basic paragraph formatting (limit line length)
-            paragraphs = formatted_content.split('\n\n')
-            formatted_paragraphs = []
-            
-            for para in paragraphs:
-                if para.strip():
-                    # Basic line break for long paragraphs
-                    if len(para) > 400:  # Rough estimate for 4 lines
-                        sentences = para.split('. ')
-                        if len(sentences) > 2:
-                            mid_point = len(sentences) // 2
-                            para = '. '.join(sentences[:mid_point]) + '.\n\n' + '. '.join(sentences[mid_point:])
-                            structural_changes.append("Split long paragraph")
-                    
-                    formatted_paragraphs.append(para)
-            
-            formatted_content = '\n\n'.join(formatted_paragraphs)
-            
-            # 3. Ensure code blocks are properly formatted
-            import re
-            # Find unformatted code blocks and add language tags
-            code_pattern = r'```\n([^`]+)\n```'
-            def add_language_tag(match):
-                code_content = match.group(1)
-                if 'curl' in code_content.lower() or 'http' in code_content.lower():
-                    return f'```bash\n{code_content}\n```'
-                elif '{' in code_content and '}' in code_content:
-                    return f'```json\n{code_content}\n```'
-                else:
-                    return f'```text\n{code_content}\n```'
-            
-            original_content = formatted_content
-            formatted_content = re.sub(code_pattern, add_language_tag, formatted_content)
-            
-            if original_content != formatted_content:
-                structural_changes.append("Added language tags to code blocks")
-            
-            # 4. Basic terminology corrections
+            # Apply basic terminology corrections
             for incorrect, correct in self.woolf_terminology.items():
                 if incorrect in formatted_content:
                     formatted_content = formatted_content.replace(incorrect, correct)
                     structural_changes.append(f"Corrected terminology: {incorrect} → {correct}")
-            
-            # 5. Apply clickable anchor processing to Mini-TOC
-            anchor_result = self._process_clickable_anchors(formatted_content)
-            formatted_content = anchor_result.get('content', formatted_content)
-            structural_changes.extend(anchor_result.get('structural_changes', []))
             
             return {
                 "formatted_content": formatted_content,

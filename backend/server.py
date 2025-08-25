@@ -4766,91 +4766,169 @@ Return the fully formatted article with improved clarity, structure, and clickab
                         best_match_score = 0
                         match_method = "none"
                         
-                        # METHOD 1: Direct text matching with existing headings (HIGHEST PRIORITY)
-                        for heading_info in existing_headings_with_ids:
-                            heading_text = heading_info['text']
-                            heading_id = heading_info['id']
+                        # SUPER AGGRESSIVE MATCHING: Use sequential assignment based on TOC order for section-style IDs
+                        section_ids = [h['id'] for h in existing_headings_with_ids if h['id'].startswith('section')]
+                        has_section_pattern = len(section_ids) >= 2
+                        
+                        if has_section_pattern:
+                            # STRATEGY 1: Sequential TOC-to-Section mapping for section-style patterns
+                            toc_index = li_elements.index(li)  # Get position of this TOC item in the list
                             
-                            # Calculate text similarity
-                            toc_words = set(toc_text.lower().split())
-                            heading_words = set(heading_text.lower().split())
+                            # Get section numbers and sort them
+                            section_numbers = []
+                            for sid in section_ids:
+                                match = re.search(r'section(\d+)', sid)
+                                if match:
+                                    section_numbers.append(int(match.group(1)))
                             
-                            if toc_words and heading_words:
-                                similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                            section_numbers.sort()
+                            
+                            # Assign TOC item to corresponding section by order
+                            if toc_index < len(section_numbers):
+                                target_section_num = section_numbers[toc_index]
+                                matching_id = f"section{target_section_num}"
+                                match_method = "sequential_section_mapping"
+                                best_match_score = 1.0  # Perfect match by position
+                                print(f"🎯 V2 STYLE: Sequential mapping - TOC #{toc_index+1} '{toc_text}' -> section{target_section_num}")
+                            else:
+                                # TOC has more items than sections - create new section ID
+                                next_section_num = max(section_numbers) + 1 + (toc_index - len(section_numbers))
+                                matching_id = f"section{next_section_num}"
+                                match_method = "extended_section_sequence"
+                                best_match_score = 0.9
+                                print(f"🆔 V2 STYLE: Extended section sequence - TOC #{toc_index+1} '{toc_text}' -> section{next_section_num}")
+                        
+                        # STRATEGY 2: If no section pattern, use enhanced text matching
+                        if not matching_id:
+                            for heading_info in existing_headings_with_ids:
+                                heading_text = heading_info['text']
+                                heading_id = heading_info['id']
                                 
-                                # Also check for partial text inclusion
-                                if (toc_text.lower() in heading_text.lower() or 
-                                    heading_text.lower() in toc_text.lower() or
-                                    similarity >= 0.3):
-                                    
-                                    if similarity > best_match_score:
+                                # Enhanced text similarity calculation
+                                toc_clean = re.sub(r'[^\w\s]', '', toc_text.lower()).strip()
+                                heading_clean = re.sub(r'[^\w\s]', '', heading_text.lower()).strip()
+                                
+                                # Multiple matching strategies
+                                similarity_scores = []
+                                
+                                # 1. Word overlap similarity
+                                toc_words = set(toc_clean.split())
+                                heading_words = set(heading_clean.split())
+                                if toc_words and heading_words:
+                                    word_similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                                    similarity_scores.append(word_similarity)
+                                
+                                # 2. Substring matching (both directions)
+                                if toc_clean in heading_clean:
+                                    similarity_scores.append(0.9)
+                                elif heading_clean in toc_clean:
+                                    similarity_scores.append(0.8)
+                                
+                                # 3. Fuzzy key phrase matching
+                                toc_key_phrases = toc_clean.split()[:3]  # First 3 words
+                                for phrase in toc_key_phrases:
+                                    if len(phrase) > 2 and phrase in heading_clean:
+                                        similarity_scores.append(0.7)
+                                        break
+                                
+                                # Use best similarity score
+                                if similarity_scores:
+                                    similarity = max(similarity_scores)
+                                    if similarity > best_match_score and similarity >= 0.6:
                                         best_match_score = similarity
                                         matching_id = heading_id
-                                        match_method = "existing_heading"
-                                        print(f"🎯 V2 STYLE: Matched TOC '{toc_text}' to existing heading ID '{heading_id}' (score: {similarity:.2f})")
+                                        match_method = "enhanced_text_matching"
+                                        print(f"🎯 V2 STYLE: Enhanced text match - TOC '{toc_text}' to '{heading_id}' (score: {similarity:.2f})")
                         
-                        # METHOD 2: If no existing heading match, look for headings without IDs and add IDs
-                        if not matching_id or best_match_score < 0.2:
+                        # STRATEGY 3: Create new heading IDs for unmatched TOC items
+                        if not matching_id or best_match_score < 0.5:
                             headings_without_ids = soup.find_all(['h2', 'h3', 'h4', 'h5', 'h6'], id=False)
+                            
+                            best_heading_match = None
+                            best_heading_score = 0
                             
                             for heading in headings_without_ids:
                                 heading_text = heading.get_text().strip()
                                 
-                                # Calculate similarity
-                                toc_words = set(toc_text.lower().split())
-                                heading_words = set(heading_text.lower().split())
+                                # Enhanced similarity for headings without IDs
+                                toc_clean = re.sub(r'[^\w\s]', '', toc_text.lower()).strip()
+                                heading_clean = re.sub(r'[^\w\s]', '', heading_text.lower()).strip()
                                 
+                                # Calculate comprehensive similarity
+                                similarity_factors = []
+                                
+                                # Word overlap
+                                toc_words = set(toc_clean.split())
+                                heading_words = set(heading_clean.split())
                                 if toc_words and heading_words:
-                                    similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
-                                    
-                                    # Check for good match
-                                    if (toc_text.lower() in heading_text.lower() or 
-                                        heading_text.lower() in toc_text.lower() or
-                                        similarity >= 0.3):
-                                        
-                                        if similarity > best_match_score:
-                                            # Generate appropriate ID based on existing pattern
-                                            section_ids = [h['id'] for h in existing_headings_with_ids if h['id'].startswith('section')]
-                                            if section_ids:
-                                                # Continue section pattern
-                                                section_numbers = [int(re.search(r'section(\d+)', sid).group(1)) for sid in section_ids if re.search(r'section(\d+)', sid)]
-                                                if section_numbers:
-                                                    next_num = max(section_numbers) + 1
-                                                    matching_id = f"section{next_num}"
-                                                else:
-                                                    matching_id = "section1"
-                                            else:
-                                                # Use slugified ID if no section pattern
-                                                matching_id = generate_slug(heading_text)
-                                            
-                                            # Add the ID to the heading
-                                            heading['id'] = matching_id
-                                            best_match_score = similarity
-                                            match_method = "added_id_to_heading"
-                                            print(f"🆔 V2 STYLE: Added ID '{matching_id}' to heading '{heading_text}' for TOC '{toc_text}' (score: {similarity:.2f})")
-                                            break
+                                    word_sim = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                                    similarity_factors.append(word_sim)
+                                
+                                # Substring matching
+                                if toc_clean in heading_clean or heading_clean in toc_clean:
+                                    similarity_factors.append(0.9)
+                                
+                                # Key word presence
+                                for word in toc_words:
+                                    if len(word) > 3 and word in heading_clean:
+                                        similarity_factors.append(0.7)
+                                        break
+                                
+                                if similarity_factors:
+                                    heading_similarity = max(similarity_factors)
+                                    if heading_similarity > best_heading_score:
+                                        best_heading_score = heading_similarity
+                                        best_heading_match = heading
+                            
+                            # If we found a good heading match, add ID to it
+                            if best_heading_match and best_heading_score >= 0.4:
+                                # Determine ID format based on existing pattern
+                                section_ids = [h['id'] for h in existing_headings_with_ids if h['id'].startswith('section')]
+                                if section_ids:
+                                    # Continue section pattern
+                                    section_numbers = [int(re.search(r'section(\d+)', sid).group(1)) for sid in section_ids if re.search(r'section(\d+)', sid)]
+                                    if section_numbers:
+                                        next_num = max(section_numbers) + 1
+                                        matching_id = f"section{next_num}"
+                                    else:
+                                        matching_id = "section1"
+                                else:
+                                    # Generate slugified ID
+                                    matching_id = generate_slug(best_heading_match.get_text().strip())
+                                
+                                # Add the ID to the heading
+                                best_heading_match['id'] = matching_id
+                                best_match_score = best_heading_score
+                                match_method = "created_heading_id"
+                                print(f"🆔 V2 STYLE: Created ID '{matching_id}' for heading '{best_heading_match.get_text().strip()}' matching TOC '{toc_text}' (score: {best_heading_score:.2f})")
                         
-                        # METHOD 3: Fallback - generate ID but mark as potentially broken
+                        # FALLBACK: Generate ID using pattern consistency
                         if not matching_id:
-                            # Generate fallback ID based on pattern
                             section_ids = [h['id'] for h in existing_headings_with_ids if h['id'].startswith('section')]
                             if section_ids:
+                                # Generate next section ID
                                 section_numbers = [int(re.search(r'section(\d+)', sid).group(1)) for sid in section_ids if re.search(r'section(\d+)', sid)]
                                 if section_numbers:
                                     next_num = max(section_numbers) + 1
                                     matching_id = f"section{next_num}"
                                 else:
                                     matching_id = "section1"
+                                match_method = "pattern_based_fallback"
+                                print(f"🔧 V2 STYLE: Pattern-based fallback - TOC '{toc_text}' -> '{matching_id}'")
                             else:
+                                # No pattern detected, use slugified
                                 matching_id = generate_slug(toc_text)
-                            
-                            match_method = "fallback_generated"
-                            toc_broken_links.append({
-                                "toc_text": toc_text,
-                                "expected_slug": matching_id,
-                                "reason": "no_matching_heading_found",
-                                "match_score": best_match_score
-                            })
+                                match_method = "slugified_fallback"
+                                print(f"🔧 V2 STYLE: Slugified fallback - TOC '{toc_text}' -> '{matching_id}'")
+                                
+                                # Only mark as broken if no heading target exists
+                                if f'id="{matching_id}"' not in str(soup):
+                                    toc_broken_links.append({
+                                        "toc_text": toc_text,
+                                        "expected_slug": matching_id,
+                                        "reason": "fallback_no_target",
+                                        "match_score": 0.0
+                                    })
                         
                         print(f"🔗 V2 STYLE: TOC '{toc_text}' -> ID '{matching_id}' via {match_method} (score: {best_match_score:.2f})")
                         

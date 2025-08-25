@@ -217,6 +217,18 @@ pre[class*="language-"].line-numbers {
     line-height: 1.4;
     word-break: break-all;
     white-space: pre-wrap;
+    max-width: 100%;
+    display: block;
+    overflow-x: auto;
+  }
+  
+  /* Force mobile responsiveness for all code containers */
+  pre[class*="language-"],
+  pre.responsive-code,
+  figure.code-block {
+    max-width: calc(100vw - 2rem) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Language label removed - no mobile overrides needed */

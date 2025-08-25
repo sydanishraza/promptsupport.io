@@ -4800,7 +4800,8 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 print(f"🔗 V2 STYLE: TOC matching '{toc_text}' -> '{matching_slug}' (score: {best_match_score:.2f})")
                 
                 anchor_links_generated += 1
-                return f'{indent}{bullet} [{toc_text}](#{matching_slug})'
+                # Return HTML anchor link format instead of Markdown
+                return f'{indent}{bullet} <a href="#{matching_slug}">{toc_text}</a>'
             
             # Match TOC patterns - both markdown and HTML list formats
             # Pattern: optional whitespace + bullet (- or *) + space + text

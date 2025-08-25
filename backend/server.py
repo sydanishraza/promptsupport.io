@@ -3911,7 +3911,10 @@ Return the fully formatted article with improved clarity, structure, and clickab
         """Apply basic style formatting as fallback when LLM fails"""
         try:
             # First, clean H1 tags from content
-            formatted_content = self._remove_h1_from_content(article_content)
+            h1_cleaned_content = self._remove_h1_from_content(article_content)
+            
+            # Fix list types
+            formatted_content = self._fix_list_types(h1_cleaned_content)
             structural_changes = []
             
             # Basic structural improvements

@@ -4220,8 +4220,8 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 # Check if this is a single-line code block that should be consolidated
                 code_text = code.get_text().strip()
                 
-                # If it's a multi-line code snippet, wrap it properly
-                if '\n' in code_text or len(code_text) > 50:
+                # If it's a multi-line code snippet or looks like code, wrap it properly
+                if '\n' in code_text or len(code_text) > 30:
                     # Create proper pre wrapper
                     pre_tag = soup.new_tag('pre', **{
                         'class': ['line-numbers', 'responsive-code'],

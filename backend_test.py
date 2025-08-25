@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Enhanced TOC Matching Fix
-Testing the enhanced TOC processing with improved ID matching algorithm
-Focus: POST /api/style/process-toc-links endpoint with enhanced matching
+Mini-TOC Links Fix Test Suite
+Testing the completely rewritten _process_clickable_anchors method using BeautifulSoup
+Focus: HTML anchor link generation <a href="#slug">text</a> instead of Markdown format
 """
 
 import asyncio

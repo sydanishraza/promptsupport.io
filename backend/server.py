@@ -7056,9 +7056,11 @@ REQUIREMENTS:
 - Return JSON only: {{"html":"...","summary":"..."}}
 
 The HTML should include:
-1. <h1> title with appropriate styling
+1. NO <h1> tags in content (title handled by frontend)
 2. Introductory paragraph explaining the article's purpose
-3. Mini-TOC as bulleted list with anchor links: <ul><li><a href="#section-1">Section Name</a></li></ul>
+3. Mini-TOC as clickable anchor links: <ul><li><a href="#section1">Section Name</a></li></ul>
+4. Use <ol> ordered lists for procedural steps (create, add, configure, etc.)
+5. Consolidate related code into single blocks instead of fragmenting
 4. Main sections with anchor IDs: <h2 id="section-1">Section Name</h2>
 5. Comprehensive FAQs section with Q&A pairs
 6. Related links section as bulleted list

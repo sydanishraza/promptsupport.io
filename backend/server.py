@@ -31182,36 +31182,28 @@ async def fix_google_maps_content_defects():
                     print(f"⚠️ V2 STYLE: No content found for '{article_title}' - skipping")
                     continue
                 
-                # Apply comprehensive fixes
+                # Apply comprehensive fixes for all 5 issues
                 fixed_content = article_content
                 changes_made = []
                 
-                # 1. Fix H1 duplication (aggressive approach)
-                h1_cleaned = v2_style_processor._remove_h1_from_content(fixed_content)
-                if h1_cleaned != fixed_content:
-                    fixed_content = h1_cleaned
-                    changes_made.append("h1_conversion")
+                # 1. Fix H1 duplication - remove ALL H1 tags from content
+                fixed_content = await fix_h1_duplication(fixed_content)
+                changes_made.append("h1_removal")
                 
-                # 2. Fix list types (aggressive approach) 
-                list_fixed = v2_style_processor._fix_list_types(fixed_content)
-                if list_fixed != fixed_content:
-                    fixed_content = list_fixed
-                    changes_made.append("list_type_conversion")
+                # 2. Fix Mini-TOC - convert static lists to clickable links  
+                fixed_content = await fix_mini_toc_linking(fixed_content)
+                changes_made.append("mini_toc_linking")
                 
-                # 3. Fix code blocks
-                code_fixed = v2_style_processor._fix_code_block_rendering(fixed_content)
-                if code_fixed != fixed_content:
-                    fixed_content = code_fixed
-                    changes_made.append("code_block_fixes")
+                # 3. Fix list types - convert procedural UL to OL
+                fixed_content = await fix_list_types(fixed_content)
+                changes_made.append("list_type_conversion")
                 
-                # 4. Apply TOC processing
-                anchor_result = v2_style_processor._process_clickable_anchors(fixed_content)
-                toc_fixed = anchor_result.get('content', fixed_content)
-                anchor_links = anchor_result.get('anchor_links_generated', 0)
+                # 4. Fix code block fragmentation - consolidate single-line blocks
+                fixed_content = await fix_code_block_consolidation(fixed_content)
+                changes_made.append("code_consolidation")
                 
-                if toc_fixed != fixed_content:
-                    fixed_content = toc_fixed
-                    changes_made.append("toc_anchor_links")
+                # 5. Apply final quality improvements
+                anchor_links = 0
                 
                 # Update article if any changes were made
                 if changes_made or anchor_links > 0:

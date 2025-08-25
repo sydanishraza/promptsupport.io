@@ -4058,6 +4058,250 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 'error': str(e)
             }
     
+    def _remove_h1_from_content(self, content: str) -> dict:
+        """Remove H1 tags from content body, preserving article structure"""
+        try:
+            import re
+            
+            original_content = content
+            changes = []
+            
+            # Count H1 tags before removal
+            h1_count_before = len(re.findall(r'<h1[^>]*>.*?</h1>', content, re.IGNORECASE | re.DOTALL))
+            
+            if h1_count_before > 0:
+                print(f"🔧 V2 STYLE: Found {h1_count_before} H1 tags to remove from content body")
+                
+                # Convert H1 tags to H2 tags in content body
+                def h1_to_h2(match):
+                    h1_content = match.group(1)  # Content inside H1 tags
+                    return f'<h2>{h1_content}</h2>'
+                
+                # Remove H1 tags and convert to H2
+                content = re.sub(r'<h1[^>]*>(.*?)</h1>', h1_to_h2, content, flags=re.IGNORECASE | re.DOTALL)
+                
+                h1_count_after = len(re.findall(r'<h1[^>]*>.*?</h1>', content, re.IGNORECASE | re.DOTALL))
+                changes.append(f"Converted {h1_count_before} H1 tags to H2 tags in content body")
+                
+                print(f"✅ V2 STYLE: H1 removal complete - {h1_count_before} -> {h1_count_after} H1 tags")
+            
+            return {
+                'content': content,
+                'changes_made': len(changes) > 0,
+                'changes': changes,
+                'h1_count_before': h1_count_before,
+                'h1_count_after': len(re.findall(r'<h1[^>]*>.*?</h1>', content, re.IGNORECASE | re.DOTALL))
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error removing H1 tags - {e}")
+            return {
+                'content': original_content,
+                'changes_made': False,
+                'changes': [f"H1 removal error: {str(e)}"],
+                'error': str(e)
+            }
+    
+    def _fix_list_types_comprehensive(self, content: str) -> dict:
+        """Fix list types by converting procedural lists to ordered lists"""
+        try:
+            import re
+            from bs4 import BeautifulSoup
+            
+            original_content = content
+            changes = []
+            
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Find all unordered lists
+            ul_elements = soup.find_all('ul')
+            conversions_made = 0
+            
+            for ul in ul_elements:
+                # Skip if this is likely a Mini-TOC (contains links or is at the beginning)
+                ul_text = ul.get_text().lower()
+                has_links = ul.find('a') is not None
+                
+                # Skip Mini-TOC patterns
+                if has_links or 'table of contents' in ul_text or len(ul.find_all('li')) <= 6:
+                    continue
+                
+                # Check if this list contains procedural/sequential content
+                list_items = ul.find_all('li')
+                procedural_indicators = 0
+                total_items = len(list_items)
+                
+                procedural_keywords = [
+                    'create', 'add', 'open', 'save', 'click', 'select', 'go to', 'navigate',
+                    'copy', 'paste', 'enter', 'type', 'choose', 'set', 'configure',
+                    'install', 'download', 'upload', 'generate', 'build', 'run',
+                    'first', 'second', 'third', 'next', 'then', 'finally', 'last',
+                    'step 1', 'step 2', 'step 3', '1.', '2.', '3.', 'once', 'after'
+                ]
+                
+                for li in list_items:
+                    li_text = li.get_text().lower()
+                    
+                    # Check for procedural language
+                    for keyword in procedural_keywords:
+                        if keyword in li_text:
+                            procedural_indicators += 1
+                            break
+                    
+                    # Check for sequential patterns
+                    if re.search(r'(step|then|first|next|after|once|finally)', li_text):
+                        procedural_indicators += 1
+                
+                # Convert to ordered list if > 50% of items are procedural
+                if total_items > 1 and procedural_indicators / total_items > 0.3:
+                    # Create new ordered list
+                    new_ol = soup.new_tag('ol')
+                    
+                    # Copy all attributes except the tag name
+                    for attr, value in ul.attrs.items():
+                        new_ol[attr] = value
+                    
+                    # Move all children to the new ol
+                    for child in list(ul.children):
+                        new_ol.append(child.extract())
+                    
+                    # Replace ul with ol
+                    ul.replace_with(new_ol)
+                    conversions_made += 1
+                    
+                    changes.append(f"Converted UL to OL with {total_items} items ({procedural_indicators} procedural indicators)")
+                    print(f"🔄 V2 STYLE: Converted procedural UL to OL - {total_items} items, {procedural_indicators} indicators")
+            
+            if conversions_made > 0:
+                content = str(soup)
+                changes.append(f"Total list conversions: {conversions_made}")
+                print(f"✅ V2 STYLE: List type fixes complete - {conversions_made} UL->OL conversions")
+            
+            return {
+                'content': content,
+                'changes_made': conversions_made > 0,
+                'changes': changes,
+                'conversions_made': conversions_made
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error fixing list types - {e}")
+            return {
+                'content': original_content,
+                'changes_made': False,
+                'changes': [f"List type fix error: {str(e)}"],
+                'error': str(e)
+            }
+    
+    async def _fix_code_consolidation_comprehensive(self, content: str) -> dict:
+        """Fix code block consolidation and rendering issues"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            original_content = content
+            changes = []
+            
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Find all code blocks (pre/code elements)
+            pre_elements = soup.find_all('pre')
+            code_elements = soup.find_all('code')
+            
+            consolidations_made = 0
+            
+            print(f"🎨 V2 STYLE: Found {len(pre_elements)} pre elements, {len(code_elements)} code elements")
+            
+            # Strategy 1: Consolidate consecutive pre elements
+            i = 0
+            while i < len(pre_elements):
+                current_pre = pre_elements[i]
+                consecutive_pres = [current_pre]
+                
+                # Look for consecutive pre elements (siblings)
+                next_sibling = current_pre.next_sibling
+                while next_sibling:
+                    # Skip text nodes that are just whitespace
+                    if hasattr(next_sibling, 'name') and next_sibling.name == 'pre':
+                        consecutive_pres.append(next_sibling)
+                        next_sibling = next_sibling.next_sibling
+                    elif hasattr(next_sibling, 'strip') and next_sibling.strip() == '':
+                        # Skip whitespace text nodes
+                        next_sibling = next_sibling.next_sibling
+                    else:
+                        break
+                
+                # If we found consecutive pre elements, consolidate them
+                if len(consecutive_pres) > 1:
+                    # Combine all code content
+                    combined_lines = []
+                    for pre in consecutive_pres:
+                        code_elem = pre.find('code')
+                        if code_elem:
+                            combined_lines.append(code_elem.get_text())
+                        else:
+                            combined_lines.append(pre.get_text())
+                    
+                    # Create consolidated pre element with proper Prism classes
+                    new_pre = soup.new_tag('pre', **{
+                        'class': 'line-numbers',
+                        'data-lang': 'HTML',
+                        'data-start': '1'
+                    })
+                    
+                    new_code = soup.new_tag('code', **{'class': 'language-html'})
+                    new_code.string = '\n'.join(combined_lines)
+                    new_pre.append(new_code)
+                    
+                    # Replace first pre with consolidated version
+                    consecutive_pres[0].replace_with(new_pre)
+                    
+                    # Remove the other pres
+                    for pre in consecutive_pres[1:]:
+                        pre.decompose()
+                    
+                    consolidations_made += len(consecutive_pres) - 1
+                    changes.append(f"Consolidated {len(consecutive_pres)} consecutive code blocks")
+                    print(f"🔧 V2 STYLE: Consolidated {len(consecutive_pres)} consecutive pre elements")
+                
+                i += 1
+            
+            # Strategy 2: Enhance single-line code blocks
+            remaining_pres = soup.find_all('pre')
+            for pre in remaining_pres:
+                if not pre.get('class'):
+                    # Add Prism classes if missing
+                    pre['class'] = 'line-numbers'
+                    pre.attrs.setdefault('data-lang', 'HTML')
+                    pre.attrs.setdefault('data-start', '1')
+                    
+                    # Ensure code element has proper class
+                    code_elem = pre.find('code')
+                    if code_elem and not code_elem.get('class'):
+                        code_elem['class'] = 'language-html'
+                    
+                    changes.append("Added Prism classes to code block")
+            
+            if consolidations_made > 0 or len(changes) > 0:
+                content = str(soup)
+                changes.append(f"Total code consolidations: {consolidations_made}")
+                print(f"✅ V2 STYLE: Code consolidation complete - {consolidations_made} consolidations")
+            
+            return {
+                'content': content,
+                'changes_made': consolidations_made > 0 or len(changes) > 0,
+                'changes': changes,
+                'consolidations_made': consolidations_made
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error in code consolidation - {e}")
+            return {
+                'content': original_content,
+                'changes_made': False,
+                'changes': [f"Code consolidation error: {str(e)}"],
+                'error': str(e)
+            }
+    
     def _analyze_style_changes(self, original: str, formatted: str) -> list:
         """Analyze what structural changes were made during formatting"""
         changes = []

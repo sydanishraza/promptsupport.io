@@ -340,8 +340,12 @@ async def generate_enhanced_html_content(article_data: dict, template_data: dict
         content = block['content']
         
         if block_type.startswith('h'):
-            level = block_type[1]
-            html_parts.append(f"<{block_type}>{content}</{block_type}>")
+            level = int(block_type[1])
+            # Convert any H1 to H2 to avoid duplicate H1s in content
+            if level == 1:
+                html_parts.append(f"<h2>{content}</h2>")
+            else:
+                html_parts.append(f"<{block_type}>{content}</{block_type}>")
         elif block_type == 'paragraph':
             html_parts.append(f"<p>{content}</p>")
             

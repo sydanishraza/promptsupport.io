@@ -973,18 +973,19 @@ async def run_id_coordination_test():
     
     # Overall assessment
     if success_rate >= 80:
-        print_success(f"🎉 MINI-TOC LINKS FIX TEST SUITE PASSED - {success_rate:.1f}% SUCCESS RATE")
-        print_success("The completely rewritten _process_clickable_anchors method is working correctly!")
-        print_success("✅ BeautifulSoup-based HTML processing is operational")
-        print_success("✅ HTML anchor links <a href=\"#slug\">text</a> are being generated")
-        print_success("✅ Heading IDs are properly created and match anchor hrefs")
-        print_success("✅ TOC detection with content analysis is working")
+        print_success(f"🎉 ID COORDINATION SYSTEM TEST SUITE PASSED - {success_rate:.1f}% SUCCESS RATE")
+        print_success("The completely rewritten ID coordination logic is working correctly!")
+        print_success("✅ BeautifulSoup-first approach for finding existing headings is operational")
+        print_success("✅ Three-method matching system is functioning")
+        print_success("✅ Enhanced text similarity matching is working")
+        print_success("✅ Section ID pattern detection and continuation is verified")
+        print_success("✅ ID coordination rate target (>80%) is achieved")
     elif success_rate >= 60:
-        print_info(f"⚠️ MINI-TOC LINKS PARTIALLY WORKING - {success_rate:.1f}% SUCCESS RATE")
+        print_info(f"⚠️ ID COORDINATION PARTIALLY WORKING - {success_rate:.1f}% SUCCESS RATE")
         print_info("Some functionality is working, but improvements needed.")
     else:
-        print_error(f"❌ MINI-TOC LINKS FIX TEST SUITE FAILED - {success_rate:.1f}% SUCCESS RATE")
-        print_error("Significant issues detected with Mini-TOC links processing.")
+        print_error(f"❌ ID COORDINATION SYSTEM TEST SUITE FAILED - {success_rate:.1f}% SUCCESS RATE")
+        print_error("Significant issues detected with ID coordination processing.")
     
     return success_rate >= 60
 

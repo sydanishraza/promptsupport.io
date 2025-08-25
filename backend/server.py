@@ -4751,32 +4751,83 @@ Return the fully formatted article with improved clarity, structure, and clickab
                         matching_slug = None
                         best_match_score = 0
                         
-                        # Look for matching headings
-                        for heading_text, slug in heading_ids.items():
-                            # Simple word-based matching
+                        # STEP 1: First try to find existing headings with IDs (use existing IDs)
+                        existing_headings = re.findall(r'<h[2-6][^>]*id="([^"]+)"[^>]*>([^<]+)</h[2-6]>', processed_content, re.IGNORECASE)
+                        
+                        for existing_id, heading_text in existing_headings:
+                            # Simple word-based matching with existing headings
                             toc_words = set(toc_text.lower().split())
                             heading_words = set(heading_text.lower().split())
                             
                             if toc_words and heading_words:
                                 similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
-                                if similarity > best_match_score:
+                                if similarity > best_match_score and similarity >= 0.3:
                                     best_match_score = similarity
-                                    matching_slug = slug
+                                    matching_slug = existing_id  # Use existing ID instead of generating new one
+                                    print(f"🎯 V2 STYLE: Found existing heading ID '{existing_id}' for TOC '{toc_text}' (score: {similarity:.2f})")
                         
-                        # If no good match, generate a slug from the TOC text
+                        # STEP 2: If no existing heading match, look for headings generated during processing
                         if not matching_slug or best_match_score < 0.3:
-                            matching_slug = generate_slug(toc_text)
+                            for heading_text, slug in heading_ids.items():
+                                # Simple word-based matching
+                                toc_words = set(toc_text.lower().split())
+                                heading_words = set(heading_text.lower().split())
+                                
+                                if toc_words and heading_words:
+                                    similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                                    if similarity > best_match_score:
+                                        best_match_score = similarity
+                                        matching_slug = slug
+                        
+                        # STEP 3: If still no match, try to find heading by text and add appropriate ID
+                        if not matching_slug or best_match_score < 0.3:
+                            # Look for headings that might match this TOC item (case insensitive, flexible matching)
+                            toc_words = toc_text.lower().split()
                             
-                            # Try to find or create a matching heading
-                            # Look for headings that might match this TOC item
-                            heading_pattern = f'<h[2-6][^>]*>\\s*{re.escape(toc_text)}\\s*</h[2-6]>'
-                            if re.search(heading_pattern, processed_content, re.IGNORECASE):
-                                # Add ID to the existing heading
-                                def add_id_to_found_heading(match):
-                                    return match.group(0).replace('>', f' id="{matching_slug}">', 1)
-                                processed_content = re.sub(heading_pattern, add_id_to_found_heading, processed_content, flags=re.IGNORECASE)
-                            else:
-                                # Mark as potentially broken
+                            # Try multiple heading patterns for flexible matching
+                            heading_patterns = [
+                                f'<h[2-6][^>]*>\\s*{re.escape(toc_text)}\\s*</h[2-6]>',  # Exact match
+                                f'<h[2-6][^>]*>[^<]*{re.escape(toc_words[0])}[^<]*</h[2-6]>' if toc_words else None  # Partial match
+                            ]
+                            
+                            heading_found = False
+                            for pattern in heading_patterns:
+                                if pattern and re.search(pattern, processed_content, re.IGNORECASE):
+                                    # Check if this heading already has an ID
+                                    matches = list(re.finditer(pattern, processed_content, re.IGNORECASE))
+                                    for match in matches:
+                                        if 'id=' not in match.group(0):
+                                            # Generate appropriate ID (prefer section-style if present)
+                                            section_ids = re.findall(r'id="(section\d+)"', processed_content)
+                                            if section_ids:
+                                                # Use section-style ID to be consistent
+                                                next_section_num = len(section_ids) + 1
+                                                matching_slug = f"section{next_section_num}"
+                                            else:
+                                                # Use slugified ID
+                                                matching_slug = generate_slug(toc_text)
+                                            
+                                            # Add ID to the heading
+                                            def add_id_to_found_heading(m):
+                                                return m.group(0).replace('>', f' id="{matching_slug}">', 1)
+                                            processed_content = re.sub(pattern, add_id_to_found_heading, processed_content, count=1, flags=re.IGNORECASE)
+                                            heading_found = True
+                                            print(f"🆔 V2 STYLE: Added ID '{matching_slug}' to existing heading for TOC '{toc_text}'")
+                                            break
+                                    
+                                    if heading_found:
+                                        break
+                            
+                            # If still no heading found, mark as potentially broken
+                            if not heading_found:
+                                # Use section-style ID if that seems to be the pattern
+                                section_ids = re.findall(r'id="(section\d+)"', processed_content)
+                                if section_ids:
+                                    next_section_num = len(section_ids) + 1
+                                    matching_slug = f"section{next_section_num}"
+                                else:
+                                    matching_slug = generate_slug(toc_text)
+                                
                                 toc_broken_links.append({
                                     "toc_text": toc_text,
                                     "expected_slug": matching_slug,

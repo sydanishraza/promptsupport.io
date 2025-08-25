@@ -7243,7 +7243,7 @@ Return ONLY JSON in this exact format:
             
             # 4. Main Body
             for i, section in enumerate(sections, 1):
-                section_anchor = f"section-{i}"
+                section_anchor = f"section{i}"  # Match TOC anchor format
                 section_heading = section.get('heading', f'Section {i}')
                 html_parts.append(f'<h2 id="{section_anchor}">{section_heading}</h2>')
                 

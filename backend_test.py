@@ -688,9 +688,104 @@ async def test_toc_detection_with_content_analysis():
         print_error(f"Error checking TOC detection: {e}")
         return False
 
+async def test_enhanced_text_similarity():
+    """Test 10: Verify enhanced text similarity matching"""
+    print_test_header("Test 10: Enhanced Text Similarity Matching")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Test content with various similarity scenarios
+            test_content = """
+            <h1>API Integration Tutorial</h1>
+            <p>Testing enhanced text similarity matching.</p>
+            
+            <ul>
+                <li>Introduction</li>
+                <li>Setup and Configuration</li>
+                <li>First API Call</li>
+                <li>Error Handling</li>
+            </ul>
+            
+            <h2>Introduction to API Integration</h2>
+            <p>Exact text inclusion test...</p>
+            
+            <h2>Setup Configuration Process</h2>
+            <p>Word overlap test...</p>
+            
+            <h2>Making Your First API Call</h2>
+            <p>Partial text inclusion test...</p>
+            
+            <h2>Handling Errors and Exceptions</h2>
+            <p>Word overlap similarity test...</p>
+            """
+            
+            print_info("Testing enhanced text similarity matching...")
+            
+            payload = {
+                "content": test_content,
+                "source_type": "html",
+                "processing_options": {
+                    "enable_style_processing": True
+                }
+            }
+            
+            async with session.post(f"{API_BASE}/v2/process-content", json=payload) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    print_success("Text similarity matching test completed")
+                    
+                    # Wait and check the processed content
+                    await asyncio.sleep(2)
+                    
+                    async with session.get(f"{API_BASE}/content-library") as lib_response:
+                        if lib_response.status == 200:
+                            lib_data = await lib_response.json()
+                            articles = lib_data.get('articles', []) if isinstance(lib_data, dict) else lib_data
+                            
+                            if articles:
+                                latest_article = articles[0]
+                                processed_content = latest_article.get('content', '')
+                                
+                                # Check for successful TOC link generation
+                                toc_links = re.findall(r'<a[^>]*href="#([^"]+)"[^>]*>([^<]+)</a>', processed_content)
+                                heading_ids = re.findall(r'<h[1-6][^>]*id="([^"]+)"', processed_content)
+                                
+                                successful_matches = 0
+                                for target_id, link_text in toc_links:
+                                    if target_id in heading_ids:
+                                        successful_matches += 1
+                                        print_info(f"✅ Successful match: '{link_text}' -> #{target_id}")
+                                
+                                if len(toc_links) > 0:
+                                    match_rate = (successful_matches / len(toc_links)) * 100
+                                    print_info(f"Text similarity matching rate: {match_rate:.1f}% ({successful_matches}/{len(toc_links)})")
+                                    
+                                    if match_rate >= 70:
+                                        print_success("✅ Enhanced text similarity matching VERIFIED")
+                                        return True
+                                    else:
+                                        print_error(f"❌ Text similarity matching below threshold: {match_rate:.1f}%")
+                                        return False
+                                else:
+                                    print_error("No TOC links found for similarity testing")
+                                    return False
+                            else:
+                                print_error("No articles found for similarity analysis")
+                                return False
+                        else:
+                            print_error("Failed to access content library")
+                            return False
+                else:
+                    print_error(f"Text similarity test failed - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error testing enhanced text similarity: {e}")
+        return False
+
 async def test_beautifulsoup_processing():
-    """Test 6: Verify BeautifulSoup-based processing instead of regex"""
-    print_test_header("Test 6: BeautifulSoup-based Processing Verification")
+    """Test 11: Verify BeautifulSoup-based processing instead of regex"""
+    print_test_header("Test 11: BeautifulSoup-based Processing Verification")
     
     try:
         async with aiohttp.ClientSession() as session:

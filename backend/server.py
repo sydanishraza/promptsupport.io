@@ -4346,21 +4346,37 @@ Return the fully formatted article with improved clarity, structure, and clickab
             
             # Find all H1 tags
             h1_tags = soup.find_all('h1')
+            h1_count = len(h1_tags)
             
             for h1 in h1_tags:
                 # Convert H1 to H2 to preserve content but fix hierarchy
+                h1_text = h1.get_text().strip()
                 h1.name = 'h2'
-                print(f"🏷️ V2 STYLE: Converted H1 to H2 - '{h1.get_text()[:50]}...'")
+                
+                # Ensure H2 has proper attributes
+                if not h1.get('id'):
+                    # Generate an ID for the heading if it doesn't have one
+                    heading_id = re.sub(r'[^\w\s-]', '', h1_text.lower()).replace(' ', '-')[:50]
+                    h1['id'] = heading_id
+                
+                print(f"🏷️ V2 STYLE: Converted H1 to H2 - '{h1_text[:50]}...'")
             
-            # Also use regex as a fallback to catch any remaining H1s
+            # Convert to string and apply additional regex cleanup
             cleaned_content = str(soup)
             
-            # Additional regex-based cleanup for any remaining H1 patterns
+            # Additional regex-based cleanup for any remaining H1 patterns (more comprehensive)
+            cleaned_content = re.sub(r'<h1(\s[^>]*)?>([^<]*)</h1>', r'<h2\1>\2</h2>', cleaned_content, flags=re.IGNORECASE | re.DOTALL)
             cleaned_content = re.sub(r'<h1([^>]*)>', r'<h2\1>', cleaned_content, flags=re.IGNORECASE)
             cleaned_content = re.sub(r'</h1>', r'</h2>', cleaned_content, flags=re.IGNORECASE)
             
-            if len(h1_tags) > 0:
-                print(f"✅ V2 STYLE: Cleaned {len(h1_tags)} H1 tags from content")
+            # Final verification - check if any H1s remain
+            remaining_h1s = re.findall(r'<h1[^>]*>', cleaned_content, re.IGNORECASE)
+            if remaining_h1s:
+                print(f"⚠️ V2 STYLE: {len(remaining_h1s)} H1 tags still remain after cleanup")
+                for h1 in remaining_h1s:
+                    print(f"   Remaining H1: {h1}")
+            else:
+                print(f"✅ V2 STYLE: Successfully removed all {h1_count} H1 tags from content")
             
             return cleaned_content
             

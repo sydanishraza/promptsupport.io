@@ -4898,76 +4898,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
             # Update processed content with the modified soup
             processed_content = str(soup)
             
-            # Step 2b: Convert HTML TOC items to clickable anchor links
-            def convert_html_toc_item(match):
-                """Convert HTML TOC list item to clickable anchor link"""
-                nonlocal anchor_links_generated
-                toc_text = match.group(1).strip()  # Text inside <li>
-                
-                # Clean the TOC text for matching
-                clean_toc_text = re.sub(r'[^\w\s-]', '', toc_text).strip()
-                
-                # Try to find matching heading
-                matching_slug = None
-                best_match_score = 0
-                
-                # First, look for existing heading IDs by scanning for exact or partial text matches
-                existing_heading_pattern = r'<h[2-6][^>]*id="([^"]+)"[^>]*>([^<]+)</h[2-6]>'
-                existing_headings = re.findall(existing_heading_pattern, processed_content, re.IGNORECASE)
-                
-                for heading_id, heading_text in existing_headings:
-                    clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
-                    clean_toc = re.sub(r'[^\w\s-]', '', toc_text).strip()
-                    
-                    # Calculate similarity score
-                    toc_words = set(clean_toc.lower().split())
-                    heading_words = set(clean_heading.lower().split())
-                    
-                    if toc_words and heading_words:
-                        similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
-                        
-                        # Check for exact match or high similarity
-                        if similarity >= 0.7 or clean_toc.lower() in clean_heading.lower() or clean_heading.lower() in clean_toc.lower():
-                            if similarity > best_match_score:
-                                best_match_score = similarity
-                                matching_slug = heading_id
-                
-                # Fallback to generated heading IDs if found during processing
-                if not matching_slug:
-                    for heading_text, slug in heading_ids.items():
-                        clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
-                        clean_toc = re.sub(r'[^\w\s-]', '', toc_text).strip()
-                        
-                        toc_words = set(clean_toc.lower().split())
-                        heading_words = set(clean_heading.lower().split())
-                        
-                        if toc_words and heading_words:
-                            similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
-                            if similarity > best_match_score:
-                                best_match_score = similarity
-                                matching_slug = slug
-                
-                # If still no match found, create a slug but mark as potentially broken
-                if not matching_slug or best_match_score < 0.3:
-                    matching_slug = generate_slug(toc_text)
-                    # Check if this slug actually exists in content
-                    if f'id="{matching_slug}"' not in processed_content:
-                        toc_broken_links.append({
-                            "toc_text": toc_text,
-                            "expected_slug": matching_slug,
-                            "reason": "no_matching_heading",
-                            "match_score": best_match_score
-                        })
-                
-                # DEBUG: Log the matching process
-                print(f"🔗 V2 STYLE: HTML TOC matching '{toc_text}' -> '{matching_slug}' (score: {best_match_score:.2f})")
-                
-                anchor_links_generated += 1
-                return f'<li><a href="#{matching_slug}" class="toc-link">{toc_text}</a></li>'
-            
-            # Convert HTML TOC items: <li>Text</li> -> <li><a href="#slug">Text</a></li>
-            html_toc_pattern = r'<li>([^<]+)</li>'
-            processed_content = re.sub(html_toc_pattern, convert_html_toc_item, processed_content, flags=re.IGNORECASE)
+            # HTML TOC processing is now handled above in the BeautifulSoup section
             
             if anchor_links_generated > 0:
                 structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable anchors")

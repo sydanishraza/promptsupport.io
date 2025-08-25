@@ -31160,16 +31160,15 @@ async def rerun_style_formatting(request: RerunRequest):
 
 @app.post("/api/content/fix-google-maps-defects")
 async def fix_google_maps_content_defects():
-    """V2 ENGINE: Fix specific formatting defects in Google Maps API articles"""
+    """COMPREHENSIVE FIX: Fix all 5 structural defects in Google Maps API articles"""
     try:
-        print(f"🔧 V2 STYLE: Fixing formatting defects in Google Maps API articles - engine=v2")
+        print(f"🚨 COMPREHENSIVE FIX: Fixing all structural defects in Google Maps API articles")
         
         # Find Google Maps API articles specifically
         processed_count = 0
         updated_articles = []
         
         async for article in db.content_library.find({
-            "engine": "v2", 
             "title": {"$regex": "Google.*Map", "$options": "i"}
         }):
             try:

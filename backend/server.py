@@ -4636,7 +4636,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 print(f"🔗 V2 STYLE: HTML TOC matching '{toc_text}' -> '{matching_slug}' (score: {best_match_score:.2f})")
                 
                 anchor_links_generated += 1
-                return f'<li><a href="#{matching_slug}">{toc_text}</a></li>'
+                return f'<li><a href="#{matching_slug}" class="toc-link">{toc_text}</a></li>'
             
             # Convert HTML TOC items: <li>Text</li> -> <li><a href="#slug">Text</a></li>
             html_toc_pattern = r'<li>([^<]+)</li>'

@@ -7,7 +7,7 @@
    MINIMAL PRE CODE BLOCK STYLES
    ======================================== */
 
-/* Simplified pre element styling with crystal clear rendering and responsive design */
+/* Simplified pre element styling with proper proportions and responsive design */
 pre[class*="language-"],
 pre.responsive-code {
   margin: 1.25rem 0;
@@ -16,7 +16,7 @@ pre.responsive-code {
   overflow: hidden;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   background: #f8fafc !important;
-  max-height: 520px;
+  max-height: 400px;
   overflow: auto;
   position: relative;
   padding: 1rem;
@@ -24,15 +24,17 @@ pre.responsive-code {
   -webkit-font-smoothing: auto;
   -moz-osx-font-smoothing: auto;
   text-rendering: auto;
-  /* Enhanced responsive design for mobile */
+  /* Enhanced responsive design with proper aspect ratios */
   max-width: 100%;
   width: 100%;
-  word-break: break-word;
-  overflow-wrap: break-word;
+  min-height: 2.5rem;
   box-sizing: border-box;
-  /* Force responsive behavior */
+  /* Force responsive behavior and prevent distortion */
   min-width: 0;
   flex-shrink: 1;
+  aspect-ratio: auto;
+  height: auto;
+  display: block;
 }
 
 /* Code element styling with enhanced clarity and proper aspect ratios */

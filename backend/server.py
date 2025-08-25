@@ -31158,8 +31158,8 @@ async def rerun_style_formatting(request: RerunRequest):
         print(f"❌ V2 STYLE: Error in style rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning style formatting: {str(e)}")
 
-@app.post("/api/style/fix-formatting-defects")
-async def fix_formatting_defects():
+@app.post("/api/content/fix-google-maps-defects")
+async def fix_google_maps_content_defects():
     """V2 ENGINE: Fix specific formatting defects in Google Maps API articles"""
     try:
         print(f"🔧 V2 STYLE: Fixing formatting defects in Google Maps API articles - engine=v2")

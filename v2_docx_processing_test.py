@@ -137,9 +137,9 @@ async def test_v2_file_upload_processing(docx_file_path):
                 file_data = aiohttp.FormData()
                 file_data.add_field('file', file, filename='Google_Map_JavaScript_API_Tutorial.docx')
                 
-                print_info("Calling POST /api/upload-file-to-engine-v2...")
+                print_info("Calling POST /api/content/upload...")
                 
-                async with session.post(f"{API_BASE}/upload-file-to-engine-v2", data=file_data) as response:
+                async with session.post(f"{API_BASE}/content/upload", data=file_data) as response:
                     if response.status == 200:
                         result = await response.json()
                         print_success(f"V2 file upload successful - Status: {response.status}")

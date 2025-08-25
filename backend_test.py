@@ -847,8 +847,8 @@ async def test_beautifulsoup_processing():
         return False
 
 async def test_comprehensive_post_processing():
-    """Test 7: Test comprehensive post-processing integration"""
-    print_test_header("Test 7: Comprehensive Post-Processing Integration")
+    """Test 12: Test comprehensive post-processing integration"""
+    print_test_header("Test 12: Comprehensive Post-Processing Integration")
     
     try:
         async with aiohttp.ClientSession() as session:

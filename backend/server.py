@@ -3921,7 +3921,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
             print(f"❌ V2 STYLE: Error in Woolf style linting - {e} - engine=v2")
             return self._apply_fallback_style_formatting(article_title, article_content)
     
-    def _apply_fallback_style_formatting(self, article_title: str, article_content: str) -> dict:
+    async def _apply_fallback_style_formatting(self, article_title: str, article_content: str) -> dict:
         """Apply basic style formatting as fallback when LLM fails"""
         try:
             # Apply comprehensive post-processing (same as LLM path)

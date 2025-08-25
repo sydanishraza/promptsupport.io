@@ -4349,7 +4349,12 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 h1.name = 'h2'
                 print(f"🏷️ V2 STYLE: Converted H1 to H2 - '{h1.get_text()[:50]}...'")
             
+            # Also use regex as a fallback to catch any remaining H1s
             cleaned_content = str(soup)
+            
+            # Additional regex-based cleanup for any remaining H1 patterns
+            cleaned_content = re.sub(r'<h1([^>]*)>', r'<h2\1>', cleaned_content, flags=re.IGNORECASE)
+            cleaned_content = re.sub(r'</h1>', r'</h2>', cleaned_content, flags=re.IGNORECASE)
             
             if len(h1_tags) > 0:
                 print(f"✅ V2 STYLE: Cleaned {len(h1_tags)} H1 tags from content")

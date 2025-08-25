@@ -136,7 +136,7 @@ async def upload_docx_to_v2_engine(file_path, file_content):
             data.add_field('engine', 'v2')
             data.add_field('processing_mode', 'complete')
             
-            async with session.post(f"{API_BASE}/upload", data=data) as response:
+            async with session.post(f"{API_BASE}/content/upload", data=data) as response:
                 if response.status == 200:
                     result = await response.json()
                     print_success("DOCX file uploaded successfully to V2 Engine")

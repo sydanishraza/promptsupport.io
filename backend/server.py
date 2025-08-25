@@ -7328,7 +7328,7 @@ Return ONLY JSON in this exact format:
         except Exception as e:
             print(f"❌ V2 ARTICLE GEN: Error in rule-based generation - {e} - engine=v2")
             return {
-                'html': f'<h1>{outline.get("title", "Error")}</h1><p>Error generating article content.</p>',
+                'html': f'<h2>{outline.get("title", "Error")}</h2><p>Error generating article content.</p>',
                 'summary': 'Error occurred during article generation.',
                 'markdown': f'# {outline.get("title", "Error")}\n\nError generating article content.'
             }

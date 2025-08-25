@@ -7,8 +7,9 @@
    MINIMAL PRE CODE BLOCK STYLES
    ======================================== */
 
-/* Simplified pre element styling with crystal clear rendering */
-pre[class*="language-"] {
+/* Simplified pre element styling with crystal clear rendering and responsive design */
+pre[class*="language-"],
+pre.responsive-code {
   margin: 1.25rem 0;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -23,6 +24,10 @@ pre[class*="language-"] {
   -webkit-font-smoothing: auto;
   -moz-osx-font-smoothing: auto;
   text-rendering: auto;
+  /* Responsive design for mobile */
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Code element styling with enhanced clarity and no distortion */

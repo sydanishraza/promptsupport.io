@@ -4320,8 +4320,8 @@ Return the fully formatted article with improved clarity, structure, and clickab
                     if re.match(r'^\d+[.)]\s+', text) or re.match(r'^[a-z][.)]\s+', text):
                         sequential_indicators += 1
                 
-                # If more than 50% of items have sequential indicators, convert to ordered list
-                if sequential_indicators >= (total_items * 0.5):
+                # If more than 30% of items have sequential indicators, convert to ordered list
+                if sequential_indicators >= (total_items * 0.3):
                     ul.name = 'ol'
                     lists_converted += 1
                     print(f"🔢 V2 STYLE: Converted UL to OL - {sequential_indicators}/{total_items} sequential indicators")

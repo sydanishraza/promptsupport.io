@@ -31238,10 +31238,10 @@ async def fix_google_maps_content_defects():
                 continue
         
         return {
-            "message": "Formatting defects fixing completed",
+            "message": "Google Maps content defects completely fixed",
             "articles_processed": processed_count,
             "updated_articles": updated_articles,
-            "engine": "v2"
+            "defects_fixed": ["h1_removal", "mini_toc_linking", "list_type_conversion", "code_consolidation"]
         }
         
     except Exception as e:

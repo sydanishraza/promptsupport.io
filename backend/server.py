@@ -7301,6 +7301,9 @@ Return ONLY JSON in this exact format:
             
             html_content = '\n'.join(html_parts)
             
+            # Apply code block consolidation and cleanup
+            html_content = await self._consolidate_code_blocks(html_content)
+            
             # Convert to Markdown
             markdown_content = await self._convert_html_to_markdown(html_content)
             

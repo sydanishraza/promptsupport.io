@@ -7014,19 +7014,20 @@ class V2ArticleGenerator:
 Create articles with EXACT structure and audience-appropriate styling for {audience} readers.
 
 CRITICAL REQUIREMENTS:
-1. Follow the EXACT article structure (H1 Title, Intro, Mini-TOC, Main Body, FAQs, Related Links)
+1. Follow the EXACT article structure (NO H1 in content, Intro, Mini-TOC, Main Body, FAQs, Related Links)
 2. Cover ALL assigned block_ids with 100% coverage - every source block must be reflected in content
 3. Style and tone must match the target audience ({audience})
 4. Insert [MISSING] where source information is insufficient
 5. Do NOT embed media - only reference media IDs if needed
-6. Create working Mini-TOC with anchor links (#section-anchors)
-7. Maintain professional quality and comprehensive coverage
+6. Create working Mini-TOC with clickable anchor links (#section-anchors)
+7. Use ordered lists (OL) for procedural/sequential content
+8. Consolidate related code blocks instead of fragmenting them
 
 EXACT ARTICLE STRUCTURE:
-1. H1 Title (clear, specific, audience-appropriate)
+1. NO H1 TITLE (title handled by frontend - start with intro paragraph)
 2. Intro Paragraph (overview, context, what reader will learn)
-3. Mini-TOC (bulleted list linking to sections by anchors)
-4. Main Body (sections & subsections per outline with anchor IDs)
+3. Mini-TOC as clickable links: <ul><li><a href="#section1">Section Name</a></li></ul>
+4. Main Body (H2/H3 sections with anchor IDs: id="section1", id="section2", etc.)
 5. FAQs (Q&A format addressing common questions)
 6. Related Links (bulleted list of internal and external references)
 

@@ -898,13 +898,13 @@ async def test_comprehensive_post_processing():
         print_error(f"Error testing comprehensive post-processing: {e}")
         return False
 
-async def run_mini_toc_links_test():
-    """Run comprehensive Mini-TOC Links Fix test suite"""
-    print_test_header("Mini-TOC Links Fix - Comprehensive Test Suite")
+async def run_id_coordination_test():
+    """Run comprehensive ID Coordination System test suite"""
+    print_test_header("ID Coordination System - Comprehensive Test Suite")
     print_info(f"Backend URL: {BACKEND_URL}")
     print_info(f"API Base: {API_BASE}")
     print_info(f"Test Time: {datetime.now().isoformat()}")
-    print_info("Focus: Testing completely rewritten _process_clickable_anchors method with BeautifulSoup")
+    print_info("Focus: Testing completely rewritten ID coordination logic with BeautifulSoup-first approach")
     
     # Test results tracking
     test_results = []
@@ -913,27 +913,47 @@ async def run_mini_toc_links_test():
     success = await test_v2_engine_health()
     test_results.append(("V2 Engine Health Check", success))
     
-    # Test 2: Content Processing with Mini-TOC
-    success, job_id = await test_content_processing_with_mini_toc()
-    test_results.append(("Content Processing with Mini-TOC", success))
+    # Test 2: Content with Existing Section IDs
+    success, job_id = await test_content_with_existing_section_ids()
+    test_results.append(("Content with Existing Section IDs", success))
     
-    # Test 3: HTML Anchor Generation
+    # Test 3: ID Coordination Rate Verification
+    success = await test_id_coordination_rate()
+    test_results.append(("ID Coordination Rate (>80% target)", success))
+    
+    # Test 4: Section ID Pattern Continuation
+    success = await test_section_id_pattern_continuation()
+    test_results.append(("Section ID Pattern Continuation", success))
+    
+    # Test 5: HTML Anchor Generation
     success = await test_html_anchor_generation()
     test_results.append(("HTML Anchor Generation", success))
     
-    # Test 4: Heading ID Creation and Matching
+    # Test 6: BeautifulSoup-First Approach
+    success = await test_beautifulsoup_first_approach()
+    test_results.append(("BeautifulSoup-First Approach", success))
+    
+    # Test 7: Heading ID Creation and Matching
     success = await test_heading_id_creation()
     test_results.append(("Heading ID Creation and Matching", success))
     
-    # Test 5: TOC Detection with Content Analysis
+    # Test 8: Three-Method Matching System
+    success = await test_three_method_matching()
+    test_results.append(("Three-Method Matching System", success))
+    
+    # Test 9: TOC Detection with Content Analysis
     success = await test_toc_detection_with_content_analysis()
     test_results.append(("TOC Detection with Content Analysis", success))
     
-    # Test 6: BeautifulSoup-based Processing
+    # Test 10: Enhanced Text Similarity Matching
+    success = await test_enhanced_text_similarity()
+    test_results.append(("Enhanced Text Similarity Matching", success))
+    
+    # Test 11: BeautifulSoup-based Processing
     success = await test_beautifulsoup_processing()
     test_results.append(("BeautifulSoup-based Processing", success))
     
-    # Test 7: Comprehensive Post-Processing Integration
+    # Test 12: Comprehensive Post-Processing Integration
     success = await test_comprehensive_post_processing()
     test_results.append(("Comprehensive Post-Processing Integration", success))
     

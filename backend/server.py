@@ -7093,11 +7093,11 @@ EXAMPLE of CORRECT HTML format:
 
 CRITICAL REQUIREMENTS:
 1. NEVER use <h1> tags - START with introduction paragraph <p>
-2. Mini-TOC MUST use <a href='#sectionX'> format with clickable links
+2. Mini-TOC MUST be simple bullet list - links will be added automatically
 3. Use <ol> for procedural steps (create, add, configure, install, etc.)
-4. Use <ul> only for non-procedural lists
+4. Use <ul> only for non-procedural lists (and Mini-TOC)
 5. Consolidate code into single <pre><code> blocks
-6. Section headings MUST have id='sectionX' format matching TOC links"""
+6. Section headings use plain <h2>, <h3> tags without id attributes"""
 
             print(f"🤖 V2 ARTICLE GEN: Sending article generation request to LLM - {audience} audience - engine=v2")
             

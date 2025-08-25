@@ -7232,14 +7232,13 @@ Return ONLY JSON in this exact format:
             intro = audience_intro.get(audience, f'This comprehensive guide covers {title.lower()}.')
             html_parts.append(f'<p>{intro}</p>')
             
-            # 3. Mini-TOC
+            # 3. Mini-TOC with clickable anchor links
             if sections:
-                html_parts.append('<h2>Contents</h2>')
                 html_parts.append('<ul>')
                 for i, section in enumerate(sections, 1):
-                    section_anchor = f"section-{i}"
+                    section_anchor = f"section{i}"  # Match existing ID format
                     section_heading = section.get('heading', f'Section {i}')
-                    html_parts.append(f'<li><a href="#{section_anchor}">{section_heading}</a></li>')
+                    html_parts.append(f'<li><a href="#{section_anchor}" class="toc-link">{section_heading}</a></li>')
                 html_parts.append('</ul>')
             
             # 4. Main Body

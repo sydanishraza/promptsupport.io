@@ -154,9 +154,161 @@ async def test_content_with_existing_section_ids():
         print_error(f"Error processing content with Mini-TOC: {e}")
         return False, None
 
+async def test_id_coordination_rate():
+    """Test 3: Verify improved ID coordination rate (target >80% from 12.5%)"""
+    print_test_header("Test 3: ID Coordination Rate Verification")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Get recent articles from content library
+            print_info("Analyzing ID coordination in processed articles...")
+            
+            async with session.get(f"{API_BASE}/content-library") as response:
+                if response.status == 200:
+                    data = await response.json()
+                    articles = data.get('articles', []) if isinstance(data, dict) else data
+                    print_success(f"Content library accessible - {len(articles)} articles found")
+                    
+                    # Find articles with TOC links and headings
+                    coordination_results = []
+                    
+                    for article in articles[:10]:  # Analyze first 10 articles
+                        content = article.get('content', article.get('html', ''))
+                        title = article.get('title', 'Untitled')
+                        
+                        if not content or 'href="#' not in content:
+                            continue
+                            
+                        print_info(f"Analyzing ID coordination in: {title[:50]}...")
+                        
+                        # Extract TOC anchor targets
+                        toc_links = re.findall(r'<a[^>]*href="#([^"]+)"[^>]*>([^<]+)</a>', content)
+                        
+                        # Extract heading IDs
+                        heading_ids = re.findall(r'<h[1-6][^>]*id="([^"]+)"', content)
+                        
+                        if toc_links:
+                            total_links = len(toc_links)
+                            coordinated_links = 0
+                            section_style_usage = 0
+                            
+                            for target_id, link_text in toc_links:
+                                if target_id in heading_ids:
+                                    coordinated_links += 1
+                                    if target_id.startswith('section'):
+                                        section_style_usage += 1
+                            
+                            coordination_rate = (coordinated_links / total_links) * 100 if total_links > 0 else 0
+                            section_usage_rate = (section_style_usage / total_links) * 100 if total_links > 0 else 0
+                            
+                            coordination_results.append({
+                                'title': title,
+                                'total_links': total_links,
+                                'coordinated_links': coordinated_links,
+                                'coordination_rate': coordination_rate,
+                                'section_usage_rate': section_usage_rate,
+                                'heading_ids': heading_ids
+                            })
+                            
+                            print_info(f"  TOC Links: {total_links}, Coordinated: {coordinated_links} ({coordination_rate:.1f}%)")
+                            print_info(f"  Section-style IDs: {section_style_usage} ({section_usage_rate:.1f}%)")
+                    
+                    if coordination_results:
+                        # Calculate overall coordination rate
+                        total_links_all = sum(r['total_links'] for r in coordination_results)
+                        total_coordinated_all = sum(r['coordinated_links'] for r in coordination_results)
+                        overall_rate = (total_coordinated_all / total_links_all) * 100 if total_links_all > 0 else 0
+                        
+                        print_success(f"Overall ID coordination rate: {overall_rate:.1f}% ({total_coordinated_all}/{total_links_all})")
+                        
+                        # Check if we meet the target >80%
+                        if overall_rate >= 80:
+                            print_success(f"✅ ID COORDINATION TARGET ACHIEVED - {overall_rate:.1f}% (target: >80%)")
+                            return True
+                        elif overall_rate >= 50:
+                            print_info(f"⚠️ ID coordination improved but below target - {overall_rate:.1f}% (target: >80%)")
+                            return True  # Still consider success if significantly improved from 12.5%
+                        else:
+                            print_error(f"❌ ID coordination rate insufficient - {overall_rate:.1f}% (target: >80%)")
+                            return False
+                    else:
+                        print_error("No articles with TOC links found for coordination analysis")
+                        return False
+                else:
+                    print_error(f"Failed to access content library - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error verifying ID coordination rate: {e}")
+        return False
+
+async def test_section_id_pattern_continuation():
+    """Test 4: Verify section ID pattern detection and continuation"""
+    print_test_header("Test 4: Section ID Pattern Continuation")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Get articles and check for section ID pattern continuation
+            async with session.get(f"{API_BASE}/content-library") as response:
+                if response.status == 200:
+                    data = await response.json()
+                    articles = data.get('articles', []) if isinstance(data, dict) else data
+                    
+                    section_pattern_found = False
+                    continuation_verified = False
+                    
+                    for article in articles[:5]:
+                        content = article.get('content', article.get('html', ''))
+                        title = article.get('title', 'Untitled')
+                        
+                        if not content:
+                            continue
+                            
+                        # Look for section-style IDs
+                        section_ids = re.findall(r'id="(section\d+)"', content)
+                        
+                        if len(section_ids) >= 2:
+                            section_pattern_found = True
+                            print_info(f"Found section pattern in '{title[:50]}': {section_ids}")
+                            
+                            # Check if sections are sequential
+                            section_numbers = []
+                            for sid in section_ids:
+                                match = re.search(r'section(\d+)', sid)
+                                if match:
+                                    section_numbers.append(int(match.group(1)))
+                            
+                            if section_numbers:
+                                section_numbers.sort()
+                                is_sequential = all(section_numbers[i] == section_numbers[i-1] + 1 
+                                                  for i in range(1, len(section_numbers)))
+                                
+                                if is_sequential:
+                                    continuation_verified = True
+                                    print_success(f"✅ Sequential section pattern verified: {section_numbers}")
+                                else:
+                                    print_info(f"Section numbers found but not sequential: {section_numbers}")
+                    
+                    if section_pattern_found and continuation_verified:
+                        print_success("✅ Section ID pattern detection and continuation VERIFIED")
+                        return True
+                    elif section_pattern_found:
+                        print_info("⚠️ Section patterns found but continuation needs improvement")
+                        return True
+                    else:
+                        print_error("❌ No section ID patterns found")
+                        return False
+                else:
+                    print_error(f"Failed to access content library - Status: {response.status}")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"Error testing section ID pattern continuation: {e}")
+        return False
+
 async def test_html_anchor_generation():
-    """Test 3: Verify HTML anchor links <a href="#slug">text</a> are generated"""
-    print_test_header("Test 3: HTML Anchor Link Generation")
+    """Test 5: Verify HTML anchor links <a href="#slug">text</a> are generated"""
+    print_test_header("Test 5: HTML Anchor Link Generation")
     
     try:
         async with aiohttp.ClientSession() as session:

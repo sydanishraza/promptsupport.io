@@ -4008,6 +4008,56 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 "error": str(e)
             }
     
+    async def _apply_comprehensive_post_processing(self, content: str, article_title: str) -> dict:
+        """Apply comprehensive post-processing to fix the three key issues"""
+        try:
+            processed_content = content
+            changes_applied = []
+            
+            print(f"🔧 V2 STYLE: Starting comprehensive post-processing for '{article_title[:50]}...' - engine=v2")
+            
+            # ISSUE 1: Remove H1 tags from content body (keep only title H1 if present)
+            h1_cleaned_result = self._remove_h1_from_content(processed_content)
+            processed_content = h1_cleaned_result.get('content', processed_content)
+            if h1_cleaned_result.get('changes_made'):
+                changes_applied.extend(h1_cleaned_result.get('changes', []))
+            
+            # ISSUE 2: Fix list types (convert procedural lists to ordered lists)
+            list_fixed_result = self._fix_list_types_comprehensive(processed_content)
+            processed_content = list_fixed_result.get('content', processed_content)
+            if list_fixed_result.get('changes_made'):
+                changes_applied.extend(list_fixed_result.get('changes', []))
+            
+            # ISSUE 3: Fix code block consolidation and rendering
+            code_fixed_result = await self._fix_code_consolidation_comprehensive(processed_content)
+            processed_content = code_fixed_result.get('content', processed_content)
+            if code_fixed_result.get('changes_made'):
+                changes_applied.extend(code_fixed_result.get('changes', []))
+            
+            # Apply clickable anchor processing last (to ensure IDs match TOC)
+            anchor_result = self._process_clickable_anchors(processed_content)
+            processed_content = anchor_result.get('content', processed_content)
+            changes_applied.extend(anchor_result.get('structural_changes', []))
+            
+            print(f"✅ V2 STYLE: Post-processing complete - {len(changes_applied)} changes applied - engine=v2")
+            
+            return {
+                'content': processed_content,
+                'changes_applied': changes_applied,
+                'original_length': len(content),
+                'processed_length': len(processed_content),
+                'toc_broken_links': anchor_result.get('toc_broken_links', []),
+                'anchor_links_generated': anchor_result.get('anchor_links_generated', 0)
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error in comprehensive post-processing - {e} - engine=v2")
+            return {
+                'content': content,
+                'changes_applied': [f"Post-processing error: {str(e)}"],
+                'error': str(e)
+            }
+    
     def _analyze_style_changes(self, original: str, formatted: str) -> list:
         """Analyze what structural changes were made during formatting"""
         changes = []

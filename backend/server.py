@@ -3873,9 +3873,12 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 if response is None:
                     raise Exception("LLM returned None response for style formatting")
                 
+                # Clean H1 tags before anchor processing
+                h1_cleaned_content = self._remove_h1_from_content(response)
+                
                 # Apply clickable anchor processing to Mini-TOC
-                anchor_result = self._process_clickable_anchors(response)
-                final_content = anchor_result.get('content', response)
+                anchor_result = self._process_clickable_anchors(h1_cleaned_content)
+                final_content = anchor_result.get('content', h1_cleaned_content)
                 
                 # Analyze what changes were made
                 structural_changes = self._analyze_style_changes(article_content, final_content)

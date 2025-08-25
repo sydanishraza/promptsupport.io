@@ -23936,6 +23936,22 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         else:
             print(f"❌ V2 ENGINE: Step 7.5 style formatting failed - {style_status} - engine=v2")
         
+        # CRITICAL FIX: Apply formatted content as main article content
+        style_results = style_result.get('style_results', [])
+        for i, article in enumerate(articles):
+            article_style_result = next((r for r in style_results if r.get('article_index') == i), None)
+            if article_style_result and article_style_result.get('style_status') == 'success':
+                formatted_content = article_style_result.get('formatted_content', '')
+                if formatted_content and len(formatted_content) > 100:  # Sanity check
+                    # Update the main content field with formatted content
+                    article['content'] = formatted_content
+                    article['formatted_content'] = formatted_content  # Keep backup
+                    print(f"🔧 V2 ENGINE: Applied formatted content to article '{article['title'][:50]}...' - {len(formatted_content)} chars - engine=v2")
+                else:
+                    print(f"⚠️ V2 ENGINE: Formatted content too short for article '{article['title'][:50]}...' - keeping original - engine=v2")
+            else:
+                print(f"⚠️ V2 ENGINE: No successful style formatting for article '{article['title'][:50]}...' - keeping original - engine=v2")
+        
         # Store style result for diagnostics
         try:
             await db.v2_style_results.insert_one(style_result)
@@ -23943,7 +23959,7 @@ async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> Lis
         except Exception as style_storage_error:
             print(f"❌ V2 ENGINE: Error storing style result - {style_storage_error} - engine=v2")
         
-        print(f"✅ V2 ENGINE: Step 7.5 complete - Woolf-aligned style formatting complete - engine=v2")
+        print(f"✅ V2 ENGINE: Step 7.5 complete - Woolf-aligned style formatting complete with content updates applied - engine=v2")
         
         # V2 STEP 7.7: Related Links Generation (internal + external from source)
         print(f"🔗 V2 ENGINE: Starting Step 7.7 - Related links generation with content library indexing - engine=v2")

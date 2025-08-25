@@ -9,7 +9,7 @@ import json
 from bs4 import BeautifulSoup
 import re
 
-BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com/api"
+BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
 
 def analyze_toc_issue():
     """Detailed analysis of the Mini-TOC linking issue"""

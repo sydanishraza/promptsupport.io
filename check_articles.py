@@ -2,7 +2,7 @@
 import requests
 import json
 
-response = requests.get("https://content-pipeline-5.preview.emergentagent.com/api/content-library")
+response = requests.get("https://content-formatter.preview.emergentagent.com/api/content-library")
 data = response.json()
 
 for i, article in enumerate(data['articles']):

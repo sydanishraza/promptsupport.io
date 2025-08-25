@@ -5,7 +5,7 @@
   "failed_tests": 6,
   "success_rate": "25.0%",
   "timestamp": "2025-08-23T08:38:11.869757",
-  "backend_url": "https://content-pipeline-5.preview.emergentagent.com",
+  "backend_url": "https://content-formatter.preview.emergentagent.com",
   "test_results": [
     {
       "test": "V2 Engine Health Check with Style Endpoints",

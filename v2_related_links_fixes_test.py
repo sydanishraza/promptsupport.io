@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com/api"
+BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
 
 class V2RelatedLinksFixesTester:
     def __init__(self):

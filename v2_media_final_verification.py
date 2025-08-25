@@ -14,7 +14,7 @@ from io import BytesIO
 from PIL import Image
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com"
+BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test_result(message, status="INFO"):

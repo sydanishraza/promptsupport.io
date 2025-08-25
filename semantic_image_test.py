@@ -35,7 +35,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Configuration
-BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com/api"
+BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
 
 class SemanticImagePlacementTester:
     """Comprehensive tester for the semantic image placement system"""

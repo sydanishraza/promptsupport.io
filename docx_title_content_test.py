@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://content-pipeline-5.preview.emergentagent.com"
+BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
 TEST_FILE = "/app/Google_Map_JavaScript_API_Tutorial.docx"
 
 def test_docx_title_and_content_issues():

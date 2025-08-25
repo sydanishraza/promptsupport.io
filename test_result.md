@@ -80,7 +80,7 @@ frontend:
     implemented: true
     working: false
     file: "frontend/src/components/PromptSupportEditor.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:

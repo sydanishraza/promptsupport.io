@@ -7263,11 +7263,20 @@ Return ONLY JSON in this exact format:
                             elif block.block_type == 'code':
                                 html_parts.append(f'<pre><code>{block.content}</code></pre>')
                             elif block.block_type == 'list':
-                                html_parts.append('<ul>')
-                                for line in block.content.split('\n'):
+                                # Detect if this should be an ordered list
+                                list_content = block.content
+                                is_procedural = any(word in list_content.lower() for word in [
+                                    'step', 'create', 'add', 'use', 'open', 'save', 'click',
+                                    'go to', 'select', 'copy', 'replace', 'locate', 'generate',
+                                    'first', 'second', 'third', 'next', 'then', 'finally'
+                                ])
+                                
+                                list_tag = 'ol' if is_procedural else 'ul'
+                                html_parts.append(f'<{list_tag}>')
+                                for line in list_content.split('\n'):
                                     if line.strip():
                                         html_parts.append(f'<li>{line.strip()}</li>')
-                                html_parts.append('</ul>')
+                                html_parts.append(f'</{list_tag}>')
                             else:
                                 html_parts.append(f'<p>{block.content}</p>')
             

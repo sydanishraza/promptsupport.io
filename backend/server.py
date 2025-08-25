@@ -4798,7 +4798,9 @@ Return the fully formatted article with improved clarity, structure, and clickab
             # Update processed content with the modified soup
             processed_content = str(soup)
             
-            # HTML TOC processing is now handled above in the BeautifulSoup section
+            if anchor_links_generated > 0:
+                structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable HTML anchors")
+                print(f"✅ V2 STYLE: Successfully converted {anchor_links_generated} TOC items to HTML anchor links")
             
             if anchor_links_generated > 0:
                 structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable anchors")

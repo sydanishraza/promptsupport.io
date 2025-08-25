@@ -208,40 +208,60 @@ pre[class*="language-"].line-numbers {
    RESPONSIVE DESIGN
    ======================================== */
 
-/* Mobile adjustments */
-@media (max-width: 768px) {
-  pre[class*="language-"],
-  pre.responsive-code {
-    margin: 1rem 0;
-    border-radius: 4px;
-    padding: 0.75rem !important;
-    max-height: 300px;
-    max-width: calc(100vw - 2rem);
-    font-size: 12px;
-    overflow-x: auto;
-    white-space: pre;
-  }
-  
-  /* Ensure code doesn't exceed mobile viewport */
-  pre[class*="language-"] code,
-  pre.responsive-code code {
-    font-size: 12px;
-    line-height: 1.4;
-    word-break: break-all;
-    white-space: pre-wrap;
-    max-width: 100%;
-    display: block;
-    overflow-x: auto;
-  }
-  
-  /* Force mobile responsiveness for all code containers */
+/* Mobile adjustments - aggressive approach for all viewport sizes under 400px */
+@media (max-width: 400px) {
+  /* Force all code blocks to fit within mobile viewport */
   pre[class*="language-"],
   pre.responsive-code,
-  figure.code-block {
+  figure.code-block,
+  .prose pre {
+    margin: 1rem 0 !important;
+    border-radius: 4px !important;
+    padding: 0.75rem !important;
+    max-height: 300px !important;
     max-width: calc(100vw - 2rem) !important;
+    width: calc(100vw - 2rem) !important;
+    font-size: 11px !important;
+    overflow-x: auto !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    word-break: break-all !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  /* Ensure code content doesn't exceed mobile viewport */
+  pre[class*="language-"] code,
+  pre.responsive-code code,
+  figure.code-block code,
+  .prose pre code {
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    word-break: break-all !important;
+    white-space: pre-wrap !important;
+    max-width: 100% !important;
     width: 100% !important;
+    display: block !important;
+    overflow-x: hidden !important;
+    overflow-wrap: break-word !important;
+  }
+  
+  /* Force responsiveness for any container that might hold code */
+  .content-display,
+  .prose,
+  .html-content {
+    max-width: calc(100vw - 2rem) !important;
+    width: calc(100vw - 2rem) !important;
+    overflow-x: hidden !important;
     box-sizing: border-box !important;
   }
+  
+  /* Prevent any horizontal overflow */
+  * {
+    max-width: calc(100vw - 2rem) !important;
+    box-sizing: border-box !important;
+  }
+}
 
   /* Language label removed - no mobile overrides needed */
 

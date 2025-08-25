@@ -161,13 +161,14 @@ def test_content_library():
         response = requests.get(f"{API_BASE}/content-library", timeout=15)
         
         if response.status_code == 200:
-            articles = response.json()
+            data = response.json()
+            articles = data.get('articles', []) if isinstance(data, dict) else data
             print_success(f"Content library accessible - {len(articles)} articles found")
             
             # Look for recent articles
             recent_articles = []
             for article in articles:
-                title = article.get('title', '')
+                title = article.get('title', '') if isinstance(article, dict) else str(article)
                 if 'API Integration' in title or 'Getting Started' in title:
                     recent_articles.append(article)
             

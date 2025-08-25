@@ -4803,37 +4803,100 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 # Return HTML anchor link format instead of Markdown
                 return f'{indent}{bullet} <a href="#{matching_slug}">{toc_text}</a>'
             
-            # Match TOC patterns - both markdown and HTML list formats
-            # Pattern: optional whitespace + bullet (- or *) + space + text
-            toc_pattern = r'^(\s*)([-*])\s+([^\n\r]+)$'
+            # Match TOC patterns - process both markdown and HTML list formats
+            # First handle HTML lists (more common in generated content)
+            from bs4 import BeautifulSoup
             
-            # Only convert lines that look like TOC items (not in code blocks)
-            lines = processed_content.split('\n')
-            in_code_block = False
-            converted_lines = []
+            soup = BeautifulSoup(processed_content, 'html.parser')
             
-            for line in lines:
-                # Track code block boundaries
-                if line.strip().startswith('```'):
-                    in_code_block = not in_code_block
-                    converted_lines.append(line)
+            # Find all ul elements that might be TOCs
+            ul_elements = soup.find_all('ul')
+            
+            for ul in ul_elements:
+                # Check if this is likely a Mini-TOC (small list near beginning, no links yet)
+                li_elements = ul.find_all('li')
+                
+                # Skip if already has links
+                if ul.find('a'):
                     continue
                 
-                # Don't convert lines inside code blocks
-                if in_code_block:
-                    converted_lines.append(line)
+                # Skip if too many items (likely not a TOC)
+                if len(li_elements) > 10:
                     continue
                 
-                # Check if this line looks like a TOC item
-                if re.match(toc_pattern, line):
-                    # Additional heuristic: TOC items are usually near the beginning
-                    # or after "Table of Contents" or "Contents" heading
-                    converted_line = re.sub(toc_pattern, convert_toc_item, line)
-                    converted_lines.append(converted_line)
-                else:
-                    converted_lines.append(line)
+                # Check if this looks like a TOC by checking content
+                toc_indicators = 0
+                total_items = len(li_elements)
+                
+                for li in li_elements:
+                    text = li.get_text().lower().strip()
+                    
+                    # Common TOC phrases
+                    if any(phrase in text for phrase in [
+                        'introduction', 'getting started', 'overview', 'setup', 'configuration',
+                        'authentication', 'api', 'request', 'response', 'example', 'tutorial',
+                        'step', 'guide', 'usage', 'implementation', 'integration', 'conclusion'
+                    ]):
+                        toc_indicators += 1
+                
+                # If this looks like a TOC (>30% items have TOC indicators), convert it
+                if total_items > 1 and (toc_indicators / total_items > 0.3 or total_items <= 6):
+                    print(f"🔍 V2 STYLE: Processing potential TOC with {total_items} items, {toc_indicators} indicators")
+                    
+                    # Convert each li to have anchor links
+                    for li in li_elements:
+                        toc_text = li.get_text().strip()
+                        
+                        # Find matching heading for this TOC item
+                        matching_slug = None
+                        best_match_score = 0
+                        
+                        # Look for matching headings
+                        for heading_text, slug in heading_ids.items():
+                            # Simple word-based matching
+                            toc_words = set(toc_text.lower().split())
+                            heading_words = set(heading_text.lower().split())
+                            
+                            if toc_words and heading_words:
+                                similarity = len(toc_words & heading_words) / max(len(toc_words), len(heading_words))
+                                if similarity > best_match_score:
+                                    best_match_score = similarity
+                                    matching_slug = slug
+                        
+                        # If no good match, generate a slug from the TOC text
+                        if not matching_slug or best_match_score < 0.3:
+                            matching_slug = generate_slug(toc_text)
+                            
+                            # Try to find or create a matching heading
+                            # Look for headings that might match this TOC item
+                            heading_pattern = f'<h[2-6][^>]*>\\s*{re.escape(toc_text)}\\s*</h[2-6]>'
+                            if re.search(heading_pattern, processed_content, re.IGNORECASE):
+                                # Add ID to the existing heading
+                                def add_id_to_found_heading(match):
+                                    return match.group(0).replace('>', f' id="{matching_slug}">', 1)
+                                processed_content = re.sub(heading_pattern, add_id_to_found_heading, processed_content, flags=re.IGNORECASE)
+                            else:
+                                # Mark as potentially broken
+                                toc_broken_links.append({
+                                    "toc_text": toc_text,
+                                    "expected_slug": matching_slug,
+                                    "reason": "no_matching_heading_found",
+                                    "match_score": best_match_score
+                                })
+                        
+                        print(f"🔗 V2 STYLE: TOC item '{toc_text}' -> '{matching_slug}' (score: {best_match_score:.2f})")
+                        
+                        # Create anchor link
+                        new_a = soup.new_tag('a', href=f'#{matching_slug}', **{'class': 'toc-link'})
+                        new_a.string = toc_text
+                        
+                        # Replace li content with anchor
+                        li.clear()
+                        li.append(new_a)
+                        anchor_links_generated += 1
             
-            processed_content = '\n'.join(converted_lines)
+            # Update processed content with the modified soup
+            processed_content = str(soup)
             
             # Step 2b: Convert HTML TOC items to clickable anchor links
             def convert_html_toc_item(match):

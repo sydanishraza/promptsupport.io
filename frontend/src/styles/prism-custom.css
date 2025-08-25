@@ -35,11 +35,11 @@ pre.responsive-code {
   flex-shrink: 1;
 }
 
-/* Code element styling with enhanced clarity and no distortion */
+/* Code element styling with enhanced clarity and proper aspect ratios */
 pre[class*="language-"] code {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.5;
   color: #2d3748;
   font-weight: 400;
   font-variant-ligatures: none;
@@ -52,8 +52,13 @@ pre[class*="language-"] code {
   tab-size: 2;
   /* Remove transform that may cause distortion */
   transform: none;
-  /* Ensure pixel-perfect rendering */
+  /* Ensure pixel-perfect rendering and proper aspect ratios */
   image-rendering: auto;
+  width: 100%;
+  display: block;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 /* Language label removed as requested - only copy button remains */

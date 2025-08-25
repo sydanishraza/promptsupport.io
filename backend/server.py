@@ -4432,6 +4432,10 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 existing_heading_pattern = r'<h[2-6][^>]*id="([^"]+)"[^>]*>([^<]+)</h[2-6]>'
                 existing_headings = re.findall(existing_heading_pattern, processed_content, re.IGNORECASE)
                 
+                # Also look for simpler heading patterns
+                simple_heading_pattern = r'<h[2-6][^>]*>([^<]+)</h[2-6]>'
+                simple_headings = re.findall(simple_heading_pattern, processed_content, re.IGNORECASE)
+                
                 for heading_id, heading_text in existing_headings:
                     clean_heading = re.sub(r'[^\w\s-]', '', heading_text).strip()
                     clean_toc = re.sub(r'[^\w\s-]', '', toc_text).strip()

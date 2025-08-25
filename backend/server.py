@@ -3915,11 +3915,11 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 
             except Exception as llm_error:
                 print(f"❌ V2 STYLE: LLM style formatting failed - {llm_error} - applying fallback - engine=v2")
-                return self._apply_fallback_style_formatting(article_title, article_content)
+                return await self._apply_fallback_style_formatting(article_title, article_content)
             
         except Exception as e:
             print(f"❌ V2 STYLE: Error in Woolf style linting - {e} - engine=v2")
-            return self._apply_fallback_style_formatting(article_title, article_content)
+            return await self._apply_fallback_style_formatting(article_title, article_content)
     
     async def _apply_fallback_style_formatting(self, article_title: str, article_content: str) -> dict:
         """Apply basic style formatting as fallback when LLM fails"""

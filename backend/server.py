@@ -31245,8 +31245,187 @@ async def fix_google_maps_content_defects():
         }
         
     except Exception as e:
-        print(f"❌ V2 STYLE: Error fixing formatting defects - {e}")
-        raise HTTPException(status_code=500, detail=f"Error fixing formatting defects: {str(e)}")
+        print(f"❌ COMPREHENSIVE FIX: Error fixing Google Maps defects - {e}")
+        raise HTTPException(status_code=500, detail=f"Error fixing content defects: {str(e)}")
+
+async def fix_h1_duplication(content: str) -> str:
+    """Fix Issue 1: Remove ALL H1 tags from content body"""
+    try:
+        from bs4 import BeautifulSoup
+        import re
+        
+        # Use BeautifulSoup to parse and remove H1s
+        soup = BeautifulSoup(content, 'html.parser')
+        h1_tags = soup.find_all('h1')
+        
+        for h1 in h1_tags:
+            h1.decompose()  # Completely remove H1 tags
+        
+        cleaned = str(soup)
+        
+        # Additional regex cleanup
+        cleaned = re.sub(r'<h1[^>]*>.*?</h1>', '', cleaned, flags=re.IGNORECASE | re.DOTALL)
+        
+        print(f"✅ H1 DUPLICATION FIX: Removed {len(h1_tags)} H1 tags")
+        return cleaned
+    except Exception as e:
+        print(f"❌ H1 fix error: {e}")
+        return content
+
+async def fix_mini_toc_linking(content: str) -> str:
+    """Fix Issue 2: Convert static Mini-TOC to clickable anchor links"""
+    try:
+        from bs4 import BeautifulSoup
+        import re
+        
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find the first UL after the introduction paragraph (likely the Mini-TOC)
+        first_ul = soup.find('ul')
+        if first_ul:
+            # Check if this looks like a TOC (5 items, section names)
+            li_items = first_ul.find_all('li')
+            if len(li_items) == 5:  # Google Maps tutorial has 5 sections
+                for i, li in enumerate(li_items, 1):
+                    text = li.get_text().strip()
+                    if not li.find('a'):  # Only if not already a link
+                        li.clear()
+                        link = soup.new_tag('a', href=f'#section{i}')
+                        link.string = text
+                        li.append(link)
+                
+                print(f"✅ MINI-TOC FIX: Converted {len(li_items)} TOC items to links")
+        
+        return str(soup)
+    except Exception as e:
+        print(f"❌ Mini-TOC fix error: {e}")
+        return content
+
+async def fix_list_types(content: str) -> str:
+    """Fix Issue 3: Convert procedural UL lists to OL lists"""
+    try:
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(content, 'html.parser')
+        ul_lists = soup.find_all('ul')
+        converted = 0
+        
+        for ul in ul_lists:
+            # Skip the first UL (likely Mini-TOC)
+            if ul == soup.find('ul'):
+                continue
+                
+            li_items = ul.find_all('li')
+            if len(li_items) >= 2:
+                # Check if items contain procedural language
+                procedural_count = 0
+                for li in li_items:
+                    text = li.get_text().lower()
+                    if any(word in text for word in [
+                        'step', 'create', 'add', 'use', 'open', 'save', 'click',
+                        'go to', 'select', 'copy', 'replace', 'locate', 'generate'
+                    ]):
+                        procedural_count += 1
+                
+                # Convert to OL if more than 30% are procedural
+                if procedural_count >= len(li_items) * 0.3:
+                    ul.name = 'ol'
+                    converted += 1
+        
+        print(f"✅ LIST TYPE FIX: Converted {converted} UL lists to OL")
+        return str(soup)
+    except Exception as e:
+        print(f"❌ List type fix error: {e}")
+        return content
+
+async def fix_code_block_consolidation(content: str) -> str:
+    """Fix Issue 4: Consolidate fragmented code blocks"""
+    try:
+        from bs4 import BeautifulSoup
+        import re
+        
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find all consecutive pre elements that should be consolidated
+        pre_elements = soup.find_all('pre')
+        consolidated = 0
+        
+        i = 0
+        while i < len(pre_elements):
+            current_pre = pre_elements[i]
+            
+            # Look for consecutive pre elements of the same language
+            consecutive_pres = [current_pre]
+            current_lang = None
+            
+            # Get language from current pre
+            code = current_pre.find('code')
+            if code and code.get('class'):
+                for cls in code['class']:
+                    if cls.startswith('language-'):
+                        current_lang = cls
+                        break
+            
+            # Find consecutive pre elements with same language
+            j = i + 1
+            while j < len(pre_elements):
+                next_pre = pre_elements[j]
+                next_code = next_pre.find('code')
+                next_lang = None
+                
+                if next_code and next_code.get('class'):
+                    for cls in next_code['class']:
+                        if cls.startswith('language-'):
+                            next_lang = cls
+                            break
+                
+                # Check if next pre is immediately after current (same parent)
+                if (next_lang == current_lang and 
+                    current_pre.parent == next_pre.parent):
+                    consecutive_pres.append(next_pre)
+                    j += 1
+                else:
+                    break
+            
+            # If we have multiple consecutive pres, consolidate them
+            if len(consecutive_pres) > 1:
+                # Combine all code content
+                combined_code = []
+                for pre in consecutive_pres:
+                    code_elem = pre.find('code')
+                    if code_elem:
+                        combined_code.append(code_elem.get_text())
+                
+                # Create new consolidated pre element
+                new_pre = soup.new_tag('pre', **{
+                    'class': 'line-numbers',
+                    'data-lang': current_lang.replace('language-', '').upper() if current_lang else 'TEXT',
+                    'data-start': '1'
+                })
+                
+                new_code = soup.new_tag('code')
+                if current_lang:
+                    new_code['class'] = [current_lang]
+                new_code.string = '\n'.join(combined_code)
+                new_pre.append(new_code)
+                
+                # Replace first pre with consolidated version
+                consecutive_pres[0].replace_with(new_pre)
+                
+                # Remove the other pres
+                for pre in consecutive_pres[1:]:
+                    pre.decompose()
+                
+                consolidated += len(consecutive_pres) - 1
+                print(f"🔧 Consolidated {len(consecutive_pres)} consecutive {current_lang} blocks")
+            
+            i = j if j > i + 1 else i + 1
+        
+        print(f"✅ CODE CONSOLIDATION FIX: Consolidated {consolidated} fragmented blocks")
+        return str(soup)
+    except Exception as e:
+        print(f"❌ Code consolidation fix error: {e}")
+        return content
 
 @app.post("/api/style/process-toc-links")
 async def process_toc_links():

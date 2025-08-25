@@ -3778,6 +3778,13 @@ class V2StyleProcessor:
                 article_title, article_content, prewrite_data, global_analysis
             )
             
+            # CRITICAL FIX: Apply comprehensive post-processing for the three key issues
+            post_processed_content = await self._apply_comprehensive_post_processing(
+                formatted_result.get('formatted_content', article_content), article_title
+            )
+            formatted_result['formatted_content'] = post_processed_content['content']
+            formatted_result['post_processing_applied'] = post_processed_content['changes_applied']
+            
             # Validate structural compliance
             compliance_result = self._validate_structural_compliance(
                 formatted_result.get('formatted_content', ''), article_title

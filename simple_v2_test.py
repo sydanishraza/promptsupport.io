@@ -119,7 +119,7 @@ def test_process_text():
         print_info(f"Sample text length: {len(SAMPLE_TEXT)} characters")
         
         payload = {
-            "text": SAMPLE_TEXT,
+            "content": SAMPLE_TEXT,
             "engine": "v2"
         }
         

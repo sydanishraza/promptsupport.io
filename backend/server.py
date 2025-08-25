@@ -31145,6 +31145,105 @@ async def rerun_style_formatting(request: RerunRequest):
         print(f"❌ V2 STYLE: Error in style rerun - {e} - engine=v2")
         raise HTTPException(status_code=500, detail=f"Error rerunning style formatting: {str(e)}")
 
+@app.post("/api/style/fix-formatting-defects")
+async def fix_formatting_defects():
+    """V2 ENGINE: Fix specific formatting defects in Google Maps API articles"""
+    try:
+        print(f"🔧 V2 STYLE: Fixing formatting defects in Google Maps API articles - engine=v2")
+        
+        # Find Google Maps API articles specifically
+        processed_count = 0
+        updated_articles = []
+        
+        async for article in db.content_library.find({
+            "engine": "v2", 
+            "title": {"$regex": "Google.*Map", "$options": "i"}
+        }):
+            try:
+                article_id = str(article["_id"])
+                article_title = article.get("title", "Untitled")
+                article_content = article.get("content", article.get("html", ""))
+                
+                print(f"🔧 V2 STYLE: Processing formatting fixes for '{article_title}'")
+                
+                if not article_content:
+                    print(f"⚠️ V2 STYLE: No content found for '{article_title}' - skipping")
+                    continue
+                
+                # Apply comprehensive fixes
+                fixed_content = article_content
+                changes_made = []
+                
+                # 1. Fix H1 duplication (aggressive approach)
+                h1_cleaned = v2_style_processor._remove_h1_from_content(fixed_content)
+                if h1_cleaned != fixed_content:
+                    fixed_content = h1_cleaned
+                    changes_made.append("h1_conversion")
+                
+                # 2. Fix list types (aggressive approach) 
+                list_fixed = v2_style_processor._fix_list_types(fixed_content)
+                if list_fixed != fixed_content:
+                    fixed_content = list_fixed
+                    changes_made.append("list_type_conversion")
+                
+                # 3. Fix code blocks
+                code_fixed = v2_style_processor._fix_code_block_rendering(fixed_content)
+                if code_fixed != fixed_content:
+                    fixed_content = code_fixed
+                    changes_made.append("code_block_fixes")
+                
+                # 4. Apply TOC processing
+                anchor_result = v2_style_processor._process_clickable_anchors(fixed_content)
+                toc_fixed = anchor_result.get('content', fixed_content)
+                anchor_links = anchor_result.get('anchor_links_generated', 0)
+                
+                if toc_fixed != fixed_content:
+                    fixed_content = toc_fixed
+                    changes_made.append("toc_anchor_links")
+                
+                # Update article if any changes were made
+                if changes_made or anchor_links > 0:
+                    update_result = await db.content_library.update_one(
+                        {"_id": article["_id"]},
+                        {
+                            "$set": {
+                                "content": fixed_content,
+                                "html": fixed_content,
+                                "formatting_fixes": {
+                                    "processed_at": datetime.now().isoformat(),
+                                    "changes_made": changes_made,
+                                    "anchor_links_generated": anchor_links,
+                                    "engine": "v2"
+                                }
+                            }
+                        }
+                    )
+                    
+                    if update_result.modified_count > 0:
+                        processed_count += 1
+                        updated_articles.append({
+                            "article_id": article_id,
+                            "title": article_title,
+                            "changes_made": changes_made,
+                            "anchor_links_generated": anchor_links
+                        })
+                        print(f"✅ V2 STYLE: Updated '{article_title}' with {len(changes_made)} fixes")
+                    
+            except Exception as article_error:
+                print(f"❌ V2 STYLE: Error processing article '{article.get('title', 'Unknown')}' - {article_error}")
+                continue
+        
+        return {
+            "message": "Formatting defects fixing completed",
+            "articles_processed": processed_count,
+            "updated_articles": updated_articles,
+            "engine": "v2"
+        }
+        
+    except Exception as e:
+        print(f"❌ V2 STYLE: Error fixing formatting defects - {e}")
+        raise HTTPException(status_code=500, detail=f"Error fixing formatting defects: {str(e)}")
+
 @app.post("/api/style/process-toc-links")
 async def process_toc_links():
     """V2 ENGINE: Process Mini-TOC links for existing articles"""

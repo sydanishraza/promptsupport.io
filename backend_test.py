@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Mini-TOC Links Fix Test Suite
-Testing the completely rewritten _process_clickable_anchors method using BeautifulSoup
-Focus: HTML anchor link generation <a href="#slug">text</a> instead of Markdown format
+ID Coordination System Test Suite
+Testing the completely rewritten ID coordination logic with BeautifulSoup-first approach
+Focus: Three-method matching, section ID pattern continuation, and improved coordination rate
 """
 
 import asyncio

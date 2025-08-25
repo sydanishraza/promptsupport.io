@@ -4337,7 +4337,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
             return content
 
     def _remove_h1_from_content(self, content: str) -> str:
-        """Remove H1 tags from article content - title should be handled by frontend"""
+        """Remove ALL H1 tags from article content - title should be handled by frontend"""
         try:
             import re
             from bs4 import BeautifulSoup
@@ -4349,35 +4349,44 @@ Return the fully formatted article with improved clarity, structure, and clickab
             h1_tags = soup.find_all('h1')
             h1_count = len(h1_tags)
             
+            # Use decompose to completely remove ALL H1 tags
             for h1 in h1_tags:
-                # Convert H1 to H2 to preserve content but fix hierarchy
                 h1_text = h1.get_text().strip()
-                h1.name = 'h2'
                 
-                # Ensure H2 has proper attributes
-                if not h1.get('id'):
-                    # Generate an ID for the heading if it doesn't have one
+                # Convert H1 content to H2 and replace it
+                new_h2 = soup.new_tag('h2')
+                new_h2.string = h1_text
+                
+                # Generate an ID for the H2 if the H1 had one
+                if h1.get('id'):
+                    new_h2['id'] = h1.get('id')
+                else:
                     heading_id = re.sub(r'[^\w\s-]', '', h1_text.lower()).replace(' ', '-')[:50]
-                    h1['id'] = heading_id
+                    new_h2['id'] = heading_id
                 
-                print(f"🏷️ V2 STYLE: Converted H1 to H2 - '{h1_text[:50]}...'")
+                # Replace H1 with H2
+                h1.replace_with(new_h2)
+                print(f"🏷️ V2 STYLE: Replaced H1 with H2 - '{h1_text[:50]}...'")
             
-            # Convert to string and apply additional regex cleanup
+            # Convert to string
             cleaned_content = str(soup)
             
-            # Additional regex-based cleanup for any remaining H1 patterns (more comprehensive)
+            # Additional comprehensive regex-based cleanup for any remaining H1 patterns
             cleaned_content = re.sub(r'<h1(\s[^>]*)?>([^<]*)</h1>', r'<h2\1>\2</h2>', cleaned_content, flags=re.IGNORECASE | re.DOTALL)
-            cleaned_content = re.sub(r'<h1([^>]*)>', r'<h2\1>', cleaned_content, flags=re.IGNORECASE)
+            cleaned_content = re.sub(r'<h1([^>]*?)>', r'<h2\1>', cleaned_content, flags=re.IGNORECASE)
             cleaned_content = re.sub(r'</h1>', r'</h2>', cleaned_content, flags=re.IGNORECASE)
+            
+            # Triple-check: remove any remaining H1 tags with more aggressive regex
+            cleaned_content = re.sub(r'</?h1[^>]*>', '', cleaned_content, flags=re.IGNORECASE)
             
             # Final verification - check if any H1s remain
             remaining_h1s = re.findall(r'<h1[^>]*>', cleaned_content, re.IGNORECASE)
             if remaining_h1s:
-                print(f"⚠️ V2 STYLE: {len(remaining_h1s)} H1 tags still remain after cleanup")
+                print(f"⚠️ V2 STYLE: {len(remaining_h1s)} H1 tags still remain after aggressive cleanup")
                 for h1 in remaining_h1s:
                     print(f"   Remaining H1: {h1}")
             else:
-                print(f"✅ V2 STYLE: Successfully removed all {h1_count} H1 tags from content")
+                print(f"✅ V2 STYLE: Successfully removed ALL {h1_count} H1 tags from content")
             
             return cleaned_content
             

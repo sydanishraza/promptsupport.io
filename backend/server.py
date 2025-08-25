@@ -4186,6 +4186,93 @@ Return the fully formatted article with improved clarity, structure, and clickab
             print(f"❌ V2 STYLE: Error calculating style compliance - {e}")
             return {"overall_compliance": 0, "articles_compliant": 0, "error": str(e)}
     
+    def _fix_code_block_rendering(self, content: str) -> str:
+        """Fix code block rendering issues by consolidating single-line blocks and improving wrapping"""
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Find all code elements
+            code_elements = soup.find_all('code')
+            blocks_consolidated = 0
+            
+            # Group consecutive single-line code blocks
+            for code in code_elements:
+                parent = code.parent
+                
+                # Skip if already in pre tag (properly formatted)
+                if parent and parent.name == 'pre':
+                    # Ensure proper CSS classes for responsive design
+                    if not parent.get('class'):
+                        parent['class'] = ['language-text', 'responsive-code']
+                    elif 'responsive-code' not in parent.get('class', []):
+                        parent['class'].append('responsive-code')
+                    continue
+                
+                # Check if this is a single-line code block that should be consolidated
+                code_text = code.get_text().strip()
+                
+                # If it's a multi-line code snippet, wrap it properly
+                if '\n' in code_text or len(code_text) > 50:
+                    # Create proper pre wrapper
+                    pre_tag = soup.new_tag('pre', **{
+                        'class': ['line-numbers', 'responsive-code'],
+                        'data-start': '1'
+                    })
+                    
+                    # Move code into pre tag
+                    code.extract()
+                    pre_tag.append(code)
+                    
+                    # Replace original location
+                    if parent:
+                        parent.replace_with(pre_tag)
+                    
+                    blocks_consolidated += 1
+                    print(f"🔧 V2 STYLE: Consolidated code block - {len(code_text)} chars")
+            
+            # Fix inline code that should be block code
+            inline_code_elements = soup.find_all('code')
+            for code in inline_code_elements:
+                if code.parent and code.parent.name not in ['pre', 'figure']:
+                    code_text = code.get_text().strip()
+                    
+                    # Convert to block if it looks like a code block (contains keywords, brackets, etc.)
+                    if any(indicator in code_text.lower() for indicator in [
+                        'function', 'const', 'let', 'var', 'class', 'import', 'export',
+                        'api_key', 'axios', 'fetch', 'async', 'await', '===', '!==',
+                        'console.log', 'document.', 'window.', '{', '}', '=>', 'return'
+                    ]) and len(code_text) > 20:
+                        
+                        # Create proper pre wrapper
+                        pre_tag = soup.new_tag('pre', **{
+                            'class': ['line-numbers', 'responsive-code'],
+                            'data-start': '1'
+                        })
+                        
+                        # Move code into pre tag
+                        code.extract()
+                        if not code.get('class'):
+                            code['class'] = ['language-javascript']
+                        pre_tag.append(code)
+                        
+                        # Replace original location
+                        if code.parent:
+                            code.parent.insert_after(pre_tag)
+                        
+                        blocks_consolidated += 1
+            
+            if blocks_consolidated > 0:
+                print(f"✅ V2 STYLE: Fixed {blocks_consolidated} code block rendering issues")
+            
+            return str(soup)
+            
+        except Exception as e:
+            print(f"❌ V2 STYLE: Error fixing code block rendering - {e}")
+            return content
+
     def _fix_list_types(self, content: str) -> str:
         """Fix list types by detecting sequential/ordered content and converting to proper list types"""
         try:

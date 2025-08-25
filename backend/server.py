@@ -7403,6 +7403,91 @@ Return ONLY JSON in this exact format:
         except Exception as e:
             print(f"⚠️ V2 ARTICLE GEN: Error extracting title from HTML - {e}")
             return fallback_title
+    
+    async def _consolidate_code_blocks(self, html_content: str) -> str:
+        """Consolidate fragmented code blocks in generated HTML"""
+        try:
+            from bs4 import BeautifulSoup
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Find consecutive pre elements and consolidate them
+            pre_elements = soup.find_all('pre')
+            consolidated_count = 0
+            
+            i = 0
+            while i < len(pre_elements):
+                current_pre = pre_elements[i]
+                consecutive_pres = [current_pre]
+                
+                # Look for consecutive pre elements
+                j = i + 1
+                while j < len(pre_elements):
+                    next_pre = pre_elements[j]
+                    # Check if elements are consecutive in the DOM
+                    if self._are_consecutive_elements(current_pre, next_pre):
+                        consecutive_pres.append(next_pre)
+                        current_pre = next_pre
+                        j += 1
+                    else:
+                        break
+                
+                # If we have multiple consecutive pres, consolidate them
+                if len(consecutive_pres) > 1:
+                    # Combine all code content
+                    combined_lines = []
+                    for pre in consecutive_pres:
+                        code_elem = pre.find('code')
+                        if code_elem:
+                            combined_lines.append(code_elem.get_text())
+                    
+                    # Create consolidated pre element with Prism classes
+                    new_pre = soup.new_tag('pre', **{
+                        'class': 'line-numbers',
+                        'data-lang': 'HTML',
+                        'data-start': '1'
+                    })
+                    
+                    new_code = soup.new_tag('code', **{'class': 'language-html'})
+                    new_code.string = '\n'.join(combined_lines)
+                    new_pre.append(new_code)
+                    
+                    # Replace first pre with consolidated version
+                    consecutive_pres[0].replace_with(new_pre)
+                    
+                    # Remove the other pres
+                    for pre in consecutive_pres[1:]:
+                        pre.decompose()
+                    
+                    consolidated_count += len(consecutive_pres) - 1
+                
+                i = j if j > i else i + 1
+            
+            if consolidated_count > 0:
+                print(f"🔧 V2 ARTICLE GEN: Consolidated {consolidated_count} code blocks")
+            
+            return str(soup)
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE GEN: Error consolidating code blocks - {e}")
+            return html_content
+    
+    def _are_consecutive_elements(self, elem1, elem2) -> bool:
+        """Check if two elements are consecutive in the DOM"""
+        try:
+            # Simple check: if they have the same parent and elem2 follows elem1
+            if elem1.parent == elem2.parent:
+                siblings = list(elem1.parent.children)
+                try:
+                    idx1 = siblings.index(elem1)
+                    idx2 = siblings.index(elem2)
+                    # Allow some gap for whitespace/text nodes
+                    return 0 < (idx2 - idx1) <= 3
+                except ValueError:
+                    return False
+            return False
+        except:
+            return False
 
 # Global V2 Article Generator instance
 v2_article_generator = V2ArticleGenerator()

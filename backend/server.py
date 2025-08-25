@@ -4909,9 +4909,9 @@ Return the fully formatted article with improved clarity, structure, and clickab
             if anchor_links_generated > 0:
                 structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable anchors")
             
-            # Step 3: Validate that all anchor links resolve
-            anchor_links = re.findall(r'\[([^\]]+)\]\(#([^)]+)\)', processed_content)
-            for link_text, anchor in anchor_links:
+            # Step 3: Validate that all anchor links resolve (now checking HTML anchor links)
+            anchor_links = re.findall(r'<a href="#([^"]+)"[^>]*>([^<]+)</a>', processed_content)
+            for anchor, link_text in anchor_links:
                 if f'id="{anchor}"' not in processed_content:
                     toc_broken_links.append({
                         "toc_text": link_text,

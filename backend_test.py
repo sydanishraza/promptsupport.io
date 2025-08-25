@@ -123,7 +123,7 @@ async def test_content_with_existing_section_ids():
                 }
             }
             
-            async with session.post(f"{API_BASE}/v2/process-content", json=payload) as response:
+            async with session.post(f"{API_BASE}/content/process", json=payload) as response:
                 if response.status == 200:
                     result = await response.json()
                     print_success(f"Content processing completed - Status: {response.status}")
@@ -412,7 +412,7 @@ async def test_beautifulsoup_first_approach():
                 }
             }
             
-            async with session.post(f"{API_BASE}/v2/process-content", json=payload) as response:
+            async with session.post(f"{API_BASE}/content/process", json=payload) as response:
                 if response.status == 200:
                     result = await response.json()
                     print_success("BeautifulSoup processing completed")
@@ -591,7 +591,7 @@ async def test_three_method_matching():
                 }
             }
             
-            async with session.post(f"{API_BASE}/v2/process-content", json=payload) as response:
+            async with session.post(f"{API_BASE}/content/process", json=payload) as response:
                 if response.status == 200:
                     result = await response.json()
                     print_success("Three-method matching test processing completed")
@@ -729,7 +729,7 @@ async def test_enhanced_text_similarity():
                 }
             }
             
-            async with session.post(f"{API_BASE}/v2/process-content", json=payload) as response:
+            async with session.post(f"{API_BASE}/content/process", json=payload) as response:
                 if response.status == 200:
                     result = await response.json()
                     print_success("Text similarity matching test completed")
@@ -823,7 +823,7 @@ async def test_beautifulsoup_processing():
                 }
             }
             
-            async with session.post(f"{API_BASE}/v2/process-content", json=payload) as response:
+            async with session.post(f"{API_BASE}/content/process", json=payload) as response:
                 if response.status == 200:
                     result = await response.json()
                     print_success("BeautifulSoup processing completed successfully")

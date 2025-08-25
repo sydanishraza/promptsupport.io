@@ -198,11 +198,25 @@ pre[class*="language-"].line-numbers {
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
-  pre[class*="language-"] {
+  pre[class*="language-"],
+  pre.responsive-code {
     margin: 1rem 0;
     border-radius: 4px;
     padding: 0.75rem !important;
     max-height: 300px;
+    max-width: calc(100vw - 2rem);
+    font-size: 12px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  
+  /* Ensure code doesn't exceed mobile viewport */
+  pre[class*="language-"] code,
+  pre.responsive-code code {
+    font-size: 12px;
+    line-height: 1.4;
+    word-break: break-all;
+    white-space: pre-wrap;
   }
 
   /* Language label removed - no mobile overrides needed */

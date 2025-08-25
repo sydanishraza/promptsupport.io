@@ -7026,8 +7026,8 @@ CRITICAL REQUIREMENTS:
 EXACT ARTICLE STRUCTURE:
 1. NO H1 TITLE (title handled by frontend - start with intro paragraph)
 2. Intro Paragraph (overview, context, what reader will learn)
-3. Mini-TOC as clickable links: <ul><li><a href="#section1">Section Name</a></li></ul>
-4. Main Body (H2/H3 sections with anchor IDs: id="section1", id="section2", etc.)
+3. Mini-TOC as simple bullet list: <ul><li>Section Name</li></ul> (links will be added automatically)
+4. Main Body (H2/H3 sections WITHOUT id attributes - IDs will be added automatically)
 5. FAQs (Q&A format addressing common questions)
 6. Related Links (bulleted list of internal and external references)
 

@@ -3939,12 +3939,12 @@ Return the fully formatted article with improved clarity, structure, and clickab
             
             return {
                 "formatted_content": formatted_content,
-                "method": "fallback_formatting",
+                "method": "fallback_formatting_comprehensive",
                 "structural_changes": structural_changes,
                 "original_length": len(article_content),
                 "formatted_length": len(formatted_content),
-                "toc_broken_links": anchor_result.get('toc_broken_links', []),
-                "anchor_links_generated": anchor_result.get('anchor_links_generated', 0)
+                "toc_broken_links": post_processed_result.get('toc_broken_links', []),
+                "anchor_links_generated": post_processed_result.get('anchor_links_generated', 0)
             }
             
         except Exception as e:

@@ -4802,8 +4802,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable HTML anchors")
                 print(f"✅ V2 STYLE: Successfully converted {anchor_links_generated} TOC items to HTML anchor links")
             
-            if anchor_links_generated > 0:
-                structural_changes.append(f"Converted {anchor_links_generated} TOC items to clickable anchors")
+            # TOC anchor generation is now handled above with BeautifulSoup
             
             # Step 3: Validate that all anchor links resolve (now checking HTML anchor links)
             anchor_links = re.findall(r'<a href="#([^"]+)"[^>]*>([^<]+)</a>', processed_content)

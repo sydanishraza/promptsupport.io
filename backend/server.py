@@ -4303,7 +4303,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 for li in list_items:
                     text = li.get_text().lower().strip()
                     
-                    # Check for sequential indicators (expanded list)
+                    # Check for sequential indicators (comprehensive list)
                     if any(indicator in text for indicator in [
                         'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh',
                         'then', 'next', 'after', 'following', 'finally', 'lastly', 'subsequently',
@@ -4312,7 +4312,8 @@ Return the fully formatted article with improved clarity, structure, and clickab
                         'create', 'add', 'enable', 'save', 'run', 'execute', 'implement',
                         'obtain', 'get', 'retrieve', 'download', 'upload', 'register',
                         'open', 'close', 'select', 'choose', 'click', 'press', 'enter',
-                        'navigate', 'go to', 'visit', 'access', 'launch', 'start up'
+                        'navigate', 'go to', 'visit', 'access', 'launch', 'start up',
+                        'html page', 'api key', 'map with', 'custom marker', 'google maps'
                     ]):
                         sequential_indicators += 1
                     

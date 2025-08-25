@@ -75,11 +75,11 @@ async def test_v2_engine_health():
         print_error(f"Error checking V2 Engine health: {e}")
         return False
 
-async def test_content_processing_with_mini_toc():
-    """Test 2: Process content with simple HTML lists that should become Mini-TOCs"""
-    print_test_header("Test 2: Content Processing with Mini-TOC")
+async def test_content_with_existing_section_ids():
+    """Test 2: Process content with existing section-style IDs to verify coordination"""
+    print_test_header("Test 2: Content with Existing Section-Style IDs")
     
-    # Test content with simple HTML list and headings
+    # Test content with existing section IDs and Mini-TOC
     test_content = """
     <h1>Complete Guide to API Integration</h1>
     
@@ -90,19 +90,23 @@ async def test_content_processing_with_mini_toc():
         <li>Getting Started with Authentication</li>
         <li>Making Your First Request</li>
         <li>Error Handling Best Practices</li>
+        <li>Advanced Configuration</li>
     </ul>
     
-    <h2>Introduction to APIs</h2>
+    <h2 id="section1">Introduction to APIs</h2>
     <p>APIs (Application Programming Interfaces) are the backbone of modern web development...</p>
     
-    <h2>Getting Started with Authentication</h2>
+    <h2 id="section2">Getting Started with Authentication</h2>
     <p>Authentication is crucial for secure API access...</p>
     
-    <h2>Making Your First Request</h2>
+    <h2 id="section3">Making Your First Request</h2>
     <p>Once authenticated, you can start making API requests...</p>
     
-    <h2>Error Handling Best Practices</h2>
+    <h2 id="section4">Error Handling Best Practices</h2>
     <p>Proper error handling ensures robust applications...</p>
+    
+    <h2>Advanced Configuration</h2>
+    <p>Advanced configuration options for complex scenarios...</p>
     """
     
     try:

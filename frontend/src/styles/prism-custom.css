@@ -4,6 +4,16 @@
  */
 
 /* ========================================
+   MOBILE OVERFLOW PREVENTION
+   ======================================== */
+
+/* Prevent horizontal scrolling on mobile devices */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* ========================================
    MINIMAL PRE CODE BLOCK STYLES
    ======================================== */
 

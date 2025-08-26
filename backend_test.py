@@ -1,52 +1,61 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for TICKET 1 H1 Elimination Investigation
-Testing V2 pipeline document processing to identify H1 injection sources
+TICKET 2 Implementation Testing - Stable Anchors + Mini-TOC Systematic Fix
+Testing the complete TICKET 2 solution for Mini-TOC anchoring system
 """
 
 import requests
 import json
 import time
+import sys
 import re
-from bs4 import BeautifulSoup
-import os
-from typing import Dict, List, Any
+from datetime import datetime
 
-# Backend URL from environment
-BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
+# Get backend URL from frontend env
+try:
+    with open('/app/frontend/.env', 'r') as f:
+        for line in f:
+            if line.startswith('REACT_APP_BACKEND_URL='):
+                BACKEND_URL = line.split('=', 1)[1].strip()
+                break
+    else:
+        BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
+except:
+    BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
 
-class H1TrackingTest:
-    """Test class to track H1 generation through V2 pipeline"""
-    
+API_BASE = f"{BACKEND_URL}/api"
+
+print(f"🧪 TICKET 2 TESTING: Stable Anchors + Mini-TOC Systematic Fix")
+print(f"🌐 Backend URL: {BACKEND_URL}")
+print(f"📡 API Base: {API_BASE}")
+print("=" * 80)
+
+class TICKET2Tester:
     def __init__(self):
-        self.session = requests.Session()
         self.test_results = []
+        self.total_tests = 0
+        self.passed_tests = 0
         
-    def log_result(self, test_name: str, status: str, details: str):
-        """Log test results"""
+    def log_test(self, test_name, passed, details=""):
+        """Log test result"""
+        self.total_tests += 1
+        if passed:
+            self.passed_tests += 1
+            status = "✅ PASS"
+        else:
+            status = "❌ FAIL"
+        
         result = {
             "test": test_name,
-            "status": status,
+            "passed": passed,
             "details": details,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": datetime.now().isoformat()
         }
         self.test_results.append(result)
-        print(f"[{status}] {test_name}: {details}")
-        
-    def count_h1_tags(self, html_content: str) -> Dict[str, Any]:
-        """Count H1 tags in HTML content and analyze their positions"""
-        if not html_content:
-            return {"total": 0, "in_body": 0, "positions": [], "content": []}
-            
-        soup = BeautifulSoup(html_content, 'html.parser')
-        h1_tags = soup.find_all('h1')
-        
-        h1_analysis = {
-            "total": len(h1_tags),
-            "in_body": len(h1_tags),  # All H1s are considered in body for article content
-            "positions": [],
-            "content": []
-        }
+        print(f"{status} | {test_name}")
+        if details:
+            print(f"    📝 {details}")
+        print()
         
         for i, h1 in enumerate(h1_tags):
             h1_analysis["positions"].append(f"H1 #{i+1}")

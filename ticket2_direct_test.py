@@ -41,10 +41,10 @@ try:
     # Load the server module to get the V2StyleProcessor class
     spec.loader.exec_module(server_module)
     
-    # Create V2StyleProcessor instance
-    processor = server_module.V2StyleProcessor()
+    # Create V2ValidationSystem instance (where TICKET 2 methods are)
+    processor = server_module.V2ValidationSystem()
     
-    print("✅ V2StyleProcessor loaded successfully")
+    print("✅ V2ValidationSystem loaded successfully")
     print()
     
     # Test 1: Stable slug generation

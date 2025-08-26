@@ -55,7 +55,15 @@ const HTMLContent = ({
   const convertH1ToH2 = (content) => {
     // TICKET 1 FIX: Convert any H1 elements in content to H2 to prevent title duplication
     // This ensures only the UI title appears as H1, while content starts with H2
-    return content.replace(/<h1(\s[^>]*)?>/gi, '<h2$1>').replace(/<\/h1>/gi, '</h2>');
+    const originalH1Count = (content.match(/<h1/gi) || []).length;
+    const convertedContent = content.replace(/<h1(\s[^>]*)?>/gi, '<h2$1>').replace(/<\/h1>/gi, '</h2>');
+    const finalH1Count = (convertedContent.match(/<h1/gi) || []).length;
+    
+    if (originalH1Count > 0) {
+      console.log(`🔧 TICKET 1 FIX: Converted ${originalH1Count} H1 elements to H2. H1s remaining: ${finalH1Count}`);
+    }
+    
+    return convertedContent;
   };
 
   const addSmoothScrolling = (container) => {

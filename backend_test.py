@@ -304,13 +304,14 @@ class TICKET2Tester:
         """
         
         try:
-            response = requests.post(f"{API_BASE}/content/process-text", 
-                data={
+            response = requests.post(f"{API_BASE}/content/process", 
+                json={
                     "content": valid_content,
-                    "metadata": json.dumps({
+                    "content_type": "text",
+                    "metadata": {
                         "title": "TICKET 2 Heading Ladder Test",
                         "test_type": "heading_ladder_validation"
-                    })
+                    }
                 },
                 timeout=30
             )

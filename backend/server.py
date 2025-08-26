@@ -8318,6 +8318,44 @@ Return ONLY JSON in this exact format:
         h1_matches = re.findall(r'<h1\b[^>]*>', html, re.IGNORECASE)
         return len(h1_matches) == 0
     
+    def validate_heading_ladder_structure(self, html: str) -> bool:
+        """TICKET 2: Validate proper heading hierarchy (H2->H3->H4)"""
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        levels = []
+        
+        for tag in soup.find_all(["h2", "h3", "h4"]):
+            level = int(tag.name[1])
+            levels.append(level)
+            
+            # Check for proper progression
+            if len(levels) > 1:
+                prev_level = levels[-2]
+                # H3 should not appear without H2, and levels shouldn't skip
+                if (level == 3 and 2 not in levels) or (level - prev_level > 1):
+                    return False
+        
+        return True
+    
+    def validate_anchor_resolution(self, html: str) -> bool:
+        """TICKET 2: Validate that all TOC links resolve to actual heading IDs"""
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Get all existing IDs in the document
+        existing_ids = {tag.get("id") for tag in soup.find_all(attrs={"id": True}) if tag.get("id")}
+        
+        # Check all Mini-TOC links
+        broken_links = []
+        for link in soup.select(".mini-toc a[href^='#']"):
+            target_id = link.get("href", "")[1:]  # Remove the #
+            if target_id not in existing_ids:
+                broken_links.append(target_id)
+        
+        return len(broken_links) == 0
+    
     async def _calculate_validation_metrics(self, normalized_doc, generated_articles: list, analysis: dict, run_id: str) -> dict:
         """V2 Engine: Calculate validation metrics"""
         try:

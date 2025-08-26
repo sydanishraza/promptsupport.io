@@ -4028,25 +4028,16 @@ const PromptSupportEditor = ({
             overflow: 'hidden'
           }}>
             {!isEditing ? (
-              // TICKET 1 FIX: Separate UI title from content area to prevent H1 duplication
-              <div className="h-full overflow-y-auto" style={{ minHeight: '400px' }}>
-                {title && (
-                  <div className="p-6 pb-0">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">
-                      {title}
-                    </h1>
-                  </div>
-                )}
-                <div className="wysiwyg-content p-6 pt-0 max-w-none">
-                  <HTMLContent 
-                    html={content || '<p>No content available</p>'}
-                    className=""
-                    style={{
-                      lineHeight: '1.7',
-                      fontSize: '16px'
-                    }}
-                  />
-                </div>
+              // TITLE DUPLICATION FIX: Remove view mode title, keep only header title and content
+              <div className="h-full overflow-y-auto wysiwyg-content p-6 max-w-none" style={{ minHeight: '400px' }}>
+                <HTMLContent 
+                  html={content || '<p>No content available</p>'}
+                  className=""
+                  style={{
+                    lineHeight: '1.7',
+                    fontSize: '16px'
+                  }}
+                />
               </div>
             ) : (
               // ISSUE 3 FIX: Simplified edit mode with clean layout

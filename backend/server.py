@@ -10268,6 +10268,58 @@ class V2PublishingSystem:
             print(f"❌ V2 PUBLISHING: Error preparing content library structure - {e} - run {run_id} - engine=v2")
             return []
     
+    async def _derive_markdown_from_html(self, final_html: str) -> str:
+        """TICKET 1 FIX: Derive Markdown from HTML at publish time only"""
+        try:
+            import markdownify
+            # Convert HTML to markdown preserving code fences, tables, and structure
+            md = markdownify.markdownify(final_html, heading_style="ATX", bullets="-")
+            return md.strip()
+        except ImportError:
+            # Fallback: Simple HTML to Markdown conversion
+            import re
+            from bs4 import BeautifulSoup
+            
+            soup = BeautifulSoup(final_html, 'html.parser')
+            
+            # Convert headings
+            for i in range(6, 0, -1):
+                for heading in soup.find_all(f'h{i}'):
+                    heading.replace_with(f"{'#' * i} {heading.get_text()}\n\n")
+            
+            # Convert paragraphs
+            for p in soup.find_all('p'):
+                p.replace_with(f"{p.get_text()}\n\n")
+            
+            # Convert lists
+            for ul in soup.find_all('ul'):
+                for li in ul.find_all('li'):
+                    li.replace_with(f"- {li.get_text()}\n")
+                ul.replace_with(f"{ul.get_text()}\n")
+            
+            for ol in soup.find_all('ol'):
+                for i, li in enumerate(ol.find_all('li'), 1):
+                    li.replace_with(f"{i}. {li.get_text()}\n")
+                ol.replace_with(f"{ol.get_text()}\n")
+            
+            # Convert code blocks
+            for pre in soup.find_all('pre'):
+                code = pre.find('code')
+                if code:
+                    language = code.get('class')
+                    if language and 'language-' in str(language):
+                        lang = str(language).split('language-')[1].split()[0]
+                        pre.replace_with(f"```{lang}\n{code.get_text()}\n```\n\n")
+                    else:
+                        pre.replace_with(f"```\n{code.get_text()}\n```\n\n")
+                else:
+                    pre.replace_with(f"```\n{pre.get_text()}\n```\n\n")
+            
+            return soup.get_text()
+        except Exception as e:
+            print(f"❌ V2 PUBLISHING: Error converting HTML to Markdown - {e}")
+            return final_html  # Return HTML as fallback
+    
     async def _create_content_library_article(self, article: dict, generated_article: dict,
                                             validation_result: dict, qa_result: dict,
                                             adjustment_result: dict, run_id: str) -> dict:

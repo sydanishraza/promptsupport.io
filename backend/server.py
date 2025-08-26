@@ -7716,6 +7716,13 @@ class V2ValidationSystem:
             "redundancy_score": 0.3,  # Lower is better
             "max_placeholders": 0
         }
+        
+        # TICKET 1 FIX: Style validation rules including H1 prohibition
+        self.style_validation_rules = {
+            "no_h1_in_body": True,
+            "require_mini_toc": True,
+            "require_structured_headings": True
+        }
     
     async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:
         """V2 Engine: Comprehensive validation of generated articles"""

@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for TICKET 1 Fixes - HTML Canonical Format and H1 Elimination
-Testing the 4 specific fixes implemented in TICKET 1:
-1. Fixed H1 injection in polish_article_content
-2. Stopped pre-computing Markdown (format='html_canonical')
-3. Added Markdown generation at publish time (_derive_markdown_from_html)
-4. Added H1 validation (validate_no_h1_in_body hard fail)
+Backend Test Suite for TICKET 1 H1 Elimination Investigation
+Testing V2 pipeline document processing to identify H1 injection sources
 """
 
-import asyncio
-import json
 import requests
+import json
 import time
-from datetime import datetime
+import re
+from bs4 import BeautifulSoup
 import os
-from dotenv import load_dotenv
+from typing import Dict, List, Any
 
-# Load environment variables
-load_dotenv()
-
-# Get backend URL from frontend .env
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-formatter.preview.emergentagent.com')
-API_BASE = f"{BACKEND_URL}/api"
+# Backend URL from environment
+BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
 
 class TICKET1TestSuite:
     def __init__(self):

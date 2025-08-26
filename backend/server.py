@@ -8097,6 +8097,12 @@ Return ONLY JSON in this exact format:
                 "validation_method": "error"
             }
     
+    def validate_no_h1_in_body(self, html: str) -> bool:
+        """TICKET 1 FIX: Hard gate validation - no H1 tags allowed in body content"""
+        import re
+        h1_matches = re.findall(r'<h1\b[^>]*>', html, re.IGNORECASE)
+        return len(h1_matches) == 0
+    
     async def _calculate_validation_metrics(self, normalized_doc, generated_articles: list, analysis: dict, run_id: str) -> dict:
         """V2 Engine: Calculate validation metrics"""
         try:

@@ -10277,7 +10277,8 @@ class V2PublishingSystem:
             
             # Extract core content
             html_content = article.get('content', '')
-            markdown_content = article.get('markdown', '')
+            # TICKET 1 FIX: Generate markdown at publish time only
+            markdown_content = await self._derive_markdown_from_html(html_content)
             
             # Generate TOC with anchors
             toc = await self._generate_toc_with_anchors(html_content)

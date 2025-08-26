@@ -18,9 +18,9 @@ try:
             if line.startswith('REACT_APP_BACKEND_URL='):
                 BACKEND_URL = line.split('=', 1)[1].strip()
                 break
-    else:
-        BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
-except:
+        else:
+            BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
+except Exception:
     BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
 
 API_BASE = f"{BACKEND_URL}/api"

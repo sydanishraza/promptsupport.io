@@ -3790,6 +3790,15 @@ class V2StyleProcessor:
             formatted_result['formatted_content'] = post_processed_content['content']
             formatted_result['post_processing_applied'] = post_processed_content['changes_applied']
             
+            # TICKET 2 FIX: Apply stable anchors + Mini-TOC generation in correct order
+            stable_anchors_result = self._apply_stable_anchors_and_minitoc(
+                formatted_result['formatted_content'], article_title
+            )
+            formatted_result['formatted_content'] = stable_anchors_result['content']
+            formatted_result['stable_anchors_applied'] = stable_anchors_result['changes_applied']
+            formatted_result['heading_ladder_valid'] = stable_anchors_result['heading_ladder_valid']
+            formatted_result['anchors_resolve'] = stable_anchors_result['anchors_resolve']
+            
             # Validate structural compliance
             compliance_result = self._validate_structural_compliance(
                 formatted_result.get('formatted_content', ''), article_title

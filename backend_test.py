@@ -72,13 +72,14 @@ class TICKET2Tester:
         
         try:
             # Process content through V2 style system to trigger TICKET 2 implementation
-            response = requests.post(f"{API_BASE}/content/process-text", 
-                data={
+            response = requests.post(f"{API_BASE}/content/process", 
+                json={
                     "content": test_content,
-                    "metadata": json.dumps({
+                    "content_type": "text",
+                    "metadata": {
                         "title": "TICKET 2 Slug Test",
                         "test_type": "stable_slug_generation"
-                    })
+                    }
                 },
                 timeout=30
             )

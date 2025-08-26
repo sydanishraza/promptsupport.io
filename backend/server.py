@@ -23270,7 +23270,32 @@ async def process_content(request: ContentProcessRequest):
             
             try:
                 # 10-minute timeout for V2 processing pipeline (same as upload endpoint)
-                chunks = await asyncio.wait_for(process_with_timeout(), timeout=600)
+                articles = await asyncio.wait_for(process_with_timeout(), timeout=600)
+                
+                # TICKET 1 FIX: Ensure V2 articles are saved to content_library with proper format
+                if articles:
+                    print(f"💾 V2 ENGINE: Saving {len(articles)} V2-processed articles to content library")
+                    saved_articles = []
+                    for article in articles:
+                        try:
+                            # Ensure V2 metadata is present
+                            if not article.get('metadata'):
+                                article['metadata'] = {}
+                            article['metadata']['engine'] = 'v2'
+                            article['metadata']['processing_version'] = '2.0'
+                            article['metadata']['format'] = article.get('format', 'html_canonical')
+                            
+                            # Save to content library
+                            await db.content_library.insert_one(article)
+                            saved_articles.append(article)
+                            print(f"✅ V2 ENGINE: Saved article '{article.get('title', 'Untitled')}' with format='{article.get('format', 'unknown')}'")
+                        except Exception as save_error:
+                            print(f"❌ V2 ENGINE: Error saving article to content library - {save_error}")
+                    
+                    chunks = saved_articles  # Return saved articles as chunks for compatibility
+                else:
+                    chunks = []
+                    
             except asyncio.TimeoutError:
                 print(f"⏰ V2 ENGINE: Processing timeout after 10 minutes - job: {job.job_id} - engine=v2")
                 job.status = "failed"

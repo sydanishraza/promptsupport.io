@@ -1,0 +1,98 @@
+[
+  {
+    "test": "V2 Engine Status Check",
+    "status": "PASS",
+    "details": "Engine: v2, Features: 67 available",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "V2 Validation System",
+    "status": "PASS",
+    "details": "Validation system active, 0 recent validations",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "H1 Validation Failures",
+    "status": "INFO",
+    "details": "Found 0 H1 validation failures in recent validations",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "V2 Style Processing",
+    "status": "PASS",
+    "details": "Style system active, 0 recent results",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "Polish Article Content Fixes",
+    "status": "INFO",
+    "details": "Found 0 heading-related style changes",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "Content Library Access",
+    "status": "PASS",
+    "details": "Found 2 articles",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "Content Library Analysis",
+    "status": "FAIL",
+    "details": "Error: unhashable type: 'slice'",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "H1 Pipeline Tracking",
+    "status": "INFO",
+    "details": "Starting H1 tracking for Google_Map_JavaScript_API_Tutorial.docx",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "Document Upload",
+    "status": "INFO",
+    "details": "Processing Google_Map_JavaScript_API_Tutorial.docx",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "Document Upload",
+    "status": "FAIL",
+    "details": "Upload failed: HTTP 404",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "H1 Pipeline Tracking",
+    "status": "INFO",
+    "details": "Starting H1 tracking for Promotions_Configuration_and_Management-v5-20220201_173002.docx",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "Document Upload",
+    "status": "INFO",
+    "details": "Processing Promotions_Configuration_and_Management-v5-20220201_173002.docx",
+    "timestamp": "2025-08-26 10:29:18"
+  },
+  {
+    "test": "Document Upload",
+    "status": "FAIL",
+    "details": "Upload failed: HTTP 404",
+    "timestamp": "2025-08-26 10:29:19"
+  },
+  {
+    "test": "H1 Pipeline Tracking",
+    "status": "INFO",
+    "details": "Starting H1 tracking for Whisk_Studio_Integration_Guide.pdf",
+    "timestamp": "2025-08-26 10:29:19"
+  },
+  {
+    "test": "Document Upload",
+    "status": "INFO",
+    "details": "Processing Whisk_Studio_Integration_Guide.pdf",
+    "timestamp": "2025-08-26 10:29:19"
+  },
+  {
+    "test": "Document Upload",
+    "status": "FAIL",
+    "details": "Upload failed: HTTP 404",
+    "timestamp": "2025-08-26 10:29:19"
+  }
+]

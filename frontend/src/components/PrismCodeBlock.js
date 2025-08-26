@@ -94,6 +94,8 @@ const HTMLContent = ({
 
   useEffect(() => {
     if (contentRef.current && html) {
+      console.log(`🔍 HTMLContent processing content: ${html.length} chars, contains H1: ${html.includes('<h1')}`);
+      
       // TICKET 1 FIX: Apply content transformations
       let processedHtml = html;
       
@@ -105,6 +107,8 @@ const HTMLContent = ({
       
       // Set the processed HTML content
       contentRef.current.innerHTML = processedHtml;
+      
+      console.log(`✅ HTMLContent processed. Final H1 count: ${(processedHtml.match(/<h1/gi) || []).length}`);
       
       // Add smooth scrolling to anchor links
       addSmoothScrolling(contentRef.current);

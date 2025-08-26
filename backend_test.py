@@ -15,533 +15,420 @@ from typing import Dict, List, Any
 # Backend URL from environment
 BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
 
-class TICKET1TestSuite:
-    def __init__(self):
-        self.test_results = []
-        self.backend_url = API_BASE
-        print(f"🎯 TICKET 1 FIXES TEST SUITE INITIALIZED")
-        print(f"🔗 Backend URL: {self.backend_url}")
-        
-    def log_test(self, test_name: str, success: bool, details: str):
-        """Log test results"""
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status} {test_name}: {details}")
-        self.test_results.append({
-            "test": test_name,
-            "success": success,
-            "details": details,
-            "timestamp": datetime.now().isoformat()
-        })
+class H1TrackingTest:
+    """Test class to track H1 generation through V2 pipeline"""
     
-    async def test_engine_health(self):
-        """Test 1: Verify V2 Engine is operational"""
+    def __init__(self):
+        self.session = requests.Session()
+        self.test_results = []
+        
+    def log_result(self, test_name: str, status: str, details: str):
+        """Log test results"""
+        result = {
+            "test": test_name,
+            "status": status,
+            "details": details,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        self.test_results.append(result)
+        print(f"[{status}] {test_name}: {details}")
+        
+    def count_h1_tags(self, html_content: str) -> Dict[str, Any]:
+        """Count H1 tags in HTML content and analyze their positions"""
+        if not html_content:
+            return {"total": 0, "in_body": 0, "positions": [], "content": []}
+            
+        soup = BeautifulSoup(html_content, 'html.parser')
+        h1_tags = soup.find_all('h1')
+        
+        h1_analysis = {
+            "total": len(h1_tags),
+            "in_body": len(h1_tags),  # All H1s are considered in body for article content
+            "positions": [],
+            "content": []
+        }
+        
+        for i, h1 in enumerate(h1_tags):
+            h1_analysis["positions"].append(f"H1 #{i+1}")
+            h1_analysis["content"].append(h1.get_text().strip())
+            
+        return h1_analysis
+        
+    def test_engine_status(self) -> bool:
+        """Test V2 engine status and availability"""
         try:
-            response = requests.get(f"{self.backend_url}/engine", timeout=30)
+            response = self.session.get(f"{BACKEND_URL}/engine")
             if response.status_code == 200:
                 data = response.json()
                 engine_status = data.get('engine', 'unknown')
-                if engine_status == 'v2':
-                    self.log_test("V2 Engine Health Check", True, f"V2 Engine active and operational")
-                    return True
-                else:
-                    self.log_test("V2 Engine Health Check", False, f"Expected V2 engine, got: {engine_status}")
-                    return False
+                features = data.get('features', [])
+                
+                self.log_result(
+                    "V2 Engine Status Check",
+                    "PASS" if engine_status == 'v2' else "FAIL",
+                    f"Engine: {engine_status}, Features: {len(features)} available"
+                )
+                return engine_status == 'v2'
             else:
-                self.log_test("V2 Engine Health Check", False, f"HTTP {response.status_code}")
+                self.log_result("V2 Engine Status Check", "FAIL", f"HTTP {response.status_code}")
                 return False
         except Exception as e:
-            self.log_test("V2 Engine Health Check", False, f"Connection error: {str(e)}")
+            self.log_result("V2 Engine Status Check", "FAIL", f"Error: {str(e)}")
             return False
-    
-    async def test_h1_elimination_in_polish_content(self):
-        """Test 2: Verify polish_article_content does NOT inject H1 titles"""
+            
+    def test_document_upload_and_processing(self, file_path: str) -> Dict[str, Any]:
+        """Upload document and track V2 processing pipeline"""
         try:
-            # Test content that might generate H1 tags
-            test_content = """
-            <h1>This should be removed or converted</h1>
-            <h2>Getting Started with Integration</h2>
-            <p>This is a comprehensive guide to integration processes.</p>
-            <h1>Another H1 that should be handled</h1>
-            <h3>Implementation Steps</h3>
-            <p>Follow these steps for successful implementation.</p>
-            """
-            
-            # Process content through V2 engine
-            payload = {
-                "content": test_content,
-                "content_type": "text",
-                "template_data": {
-                    "title": "Test Article for H1 Elimination",
-                    "description": "Testing TICKET 1 H1 fixes"
-                }
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                result = response.json()
+            if not os.path.exists(file_path):
+                self.log_result("Document Upload", "FAIL", f"File not found: {file_path}")
+                return None
                 
-                # Check if processing was successful
-                if result.get('status') == 'completed':
-                    articles = result.get('articles', [])
-                    if articles:
-                        # Check first article for H1 elimination
-                        article = articles[0]
-                        html_content = article.get('html', '')
-                        
-                        # Count H1 tags in content body
-                        import re
-                        h1_matches = re.findall(r'<h1\b[^>]*>', html_content, re.IGNORECASE)
-                        h1_count = len(h1_matches)
-                        
-                        if h1_count == 0:
-                            self.log_test("H1 Elimination in Polish Content", True, 
-                                        f"No H1 tags found in content body (expected: 0, found: {h1_count})")
-                            return True
-                        else:
-                            self.log_test("H1 Elimination in Polish Content", False, 
-                                        f"H1 tags found in content body (expected: 0, found: {h1_count})")
-                            return False
-                    else:
-                        self.log_test("H1 Elimination in Polish Content", False, "No articles generated")
-                        return False
-                else:
-                    self.log_test("H1 Elimination in Polish Content", False, 
-                                f"Processing failed: {result.get('status', 'unknown')}")
-                    return False
-            else:
-                self.log_test("H1 Elimination in Polish Content", False, 
-                            f"HTTP {response.status_code}: {response.text[:200]}")
-                return False
+            filename = os.path.basename(file_path)
+            self.log_result("Document Upload", "INFO", f"Processing {filename}")
+            
+            # Upload document
+            with open(file_path, 'rb') as f:
+                files = {'file': (filename, f, 'application/octet-stream')}
+                data = {'template_id': 'v2_comprehensive'}
                 
-        except Exception as e:
-            self.log_test("H1 Elimination in Polish Content", False, f"Error: {str(e)}")
-            return False
-    
-    async def test_html_canonical_format(self):
-        """Test 3: Verify content has format='html_canonical' instead of markdown field"""
-        try:
-            # Simple test content
-            test_content = """
-            <h2>API Integration Guide</h2>
-            <p>This guide covers the essential steps for API integration.</p>
-            <h3>Prerequisites</h3>
-            <ul>
-                <li>Valid API key</li>
-                <li>Development environment</li>
-            </ul>
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "text",
-                "template_data": {
-                    "title": "HTML Canonical Format Test",
-                    "description": "Testing format field"
-                }
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                result = response.json()
+                response = self.session.post(f"{BACKEND_URL}/upload", files=files, data=data)
                 
-                if result.get('status') == 'completed':
-                    articles = result.get('articles', [])
-                    if articles:
-                        article = articles[0]
-                        
-                        # Check for format field
-                        format_field = article.get('format')
-                        has_markdown_field = 'markdown' in article
-                        
-                        if format_field == 'html_canonical' and not has_markdown_field:
-                            self.log_test("HTML Canonical Format", True, 
-                                        f"Correct format='html_canonical', no markdown field")
-                            return True
-                        elif format_field == 'html_canonical' and has_markdown_field:
-                            self.log_test("HTML Canonical Format", False, 
-                                        f"Has format='html_canonical' but also has markdown field")
-                            return False
-                        else:
-                            self.log_test("HTML Canonical Format", False, 
-                                        f"Wrong format field: {format_field}, has_markdown: {has_markdown_field}")
-                            return False
-                    else:
-                        self.log_test("HTML Canonical Format", False, "No articles generated")
-                        return False
-                else:
-                    self.log_test("HTML Canonical Format", False, 
-                                f"Processing failed: {result.get('status', 'unknown')}")
-                    return False
-            else:
-                self.log_test("HTML Canonical Format", False, 
-                            f"HTTP {response.status_code}: {response.text[:200]}")
-                return False
+            if response.status_code != 200:
+                self.log_result("Document Upload", "FAIL", f"Upload failed: HTTP {response.status_code}")
+                return None
                 
-        except Exception as e:
-            self.log_test("HTML Canonical Format", False, f"Error: {str(e)}")
-            return False
-    
-    async def test_h1_validation_hard_fail(self):
-        """Test 4: Verify validation hard fails if H1 tags are found in body"""
-        try:
-            # Test content with H1 tags that should trigger validation failure
-            test_content_with_h1 = """
-            <h2>Introduction</h2>
-            <p>This is the introduction section.</p>
-            <h1>This H1 should cause validation to fail</h1>
-            <p>Content after the problematic H1.</p>
-            <h3>Next Section</h3>
-            <p>More content here.</p>
-            """
+            upload_result = response.json()
+            job_id = upload_result.get('job_id')
             
-            payload = {
-                "content": test_content_with_h1,
-                "content_type": "text",
-                "template_data": {
-                    "title": "H1 Validation Hard Fail Test",
-                    "description": "Testing H1 validation failure"
-                }
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                result = response.json()
+            if not job_id:
+                self.log_result("Document Upload", "FAIL", "No job_id returned")
+                return None
                 
-                # Check validation results
-                validation_results = result.get('validation_results', {})
-                validation_status = result.get('validation_status', 'unknown')
+            self.log_result("Document Upload", "PASS", f"Job ID: {job_id}")
+            
+            # Wait for processing to complete
+            max_wait = 120  # 2 minutes
+            wait_time = 0
+            
+            while wait_time < max_wait:
+                time.sleep(5)
+                wait_time += 5
                 
-                # Look for H1 validation failure indicators
-                h1_validation_failed = False
-                
-                # Check if validation failed due to H1
-                if validation_status == 'failed':
-                    h1_validation_failed = True
-                elif 'compliance_score' in validation_results:
-                    compliance_score = validation_results.get('compliance_score', 1.0)
-                    if compliance_score == 0.0:
-                        h1_validation_failed = True
-                
-                # Also check articles for H1 content (they should be cleaned)
-                articles = result.get('articles', [])
-                h1_found_in_articles = False
-                if articles:
-                    for article in articles:
-                        html_content = article.get('html', '')
-                        import re
-                        h1_matches = re.findall(r'<h1\b[^>]*>', html_content, re.IGNORECASE)
-                        if h1_matches:
-                            h1_found_in_articles = True
-                            break
-                
-                if h1_validation_failed or not h1_found_in_articles:
-                    self.log_test("H1 Validation Hard Fail", True, 
-                                f"Validation properly handled H1 content (validation_failed: {h1_validation_failed}, h1_in_articles: {h1_found_in_articles})")
-                    return True
-                else:
-                    self.log_test("H1 Validation Hard Fail", False, 
-                                f"H1 validation did not fail as expected (validation_status: {validation_status})")
-                    return False
-            else:
-                self.log_test("H1 Validation Hard Fail", False, 
-                            f"HTTP {response.status_code}: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            self.log_test("H1 Validation Hard Fail", False, f"Error: {str(e)}")
-            return False
-    
-    async def test_markdown_generation_at_publish_time(self):
-        """Test 5: Verify markdown is generated at publish time via _derive_markdown_from_html"""
-        try:
-            # First, process content to get articles
-            test_content = """
-            <h2>Publishing System Test</h2>
-            <p>This content will test the publish-time markdown generation.</p>
-            <h3>Key Features</h3>
-            <ul>
-                <li>HTML canonical format during processing</li>
-                <li>Markdown derived at publish time</li>
-                <li>No pre-computed markdown</li>
-            </ul>
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "text",
-                "template_data": {
-                    "title": "Publish Time Markdown Test",
-                    "description": "Testing publish-time markdown generation"
-                }
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                if result.get('status') == 'completed':
-                    articles = result.get('articles', [])
-                    if articles:
-                        article = articles[0]
-                        article_id = article.get('id')
-                        
-                        if article_id:
-                            # Try to publish the article to trigger markdown generation
-                            publish_payload = {
-                                "article_id": article_id,
-                                "publish_settings": {
-                                    "generate_markdown": True
-                                }
-                            }
-                            
-                            # Check if publishing endpoint exists and works
-                            try:
-                                publish_response = requests.post(f"{self.backend_url}/content/publish", 
-                                                               json=publish_payload, timeout=30)
-                                
-                                if publish_response.status_code == 200:
-                                    publish_result = publish_response.json()
-                                    
-                                    # Check if markdown was generated
-                                    published_content = publish_result.get('published_content', {})
-                                    markdown_content = published_content.get('markdown', '')
-                                    
-                                    if markdown_content and len(markdown_content.strip()) > 0:
-                                        self.log_test("Markdown Generation at Publish Time", True, 
-                                                    f"Markdown successfully generated at publish time ({len(markdown_content)} chars)")
-                                        return True
-                                    else:
-                                        self.log_test("Markdown Generation at Publish Time", False, 
-                                                    "No markdown content generated at publish time")
-                                        return False
-                                else:
-                                    # Publishing endpoint might not exist or work differently
-                                    # Check if the article processing itself shows evidence of the fix
-                                    format_field = article.get('format')
-                                    has_markdown_field = 'markdown' in article
-                                    
-                                    if format_field == 'html_canonical' and not has_markdown_field:
-                                        self.log_test("Markdown Generation at Publish Time", True, 
-                                                    f"Evidence of fix: format='html_canonical', no pre-computed markdown field")
-                                        return True
-                                    else:
-                                        self.log_test("Markdown Generation at Publish Time", False, 
-                                                    f"Publish endpoint unavailable, but format check failed: format={format_field}, has_markdown={has_markdown_field}")
-                                        return False
-                                        
-                            except Exception as publish_error:
-                                # Fallback: Check for evidence of the fix in the article structure
-                                format_field = article.get('format')
-                                has_markdown_field = 'markdown' in article
-                                
-                                if format_field == 'html_canonical' and not has_markdown_field:
-                                    self.log_test("Markdown Generation at Publish Time", True, 
-                                                f"Evidence of fix: format='html_canonical', no pre-computed markdown (publish endpoint error: {str(publish_error)[:100]})")
-                                    return True
-                                else:
-                                    self.log_test("Markdown Generation at Publish Time", False, 
-                                                f"Publish endpoint error and format check failed: {str(publish_error)[:100]}")
-                                    return False
-                        else:
-                            self.log_test("Markdown Generation at Publish Time", False, "No article ID found")
-                            return False
-                    else:
-                        self.log_test("Markdown Generation at Publish Time", False, "No articles generated")
-                        return False
-                else:
-                    self.log_test("Markdown Generation at Publish Time", False, 
-                                f"Processing failed: {result.get('status', 'unknown')}")
-                    return False
-            else:
-                self.log_test("Markdown Generation at Publish Time", False, 
-                            f"HTTP {response.status_code}: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Markdown Generation at Publish Time", False, f"Error: {str(e)}")
-            return False
-    
-    async def test_comprehensive_post_processing(self):
-        """Test 6: Verify comprehensive post-processing still works (H1 removal, etc.)"""
-        try:
-            # Complex test content with various elements that need post-processing
-            test_content = """
-            <h1>Main Title That Should Be Handled</h1>
-            <p>Introduction paragraph with important information.</p>
-            
-            <h2>Getting Started</h2>
-            <p>This section covers the basics.</p>
-            
-            <h1>Another H1 That Should Be Processed</h1>
-            <h3>Implementation Details</h3>
-            <ul>
-                <li>Step one of the process</li>
-                <li>Step two with <strong>emphasis</strong></li>
-                <li>Final step with <code>code example</code></li>
-            </ul>
-            
-            <h2>Best Practices</h2>
-            <p>Follow these guidelines for optimal results.</p>
-            
-            <blockquote>
-                <p>Important note about the implementation.</p>
-            </blockquote>
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "text",
-                "template_data": {
-                    "title": "Comprehensive Post-Processing Test",
-                    "description": "Testing all post-processing features"
-                }
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                if result.get('status') == 'completed':
-                    articles = result.get('articles', [])
-                    if articles:
-                        article = articles[0]
-                        html_content = article.get('html', '')
-                        
-                        # Check various post-processing aspects
-                        import re
-                        
-                        # 1. H1 removal/conversion
-                        h1_count = len(re.findall(r'<h1\b[^>]*>', html_content, re.IGNORECASE))
-                        
-                        # 2. H2 headings preserved
-                        h2_count = len(re.findall(r'<h2\b[^>]*>', html_content, re.IGNORECASE))
-                        
-                        # 3. H3 headings preserved
-                        h3_count = len(re.findall(r'<h3\b[^>]*>', html_content, re.IGNORECASE))
-                        
-                        # 4. Lists preserved
-                        ul_count = len(re.findall(r'<ul\b[^>]*>', html_content, re.IGNORECASE))
-                        li_count = len(re.findall(r'<li\b[^>]*>', html_content, re.IGNORECASE))
-                        
-                        # 5. Emphasis preserved
-                        strong_count = len(re.findall(r'<strong\b[^>]*>', html_content, re.IGNORECASE))
-                        code_count = len(re.findall(r'<code\b[^>]*>', html_content, re.IGNORECASE))
-                        
-                        # 6. Blockquotes preserved
-                        blockquote_count = len(re.findall(r'<blockquote\b[^>]*>', html_content, re.IGNORECASE))
-                        
-                        # Evaluate post-processing success
-                        post_processing_checks = {
-                            "h1_removed": h1_count == 0,
-                            "h2_preserved": h2_count >= 2,  # Should have at least 2 H2s
-                            "h3_preserved": h3_count >= 1,  # Should have at least 1 H3
-                            "lists_preserved": ul_count >= 1 and li_count >= 3,
-                            "emphasis_preserved": strong_count >= 1 and code_count >= 1,
-                            "blockquotes_preserved": blockquote_count >= 1
+                # Check job status
+                status_response = self.session.get(f"{BACKEND_URL}/job-status/{job_id}")
+                if status_response.status_code == 200:
+                    status_data = status_response.json()
+                    job_status = status_data.get('status', 'unknown')
+                    
+                    if job_status == 'completed':
+                        self.log_result("V2 Processing", "PASS", f"Processing completed in {wait_time}s")
+                        return {
+                            'job_id': job_id,
+                            'filename': filename,
+                            'processing_time': wait_time,
+                            'status_data': status_data
                         }
-                        
-                        successful_checks = sum(post_processing_checks.values())
-                        total_checks = len(post_processing_checks)
-                        success_rate = successful_checks / total_checks
-                        
-                        if success_rate >= 0.8:  # 80% success rate
-                            self.log_test("Comprehensive Post-Processing", True, 
-                                        f"Post-processing successful ({successful_checks}/{total_checks} checks passed): {post_processing_checks}")
-                            return True
-                        else:
-                            self.log_test("Comprehensive Post-Processing", False, 
-                                        f"Post-processing incomplete ({successful_checks}/{total_checks} checks passed): {post_processing_checks}")
-                            return False
+                    elif job_status == 'failed':
+                        self.log_result("V2 Processing", "FAIL", f"Processing failed: {status_data.get('error', 'Unknown error')}")
+                        return None
                     else:
-                        self.log_test("Comprehensive Post-Processing", False, "No articles generated")
-                        return False
-                else:
-                    self.log_test("Comprehensive Post-Processing", False, 
-                                f"Processing failed: {result.get('status', 'unknown')}")
-                    return False
+                        print(f"Processing status: {job_status} (waiting {wait_time}s)")
+                        
+            self.log_result("V2 Processing", "FAIL", f"Processing timeout after {max_wait}s")
+            return None
+            
+        except Exception as e:
+            self.log_result("Document Upload", "FAIL", f"Error: {str(e)}")
+            return None
+            
+    def test_content_library_h1_analysis(self) -> List[Dict[str, Any]]:
+        """Analyze H1 tags in content library articles"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/content-library")
+            if response.status_code != 200:
+                self.log_result("Content Library Access", "FAIL", f"HTTP {response.status_code}")
+                return []
+                
+            articles = response.json()
+            h1_analysis_results = []
+            
+            self.log_result("Content Library Access", "PASS", f"Found {len(articles)} articles")
+            
+            for article in articles[:10]:  # Analyze first 10 articles
+                article_id = article.get('id')
+                title = article.get('title', 'Untitled')
+                content = article.get('content', '')
+                
+                h1_analysis = self.count_h1_tags(content)
+                
+                analysis_result = {
+                    'article_id': article_id,
+                    'title': title,
+                    'h1_analysis': h1_analysis,
+                    'content_length': len(content)
+                }
+                h1_analysis_results.append(analysis_result)
+                
+                status = "FAIL" if h1_analysis['in_body'] > 0 else "PASS"
+                self.log_result(
+                    f"H1 Analysis: {title[:50]}",
+                    status,
+                    f"H1s in body: {h1_analysis['in_body']}, Total H1s: {h1_analysis['total']}"
+                )
+                
+            return h1_analysis_results
+            
+        except Exception as e:
+            self.log_result("Content Library Analysis", "FAIL", f"Error: {str(e)}")
+            return []
+            
+    def test_v2_validation_system(self) -> bool:
+        """Test V2 validation system endpoints"""
+        try:
+            # Test validation diagnostics
+            response = self.session.get(f"{BACKEND_URL}/validation/diagnostics")
+            if response.status_code == 200:
+                validation_data = response.json()
+                recent_validations = validation_data.get('recent_validations', [])
+                
+                self.log_result(
+                    "V2 Validation System",
+                    "PASS",
+                    f"Validation system active, {len(recent_validations)} recent validations"
+                )
+                
+                # Check for H1 validation failures
+                h1_failures = 0
+                for validation in recent_validations:
+                    validation_results = validation.get('validation_results', {})
+                    h1_validation = validation_results.get('validate_no_h1_in_body', {})
+                    if not h1_validation.get('passed', True):
+                        h1_failures += 1
+                        
+                self.log_result(
+                    "H1 Validation Failures",
+                    "INFO",
+                    f"Found {h1_failures} H1 validation failures in recent validations"
+                )
+                
+                return True
             else:
-                self.log_test("Comprehensive Post-Processing", False, 
-                            f"HTTP {response.status_code}: {response.text[:200]}")
+                self.log_result("V2 Validation System", "FAIL", f"HTTP {response.status_code}")
                 return False
                 
         except Exception as e:
-            self.log_test("Comprehensive Post-Processing", False, f"Error: {str(e)}")
+            self.log_result("V2 Validation System", "FAIL", f"Error: {str(e)}")
             return False
-    
-    async def run_all_tests(self):
-        """Run all TICKET 1 tests"""
-        print(f"\n🚀 STARTING TICKET 1 FIXES COMPREHENSIVE TEST SUITE")
-        print(f"📅 Test started at: {datetime.now().isoformat()}")
-        print(f"🎯 Testing 4 specific TICKET 1 fixes:")
-        print(f"   1. Fixed H1 injection in polish_article_content")
-        print(f"   2. Stopped pre-computing Markdown (format='html_canonical')")
-        print(f"   3. Added Markdown generation at publish time")
-        print(f"   4. Added H1 validation (hard fail)")
-        print(f"=" * 80)
+            
+    def test_style_processing_h1_fixes(self) -> bool:
+        """Test V2 style processing system for H1 fixes"""
+        try:
+            # Test style diagnostics
+            response = self.session.get(f"{BACKEND_URL}/style/diagnostics")
+            if response.status_code == 200:
+                style_data = response.json()
+                recent_results = style_data.get('recent_results', [])
+                
+                self.log_result(
+                    "V2 Style Processing",
+                    "PASS",
+                    f"Style system active, {len(recent_results)} recent results"
+                )
+                
+                # Check for polish_article_content application
+                polish_applications = 0
+                for result in recent_results:
+                    style_changes = result.get('style_changes', [])
+                    for change in style_changes:
+                        if 'h1' in change.lower() or 'heading' in change.lower():
+                            polish_applications += 1
+                            
+                self.log_result(
+                    "Polish Article Content Fixes",
+                    "INFO",
+                    f"Found {polish_applications} heading-related style changes"
+                )
+                
+                return True
+            else:
+                self.log_result("V2 Style Processing", "FAIL", f"HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("V2 Style Processing", "FAIL", f"Error: {str(e)}")
+            return False
+            
+    def test_specific_document_h1_tracking(self, file_path: str) -> Dict[str, Any]:
+        """Process specific document and track H1 generation through pipeline"""
+        try:
+            filename = os.path.basename(file_path)
+            self.log_result("H1 Pipeline Tracking", "INFO", f"Starting H1 tracking for {filename}")
+            
+            # Process document
+            processing_result = self.test_document_upload_and_processing(file_path)
+            if not processing_result:
+                return None
+                
+            job_id = processing_result['job_id']
+            
+            # Wait a bit for all processing to complete
+            time.sleep(10)
+            
+            # Get content library articles created from this job
+            response = self.session.get(f"{BACKEND_URL}/content-library")
+            if response.status_code != 200:
+                self.log_result("H1 Pipeline Tracking", "FAIL", "Cannot access content library")
+                return None
+                
+            articles = response.json()
+            
+            # Find articles from this processing job (recent articles)
+            recent_articles = []
+            current_time = time.time()
+            
+            for article in articles:
+                # Check if article was created recently (within last 5 minutes)
+                created_at = article.get('created_at')
+                if created_at:
+                    # Simple heuristic: if it's one of the most recent articles
+                    recent_articles.append(article)
+                    
+            # Take the most recent articles (likely from our processing)
+            recent_articles = recent_articles[:5]
+            
+            h1_tracking_results = {
+                'filename': filename,
+                'job_id': job_id,
+                'articles_analyzed': len(recent_articles),
+                'h1_issues': [],
+                'total_h1s_found': 0,
+                'articles_with_h1_issues': 0
+            }
+            
+            for article in recent_articles:
+                title = article.get('title', 'Untitled')
+                content = article.get('content', '')
+                
+                h1_analysis = self.count_h1_tags(content)
+                
+                if h1_analysis['in_body'] > 0:
+                    h1_tracking_results['articles_with_h1_issues'] += 1
+                    h1_tracking_results['h1_issues'].append({
+                        'article_title': title,
+                        'h1_count': h1_analysis['in_body'],
+                        'h1_content': h1_analysis['content']
+                    })
+                    
+                h1_tracking_results['total_h1s_found'] += h1_analysis['in_body']
+                
+            # Log results
+            if h1_tracking_results['total_h1s_found'] > 0:
+                self.log_result(
+                    "H1 Pipeline Tracking",
+                    "FAIL",
+                    f"Found {h1_tracking_results['total_h1s_found']} H1 tags in {h1_tracking_results['articles_with_h1_issues']} articles"
+                )
+            else:
+                self.log_result(
+                    "H1 Pipeline Tracking",
+                    "PASS",
+                    f"No H1 tags found in article content for {filename}"
+                )
+                
+            return h1_tracking_results
+            
+        except Exception as e:
+            self.log_result("H1 Pipeline Tracking", "FAIL", f"Error: {str(e)}")
+            return None
+            
+    def run_comprehensive_h1_investigation(self):
+        """Run comprehensive H1 elimination investigation"""
+        print("=" * 80)
+        print("TICKET 1 H1 ELIMINATION INVESTIGATION - BACKEND TESTING")
+        print("=" * 80)
         
-        # Run all tests
-        test_methods = [
-            self.test_engine_health,
-            self.test_h1_elimination_in_polish_content,
-            self.test_html_canonical_format,
-            self.test_h1_validation_hard_fail,
-            self.test_markdown_generation_at_publish_time,
-            self.test_comprehensive_post_processing
+        # Test 1: Engine Status
+        engine_ok = self.test_engine_status()
+        if not engine_ok:
+            print("❌ V2 Engine not available - cannot proceed with testing")
+            return
+            
+        # Test 2: V2 Validation System
+        self.test_v2_validation_system()
+        
+        # Test 3: V2 Style Processing System
+        self.test_style_processing_h1_fixes()
+        
+        # Test 4: Current Content Library H1 Analysis
+        self.test_content_library_h1_analysis()
+        
+        # Test 5: Process specific test documents
+        test_documents = [
+            "/app/Google_Map_JavaScript_API_Tutorial.docx",
+            "/app/Promotions_Configuration_and_Management-v5-20220201_173002.docx",
+            "/app/Whisk_Studio_Integration_Guide.pdf"
         ]
         
-        results = []
-        for test_method in test_methods:
-            try:
-                result = await test_method()
-                results.append(result)
-                time.sleep(2)  # Brief pause between tests
-            except Exception as e:
-                print(f"❌ Test method {test_method.__name__} failed with exception: {e}")
-                results.append(False)
+        h1_tracking_results = []
+        for doc_path in test_documents:
+            if os.path.exists(doc_path):
+                result = self.test_specific_document_h1_tracking(doc_path)
+                if result:
+                    h1_tracking_results.append(result)
+            else:
+                self.log_result("Document Processing", "SKIP", f"File not found: {doc_path}")
+                
+        # Summary Report
+        print("\n" + "=" * 80)
+        print("H1 ELIMINATION INVESTIGATION SUMMARY")
+        print("=" * 80)
         
-        # Calculate overall results
-        successful_tests = sum(results)
-        total_tests = len(results)
-        success_rate = (successful_tests / total_tests) * 100
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r['status'] == 'PASS'])
+        failed_tests = len([r for r in self.test_results if r['status'] == 'FAIL'])
         
-        print(f"\n" + "=" * 80)
-        print(f"🎯 TICKET 1 FIXES TEST SUITE COMPLETED")
-        print(f"📊 OVERALL RESULTS: {successful_tests}/{total_tests} tests passed ({success_rate:.1f}% success rate)")
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests}")
+        print(f"Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
         
-        if success_rate >= 80:
-            print(f"✅ TICKET 1 FIXES: SUCCESSFULLY IMPLEMENTED AND WORKING")
-        elif success_rate >= 60:
-            print(f"⚠️ TICKET 1 FIXES: MOSTLY WORKING WITH SOME ISSUES")
+        # H1 Issues Summary
+        total_h1_issues = sum(r.get('total_h1s_found', 0) for r in h1_tracking_results)
+        articles_with_issues = sum(r.get('articles_with_h1_issues', 0) for r in h1_tracking_results)
+        
+        print(f"\nH1 ELIMINATION ANALYSIS:")
+        print(f"Documents Processed: {len(h1_tracking_results)}")
+        print(f"Total H1 Tags Found in Article Content: {total_h1_issues}")
+        print(f"Articles with H1 Issues: {articles_with_issues}")
+        
+        if total_h1_issues > 0:
+            print(f"\n❌ TICKET 1 H1 ELIMINATION: FAILED")
+            print(f"H1 tags are still being injected into article content despite fixes")
+            
+            # Detailed H1 issue breakdown
+            for result in h1_tracking_results:
+                if result.get('h1_issues'):
+                    print(f"\nDocument: {result['filename']}")
+                    for issue in result['h1_issues']:
+                        print(f"  - Article: {issue['article_title']}")
+                        print(f"    H1 Count: {issue['h1_count']}")
+                        print(f"    H1 Content: {issue['h1_content']}")
         else:
-            print(f"❌ TICKET 1 FIXES: SIGNIFICANT ISSUES DETECTED")
-        
-        print(f"\n📋 DETAILED TEST RESULTS:")
-        for test_result in self.test_results:
-            status = "✅" if test_result['success'] else "❌"
-            print(f"   {status} {test_result['test']}: {test_result['details']}")
-        
-        return {
-            "success_rate": success_rate,
-            "successful_tests": successful_tests,
-            "total_tests": total_tests,
-            "test_results": self.test_results
-        }
+            print(f"\n✅ TICKET 1 H1 ELIMINATION: PASSED")
+            print(f"No H1 tags found in article content")
+            
+        return self.test_results
 
-async def main():
+def main():
     """Main test execution"""
-    test_suite = TICKET1TestSuite()
-    results = await test_suite.run_all_tests()
-    return results
+    tester = H1TrackingTest()
+    results = tester.run_comprehensive_h1_investigation()
+    
+    # Save results to file
+    with open('/app/h1_investigation_results.json', 'w') as f:
+        json.dump(results, f, indent=2, default=str)
+        
+    print(f"\nDetailed results saved to: /app/h1_investigation_results.json")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

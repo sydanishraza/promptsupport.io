@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 """
-ID Coordination System Test Suite
-Testing the completely rewritten ID coordination logic with BeautifulSoup-first approach
-Focus: Three-method matching, section ID pattern continuation, and improved coordination rate
+Backend Test Suite for TICKET 1 Fixes - HTML Canonical Format and H1 Elimination
+Testing the 4 specific fixes implemented in TICKET 1:
+1. Fixed H1 injection in polish_article_content
+2. Stopped pre-computing Markdown (format='html_canonical')
+3. Added Markdown generation at publish time (_derive_markdown_from_html)
+4. Added H1 validation (validate_no_h1_in_body hard fail)
 """
 
 import asyncio
-import aiohttp
 import json
-import os
-import re
+import requests
+import time
 from datetime import datetime
-import sys
+import os
+from dotenv import load_dotenv
 
-# Configuration
+# Load environment variables
+load_dotenv()
+
+# Get backend URL from frontend .env
 BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-formatter.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 

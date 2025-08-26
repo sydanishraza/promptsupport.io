@@ -7871,7 +7871,8 @@ class V2ValidationSystem:
             print(f"❌ TICKET 2: {len(broken_links)} broken anchor links: {broken_links}")
             return False
         
-        print(f"✅ TICKET 2: All {len(soup.select('.mini-toc a[href^=\"#\"]'))} anchor links resolve correctly")
+        toc_links = soup.select('.mini-toc a[href^="#"]')
+        print(f"✅ TICKET 2: All {len(toc_links)} anchor links resolve correctly")
         return True
     
     def _apply_stable_anchors_and_minitoc(self, content: str, article_title: str) -> dict:

@@ -8052,15 +8052,21 @@ Return ONLY JSON in this exact format:
                 article_data = generated_article.get('article_data', {})
                 html_content = article_data.get('html', '')
                 
-                # Check for required structural elements
+                # TICKET 1 FIX: Check for structural elements AND H1 prohibition
                 structure_check = {
-                    "h1_title": bool(re.search(r'<h1[^>]*>.*?</h1>', html_content, re.IGNORECASE | re.DOTALL)),
+                    "no_h1_in_body": self.validate_no_h1_in_body(html_content),  # HARD FAIL if H1 found
                     "intro_paragraph": bool(re.search(r'<p[^>]*>.*?</p>', html_content, re.IGNORECASE | re.DOTALL)),
                     "mini_toc": bool(re.search(r'<ul[^>]*>.*?<li[^>]*>.*?<a[^>]*href="#', html_content, re.IGNORECASE | re.DOTALL)),
                     "main_body": bool(re.search(r'<h2[^>]*>.*?</h2>', html_content, re.IGNORECASE | re.DOTALL)),
                     "faqs": bool(re.search(r'FAQ|Q:|Question', html_content, re.IGNORECASE)),
                     "related_links": bool(re.search(r'<ul[^>]*>.*?<li[^>]*>.*?<a[^>]*href=', html_content, re.IGNORECASE | re.DOTALL))
                 }
+                
+                # TICKET 1 FIX: Hard fail if H1 found in body content
+                has_h1_violation = not structure_check["no_h1_in_body"]
+                if has_h1_violation:
+                    print(f"❌ V2 VALIDATION: HARD FAIL - H1 tag found in article {article_id} body content - PROHIBITED")
+                    # This will cause compliance score to be 0 and fail validation
                 
                 # Calculate compliance score
                 total_elements = len(structure_check)

@@ -219,13 +219,14 @@ class TICKET2Tester:
         """
         
         try:
-            response = requests.post(f"{API_BASE}/content/process-text", 
-                data={
+            response = requests.post(f"{API_BASE}/content/process", 
+                json={
                     "content": test_content,
-                    "metadata": json.dumps({
+                    "content_type": "text",
+                    "metadata": {
                         "title": "TICKET 2 Mini-TOC Test",
                         "test_type": "minitoc_creation"
-                    })
+                    }
                 },
                 timeout=30
             )

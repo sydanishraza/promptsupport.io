@@ -86,8 +86,14 @@ const HTMLContent = ({
 
   useEffect(() => {
     if (contentRef.current && html) {
-      // Process markdown links first
-      const processedHtml = processMarkdownLinks(html);
+      // TICKET 1 FIX: Apply content transformations
+      let processedHtml = html;
+      
+      // 1. Convert H1 elements to H2 to prevent title duplication
+      processedHtml = convertH1ToH2(processedHtml);
+      
+      // 2. Process markdown links
+      processedHtml = processMarkdownLinks(processedHtml);
       
       // Set the processed HTML content
       contentRef.current.innerHTML = processedHtml;

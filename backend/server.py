@@ -3680,6 +3680,11 @@ class V2StyleProcessor:
             "faq_sentence_limit": {"max": 2}
         }
         
+        self.heading_policy = {
+            "allow_h1_in_body": False,
+            "demote_h1_to_h2": True
+        }
+        
     async def apply_style_formatting(self, content: str, content_type: str, articles: list, 
                                    prewrite_data: dict, global_analysis: dict, run_id: str) -> dict:
         """Apply Woolf-aligned style and formatting to all generated articles"""

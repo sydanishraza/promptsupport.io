@@ -7775,6 +7775,96 @@ class V2ValidationSystem:
         print(f"📌 TICKET 2: Assigned {assigned_count} heading IDs")
         return str(soup)
     
+    def validate_heading_ladder(self, html: str) -> bool:
+        """TICKET 2: Validate proper heading hierarchy (H2->H3->H4)"""
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        levels = []
+        
+        for tag in soup.find_all(["h2", "h3", "h4"]):
+            level = int(tag.name[1])
+            levels.append(level)
+            
+            # Check for proper progression
+            if len(levels) > 1:
+                prev_level = levels[-2]
+                # H3 should not appear without H2, and levels shouldn't skip
+                if (level == 3 and 2 not in levels) or (level - prev_level > 1):
+                    print(f"❌ TICKET 2: Heading ladder violation - {tag.name} after H{prev_level}")
+                    return False
+        
+        print(f"✅ TICKET 2: Heading ladder valid - {len(levels)} headings")
+        return True
+    
+    def build_minitoc(self, html: str) -> str:
+        """TICKET 2: Build Mini-TOC with clickable links using assigned IDs"""
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Find all headings with IDs
+        headings = soup.select("h2[id], h3[id], h4[id]")
+        
+        if not headings:
+            print("⚠️ TICKET 2: No headings with IDs found for Mini-TOC")
+            return str(soup)
+        
+        # Create Mini-TOC container
+        toc_ul = soup.new_tag("ul", **{"class": "mini-toc"})
+        
+        for heading in headings:
+            heading_level = heading.name[1]  # '2', '3', or '4'
+            heading_text = heading.get_text(" ", strip=True)
+            heading_id = heading.get("id")
+            
+            # Create TOC item
+            li = soup.new_tag("li", **{"class": f"toc-l{heading_level}"})
+            a = soup.new_tag("a", href=f"#{heading_id}", **{"class": "toc-link"})
+            a.string = heading_text
+            li.append(a)
+            toc_ul.append(li)
+            
+            print(f"🔗 TICKET 2: Added TOC link '{heading_text[:30]}...' -> #{heading_id}")
+        
+        # Insert Mini-TOC at the beginning of content
+        # Look for first paragraph or heading to insert before
+        first_content = soup.find(['p', 'h2', 'h3', 'div'])
+        if first_content:
+            first_content.insert_before(toc_ul)
+        else:
+            # Fallback: insert at beginning of body content
+            if soup.body:
+                soup.body.insert(0, toc_ul)
+            else:
+                soup.insert(0, toc_ul)
+        
+        print(f"✅ TICKET 2: Mini-TOC built with {len(headings)} clickable links")
+        return str(soup)
+    
+    def anchors_resolve(self, html: str) -> bool:
+        """TICKET 2: Validate that all TOC links resolve to actual heading IDs"""
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Get all existing IDs in the document
+        existing_ids = {tag.get("id") for tag in soup.find_all(attrs={"id": True}) if tag.get("id")}
+        
+        # Check all Mini-TOC links
+        broken_links = []
+        for link in soup.select(".mini-toc a[href^='#']"):
+            target_id = link.get("href", "")[1:]  # Remove the #
+            if target_id not in existing_ids:
+                broken_links.append(target_id)
+        
+        if broken_links:
+            print(f"❌ TICKET 2: {len(broken_links)} broken anchor links: {broken_links}")
+            return False
+        
+        print(f"✅ TICKET 2: All {len(soup.select('.mini-toc a[href^=\"#\"]'))} anchor links resolve correctly")
+        return True
+    
     async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:
         """V2 Engine: Comprehensive validation of generated articles"""
         try:

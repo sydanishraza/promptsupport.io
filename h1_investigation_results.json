@@ -3,96 +3,108 @@
     "test": "V2 Engine Status Check",
     "status": "PASS",
     "details": "Engine: v2, Features: 67 available",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "V2 Validation System",
     "status": "PASS",
     "details": "Validation system active, 0 recent validations",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "H1 Validation Failures",
     "status": "INFO",
     "details": "Found 0 H1 validation failures in recent validations",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "V2 Style Processing",
     "status": "PASS",
     "details": "Style system active, 0 recent results",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "Polish Article Content Fixes",
     "status": "INFO",
     "details": "Found 0 heading-related style changes",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "Content Library Access",
     "status": "PASS",
     "details": "Found 2 articles",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "Content Library Analysis",
     "status": "FAIL",
-    "details": "Error: unhashable type: 'slice'",
-    "timestamp": "2025-08-26 10:29:18"
+    "details": "Error: 'str' object has no attribute 'get'",
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "H1 Pipeline Tracking",
     "status": "INFO",
     "details": "Starting H1 tracking for Google_Map_JavaScript_API_Tutorial.docx",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "Document Upload",
     "status": "INFO",
     "details": "Processing Google_Map_JavaScript_API_Tutorial.docx",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:32:03"
   },
   {
     "test": "Document Upload",
+    "status": "PASS",
+    "details": "Job ID: 8513c8f9-afc5-4214-b92f-fd1c8d70d42f",
+    "timestamp": "2025-08-26 10:33:39"
+  },
+  {
+    "test": "V2 Processing",
     "status": "FAIL",
-    "details": "Upload failed: HTTP 404",
-    "timestamp": "2025-08-26 10:29:18"
+    "details": "Processing timeout after 120s",
+    "timestamp": "2025-08-26 10:35:52"
   },
   {
     "test": "H1 Pipeline Tracking",
     "status": "INFO",
     "details": "Starting H1 tracking for Promotions_Configuration_and_Management-v5-20220201_173002.docx",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:35:52"
   },
   {
     "test": "Document Upload",
     "status": "INFO",
     "details": "Processing Promotions_Configuration_and_Management-v5-20220201_173002.docx",
-    "timestamp": "2025-08-26 10:29:18"
+    "timestamp": "2025-08-26 10:35:52"
   },
   {
     "test": "Document Upload",
+    "status": "PASS",
+    "details": "Job ID: 26af0878-722a-4681-9eef-80e4f38bc057",
+    "timestamp": "2025-08-26 10:37:21"
+  },
+  {
+    "test": "V2 Processing",
     "status": "FAIL",
-    "details": "Upload failed: HTTP 404",
-    "timestamp": "2025-08-26 10:29:19"
+    "details": "Processing timeout after 120s",
+    "timestamp": "2025-08-26 10:39:21"
   },
   {
     "test": "H1 Pipeline Tracking",
     "status": "INFO",
     "details": "Starting H1 tracking for Whisk_Studio_Integration_Guide.pdf",
-    "timestamp": "2025-08-26 10:29:19"
+    "timestamp": "2025-08-26 10:39:21"
   },
   {
     "test": "Document Upload",
     "status": "INFO",
     "details": "Processing Whisk_Studio_Integration_Guide.pdf",
-    "timestamp": "2025-08-26 10:29:19"
+    "timestamp": "2025-08-26 10:39:21"
   },
   {
     "test": "Document Upload",
     "status": "FAIL",
-    "details": "Upload failed: HTTP 404",
-    "timestamp": "2025-08-26 10:29:19"
+    "details": "Upload failed: HTTP 504",
+    "timestamp": "2025-08-26 10:44:21"
   }
 ]

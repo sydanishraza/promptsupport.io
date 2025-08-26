@@ -154,7 +154,7 @@ class H1TrackingTest:
             
             self.log_result("Content Library Access", "PASS", f"Found {len(articles)} articles")
             
-            for article in articles[:10]:  # Analyze first 10 articles
+            for article in articles[:10] if len(articles) > 10 else articles:  # Analyze first 10 articles
                 article_id = article.get('id')
                 title = article.get('title', 'Untitled')
                 content = article.get('content', '')

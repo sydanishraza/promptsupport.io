@@ -312,7 +312,7 @@ class TICKET1TestSuite:
                             
                             # Check if publishing endpoint exists and works
                             try:
-                                publish_response = requests.post(f"{self.backend_url}/v2/publish", 
+                                publish_response = requests.post(f"{self.backend_url}/content/publish", 
                                                                json=publish_payload, timeout=30)
                                 
                                 if publish_response.status_code == 200:

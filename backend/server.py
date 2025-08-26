@@ -4869,6 +4869,64 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 "toc_broken_links": [],
                 "anchor_links_generated": 0
             }
+    
+    def _apply_stable_anchors_and_minitoc(self, content: str, article_title: str) -> dict:
+        """TICKET 2: Apply stable anchors and Mini-TOC generation in correct order"""
+        try:
+            print(f"🎯 TICKET 2: Starting stable anchors + Mini-TOC processing for '{article_title}'")
+            
+            # Get V2ValidationSystem instance for TICKET 2 methods
+            v2_validator = V2ValidationSystem()
+            
+            # Step 1: Assign stable IDs to headings
+            print("📌 TICKET 2: Step 1 - Assigning stable heading IDs")
+            content_with_ids = v2_validator.assign_heading_ids(content)
+            
+            # Step 2: Validate heading ladder
+            print("🔍 TICKET 2: Step 2 - Validating heading ladder")
+            heading_ladder_valid = v2_validator.validate_heading_ladder(content_with_ids)
+            
+            # Step 3: Build Mini-TOC with clickable links
+            print("📋 TICKET 2: Step 3 - Building Mini-TOC with clickable links")
+            content_with_toc = v2_validator.build_minitoc(content_with_ids)
+            
+            # Step 4: Validate anchor resolution
+            print("🔗 TICKET 2: Step 4 - Validating anchor resolution")
+            anchors_resolve = v2_validator.anchors_resolve(content_with_toc)
+            
+            changes_applied = [
+                "Stable heading IDs assigned",
+                "Mini-TOC generated with clickable links",
+                "Anchor resolution validated"
+            ]
+            
+            if not heading_ladder_valid:
+                changes_applied.append("Warning: Heading ladder validation failed")
+            
+            if not anchors_resolve:
+                changes_applied.append("Warning: Some anchor links may not resolve")
+            
+            print(f"✅ TICKET 2: Stable anchors + Mini-TOC processing complete")
+            print(f"   - Heading ladder valid: {heading_ladder_valid}")
+            print(f"   - Anchors resolve: {anchors_resolve}")
+            
+            return {
+                "content": content_with_toc,
+                "changes_applied": changes_applied,
+                "heading_ladder_valid": heading_ladder_valid,
+                "anchors_resolve": anchors_resolve,
+                "stable_anchors_applied": True
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 2: Error in stable anchors + Mini-TOC processing - {e}")
+            return {
+                "content": content,  # Return original content on error
+                "changes_applied": [f"TICKET 2 processing error: {str(e)}"],
+                "heading_ladder_valid": False,
+                "anchors_resolve": False,
+                "stable_anchors_applied": False
+            }
 
 # Global V2 Style Processor instance
 v2_style_processor = V2StyleProcessor()

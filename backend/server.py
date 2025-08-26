@@ -16229,8 +16229,8 @@ Create comprehensive, well-structured HTML with proper headings and formatting."
         
         return {
             'html': clean_content,
-            'markdown': clean_content,
             'content': clean_content,
+            'format': 'html_canonical',
             'polished': False,
             'polishing_error': str(e),
             'word_count': len(content.split())

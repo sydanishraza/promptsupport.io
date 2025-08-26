@@ -370,13 +370,14 @@ class TICKET2Tester:
         """
         
         try:
-            response = requests.post(f"{API_BASE}/content/process-text", 
-                data={
+            response = requests.post(f"{API_BASE}/content/process", 
+                json={
                     "content": test_content,
-                    "metadata": json.dumps({
+                    "content_type": "text",
+                    "metadata": {
                         "title": "TICKET 2 Anchor Resolution Test",
                         "test_type": "anchor_resolution"
-                    })
+                    }
                 },
                 timeout=30
             )

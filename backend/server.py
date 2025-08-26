@@ -8252,15 +8252,24 @@ Return ONLY JSON in this exact format:
                 article_data = generated_article.get('article_data', {})
                 html_content = article_data.get('html', '')
                 
-                # TICKET 1 FIX: Check for structural elements AND H1 prohibition
+                # TICKET 1 & 2 FIX: Check for structural elements, H1 prohibition, and anchor validation
                 structure_check = {
                     "no_h1_in_body": self.validate_no_h1_in_body(html_content),  # HARD FAIL if H1 found
                     "intro_paragraph": bool(re.search(r'<p[^>]*>.*?</p>', html_content, re.IGNORECASE | re.DOTALL)),
-                    "mini_toc": bool(re.search(r'<ul[^>]*>.*?<li[^>]*>.*?<a[^>]*href="#', html_content, re.IGNORECASE | re.DOTALL)),
+                    "mini_toc": bool(re.search(r'<ul[^>]*class="mini-toc"', html_content, re.IGNORECASE)),
                     "main_body": bool(re.search(r'<h2[^>]*>.*?</h2>', html_content, re.IGNORECASE | re.DOTALL)),
                     "faqs": bool(re.search(r'FAQ|Q:|Question', html_content, re.IGNORECASE)),
                     "related_links": bool(re.search(r'<ul[^>]*>.*?<li[^>]*>.*?<a[^>]*href=', html_content, re.IGNORECASE | re.DOTALL))
                 }
+                
+                # TICKET 2 FIX: Add anchor validation
+                anchor_validation = {
+                    "heading_ladder": self.validate_heading_ladder_structure(html_content),
+                    "anchors_resolve": self.validate_anchor_resolution(html_content)
+                }
+                
+                # Combine structural and anchor validation
+                structure_check.update(anchor_validation)
                 
                 # TICKET 1 FIX: Hard fail if H1 found in body content
                 has_h1_violation = not structure_check["no_h1_in_body"]

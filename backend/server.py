@@ -16180,14 +16180,13 @@ Create comprehensive, well-structured HTML with proper headings and formatting."
                             content_elements.append(str(child))
                 polished_html = '\n'.join(content_elements)
             
-            # Ensure content starts with H1 title if not present
-            if not polished_html.strip().startswith('<h1'):
-                polished_html = f'<h1>{title}</h1>\n{polished_html}'
+            # TICKET 1 FIX: Do NOT inject H1 title - title handled by frontend
+            # polished_html already contains the content without H1
             
             return {
                 'html': polished_html,
-                'markdown': polished_html,  # Use HTML as markdown for now
                 'content': polished_html,
+                'format': 'html_canonical',
                 'polished': True,
                 'word_count': len(polished_html.split())
             }

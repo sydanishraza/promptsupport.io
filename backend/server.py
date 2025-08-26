@@ -16192,21 +16192,21 @@ Create comprehensive, well-structured HTML with proper headings and formatting."
             }
         else:
             print(f"❌ Content polishing failed or produced insufficient content")
-            # Return original content with proper structure for Content Library
+            # TICKET 1 FIX: Do NOT inject H1 title - title handled by frontend
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(content, 'html.parser')
             
-            # Create clean HTML structure without wrappers
-            clean_content = f'<h1>{title}</h1>\n'
+            # Create clean HTML structure without H1 injection
+            clean_content = ''
             for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
                 if element.name == 'h1':
-                    continue  # Skip additional H1s since we added the title
+                    continue  # Skip all H1s - title handled by frontend
                 clean_content += str(element) + '\n'
             
             return {
                 'html': clean_content,
-                'markdown': clean_content,
                 'content': clean_content,
+                'format': 'html_canonical',
                 'polished': False,
                 'polishing_failed': True,
                 'word_count': len(content.split())

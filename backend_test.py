@@ -89,9 +89,9 @@ class H1TrackingTest:
             # Upload document
             with open(file_path, 'rb') as f:
                 files = {'file': (filename, f, 'application/octet-stream')}
-                data = {'template_id': 'v2_comprehensive'}
+                data = {'metadata': json.dumps({'template_id': 'v2_comprehensive'})}
                 
-                response = self.session.post(f"{BACKEND_URL}/upload", files=files, data=data)
+                response = self.session.post(f"{BACKEND_URL}/content/upload", files=files, data=data)
                 
             if response.status_code != 200:
                 self.log_result("Document Upload", "FAIL", f"Upload failed: HTTP {response.status_code}")

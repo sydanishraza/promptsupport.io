@@ -11,8 +11,9 @@ import sys
 import re
 from datetime import datetime
 
-# Use local backend for testing
-BACKEND_URL = "http://localhost:8001"
+# Use configured backend URL from environment
+import os
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-formatter.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 print(f"🧪 TICKET 2 TESTING: Stable Anchors + Mini-TOC Systematic Fix")

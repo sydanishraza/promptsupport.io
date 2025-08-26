@@ -530,13 +530,14 @@ class TICKET2Tester:
         """
         
         try:
-            response = requests.post(f"{API_BASE}/content/process-text", 
-                data={
+            response = requests.post(f"{API_BASE}/content/process", 
+                json={
                     "content": test_content,
-                    "metadata": json.dumps({
+                    "content_type": "text",
+                    "metadata": {
                         "title": "TICKET 2 Order of Operations Test",
                         "test_type": "order_of_operations"
-                    })
+                    }
                 },
                 timeout=30
             )

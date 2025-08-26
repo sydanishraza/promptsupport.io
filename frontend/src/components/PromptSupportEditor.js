@@ -4028,21 +4028,25 @@ const PromptSupportEditor = ({
             overflow: 'hidden'
           }}>
             {!isEditing ? (
-              // View mode: safely render HTML content with article title as H1
-              <div className="h-full p-6 overflow-y-auto wysiwyg-content max-w-none" style={{ minHeight: '400px' }}>
+              // TICKET 1 FIX: Separate UI title from content area to prevent H1 duplication
+              <div className="h-full overflow-y-auto" style={{ minHeight: '400px' }}>
                 {title && (
-                  <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">
-                    {title}
-                  </h1>
+                  <div className="p-6 pb-0">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">
+                      {title}
+                    </h1>
+                  </div>
                 )}
-                <HTMLContent 
-                  html={content || '<p>No content available</p>'}
-                  className=""
-                  style={{
-                    lineHeight: '1.7',
-                    fontSize: '16px'
-                  }}
-                />
+                <div className="wysiwyg-content p-6 pt-0 max-w-none">
+                  <HTMLContent 
+                    html={content || '<p>No content available</p>'}
+                    className=""
+                    style={{
+                      lineHeight: '1.7',
+                      fontSize: '16px'
+                    }}
+                  />
+                </div>
               </div>
             ) : (
               // ISSUE 3 FIX: Simplified edit mode with clean layout

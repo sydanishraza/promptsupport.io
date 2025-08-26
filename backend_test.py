@@ -84,7 +84,7 @@ class TICKET1TestSuite:
                 }
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-content", 
+            response = requests.post(f"{self.backend_url}/content/process", 
                                    json=payload, timeout=60)
             
             if response.status_code == 200:
@@ -150,7 +150,7 @@ class TICKET1TestSuite:
                 }
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-content", 
+            response = requests.post(f"{self.backend_url}/content/process", 
                                    json=payload, timeout=60)
             
             if response.status_code == 200:
@@ -215,7 +215,7 @@ class TICKET1TestSuite:
                 }
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-content", 
+            response = requests.post(f"{self.backend_url}/content/process", 
                                    json=payload, timeout=60)
             
             if response.status_code == 200:
@@ -289,7 +289,7 @@ class TICKET1TestSuite:
                 }
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-content", 
+            response = requests.post(f"{self.backend_url}/content/process", 
                                    json=payload, timeout=60)
             
             if response.status_code == 200:
@@ -413,7 +413,7 @@ class TICKET1TestSuite:
                 }
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-content", 
+            response = requests.post(f"{self.backend_url}/content/process", 
                                    json=payload, timeout=60)
             
             if response.status_code == 200:

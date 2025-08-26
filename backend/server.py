@@ -16218,14 +16218,15 @@ Create comprehensive, well-structured HTML with proper headings and formatting."
         from bs4 import BeautifulSoup
         try:
             soup = BeautifulSoup(content, 'html.parser')
-            clean_content = f'<h1>{title}</h1>\n'
+            # TICKET 1 FIX: Do NOT inject H1 title - title handled by frontend
+            clean_content = ''
             for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'div', 'blockquote', 'pre', 'code']):
                 if element.name == 'h1':
-                    continue  # Skip additional H1s since we added the title
+                    continue  # Skip all H1s - title handled by frontend
                 clean_content += str(element) + '\n'
         except:
-            # Final fallback if HTML parsing fails
-            clean_content = f'<h1>{title}</h1>\n<p>{content}</p>'
+            # Final fallback if HTML parsing fails - no H1 injection
+            clean_content = f'<p>{content}</p>'
         
         return {
             'html': clean_content,

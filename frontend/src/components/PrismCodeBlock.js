@@ -52,6 +52,12 @@ const HTMLContent = ({
     return content.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, '<a href="#$2" class="toc-link text-blue-600 hover:text-blue-800 hover:underline">$1</a>');
   };
 
+  const convertH1ToH2 = (content) => {
+    // TICKET 1 FIX: Convert any H1 elements in content to H2 to prevent title duplication
+    // This ensures only the UI title appears as H1, while content starts with H2
+    return content.replace(/<h1(\s[^>]*)?>/gi, '<h2$1>').replace(/<\/h1>/gi, '</h2>');
+  };
+
   const addSmoothScrolling = (container) => {
     // Add click handlers for anchor links to enable smooth scrolling
     const anchorLinks = container.querySelectorAll('a[href^="#"]');

@@ -11,18 +11,8 @@ import sys
 import re
 from datetime import datetime
 
-# Get backend URL from frontend env
-try:
-    with open('/app/frontend/.env', 'r') as f:
-        for line in f:
-            if line.startswith('REACT_APP_BACKEND_URL='):
-                BACKEND_URL = line.split('=', 1)[1].strip()
-                break
-        else:
-            BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
-except Exception:
-    BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
-
+# Use local backend for testing
+BACKEND_URL = "http://localhost:8001"
 API_BASE = f"{BACKEND_URL}/api"
 
 print(f"🧪 TICKET 2 TESTING: Stable Anchors + Mini-TOC Systematic Fix")

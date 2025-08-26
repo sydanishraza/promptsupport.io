@@ -7874,6 +7874,56 @@ class V2ValidationSystem:
         print(f"✅ TICKET 2: All {len(soup.select('.mini-toc a[href^=\"#\"]'))} anchor links resolve correctly")
         return True
     
+    def _apply_stable_anchors_and_minitoc(self, content: str, article_title: str) -> dict:
+        """TICKET 2: Apply stable anchors and Mini-TOC generation in correct order"""
+        try:
+            print(f"🔧 TICKET 2: Starting stable anchors + Mini-TOC for '{article_title[:50]}...'")
+            
+            changes_applied = []
+            
+            # STEP 1: Assign deterministic IDs to all headings
+            content_with_ids = self.assign_heading_ids(content)
+            changes_applied.append("Assigned stable IDs to headings")
+            
+            # STEP 2: Validate heading ladder before proceeding
+            heading_ladder_valid = self.validate_heading_ladder(content_with_ids)
+            if heading_ladder_valid:
+                changes_applied.append("Heading ladder validation passed")
+            else:
+                changes_applied.append("Heading ladder validation failed")
+            
+            # STEP 3: Build Mini-TOC using the assigned IDs
+            content_with_toc = self.build_minitoc(content_with_ids)
+            changes_applied.append("Mini-TOC built with clickable links")
+            
+            # STEP 4: Validate that all anchor links resolve
+            anchors_resolve = self.anchors_resolve(content_with_toc)
+            if anchors_resolve:
+                changes_applied.append("All anchor links resolve correctly")
+            else:
+                changes_applied.append("Some anchor links are broken")
+            
+            print(f"✅ TICKET 2: Stable anchors + Mini-TOC complete - {len(changes_applied)} changes applied")
+            
+            return {
+                'content': content_with_toc,
+                'changes_applied': changes_applied,
+                'heading_ladder_valid': heading_ladder_valid,
+                'anchors_resolve': anchors_resolve,
+                'original_length': len(content),
+                'processed_length': len(content_with_toc)
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 2: Error in stable anchors processing - {e}")
+            return {
+                'content': content,
+                'changes_applied': [f"Stable anchors error: {str(e)}"],
+                'heading_ladder_valid': False,
+                'anchors_resolve': False,
+                'error': str(e)
+            }
+    
     async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:
         """V2 Engine: Comprehensive validation of generated articles"""
         try:

@@ -423,7 +423,7 @@ class KE_PR5_DiagnosticTester:
             return False
     
     def test_pipeline_execution_flow(self):
-        """Test 4: Test complete pipeline execution flow to identify bottlenecks"""
+        """Test 5: Test complete pipeline execution flow to identify bottlenecks"""
         try:
             # Test pipeline flow with different content types
             test_cases = [

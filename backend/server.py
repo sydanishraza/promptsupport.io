@@ -3530,8 +3530,26 @@ class V2PrewriteSystem:
                 "validation_result": validation_result
             }
             
-            with open(prewrite_filepath, 'w', encoding='utf-8') as f:
-                json.dump(prewrite_file_data, f, indent=2, ensure_ascii=False)
+            # KE-PR3: Save prewrite.json file using assets store
+            prewrite_filename = f"prewrite_{run_id}_article_{article_index}.json"
+            prewrite_filepath = os.path.join(self.prewrite_storage_path, prewrite_filename)
+            
+            prewrite_file_data = {
+                "article_index": article_index,
+                "article_title": article_title,
+                "run_id": run_id,
+                "created_at": datetime.utcnow().isoformat(),
+                "prewrite_data": prewrite_data,
+                "validation_result": validation_result
+            }
+            
+            # Convert to bytes for assets store
+            json_content = json.dumps(prewrite_file_data, indent=2, ensure_ascii=False)
+            json_bytes = json_content.encode('utf-8')
+            
+            # Ensure prewrite directory exists
+            os.makedirs(self.prewrite_storage_path, exist_ok=True)
+            content_hash, relative_path = save_bytes(json_bytes, prewrite_filename, self.prewrite_storage_path)
             
             print(f"✅ V2 PREWRITE: Saved prewrite file - {prewrite_filename} - {len(prewrite_data.get('sections', []))} sections - engine=v2")
             

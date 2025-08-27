@@ -43,6 +43,22 @@ import markdown
 from bs4 import BeautifulSoup
 from media_intelligence import media_intelligence
 
+# New Engine Package Imports (KE-PR1: scaffolding)
+try:
+    from engine.models import RawBundle, QAReport, MediaAsset
+    from engine.logging_util import stage_log, logger
+    from config.settings import settings
+    print("✅ Engine package modules loaded successfully")
+except ImportError as e:
+    print(f"⚠️ Engine package import failed: {e}")
+    # Fallback - create dummy objects to prevent crashes
+    class RawBundle: pass
+    class QAReport: pass  
+    class MediaAsset: pass
+    def stage_log(name): return lambda f: f
+    logger = None
+    settings = None
+
 # HTML preprocessing pipeline imports
 import mammoth
 import pypandoc

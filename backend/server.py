@@ -10774,6 +10774,21 @@ class V2PublishingSystem:
             # TICKET 1 FIX: Generate markdown at publish time only
             markdown_content = await self._derive_markdown_from_html(html_content)
             
+            # TICKET 3: Extract bookmark registry data
+            headings_registry = article.get('headings_registry', [])
+            doc_uid = article.get('doc_uid')
+            doc_slug = article.get('doc_slug')
+            
+            # Generate doc_uid if missing (for existing articles)
+            if not doc_uid:
+                doc_uid = self._generate_fallback_doc_uid()
+                print(f"📖 TICKET 3: Generated fallback doc_uid: {doc_uid}")
+            
+            # Generate doc_slug if missing
+            if not doc_slug and article.get('title'):
+                doc_slug = self._generate_fallback_doc_slug(article['title'])
+                print(f"🏷️ TICKET 3: Generated fallback doc_slug: {doc_slug}")
+            
             # Generate TOC with anchors
             toc = await self._generate_toc_with_anchors(html_content)
             

@@ -12522,6 +12522,42 @@ class V2ReviewSystem:
         except Exception as e:
             print(f"❌ V2 REVIEW: Error getting review metadata - {e}")
             return {}
+    
+    async def enqueue_for_review(self, run_id: str, articles: list, metadata: dict = None) -> dict:
+        """Enqueue processing run for human review"""
+        try:
+            print(f"👥 V2 REVIEW: Enqueuing run for review - {run_id} - {len(articles)} articles")
+            
+            review_id = f"review_{run_id}_{int(time.time())}"
+            
+            # Create review entry
+            review_entry = {
+                "review_id": review_id,
+                "run_id": run_id,
+                "review_status": "pending_review",
+                "articles_count": len(articles),
+                "created_at": datetime.utcnow(),
+                "metadata": metadata or {}
+            }
+            
+            # Store in review queue
+            await db.v2_review_queue.insert_one(review_entry)
+            
+            print(f"✅ V2 REVIEW: Run enqueued for review - {review_id}")
+            
+            return {
+                "review_id": review_id,
+                "review_status": "pending_review",
+                "articles_count": len(articles)
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 REVIEW: Error enqueuing for review - {e}")
+            return {
+                "review_id": f"error_{run_id}",
+                "review_status": "error",
+                "error": str(e)
+            }
 
 # Global V2 Review System instance
 v2_review_system = V2ReviewSystem()

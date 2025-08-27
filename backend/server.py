@@ -88,11 +88,15 @@ try:
     # KE-PR5: Import V2 Pipeline Orchestrator
     from engine.v2.pipeline import Pipeline, get_pipeline
     
+    # KE-PR6: Import centralized LLM client
+    from engine.llm.client import get_llm_client
+    
     print("✅ Engine package modules loaded successfully")
     print("✅ KE-PR2: Linking modules loaded successfully")
     print("✅ KE-PR3: Media and assets modules loaded successfully")
     print("✅ KE-PR4: V2 engine classes loaded successfully")
     print("✅ KE-PR5: V2 pipeline orchestrator loaded successfully")
+    print("✅ KE-PR6: Centralized LLM client loaded successfully")
 except ImportError as e:
     print(f"⚠️ Engine package import failed: {e}")
     # Fallback - create dummy objects to prevent crashes

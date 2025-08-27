@@ -752,6 +752,7 @@ class KE_PR5_DiagnosticTester:
         tests = [
             self.test_pipeline_orchestrator_availability,
             self.test_v2_stage_class_availability,
+            self.test_v2_class_method_availability,
             self.test_specific_v2_stage_methods,
             self.test_pipeline_execution_flow,
             self.test_stage_by_stage_execution

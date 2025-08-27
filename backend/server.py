@@ -14691,20 +14691,19 @@ class DocumentPreprocessor:
             # Save image to correct location AND Asset Library
             if image_bytes:
                 try:
-                    # Save to session directory for immediate use
-                    with open(image_path, "wb") as img_file:
-                        img_file.write(image_bytes)
-                    print(f"💾 Saved image to session: {image_path} ({len(image_bytes)} bytes)")
+                    # KE-PR3: Use assets store for file operations
+                    content_hash, session_filename = save_bytes(image_bytes, image_filename, session_dir)
+                    image_path = get_asset_path(session_filename, session_dir)
+                    print(f"💾 KE-PR3: Saved image to session: {image_path} ({len(image_bytes)} bytes)")
                     
                     # ENHANCED: Also save to Asset Library for long-term storage
                     try:
                         asset_id = str(uuid.uuid4())
                         asset_filename = f"{asset_id}_{image_filename}"
-                        asset_path = f"static/uploads/{asset_filename}"
                         
-                        # Save to main assets directory
-                        with open(asset_path, "wb") as asset_file:
-                            asset_file.write(image_bytes)
+                        # KE-PR3: Use assets store for main asset storage
+                        asset_hash, asset_relative_path = save_bytes(image_bytes, asset_filename, "static/uploads")
+                        asset_path = get_asset_path(asset_relative_path, "static/uploads")
                         
                         # Store in Asset Library database (sync version)
                         asset_doc = {

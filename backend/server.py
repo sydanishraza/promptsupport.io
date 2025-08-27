@@ -34929,10 +34929,11 @@ async def build_cross_document_link(
 @app.get("/api/ticket3/document-registry/{doc_uid}")
 async def get_document_bookmark_registry(doc_uid: str):
     """TICKET 3: Get bookmark registry for a specific document"""
+    # KE-PR2: Use extracted linking modules
     try:
-        doc = await db.content_library.find_one({"doc_uid": doc_uid})
+        registry = await get_registry(doc_uid)
         
-        if not doc:
+        if not registry:
             return {
                 "status": "error",
                 "message": f"Document not found: {doc_uid}"
@@ -34941,12 +34942,10 @@ async def get_document_bookmark_registry(doc_uid: str):
         return {
             "status": "success",
             "doc_uid": doc_uid,
-            "doc_slug": doc.get("doc_slug"),
-            "title": doc.get("title"),
-            "headings": doc.get("headings", []),
-            "xrefs": doc.get("xrefs", []),
-            "related_links": doc.get("related_links", []),
-            "bookmark_count": len(doc.get("headings", []))
+            "doc_slug": registry.get("doc_slug"),
+            "title": registry.get("title"),
+            "headings": registry.get("headings", []),
+            "bookmark_count": len(registry.get("headings", []))
         }
         
     except Exception as e:

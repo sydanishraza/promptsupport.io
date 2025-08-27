@@ -25321,7 +25321,7 @@ async def process_text_content_v2_pipeline(content: str, metadata: Dict[str, Any
     except Exception as e:
         print(f"❌ KE-PR5: V2 pipeline processing failed - {e}")
         # Fallback to original implementation
-        return await process_text_content_v2_original(content, metadata)
+        return await process_text_content_v2(content, metadata)
 
 # Keep original implementation as fallback
 async def process_text_content_v2_original(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:

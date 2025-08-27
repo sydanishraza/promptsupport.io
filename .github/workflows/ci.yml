@@ -1,0 +1,67 @@
+name: KE-PR1 CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black ruff isort
+        if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+    
+    - name: Run Black (code formatting)
+      run: black --check --diff backend/ engine/ config/ api/
+      continue-on-error: true
+    
+    - name: Run Ruff (linting)
+      run: ruff check backend/ engine/ config/ api/
+      continue-on-error: true
+    
+    - name: Run isort (import sorting)
+      run: isort --check-only --diff backend/ engine/ config/ api/
+      continue-on-error: true
+
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+    
+    - name: Run KE-PR1 scaffolding tests
+      run: python test_ke_pr1.py
+      
+    - name: Test server import
+      run: |
+        cd backend && python -c "
+        try:
+            from server import app
+            print('✅ Server imports successfully')
+        except Exception as e:
+            print(f'❌ Server import failed: {e}')
+            exit(1)
+        "

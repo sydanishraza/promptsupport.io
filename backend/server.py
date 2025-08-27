@@ -28952,6 +28952,19 @@ async def upload_file(
 ):
     """V2 ENGINE: Upload and process files (text, audio, video, images)"""
     print(f"🚀 V2 ENGINE: Processing file upload - {file.filename} - engine=v2")
+    
+    # KE-PR1: Add structured logging with job_id
+    start_time = time.time()
+    job_id = str(uuid.uuid4())
+    if logger:
+        logger.info({
+            "event": "content_upload_start", 
+            "job_id": job_id, 
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "stage": "content_upload"
+        })
+    
     try:
         # Parse metadata
         file_metadata = json.loads(metadata)

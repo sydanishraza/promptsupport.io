@@ -24035,7 +24035,7 @@ async def process_content(request: ContentProcessRequest):
         print(f"📊 V2 ENGINE: Job created - {job.job_id} - engine=v2")
         
         # V2 PROCESSING: Route to V2 text processor with timeout protection
-        if request.content_type == "text":
+        if request.content_type in ["text", "markdown"]:
             # Add timeout wrapper similar to file upload endpoint
             async def process_with_timeout():
                 return await process_text_content_v2_pipeline(request.content, request.metadata)

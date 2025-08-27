@@ -68,9 +68,11 @@ class LLMClient:
         
         if provider_config["requires_key"]:
             if self.provider == "openai" and not self.openai_key:
-                raise LLMError("OpenAI API key required but not found in environment")
+                print(f"⚠️ OpenAI API key not found, falling back to local provider")
+                self.provider = "local"
             elif self.provider == "anthropic" and not self.anthropic_key:
-                raise LLMError("Anthropic API key required but not found in environment")
+                print(f"⚠️ Anthropic API key not found, falling back to local provider")
+                self.provider = "local"
     
     def _get_auth_headers(self) -> Dict[str, str]:
         """Get authentication headers for the current provider"""

@@ -55,7 +55,15 @@ try:
     from engine.models import RawBundle, QAReport, MediaAsset
     from engine.logging_util import stage_log, logger
     from config.settings import settings
+    
+    # KE-PR2: Import linking modules
+    from engine.linking.anchors import stable_slug, anchor_id, assign_heading_ids, validate_heading_ladder
+    from engine.linking.toc import build_toc, build_minitoc, anchors_resolve
+    from engine.linking.bookmarks import extract_headings_registry, generate_doc_uid, generate_doc_slug, backfill_registry, get_registry
+    from engine.linking.links import build_href, get_default_route_map, build_link
+    
     print("✅ Engine package modules loaded successfully")
+    print("✅ KE-PR2: Linking modules loaded successfully")
 except ImportError as e:
     print(f"⚠️ Engine package import failed: {e}")
     # Fallback - create dummy objects to prevent crashes
@@ -65,6 +73,23 @@ except ImportError as e:
     def stage_log(name): return lambda f: f
     logger = None
     settings = None
+    
+    # KE-PR2: Fallback linking functions
+    def stable_slug(text, max_len=60): return text.lower().replace(' ', '-')
+    def anchor_id(text, prefix=None): return stable_slug(text)
+    def assign_heading_ids(html): return html
+    def validate_heading_ladder(html): return True
+    def build_toc(headings): return headings
+    def build_minitoc(html): return html
+    def anchors_resolve(html): return True
+    def extract_headings_registry(html): return []
+    def generate_doc_uid(): return "fallback-uid"
+    def generate_doc_slug(title): return title.replace(' ', '-').lower()
+    async def backfill_registry(limit=None): return {"status": "fallback"}
+    async def get_registry(doc_uid): return {}
+    def build_href(doc, anchor, route_map): return f"#{anchor}"
+    def get_default_route_map(env): return {}
+    def build_link(slug, anchor, base=""): return f"/{slug}#{anchor}"
 
 # HTML preprocessing pipeline imports
 import mammoth

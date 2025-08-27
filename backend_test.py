@@ -1,25 +1,17 @@
 #!/usr/bin/env python3
 """
-TICKET 2 Implementation Testing - Stable Anchors + Mini-TOC Systematic Fix
-Testing the complete TICKET 2 solution for Mini-TOC anchoring system
+TICKET 3 Implementation Testing - Method Integration Fix Verification
+Testing all TICKET 3 methods after integration into V2StyleProcessor class
 """
 
 import requests
 import json
 import time
 import sys
-import re
 from datetime import datetime
 
-# Use configured backend URL from environment
-import os
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-formatter.preview.emergentagent.com')
-API_BASE = f"{BACKEND_URL}/api"
-
-print(f"🧪 TICKET 2 TESTING: Stable Anchors + Mini-TOC Systematic Fix")
-print(f"🌐 Backend URL: {BACKEND_URL}")
-print(f"📡 API Base: {API_BASE}")
-print("=" * 80)
+# Backend URL from environment
+BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
 
 class TICKET2Tester:
     def __init__(self):

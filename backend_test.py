@@ -195,7 +195,7 @@ class TICKET3Tester:
                 "processing_mode": "v2_only"
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-text",
+            response = requests.post(f"{self.backend_url}/content/process",
                                    json=payload, timeout=30)
             
             if response.status_code != 200:
@@ -256,7 +256,7 @@ class TICKET3Tester:
                 "processing_mode": "v2_only"
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-text",
+            response = requests.post(f"{self.backend_url}/content/process",
                                    json=payload, timeout=30)
             
             if response.status_code != 200:
@@ -364,7 +364,7 @@ class TICKET3Tester:
             }
             
             # Create a document first
-            response = requests.post(f"{self.backend_url}/v2/process-text",
+            response = requests.post(f"{self.backend_url}/content/process",
                                    json=payload, timeout=30)
             
             if response.status_code != 200:
@@ -466,7 +466,7 @@ class TICKET3Tester:
                 "processing_mode": "v2_only"
             }
             
-            response = requests.post(f"{self.backend_url}/v2/process-text",
+            response = requests.post(f"{self.backend_url}/content/process",
                                    json=payload, timeout=45)
             
             if response.status_code != 200:

@@ -24280,6 +24280,18 @@ async def process_content(request: ContentProcessRequest):
         }
         
     except Exception as e:
+        # KE-PR1: Add structured error logging
+        if logger:
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.error({
+                "event": "content_process_error", 
+                "job_id": job_id, 
+                "stage": "content_process",
+                "duration_ms": duration_ms,
+                "error": str(e),
+                "status": "failed"
+            })
+        
         # Update job with error
         if 'job' in locals():
             await db.processing_jobs.update_one(

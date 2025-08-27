@@ -24178,8 +24178,21 @@ def count_embedded_images(content: str) -> int:
 async def process_content(request: ContentProcessRequest):
     """V2 ENGINE: Process text content with AI"""
     print(f"🚀 V2 ENGINE: Processing text content - engine=v2")
+    
+    # KE-PR1: Add structured logging with job_id
+    start_time = time.time()
+    job_id = str(uuid.uuid4())
+    if logger:
+        logger.info({
+            "event": "content_process_start", 
+            "job_id": job_id, 
+            "content_type": request.content_type,
+            "stage": "content_process"
+        })
+    
     try:
         job = ProcessingJob(
+            job_id=job_id,  # Use our job_id
             input_type=request.content_type,
             status="processing"
         )

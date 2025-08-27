@@ -92,6 +92,7 @@ try:
     print("✅ KE-PR2: Linking modules loaded successfully")
     print("✅ KE-PR3: Media and assets modules loaded successfully")
     print("✅ KE-PR4: V2 engine classes loaded successfully")
+    print("✅ KE-PR5: V2 pipeline orchestrator loaded successfully")
 except ImportError as e:
     print(f"⚠️ Engine package import failed: {e}")
     # Fallback - create dummy objects to prevent crashes

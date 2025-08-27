@@ -7998,6 +7998,30 @@ class V2ValidationSystem:
         seen_slugs = {}
         assigned_count = 0
         
+        # TICKET 2: Clean up duplicate content and headings before processing TOC
+        # Remove duplicate H2 headings that repeat the article title or main topic
+        article_title_words = set()
+        for heading in soup.select("h2, h3, h4"):
+            heading_text = heading.get_text(" ", strip=True).lower()
+            
+            # Remove headings that are just repetitions of the article topic
+            # Look for headings like "Using Google Map Javascript API" when article is about Google Maps
+            if len(heading_text.split()) <= 6:  # Short headings are more likely to be duplicates
+                # Check for simple repetition patterns
+                words = heading_text.split()
+                if len(words) <= 4 and any(word in article_title_words for word in words):
+                    # Skip this check for now, need to be more careful
+                    pass
+                    
+                # Remove specific pattern: heading that matches the first bullet point
+                first_toc_item = soup.find('ul')
+                if first_toc_item:
+                    first_item = first_toc_item.find('li')
+                    if first_item and heading_text == first_item.get_text(strip=True).lower():
+                        print(f"🗑️ TICKET 2: Removing duplicate heading: '{heading_text[:30]}...'")
+                        heading.decompose()
+                        continue
+        
         # Process H2 and H3 headings in document order
         for heading in soup.select("h2, h3, h4"):
             if not heading.get("id"):

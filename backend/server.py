@@ -17719,6 +17719,78 @@ async def call_built_in_local_llm(system_message: str, user_message: str) -> Opt
 
 
 
+async def persist_qa_report(qa_report, job_id: str = None):
+    """
+    KE-PR7: Persist QA report to database
+    """
+    try:
+        global qa_results_collection
+        
+        if not qa_results_collection:
+            print("⚠️ KE-PR7: QA Results collection not initialized")
+            return None
+        
+        # Convert QA report to dict for storage
+        if hasattr(qa_report, 'model_dump'):
+            qa_dict = qa_report.model_dump()
+        elif hasattr(qa_report, 'dict'):
+            qa_dict = qa_report.dict()
+        else:
+            qa_dict = dict(qa_report)
+        
+        # Add metadata
+        qa_dict['created_at'] = datetime.utcnow()
+        qa_dict['engine'] = 'v2'
+        qa_dict['stored_job_id'] = job_id or qa_dict.get('job_id', 'unknown')
+        
+        # Store in database
+        result = await qa_results_collection.insert_one(qa_dict)
+        
+        print(f"✅ KE-PR7: QA report persisted - ID: {result.inserted_id}")
+        return result.inserted_id
+        
+    except Exception as e:
+        print(f"❌ KE-PR7: Error persisting QA report - {e}")
+        return None
+
+async def get_recent_qa_summaries(limit: int = 10):
+    """
+    KE-PR7: Get recent QA summaries for API exposure
+    """
+    try:
+        global qa_results_collection
+        
+        if not qa_results_collection:
+            return []
+        
+        # Get recent QA reports
+        cursor = qa_results_collection.find().sort("created_at", -1).limit(limit)
+        qa_reports = await cursor.to_list(length=limit)
+        
+        # Convert to summaries
+        summaries = []
+        for report in qa_reports:
+            try:
+                summary = {
+                    "job_id": report.get('job_id', 'unknown'),
+                    "coverage_percent": report.get('coverage_percent', 0),
+                    "total_flags": len(report.get('flags', [])),
+                    "p0_flags": len([f for f in report.get('flags', []) if f.get('severity') == 'P0']),
+                    "p1_flags": len([f for f in report.get('flags', []) if f.get('severity') == 'P1']),
+                    "created_at": report.get('created_at'),
+                    "is_publishable": len([f for f in report.get('flags', []) if f.get('severity') == 'P0']) == 0
+                }
+                summaries.append(summary)
+            except Exception as e:
+                print(f"⚠️ KE-PR7: Error processing QA report summary - {e}")
+                continue
+        
+        return summaries
+        
+    except Exception as e:
+        print(f"❌ KE-PR7: Error getting QA summaries - {e}")
+        return []
+
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
     """
     Centralized LLM call using the new LLM client with automatic provider switching

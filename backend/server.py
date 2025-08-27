@@ -24798,7 +24798,7 @@ async def process_text_content_v2_legacy(content: str, metadata: Dict[str, Any])
         
         # V2 STEP 4: Perform multi-dimensional analysis
         run_id = f"run_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
-        analysis_result = await v2_analyzer.analyze_normalized_document(normalized_doc, run_id)
+        analysis_result = await get_v2_analyzer().analyze_normalized_document(normalized_doc, run_id)
         
         # Extract analysis for use in processing
         analysis = analysis_result.get('analysis', {}) if analysis_result else {}
@@ -25398,7 +25398,7 @@ async def process_text_content_v2_original(content: str, metadata: Dict[str, Any
         
         # V2 STEP 4: Perform multi-dimensional analysis
         run_id = f"run_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
-        analysis_result = await v2_analyzer.analyze_normalized_document(normalized_doc, run_id)
+        analysis_result = await get_v2_analyzer().analyze_normalized_document(normalized_doc, run_id)
         
         # Extract analysis for use in processing
         analysis = analysis_result.get('analysis', {}) if analysis_result else {}
@@ -29459,7 +29459,7 @@ File Information:
             
             # V2 STEP 4: Perform multi-dimensional analysis
             run_id = f"run_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
-            analysis_result = await v2_analyzer.analyze_normalized_document(normalized_doc, run_id)
+            analysis_result = await get_v2_analyzer().analyze_normalized_document(normalized_doc, run_id)
             
             # Extract analysis for use in processing
             analysis = analysis_result.get('analysis', {}) if analysis_result else {}
@@ -30501,7 +30501,7 @@ Source Information:
             
             # V2 STEP 4: Perform multi-dimensional analysis
             run_id = f"run_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
-            analysis_result = await v2_analyzer.analyze_normalized_document(normalized_doc, run_id)
+            analysis_result = await get_v2_analyzer().analyze_normalized_document(normalized_doc, run_id)
             
             # Extract analysis for use in processing
             analysis = analysis_result.get('analysis', {}) if analysis_result else {}

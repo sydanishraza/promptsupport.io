@@ -516,7 +516,7 @@ class KE_PR5_DiagnosticTester:
             return False
     
     def test_stage_by_stage_execution(self):
-        """Test 5: Analyze stage-by-stage execution to pinpoint failure points"""
+        """Test 6: Analyze stage-by-stage execution to pinpoint failure points"""
         try:
             # Test content designed to progress through all stages
             test_content = """

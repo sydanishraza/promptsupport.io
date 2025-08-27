@@ -489,6 +489,7 @@ pipeline_instance = None
 def get_pipeline(llm_client=None, existing_v2_instances=None) -> Pipeline:
     """Get or create the global pipeline instance"""
     global pipeline_instance
-    if pipeline_instance is None:
+    # Always recreate if existing instances are provided to ensure proper integration
+    if existing_v2_instances is not None or pipeline_instance is None:
         pipeline_instance = Pipeline(llm_client, existing_v2_instances)
     return pipeline_instance

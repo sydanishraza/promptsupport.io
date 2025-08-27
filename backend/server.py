@@ -8013,6 +8013,117 @@ class V2ValidationSystem:
         
         return route_maps.get(environment, route_maps["content_library"])
     
+    async def backfill_bookmark_registry(self, limit: int = None) -> dict:
+        """TICKET 3: Backfill existing v2 articles with bookmark registry data"""
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            import os
+            
+            mongo_url = os.environ.get('MONGO_URL')
+            client = AsyncIOMotorClient(mongo_url)
+            db = client.promptsupport
+            
+            print(f"🔄 TICKET 3: Starting bookmark registry backfill for existing v2 articles")
+            
+            # Find v2 articles that need backfilling (missing doc_uid or headings)
+            query = {
+                "$or": [
+                    {"metadata.engine": "v2", "doc_uid": {"$exists": False}},
+                    {"metadata.engine": "v2", "headings": {"$exists": False}},
+                    {"metadata.engine": "v2", "headings": []}  # Empty headings array
+                ]
+            }
+            
+            if limit:
+                articles_cursor = db.content_library.find(query).limit(limit)
+            else:
+                articles_cursor = db.content_library.find(query)
+            
+            articles = await articles_cursor.to_list(None)
+            total_articles = len(articles)
+            
+            if total_articles == 0:
+                print("✅ TICKET 3: No articles need backfilling")
+                return {"articles_processed": 0, "success": True}
+            
+            processed_count = 0
+            error_count = 0
+            
+            for article in articles:
+                try:
+                    article_id = article.get('_id')
+                    title = article.get('title', 'Untitled')
+                    content = article.get('content', '') or article.get('html', '')
+                    
+                    if not content:
+                        print(f"⚠️ TICKET 3: Skipping article '{title}' - no content found")
+                        continue
+                    
+                    # Generate doc_uid and doc_slug if missing
+                    doc_uid = article.get('doc_uid')
+                    if not doc_uid:
+                        doc_uid = self.generate_doc_uid()
+                    
+                    doc_slug = article.get('doc_slug')  
+                    if not doc_slug:
+                        doc_slug = self.generate_doc_slug(title)
+                    
+                    # Apply Ticket 2 stable anchors if needed (ensure IDs exist)
+                    processed_content = self.assign_heading_ids(content)
+                    
+                    # Extract headings registry
+                    headings = self.extract_headings_registry(processed_content)
+                    
+                    # Update article in database
+                    update_data = {
+                        "doc_uid": doc_uid,
+                        "doc_slug": doc_slug,
+                        "headings": headings,
+                        "content": processed_content,  # Updated content with IDs
+                        "html": processed_content     # Sync html field
+                    }
+                    
+                    # Initialize xrefs and related_links if missing
+                    if "xrefs" not in article:
+                        update_data["xrefs"] = []
+                    if "related_links" not in article:
+                        update_data["related_links"] = []
+                    
+                    await db.content_library.update_one(
+                        {"_id": article_id},
+                        {"$set": update_data}
+                    )
+                    
+                    processed_count += 1
+                    print(f"📖 TICKET 3: Backfilled article '{title[:50]}...' - doc_uid: {doc_uid}, {len(headings)} headings")
+                    
+                except Exception as article_error:
+                    error_count += 1
+                    print(f"❌ TICKET 3: Error backfilling article '{article.get('title', 'Unknown')}' - {article_error}")
+            
+            success_rate = (processed_count / total_articles * 100) if total_articles > 0 else 100
+            
+            print(f"✅ TICKET 3: Backfill complete - {processed_count}/{total_articles} articles processed ({success_rate:.1f}% success)")
+            
+            return {
+                "articles_found": total_articles,
+                "articles_processed": processed_count,
+                "articles_failed": error_count,
+                "success_rate": success_rate,
+                "success": error_count == 0
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error in backfill process - {e}")
+            return {
+                "articles_found": 0,
+                "articles_processed": 0,
+                "articles_failed": 0,
+                "success_rate": 0,
+                "success": False,
+                "error": str(e)
+            }
+    
     async def validate_cross_document_links(self, doc_uid: str, xrefs: list, related_links: list) -> dict:
         """TICKET 3: Validate that cross-document links resolve properly"""
         try:

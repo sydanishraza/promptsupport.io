@@ -533,9 +533,9 @@ class KE_PR5_DiagnosticTester:
                     print(f"     Error: {error['error']}")
                     print(f"     Severity: {error['severity']}")
             
-            if stage_status['missing_method_errors']:
-                print(f"\n❌ MISSING METHOD ERRORS ({len(stage_status['missing_method_errors'])}):")
-                for error in stage_status['missing_method_errors']:
+            if missing_method_errors:
+                print(f"\n❌ MISSING METHOD ERRORS ({len(missing_method_errors)}):")
+                for error in missing_method_errors:
                     print(f"   • Stage: {error['stage']}")
                     print(f"     Error: {error['error']}")
                     print(f"     Severity: {error['severity']}")

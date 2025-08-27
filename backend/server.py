@@ -17540,6 +17540,9 @@ mongo_client = None
 db = None
 content_library_collection = None
 
+# Global LLM client instance (KE-PR6)
+llm_client = None
+
 # Pydantic Models
 class DocumentChunk(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

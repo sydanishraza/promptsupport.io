@@ -34836,12 +34836,12 @@ async def create_seed_articles():
 @app.post("/api/ticket3/backfill-bookmarks")
 async def backfill_bookmarks(limit: int = None):
     """TICKET 3: Backfill existing v2 articles with bookmark registry data"""
+    # KE-PR2: Use extracted linking module
     try:
-        v2_style_processor = V2StyleProcessor()
-        result = await v2_style_processor.backfill_bookmark_registry(limit)
+        result = await backfill_registry(limit)
         
         return {
-            "status": "success" if result["success"] else "failed",
+            "status": result.get("status", "success"),
             "message": f"Backfilled {result['articles_processed']} articles",
             "data": result
         }

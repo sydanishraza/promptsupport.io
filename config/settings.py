@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import Field
 
 class Settings(BaseSettings):
-    MONGO_URI: str = Field(..., description="Mongo connection string")
+    MONGO_URI: str = Field(default="mongodb://localhost:27017/promptsupport", description="Mongo connection string")
     UPLOAD_DIR: str = "static/uploads"
     TEMP_DIR: str = "temp_uploads"
     LLM_PROVIDER: str = "openai"   # or "anthropic"

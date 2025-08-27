@@ -241,20 +241,16 @@ async def delete_article(article_id: str):
 @router.get("/api/assets")
 async def get_assets():
     """Get all assets"""
-    import sys
-    import os
-    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
-    if backend_path not in sys.path:
-        sys.path.append(backend_path)
-    
-    from server import UPLOAD_DIR
-    
     try:
+        # Use static directory from backend
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'static')
+        upload_dir = os.path.join(static_dir, 'uploads')
+        
         assets = []
         
-        if os.path.exists(UPLOAD_DIR):
-            for filename in os.listdir(UPLOAD_DIR):
-                file_path = os.path.join(UPLOAD_DIR, filename)
+        if os.path.exists(upload_dir):
+            for filename in os.listdir(upload_dir):
+                file_path = os.path.join(upload_dir, filename)
                 if os.path.isfile(file_path):
                     stat = os.stat(file_path)
                     assets.append({

@@ -269,22 +269,18 @@ async def get_assets():
 @router.post("/api/assets/upload")
 async def upload_asset(file: UploadFile = File(...)):
     """Upload asset file"""
-    import sys
-    import os
-    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
-    if backend_path not in sys.path:
-        sys.path.append(backend_path)
-    
-    from server import UPLOAD_DIR
-    
     try:
+        # Use static directory from backend
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'static')
+        upload_dir = os.path.join(static_dir, 'uploads')
+        
         # Ensure upload directory exists
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        os.makedirs(upload_dir, exist_ok=True)
         
         # Generate unique filename
         file_ext = os.path.splitext(file.filename)[1] if file.filename else ""
         unique_filename = f"{uuid.uuid4().hex}{file_ext}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+        file_path = os.path.join(upload_dir, unique_filename)
         
         # Save file
         with open(file_path, "wb") as buffer:

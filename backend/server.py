@@ -94,7 +94,23 @@ except ImportError as e:
     async def get_registry(doc_uid): return {}
     def build_href(doc, anchor, route_map): return f"#{anchor}"
     def get_default_route_map(env): return {}
-    def build_link(slug, anchor, base=""): return f"/{slug}#{anchor}"
+    # KE-PR3: Fallback media and assets functions  
+    import hashlib
+    
+    class MediaIntelligenceService:
+        async def analyze_media_comprehensive(self, *args, **kwargs): return {}
+        def create_enhanced_media_html(self, *args, **kwargs): return ""
+        def generate_contextual_placement(self, *args, **kwargs): return {}
+    
+    media_intelligence = MediaIntelligenceService()
+    
+    def save_bytes(data, filename, upload_dir="static/uploads"): 
+        h = hashlib.md5(data).hexdigest()[:8]
+        return h, f"{h}_{filename}"
+    def save_file(temp_path, upload_dir="static/uploads"): return "fallback", "fallback.tmp"
+    def read_file(path): return b""
+    def get_asset_path(filename, upload_dir="static/uploads"): return f"{upload_dir}/{filename}"
+    def hash_bytes(data): return hashlib.md5(data).hexdigest()[:8]
 
 # HTML preprocessing pipeline imports
 import mammoth

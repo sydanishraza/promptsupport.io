@@ -10807,6 +10807,27 @@ class V2PublishingSystem:
             print(f"❌ V2 PUBLISHING: Error converting HTML to Markdown - {e}")
             return final_html  # Return HTML as fallback
     
+    def _generate_fallback_doc_uid(self) -> str:
+        """TICKET 3: Generate fallback doc_uid for existing articles"""
+        import time
+        import random
+        import string
+        
+        timestamp = int(time.time() * 1000)
+        random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+        timestamp_b36 = format(timestamp, 'x').upper()[-8:]
+        return f"01JZ{timestamp_b36}{random_part[:8]}"
+    
+    def _generate_fallback_doc_slug(self, title: str) -> str:
+        """TICKET 3: Generate fallback doc_slug from title"""
+        import re, unicodedata
+        
+        norm = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii")
+        slug = re.sub(r"\s+", "-", norm.lower())
+        slug = re.sub(r"[^a-z0-9-]", "", slug)
+        slug = re.sub(r"-{2,}", "-", slug).strip("-")
+        return slug[:80] if slug else "untitled-document"
+    
     async def _create_content_library_article(self, article: dict, generated_article: dict,
                                             validation_result: dict, qa_result: dict,
                                             adjustment_result: dict, run_id: str) -> dict:

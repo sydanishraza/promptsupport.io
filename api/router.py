@@ -241,10 +241,15 @@ async def delete_article(article_id: str):
 @router.get("/api/assets")
 async def get_assets():
     """Get all assets"""
-    from backend.server import UPLOAD_DIR
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import UPLOAD_DIR
     
     try:
-        import os
         assets = []
         
         if os.path.exists(UPLOAD_DIR):
@@ -268,11 +273,15 @@ async def get_assets():
 @router.post("/api/assets/upload")
 async def upload_asset(file: UploadFile = File(...)):
     """Upload asset file"""
-    from backend.server import UPLOAD_DIR
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import UPLOAD_DIR
     
     try:
-        import os
-        
         # Ensure upload directory exists
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         
@@ -300,10 +309,15 @@ async def upload_asset(file: UploadFile = File(...)):
 @router.delete("/api/assets/{asset_id}")
 async def delete_asset(asset_id: str):
     """Delete asset file"""
-    from backend.server import UPLOAD_DIR
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import UPLOAD_DIR
     
     try:
-        import os
         file_path = os.path.join(UPLOAD_DIR, asset_id)
         
         if not os.path.exists(file_path):
@@ -321,10 +335,15 @@ async def delete_asset(asset_id: str):
 @router.get("/api/assets/{asset_id}")
 async def get_asset(asset_id: str):
     """Get asset file"""
-    from backend.server import UPLOAD_DIR
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import UPLOAD_DIR
     
     try:
-        import os
         file_path = os.path.join(UPLOAD_DIR, asset_id)
         
         if not os.path.exists(file_path):

@@ -23975,7 +23975,7 @@ async def process_content(request: ContentProcessRequest):
         if request.content_type == "text":
             # Add timeout wrapper similar to file upload endpoint
             async def process_with_timeout():
-                return await process_text_content_v2(request.content, request.metadata)
+                return await process_text_content_v2_pipeline(request.content, request.metadata)
             
             try:
                 # 10-minute timeout for V2 processing pipeline (same as upload endpoint)

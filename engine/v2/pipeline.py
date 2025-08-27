@@ -23,7 +23,7 @@ from .related import V2RelatedLinksSystem
 from .gaps import V2GapFillingSystem
 from .evidence import V2EvidenceTaggingSystem
 from .code_norm import V2CodeNormalizationSystem
-from .validate import V2ValidationSystem
+from .validators import validate as run_validators
 from .crossqa import V2CrossArticleQASystem
 from .adapt import V2AdaptiveAdjustmentSystem
 from .publish import V2PublishingSystem
@@ -53,7 +53,7 @@ class Pipeline:
             self.gap_filling = existing_v2_instances.get('gap_filling', V2GapFillingSystem())
             self.evidence_tagging = existing_v2_instances.get('evidence_tagging', V2EvidenceTaggingSystem())
             self.code_norm = existing_v2_instances.get('code_norm', V2CodeNormalizationSystem())
-            self.validator = existing_v2_instances.get('validator', V2ValidationSystem())
+            # Note: validator now uses function-based approach from validators module
             self.cross_qa = existing_v2_instances.get('cross_qa', V2CrossArticleQASystem())
             self.adaptive_adjustment = existing_v2_instances.get('adaptive_adjustment', V2AdaptiveAdjustmentSystem())
             self.publisher = existing_v2_instances.get('publisher', V2PublishingSystem())
@@ -72,7 +72,7 @@ class Pipeline:
             self.gap_filling = V2GapFillingSystem()
             self.evidence_tagging = V2EvidenceTaggingSystem()
             self.code_norm = V2CodeNormalizationSystem()
-            self.validator = V2ValidationSystem()
+            # Note: validator now uses function-based approach from validators module
             self.cross_qa = V2CrossArticleQASystem()
             self.adaptive_adjustment = V2AdaptiveAdjustmentSystem()
             self.publisher = V2PublishingSystem()

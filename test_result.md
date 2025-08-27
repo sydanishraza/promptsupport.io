@@ -155,9 +155,9 @@ frontend:
 backend:
   - task: "MINI-TOC LINKS FIX - ID Coordination Fix for TOC Links and Headings"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
-    stuck_count: 3
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:

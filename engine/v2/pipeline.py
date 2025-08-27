@@ -342,6 +342,20 @@ class Pipeline:
         # Use new validators module function-based approach
         qa_report = run_validators(normalized_doc)
         
+        # Persist QA report to database (KE-PR7)
+        try:
+            # Import persist function here to avoid circular imports
+            import sys
+            import os
+            backend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'backend')
+            if backend_path not in sys.path:
+                sys.path.append(backend_path)
+            
+            from server import persist_qa_report
+            await persist_qa_report(qa_report, run_id)
+        except Exception as e:
+            print(f"⚠️ KE-PR7: Could not persist QA report - {e}")
+        
         # Convert QAReport to validation result format for compatibility
         validation_result = {
             'validation_status': 'passed' if qa_report.coverage_percent >= 70.0 and len([f for f in qa_report.flags if f.severity == "P0"]) == 0 else 'issues_found',

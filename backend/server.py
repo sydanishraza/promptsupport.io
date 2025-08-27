@@ -85,6 +85,9 @@ try:
     from engine.v2.extractor import V2ContentExtractor
     from engine.v2.media import V2MediaManager
     
+    # KE-PR5: Import V2 Pipeline Orchestrator
+    from engine.v2.pipeline import Pipeline, get_pipeline
+    
     print("✅ Engine package modules loaded successfully")
     print("✅ KE-PR2: Linking modules loaded successfully")
     print("✅ KE-PR3: Media and assets modules loaded successfully")

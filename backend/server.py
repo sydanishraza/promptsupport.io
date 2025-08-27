@@ -24258,6 +24258,19 @@ async def process_content(request: ContentProcessRequest):
         )
         
         print(f"✅ V2 ENGINE: Processing complete - {len(chunks)} chunks created - engine=v2")
+        
+        # KE-PR1: Add structured logging completion
+        if logger:
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.info({
+                "event": "content_process_end", 
+                "job_id": job_id, 
+                "stage": "content_process",
+                "duration_ms": duration_ms,
+                "chunks_created": len(chunks),
+                "status": "success"
+            })
+        
         return {
             "job_id": job.job_id,
             "status": job.status,

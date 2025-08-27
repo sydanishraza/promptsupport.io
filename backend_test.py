@@ -70,8 +70,8 @@ class Complete17StagePipelineTester:
                 return False
                 
             # Check for versioning and review system availability
-            versioning_available = "v2_versioning" in features
-            review_available = "v2_review" in features
+            versioning_available = "version_management" in features
+            review_available = "human_in_the_loop_review" in features
             
             if not versioning_available:
                 self.log_test("V2 Engine 17-Stage Availability", False, "Stage 16 (Versioning) not available")

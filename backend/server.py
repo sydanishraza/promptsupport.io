@@ -7969,97 +7969,22 @@ class V2ValidationSystem:
         """TICKET 3: Extract headings for bookmark registry - delegated to engine.linking.bookmarks"""
         return extract_headings_registry(html)
     
+    # KE-PR2: Use extracted linking modules 
     def generate_doc_uid(self) -> str:
-        """TICKET 3: Generate immutable document UID using ULID"""
-        import time
-        import random
-        import string
-        
-        # Simple ULID-like implementation (timestamp + randomness)
-        timestamp = int(time.time() * 1000)  # milliseconds
-        random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
-        
-        # Format: 01JZ + timestamp_base36 + random
-        timestamp_b36 = format(timestamp, 'x').upper()[-8:]  # Last 8 chars of hex timestamp
-        doc_uid = f"01JZ{timestamp_b36}{random_part[:8]}"
-        
-        print(f"🆔 TICKET 3: Generated doc_uid: {doc_uid}")
-        return doc_uid
+        """TICKET 3: Generate document UID - delegated to engine.linking.bookmarks"""
+        return generate_doc_uid()
     
     def generate_doc_slug(self, title: str) -> str:
-        """TICKET 3: Generate human-readable document slug from title"""
-        import re, unicodedata
-        
-        # Use the same stable_slug logic but optimized for document titles
-        norm = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii")
-        slug = re.sub(r"\s+", "-", norm.lower())
-        slug = re.sub(r"[^a-z0-9-]", "", slug)
-        slug = re.sub(r"-{2,}", "-", slug).strip("-")
-        
-        # Limit length for document slugs
-        doc_slug = slug[:80] if slug else "untitled-document"
-        
-        print(f"🏷️ TICKET 3: Generated doc_slug: '{doc_slug}' from title: '{title[:50]}...'")
-        return doc_slug
+        """TICKET 3: Generate document slug - delegated to engine.linking.bookmarks"""
+        return generate_doc_slug(title)
     
     def build_href(self, target_doc: dict, anchor_id: str, route_map: dict) -> str:
-        """TICKET 3: Build environment-aware href for cross-document links"""
-        try:
-            base_url = route_map.get("baseUrl", "").rstrip("/")
-            routes = route_map.get("routes", {})
-            prefer = route_map.get("prefer", "slug")
-            
-            # Choose route based on preference and availability
-            if prefer == "slug" and target_doc.get("doc_slug"):
-                route_template = routes.get("articleBySlug", "/articles/:slug")
-                path = route_template.replace(":slug", target_doc["doc_slug"])
-            else:
-                route_template = routes.get("articleByUid", "/library/:uid")
-                path = route_template.replace(":uid", target_doc["doc_uid"])
-            
-            # Build complete href
-            href = f"{base_url}{path}#{anchor_id}" if anchor_id else f"{base_url}{path}"
-            
-            print(f"🔗 TICKET 3: Built href '{href}' for doc '{target_doc.get('title', 'Unknown')[:30]}...' -> #{anchor_id}")
-            return href
-            
-        except Exception as e:
-            print(f"❌ TICKET 3: Error building href - {e}")
-            return f"#{anchor_id}"  # Fallback to local anchor
+        """TICKET 3: Build environment-aware href - delegated to engine.linking.links"""
+        return build_href(target_doc, anchor_id, route_map)
     
     def get_default_route_map(self, environment: str = "content_library") -> dict:
-        """TICKET 3: Get default route map for different environments"""
-        route_maps = {
-            "content_library": {
-                "env": "content_library",
-                "baseUrl": "",  # Same domain
-                "routes": {
-                    "articleByUid": "/library/:uid",
-                    "articleBySlug": "/library/articles/:slug"
-                },
-                "prefer": "uid"
-            },
-            "knowledge_base": {
-                "env": "knowledge_base", 
-                "baseUrl": "https://kb.example.com",
-                "routes": {
-                    "articleByUid": "/library/:uid",
-                    "articleBySlug": "/articles/:slug"
-                },
-                "prefer": "slug"
-            },
-            "dev_docs": {
-                "env": "dev_docs",
-                "baseUrl": "https://docs.example.com", 
-                "routes": {
-                    "articleByUid": "/docs/:uid",
-                    "articleBySlug": "/docs/:slug"
-                },
-                "prefer": "slug"
-            }
-        }
-        
-        return route_maps.get(environment, route_maps["content_library"])
+        """TICKET 3: Get default route map - delegated to engine.linking.links"""
+        return get_default_route_map(environment)
     
     async def backfill_bookmark_registry(self, limit: int = None) -> dict:
         """TICKET 3: Backfill existing v2 articles with bookmark registry data"""

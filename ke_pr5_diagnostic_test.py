@@ -159,8 +159,140 @@ class KE_PR5_DiagnosticTester:
             self.log_test("V2 Stage Class Availability", False, f"Exception: {str(e)}")
             return False
     
+    def test_v2_class_method_availability(self):
+        """Test 3: Check which V2 class methods are missing vs implemented"""
+        try:
+            # Expected methods for each V2 class based on pipeline usage
+            expected_methods = {
+                'V2ContentExtractor': ['extract_raw_text'],
+                'V2MultiDimensionalAnalyzer': ['analyze_normalized_document'],
+                'V2GlobalOutlinePlanner': ['create_global_outline'],
+                'V2PerArticleOutlinePlanner': ['create_per_article_outlines'],
+                'V2PrewriteSystem': ['extract_prewrite_data'],
+                'V2ArticleGenerator': ['generate_article'],
+                'V2StyleProcessor': ['process_style'],
+                'V2RelatedLinksSystem': ['generate_related_links'],
+                'V2GapFillingSystem': ['fill_gaps'],
+                'V2EvidenceTaggingSystem': ['tag_evidence'],
+                'V2CodeNormalizationSystem': ['normalize_code_blocks'],
+                'V2ValidationSystem': ['validate_content'],
+                'V2CrossArticleQASystem': ['perform_cross_article_qa'],
+                'V2AdaptiveAdjustmentSystem': ['adjust_article_balance'],
+                'V2PublishingSystem': ['publish_v2_content'],
+                'V2VersioningSystem': ['create_version'],
+                'V2ReviewSystem': ['enqueue_for_review']
+            }
+            
+            # Check method availability by importing and inspecting classes
+            missing_methods = {}
+            placeholder_classes = []
+            
+            try:
+                # Import V2 classes to check their methods
+                import sys
+                import os
+                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if parent_dir not in sys.path:
+                    sys.path.insert(0, parent_dir)
+                
+                from engine.v2.analyzer import V2MultiDimensionalAnalyzer
+                from engine.v2.outline import V2GlobalOutlinePlanner, V2PerArticleOutlinePlanner
+                from engine.v2.prewrite import V2PrewriteSystem
+                from engine.v2.generator import V2ArticleGenerator
+                from engine.v2.style import V2StyleProcessor
+                from engine.v2.related import V2RelatedLinksSystem
+                from engine.v2.gaps import V2GapFillingSystem
+                from engine.v2.evidence import V2EvidenceTaggingSystem
+                from engine.v2.code_norm import V2CodeNormalizationSystem
+                from engine.v2.validate import V2ValidationSystem
+                from engine.v2.crossqa import V2CrossArticleQASystem
+                from engine.v2.adapt import V2AdaptiveAdjustmentSystem
+                from engine.v2.publish import V2PublishingSystem
+                from engine.v2.versioning import V2VersioningSystem
+                from engine.v2.review import V2ReviewSystem
+                from engine.v2.extractor import V2ContentExtractor
+                
+                # Check each class for expected methods
+                v2_classes = {
+                    'V2ContentExtractor': V2ContentExtractor,
+                    'V2MultiDimensionalAnalyzer': V2MultiDimensionalAnalyzer,
+                    'V2GlobalOutlinePlanner': V2GlobalOutlinePlanner,
+                    'V2PerArticleOutlinePlanner': V2PerArticleOutlinePlanner,
+                    'V2PrewriteSystem': V2PrewriteSystem,
+                    'V2ArticleGenerator': V2ArticleGenerator,
+                    'V2StyleProcessor': V2StyleProcessor,
+                    'V2RelatedLinksSystem': V2RelatedLinksSystem,
+                    'V2GapFillingSystem': V2GapFillingSystem,
+                    'V2EvidenceTaggingSystem': V2EvidenceTaggingSystem,
+                    'V2CodeNormalizationSystem': V2CodeNormalizationSystem,
+                    'V2ValidationSystem': V2ValidationSystem,
+                    'V2CrossArticleQASystem': V2CrossArticleQASystem,
+                    'V2AdaptiveAdjustmentSystem': V2AdaptiveAdjustmentSystem,
+                    'V2PublishingSystem': V2PublishingSystem,
+                    'V2VersioningSystem': V2VersioningSystem,
+                    'V2ReviewSystem': V2ReviewSystem
+                }
+                
+                for class_name, class_obj in v2_classes.items():
+                    expected_methods_for_class = expected_methods.get(class_name, [])
+                    class_missing_methods = []
+                    
+                    # Check if class is just a placeholder
+                    instance = class_obj()
+                    class_methods = [method for method in dir(instance) if not method.startswith('_')]
+                    
+                    # Check for expected methods
+                    for method_name in expected_methods_for_class:
+                        if not hasattr(instance, method_name):
+                            class_missing_methods.append(method_name)
+                        else:
+                            # Check if method is just a placeholder (returns None or raises NotImplementedError)
+                            method = getattr(instance, method_name)
+                            if callable(method):
+                                try:
+                                    # Try to inspect the method source to see if it's a placeholder
+                                    import inspect
+                                    source = inspect.getsource(method)
+                                    if 'pass' in source or 'NotImplementedError' in source or 'TODO' in source:
+                                        class_missing_methods.append(f"{method_name} (placeholder)")
+                                except:
+                                    # If we can't inspect, assume it's implemented
+                                    pass
+                    
+                    if class_missing_methods:
+                        missing_methods[class_name] = class_missing_methods
+                    
+                    # Check if entire class is placeholder
+                    if len(class_methods) <= 2:  # Only __init__ and maybe one other method
+                        placeholder_classes.append(class_name)
+                
+                # Store results for analysis
+                self.missing_methods = missing_methods
+                self.placeholder_classes = placeholder_classes
+                
+                total_expected_methods = sum(len(methods) for methods in expected_methods.values())
+                total_missing_methods = sum(len(methods) for methods in missing_methods.values())
+                implementation_rate = ((total_expected_methods - total_missing_methods) / total_expected_methods) * 100
+                
+                if total_missing_methods == 0:
+                    self.log_test("V2 Class Method Availability", True, 
+                                 f"All methods implemented ({implementation_rate:.1f}%)")
+                    return True
+                else:
+                    self.log_test("V2 Class Method Availability", False, 
+                                 f"Missing {total_missing_methods}/{total_expected_methods} methods ({implementation_rate:.1f}% implemented)")
+                    return False
+                    
+            except ImportError as import_error:
+                self.log_test("V2 Class Method Availability", False, f"Import error: {import_error}")
+                return False
+                
+        except Exception as e:
+            self.log_test("V2 Class Method Availability", False, f"Exception: {str(e)}")
+            return False
+    
     def test_specific_v2_stage_methods(self):
-        """Test 3: Test specific V2 stage methods to identify missing implementations"""
+        """Test 4: Test specific V2 stage methods to identify missing implementations"""
         try:
             # Test with content designed to trigger specific stage methods
             comprehensive_content = """

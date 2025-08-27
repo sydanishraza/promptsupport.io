@@ -17754,7 +17754,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
 @app.on_event("startup")
 async def startup_event():
     """Initialize all services and connections"""
-    global mongo_client, db, content_library_collection, llm_client
+    global mongo_client, db, content_library_collection, qa_results_collection, llm_client
     
     print("🚀 Starting PromptSupport Enhanced Content Engine...")
     
@@ -17763,9 +17763,14 @@ async def startup_event():
         mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
         db = mongo_client[DATABASE_NAME]
         content_library_collection = db.content_library
+        
+        # Initialize QA Results collection for KE-PR7
+        qa_results_collection = db.qa_results
+        
         # Test the connection
         await mongo_client.server_info()
         print("✅ MongoDB connected successfully")
+        print("✅ QA Results collection initialized")
     except Exception as e:
         print(f"❌ MongoDB connection failed: {e}")
         raise

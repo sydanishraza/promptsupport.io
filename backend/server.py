@@ -2951,6 +2951,9 @@ Return ONLY JSON in this exact format:
             print(f"❌ V2 OUTLINE: Error retrieving outline - {e} - engine=v2")
             return None
 
+# Global V2 Multi-Dimensional Analyzer instance
+v2_analyzer = V2MultiDimensionalAnalyzer()
+
 # Global V2 Global Outline Planner instance
 v2_global_planner = V2GlobalOutlinePlanner()
 

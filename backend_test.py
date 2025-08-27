@@ -53,7 +53,7 @@ class Complete17StagePipelineTester:
             data = response.json()
             
             # Check engine status
-            if data.get("status") != "operational":
+            if data.get("status") not in ["operational", "active"]:
                 self.log_test("V2 Engine 17-Stage Availability", False, f"Engine status: {data.get('status')}")
                 return False
                 

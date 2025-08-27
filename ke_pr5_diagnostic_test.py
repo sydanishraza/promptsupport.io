@@ -675,10 +675,16 @@ class KE_PR5_DiagnosticTester:
         # Missing Methods Analysis
         if self.missing_methods:
             print(f"\n🚫 MISSING METHOD IMPLEMENTATIONS:")
-            for stage, errors in self.missing_methods.items():
+            for stage, methods in self.missing_methods.items():
                 print(f"   • {stage}:")
-                for error in errors:
-                    print(f"     - {error['message']} (Severity: {error['severity']})")
+                for method in methods:
+                    print(f"     - {method}")
+        
+        # Placeholder Classes
+        if hasattr(self, 'placeholder_classes') and self.placeholder_classes:
+            print(f"\n⚠️ PLACEHOLDER CLASSES DETECTED ({len(self.placeholder_classes)}):")
+            for class_name in self.placeholder_classes:
+                print(f"   • {class_name}: Needs full implementation")
         
         # Pipeline Failures
         if self.pipeline_failures:

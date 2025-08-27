@@ -56,7 +56,13 @@ async def process_content_v2_route(
 ):
     """V2 Engine: Process text content through complete V2 pipeline"""
     # Import here to avoid circular imports
-    from backend.server import process_text_content_v2_pipeline
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import process_text_content_v2_pipeline
     
     try:
         print(f"🚀 V2 ENGINE: Processing content via API router - {len(content)} chars - engine=v2")
@@ -90,7 +96,13 @@ async def upload_content_v2_route(
     enable_audio_processing: bool = Form(False)
 ):
     """V2 Engine: Upload and process files through V2 pipeline"""
-    from backend.server import process_file_upload_v2
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import process_file_upload_v2
     
     try:
         print(f"📁 V2 ENGINE: File upload via API router - {file.filename} - engine=v2")
@@ -114,7 +126,13 @@ async def process_url_v2_route(
     enable_audio_processing: bool = Form(False)
 ):
     """V2 Engine: Process URL content through V2 pipeline"""
-    from backend.server import process_url_content_v2
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import process_url_content_v2
     
     try:
         print(f"🌐 V2 ENGINE: URL processing via API router - {url} - engine=v2")

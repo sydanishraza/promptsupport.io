@@ -45,6 +45,11 @@ from media_intelligence import media_intelligence
 
 # New Engine Package Imports (KE-PR1: scaffolding)
 try:
+    import sys
+    import os
+    # Add parent directory to Python path for engine package
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
     from engine.models import RawBundle, QAReport, MediaAsset
     from engine.logging_util import stage_log, logger
     from config.settings import settings

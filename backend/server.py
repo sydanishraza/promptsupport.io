@@ -24756,7 +24756,7 @@ async def create_article_from_blocks(blocks, title: str, normalized_doc) -> Dict
     """Legacy function - redirects to V2 implementation"""
     return await create_article_from_blocks_v2(blocks, title, normalized_doc)
 
-async def process_text_content_v2(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def process_text_content_v2_legacy(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """V2 ENGINE: Enhanced text content processing with normalized document extraction and multi-dimensional analysis"""
     try:
         print(f"🚀 V2 ENGINE: Processing {len(content)} characters of content - engine=v2")

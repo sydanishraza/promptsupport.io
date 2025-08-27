@@ -579,7 +579,7 @@ class KE_PR5_DiagnosticTester:
         else:
             print("   🔧 REQUIRED FIXES:")
             
-            if hasattr(self, 'v2_stage_status') and self.v2_stage_status['attribute_errors']:
+            if hasattr(self, 'v2_stage_status') and self.v2_stage_status.get('attribute_errors'):
                 print("   1. Fix AttributeError issues in V2 stage classes:")
                 for error in self.v2_stage_status['attribute_errors']:
                     print(f"      - {error['stage']}: {error['error']}")

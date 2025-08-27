@@ -431,7 +431,13 @@ async def get_engine_status():
 @router.get("/api/validation/diagnostics")
 async def get_validation_diagnostics(run_id: str = None, validation_id: str = None):
     """V2 Validation diagnostics"""
-    from backend.server import db
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import db
     
     try:
         query_filter = {}
@@ -440,14 +446,29 @@ async def get_validation_diagnostics(run_id: str = None, validation_id: str = No
         if validation_id:
             query_filter["validation_id"] = validation_id
         
+        if not db:
+            return {
+                "total_validations": 0,
+                "validation_results": [],
+                "message": "Database not initialized"
+            }
+        
         if not query_filter:
-            validation_results = await db.v2_validation_results.find().sort("timestamp", -1).limit(10).to_list(10)
+            try:
+                validation_results = await db.v2_validation_results.find().sort("timestamp", -1).limit(10).to_list(10)
+            except Exception as db_error:
+                # Collection might not exist yet
+                validation_results = []
         else:
-            validation_results = await db.v2_validation_results.find(query_filter).sort("timestamp", -1).to_list(100)
+            try:
+                validation_results = await db.v2_validation_results.find(query_filter).sort("timestamp", -1).to_list(100)
+            except Exception as db_error:
+                validation_results = []
         
         # Convert ObjectId to string
         for result in validation_results:
-            result['_id'] = str(result['_id'])
+            if '_id' in result:
+                result['_id'] = str(result['_id'])
         
         return {
             "total_validations": len(validation_results),
@@ -456,12 +477,22 @@ async def get_validation_diagnostics(run_id: str = None, validation_id: str = No
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving validation diagnostics: {str(e)}")
+        return {
+            "total_validations": 0,
+            "validation_results": [],
+            "error": str(e)
+        }
 
 @router.get("/api/qa/diagnostics")
 async def get_qa_diagnostics(run_id: str = None, qa_id: str = None):
     """V2 QA diagnostics"""
-    from backend.server import qa_results_collection
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import qa_results_collection
     
     try:
         query_filter = {}
@@ -478,9 +509,15 @@ async def get_qa_diagnostics(run_id: str = None, qa_id: str = None):
             }
         
         if not query_filter:
-            qa_results = await qa_results_collection.find().sort("created_at", -1).limit(10).to_list(10)
+            try:
+                qa_results = await qa_results_collection.find().sort("created_at", -1).limit(10).to_list(10)
+            except Exception as db_error:
+                qa_results = []
         else:
-            qa_results = await qa_results_collection.find(query_filter).sort("created_at", -1).to_list(100)
+            try:
+                qa_results = await qa_results_collection.find(query_filter).sort("created_at", -1).to_list(100)
+            except Exception as db_error:
+                qa_results = []
         
         # Convert ObjectId to string
         for result in qa_results:
@@ -495,7 +532,11 @@ async def get_qa_diagnostics(run_id: str = None, qa_id: str = None):
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving QA diagnostics: {str(e)}")
+        return {
+            "total_qa_runs": 0,
+            "qa_results": [],
+            "error": str(e)
+        }
 
 
 # ========================================

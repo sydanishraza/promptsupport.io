@@ -17701,7 +17701,7 @@ async def call_llm_with_fallback(system_message: str, user_message: str, session
 @app.on_event("startup")
 async def startup_event():
     """Initialize all services and connections"""
-    global mongo_client, db, content_library_collection
+    global mongo_client, db, content_library_collection, llm_client
     
     print("🚀 Starting PromptSupport Enhanced Content Engine...")
     
@@ -17716,6 +17716,14 @@ async def startup_event():
     except Exception as e:
         print(f"❌ MongoDB connection failed: {e}")
         raise
+    
+    # Initialize centralized LLM client (KE-PR6)
+    try:
+        llm_client = get_llm_client()
+        print(f"✅ Centralized LLM client initialized - Provider: {llm_client.provider}")
+    except Exception as e:
+        print(f"⚠️ LLM client initialization failed: {e}")
+        llm_client = None
     
     # Check API keys
     if OPENAI_API_KEY:

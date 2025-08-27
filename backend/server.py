@@ -7959,6 +7959,104 @@ class V2ValidationSystem:
         }
         
         return route_maps.get(environment, route_maps["content_library"])
+    
+    async def validate_cross_document_links(self, doc_uid: str, xrefs: list, related_links: list) -> dict:
+        """TICKET 3: Validate that cross-document links resolve properly"""
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            import os
+            
+            # Get database connection
+            mongo_url = os.environ.get('MONGO_URL')
+            client = AsyncIOMotorClient(mongo_url)
+            db = client.promptsupport
+            
+            broken_links = []
+            total_links = len(xrefs) + len(related_links)
+            
+            print(f"🔍 TICKET 3: Validating {total_links} cross-document links for doc {doc_uid}")
+            
+            # Validate xrefs
+            for xref in xrefs:
+                target_doc_uid = xref.get("doc_uid")
+                anchor_id = xref.get("anchor_id")
+                label = xref.get("label", "Unknown")
+                
+                # Find target document
+                target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+                
+                if not target_doc:
+                    broken_links.append({
+                        "type": "xref",
+                        "target_doc_uid": target_doc_uid,
+                        "anchor_id": anchor_id,
+                        "label": label,
+                        "reason": "target_document_not_found"
+                    })
+                    continue
+                
+                # Check if anchor exists in target document headings
+                target_headings = target_doc.get("headings", [])
+                anchor_exists = any(h.get("id") == anchor_id for h in target_headings)
+                
+                if not anchor_exists:
+                    broken_links.append({
+                        "type": "xref", 
+                        "target_doc_uid": target_doc_uid,
+                        "anchor_id": anchor_id,
+                        "label": label,
+                        "reason": "anchor_not_found_in_target",
+                        "available_anchors": [h.get("id") for h in target_headings[:5]]  # First 5 for debugging
+                    })
+            
+            # Validate related_links (similar process)
+            for related in related_links:
+                target_doc_uid = related.get("doc_uid")
+                anchor_id = related.get("anchor_id", "")
+                
+                target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+                
+                if not target_doc:
+                    broken_links.append({
+                        "type": "related_link",
+                        "target_doc_uid": target_doc_uid,
+                        "anchor_id": anchor_id,
+                        "reason": "target_document_not_found"
+                    })
+                    continue
+                
+                if anchor_id:  # Only validate anchor if specified
+                    target_headings = target_doc.get("headings", [])
+                    anchor_exists = any(h.get("id") == anchor_id for h in target_headings)
+                    
+                    if not anchor_exists:
+                        broken_links.append({
+                            "type": "related_link",
+                            "target_doc_uid": target_doc_uid, 
+                            "anchor_id": anchor_id,
+                            "reason": "anchor_not_found_in_target"
+                        })
+            
+            resolution_rate = ((total_links - len(broken_links)) / total_links * 100) if total_links > 0 else 100
+            
+            print(f"🔍 TICKET 3: Link validation complete - {resolution_rate:.1f}% resolved ({len(broken_links)} broken)")
+            
+            return {
+                "total_links": total_links,
+                "broken_links": broken_links,
+                "resolution_rate": resolution_rate,
+                "links_resolve": len(broken_links) == 0
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error validating cross-document links - {e}")
+            return {
+                "total_links": 0,
+                "broken_links": [],
+                "resolution_rate": 0,
+                "links_resolve": False,
+                "error": str(e)
+            }
 
     
     async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:

@@ -301,16 +301,11 @@ async def upload_asset(file: UploadFile = File(...)):
 @router.delete("/api/assets/{asset_id}")
 async def delete_asset(asset_id: str):
     """Delete asset file"""
-    import sys
-    import os
-    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
-    if backend_path not in sys.path:
-        sys.path.append(backend_path)
-    
-    from server import UPLOAD_DIR
-    
     try:
-        file_path = os.path.join(UPLOAD_DIR, asset_id)
+        # Use static directory from backend
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'static')
+        upload_dir = os.path.join(static_dir, 'uploads')
+        file_path = os.path.join(upload_dir, asset_id)
         
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Asset not found")

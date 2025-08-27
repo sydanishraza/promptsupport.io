@@ -60,8 +60,8 @@ class Complete17StagePipelineTester:
             # Check for all V2 pipeline features including versioning and review
             features = data.get("features", [])
             required_features = [
-                "v2_processing", "pipeline_orchestrator", "v2_analyzer", "v2_generator",
-                "v2_validation", "v2_publishing", "v2_versioning", "v2_review"
+                "multi_dimensional_analysis", "comprehensive_validation", "woolf_style_processing",
+                "version_management", "human_in_the_loop_review"
             ]
             
             missing_features = [f for f in required_features if f not in features]

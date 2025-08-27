@@ -32545,11 +32545,11 @@ async def process_toc_links():
                 structural_changes = [
                     "Applied TICKET 2 stable anchor system",
                     f"Generated {anchor_links_generated} TOC links",
-                    f"Anchor resolution: {'✅' if anchors_resolve else '❌'}"
+                    f"Anchor resolution: {'✅' if anchors_resolve_result else '❌'}"
                 ]
                 toc_broken_links = []  # Will be populated by anchors_resolve if needed
                 
-                print(f"🔧 TICKET 2: Processing results for '{article_title}' - {anchor_links_generated} links, anchors resolve: {anchors_resolve}")
+                print(f"🔧 TICKET 2: Processing results for '{article_title}' - {anchor_links_generated} links, anchors resolve: {anchors_resolve_result}")
                 
                 # Always update articles to ensure processing is applied (even if no changes detected)
                 update_result = await db.content_library.update_one(

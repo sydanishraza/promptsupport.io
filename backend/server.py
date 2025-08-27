@@ -3996,10 +3996,9 @@ Return the fully formatted article with improved clarity, structure, and clickab
             if code_fixed_result.get('changes_made'):
                 changes_applied.extend(code_fixed_result.get('changes', []))
             
-            # Apply clickable anchor processing last (to ensure IDs match TOC)
-            anchor_result = self._process_clickable_anchors(processed_content)
-            processed_content = anchor_result.get('content', processed_content)
-            changes_applied.extend(anchor_result.get('structural_changes', []))
+            # TICKET 2 FIX: Skip old anchor processing since TICKET 2 system handles this
+            # The _apply_stable_anchors_and_minitoc method will handle TOC generation
+            print("🔧 TICKET 2: Skipping old anchor processing - using TICKET 2 stable anchors system")
             
             print(f"✅ V2 STYLE: Post-processing complete - {len(changes_applied)} changes applied - engine=v2")
             

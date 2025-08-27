@@ -169,6 +169,7 @@ except ImportError as e:
         async def create_version(self, *args, **kwargs): return {}
     class V2ReviewSystem: 
         def create_review_request(self, *args, **kwargs): return {}
+        async def enqueue_for_review(self, *args, **kwargs): return {"review_id": "fallback", "review_status": "queued"}
     class V2ContentExtractor: 
         def extract_content(self, *args, **kwargs): return {}
     class V2MediaManager: 

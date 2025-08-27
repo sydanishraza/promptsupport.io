@@ -25333,7 +25333,7 @@ async def process_text_content_v2_pipeline(content: str, metadata: Dict[str, Any
         # Prepare existing V2 instances for pipeline integration
         existing_v2_instances = {
             'extractor': v2_content_extractor,
-            'analyzer': v2_analyzer,
+            'analyzer': get_v2_analyzer(),
             'global_planner': v2_global_planner,
             'per_article_planner': v2_per_article_outline_planner,
             'prewrite_system': v2_prewrite_system,

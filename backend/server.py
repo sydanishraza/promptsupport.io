@@ -67,7 +67,7 @@ try:
     from engine.stores.assets import save_bytes, save_file, read_file, get_asset_path, hash_bytes
     
     # KE-PR4: Import V2 engine classes
-    from engine.v2.analyzer import V2MultiDimensionalAnalyzer, v2_analyzer
+    from engine.v2.analyzer import V2MultiDimensionalAnalyzer, get_v2_analyzer
     from engine.v2.outline import V2GlobalOutlinePlanner, V2PerArticleOutlinePlanner
     from engine.v2.prewrite import V2PrewriteSystem
     from engine.v2.style import V2StyleProcessor

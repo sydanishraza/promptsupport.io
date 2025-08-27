@@ -307,3 +307,6 @@ Return your analysis in this JSON format:
             return '4-6 minutes'
         else:
             return '2-3 minutes'
+
+# Global analyzer instance
+v2_analyzer = V2MultiDimensionalAnalyzer()

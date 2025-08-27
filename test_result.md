@@ -223,7 +223,7 @@ backend:
     implemented: true
     working: false
     file: "engine/v2/pipeline.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "critical"
     needs_retesting: false
     status_history:

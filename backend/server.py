@@ -25307,13 +25307,44 @@ async def process_text_content_v2_pipeline(content: str, metadata: Dict[str, Any
         job_id = str(uuid.uuid4())
         print(f"🚀 KE-PR5: Starting V2 pipeline processing - job_id: {job_id} - {len(content)} chars")
         
-        # Get pipeline instance (will create if needed)
-        pipeline = get_pipeline()
+        # Prepare existing V2 instances for pipeline integration
+        existing_v2_instances = {
+            'analyzer': v2_analyzer,
+            'global_planner': v2_global_planner,
+            'per_article_planner': v2_per_article_outline_planner,
+            'prewrite_system': v2_prewrite_system,
+            'generator': v2_article_generator,
+            'style_processor': v2_style_processor,
+            'related_links': v2_related_links_system,
+            'gap_filling': v2_gap_filling_system,
+            'evidence_tagging': v2_evidence_tagging_system,
+            'code_norm': v2_code_normalization_system,
+            'validator': v2_validation_system,
+            'cross_qa': v2_cross_article_qa_system,
+            'adaptive_adjustment': v2_adaptive_adjustment_system,
+            'publisher': v2_publishing_system,
+            'versioning': v2_versioning_system,
+            'reviewer': v2_review_system
+        }
+        
+        # Get pipeline instance with existing V2 implementations
+        pipeline = get_pipeline(existing_v2_instances=existing_v2_instances)
         
         # Run the complete V2 pipeline
         articles, qa_report, version_id = await pipeline.run(job_id, content, metadata)
         
         print(f"✅ KE-PR5: V2 pipeline complete - {len(articles)} articles generated - version: {version_id}")
+        
+        # Store articles in content library (if not already stored by pipeline)
+        if articles:
+            try:
+                for article in articles:
+                    # Only store if not already in database
+                    if not await db.content_library.find_one({"id": article["id"]}):
+                        await db.content_library.insert_one(article)
+                        print(f"📚 KE-PR5: Stored article in content library - {article['title']}")
+            except Exception as storage_error:
+                print(f"⚠️ KE-PR5: Error storing articles in content library - {storage_error}")
         
         # Return articles in expected format
         return articles

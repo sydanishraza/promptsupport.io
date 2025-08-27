@@ -34766,6 +34766,132 @@ async def create_seed_articles():
             "error": str(e)
         }
 
+# ========================================
+# TICKET 3: UNIVERSAL BOOKMARKS & DURABLE LINKS API ENDPOINTS
+# ========================================
+
+@app.post("/api/ticket3/backfill-bookmarks")
+async def backfill_bookmarks(limit: int = None):
+    """TICKET 3: Backfill existing v2 articles with bookmark registry data"""
+    try:
+        v2_style_processor = V2StyleProcessor()
+        result = await v2_style_processor.backfill_bookmark_registry(limit)
+        
+        return {
+            "status": "success" if result["success"] else "failed",
+            "message": f"Backfilled {result['articles_processed']} articles",
+            "data": result
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Backfill failed: {str(e)}"
+        }
+
+@app.get("/api/ticket3/validate-links/{doc_uid}")
+async def validate_document_links(doc_uid: str):
+    """TICKET 3: Validate cross-document links for a specific document"""
+    try:
+        # Get document from content library
+        doc = await db.content_library.find_one({"doc_uid": doc_uid})
+        
+        if not doc:
+            return {
+                "status": "error",
+                "message": f"Document not found: {doc_uid}"
+            }
+        
+        v2_style_processor = V2StyleProcessor()
+        xrefs = doc.get("xrefs", [])
+        related_links = doc.get("related_links", [])
+        
+        validation_result = await v2_style_processor.validate_cross_document_links(
+            doc_uid, xrefs, related_links
+        )
+        
+        return {
+            "status": "success",
+            "doc_uid": doc_uid,
+            "title": doc.get("title", "Unknown"),
+            "validation": validation_result
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Link validation failed: {str(e)}"
+        }
+
+@app.get("/api/ticket3/build-link")
+async def build_cross_document_link(
+    target_doc_uid: str, 
+    anchor_id: str = None, 
+    environment: str = "content_library"
+):
+    """TICKET 3: Build environment-aware cross-document link"""
+    try:
+        # Get target document
+        target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+        
+        if not target_doc:
+            return {
+                "status": "error",
+                "message": f"Target document not found: {target_doc_uid}"
+            }
+        
+        v2_style_processor = V2StyleProcessor()
+        route_map = v2_style_processor.get_default_route_map(environment)
+        
+        # Build href
+        href = v2_style_processor.build_href(target_doc, anchor_id or "", route_map)
+        
+        return {
+            "status": "success",
+            "href": href,
+            "target_doc": {
+                "doc_uid": target_doc_uid,
+                "doc_slug": target_doc.get("doc_slug"),
+                "title": target_doc.get("title")
+            },
+            "anchor_id": anchor_id,
+            "environment": environment
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error", 
+            "message": f"Link building failed: {str(e)}"
+        }
+
+@app.get("/api/ticket3/document-registry/{doc_uid}")
+async def get_document_bookmark_registry(doc_uid: str):
+    """TICKET 3: Get bookmark registry for a specific document"""
+    try:
+        doc = await db.content_library.find_one({"doc_uid": doc_uid})
+        
+        if not doc:
+            return {
+                "status": "error",
+                "message": f"Document not found: {doc_uid}"
+            }
+        
+        return {
+            "status": "success",
+            "doc_uid": doc_uid,
+            "doc_slug": doc.get("doc_slug"),
+            "title": doc.get("title"),
+            "headings": doc.get("headings", []),
+            "xrefs": doc.get("xrefs", []),
+            "related_links": doc.get("related_links", []),
+            "bookmark_count": len(doc.get("headings", []))
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Registry retrieval failed: {str(e)}"
+        }
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -4870,28 +4870,6 @@ Return the fully formatted article with improved clarity, structure, and clickab
     # TICKET 3: UNIVERSAL BOOKMARKS & DURABLE LINKS METHODS  
     # ========================================
     
-    def extract_headings_registry(self, html: str) -> list:
-        """TICKET 3: Extract headings for bookmark registry"""
-        from bs4 import BeautifulSoup
-        
-        soup = BeautifulSoup(html, 'html.parser')
-        headings = []
-        order = 1
-        
-        for heading in soup.select("h2, h3, h4"):
-            if heading.get("id"):
-                headings.append({
-                    "id": heading.get("id"),
-                    "text": heading.get_text(" ", strip=True),
-                    "level": int(heading.name[1]),
-                    "order": order
-                })
-                order += 1
-                print(f"📖 TICKET 3: Registered bookmark #{order-1}: '{heading.name}#{heading.get('id')}' - '{heading.get_text()[:50]}...'")
-        
-        print(f"📖 TICKET 3: Extracted {len(headings)} headings for bookmark registry")
-        return headings
-    
     def generate_doc_uid(self) -> str:
         """TICKET 3: Generate immutable document UID using ULID"""
         import time

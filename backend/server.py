@@ -30943,7 +30943,7 @@ Source Information:
                 "type": "url_processing"
             }
             
-            chunks = await process_text_content_v2(enriched_content, enhanced_metadata)
+            chunks = await process_text_content_v2_pipeline(enriched_content, enhanced_metadata)
         
         # Update job
         job.chunks = chunks

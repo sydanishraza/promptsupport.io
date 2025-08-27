@@ -3958,15 +3958,13 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 list_fixed_content = self._fix_list_types(h1_cleaned_content)
                 
                 # Fix code block rendering issues
-                code_fixed_content = self._fix_code_block_rendering(list_fixed_content)
+                final_content = self._fix_code_block_rendering(list_fixed_content)
                 
-                # Apply clickable anchor processing to Mini-TOC
-                anchor_result = self._process_clickable_anchors(code_fixed_content)
-                final_content = anchor_result.get('content', code_fixed_content)
+                # Note: Mini-TOC processing now handled by TICKET 2 system in _apply_stable_anchors_and_minitoc
+                # This ensures consistent ID generation and proper link coordination
                 
                 # Analyze what changes were made
                 structural_changes = self._analyze_style_changes(article_content, final_content)
-                structural_changes.extend(anchor_result.get('structural_changes', []))
                 
                 print(f"✅ V2 STYLE: LLM style formatting applied - {len(structural_changes)} changes made - engine=v2")
                 

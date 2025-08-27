@@ -14,7 +14,29 @@
 # Main and testing agents must follow this exact format to maintain testing data. 
 # The testing data must be entered in yaml format Below is the data structure:
 # 
-## user_problem_statement: V2 Engine Step 11 Implementation - Publishing Flow (V2 only)
+# UPDATE FROM MAIN AGENT - TICKET 2 & 3 INTEGRATION CLEANUP
+
+## CHANGES MADE (Latest):
+1. **Consolidated TOC Systems**: Removed old `_process_clickable_anchors` method that was causing ID coordination conflicts
+2. **Fixed Processing Pipeline**: Updated LLM style formatting to use only TICKET 2 system via `_apply_stable_anchors_and_minitoc`
+3. **Updated TOC Processing Endpoint**: Replaced old anchor processing with TICKET 2 stable anchors system 
+4. **Cleaned Up Duplicate Methods**: Removed duplicate `extract_headings_registry` from V2StyleProcessor
+5. **Fixed Method References**: Updated `_apply_bookmark_registry` to use V2ValidationSystem method
+
+## EXPECTED RESULTS:
+- TOC links should now use consistent ID format with headings (descriptive slugs)
+- No more conflict between section-style IDs and descriptive IDs  
+- TICKET 2 and TICKET 3 should work together seamlessly
+- Related links system should integrate with bookmark registry
+
+## TEST FOCUS:
+1. **ID Coordination**: Verify TOC links match heading IDs (>80% success rate target)
+2. **Mini-TOC Functionality**: Test clickable navigation works end-to-end
+3. **TICKET 3 Integration**: Test bookmark registry and universal links
+4. **System Integration**: Verify both tickets work together without conflicts
+
+Ready for backend testing agent to verify the integrated system.
+
 
 IMPLEMENTATION SUMMARY:
 Successfully implemented Step 11 of the V2 Engine plan: "Publishing Flow (V2 only)". This step adds comprehensive V2-only publishing system to persist finalized V2 content as the single source of truth with complete coverage verification and comprehensive metadata.

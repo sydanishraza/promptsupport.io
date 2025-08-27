@@ -486,9 +486,9 @@ class Pipeline:
 # Global pipeline instance (will be initialized when imported)
 pipeline_instance = None
 
-def get_pipeline(llm_client=None) -> Pipeline:
+def get_pipeline(llm_client=None, existing_v2_instances=None) -> Pipeline:
     """Get or create the global pipeline instance"""
     global pipeline_instance
     if pipeline_instance is None:
-        pipeline_instance = Pipeline(llm_client)
+        pipeline_instance = Pipeline(llm_client, existing_v2_instances)
     return pipeline_instance

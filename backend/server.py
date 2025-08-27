@@ -3799,6 +3799,14 @@ class V2StyleProcessor:
             formatted_result['heading_ladder_valid'] = stable_anchors_result['heading_ladder_valid']
             formatted_result['anchors_resolve'] = stable_anchors_result['anchors_resolve']
             
+            # TICKET 3: Extract headings for bookmark registry
+            bookmark_registry_result = self._apply_bookmark_registry(
+                formatted_result['formatted_content'], article_title
+            )
+            formatted_result['headings_registry'] = bookmark_registry_result['headings']
+            formatted_result['doc_uid'] = bookmark_registry_result['doc_uid']
+            formatted_result['doc_slug'] = bookmark_registry_result['doc_slug']
+            
             # Validate structural compliance
             compliance_result = self._validate_structural_compliance(
                 formatted_result.get('formatted_content', ''), article_title

@@ -9,7 +9,7 @@ def stage_log(stage_name: str):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             start = time.time()
-            job_id = kwargs.get("job_id") or getattr(args[0], "job_id", None) or "-"
+            job_id = kwargs.get("job_id") or (getattr(args[0], "job_id", None) if args else None) or "-"
             logger.info({"event":"stage_start","stage":stage_name,"job_id":job_id})
             out = fn(*args, **kwargs)
             dur = int((time.time()-start)*1000)

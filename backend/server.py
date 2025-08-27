@@ -17591,6 +17591,9 @@ mongo_client = None
 db = None
 content_library_collection = None
 
+# V2 QA Results collection for KE-PR7
+qa_results_collection = None
+
 # Global LLM client instance (KE-PR6)
 llm_client = None
 

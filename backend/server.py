@@ -3974,8 +3974,8 @@ Return the fully formatted article with improved clarity, structure, and clickab
                     "structural_changes": structural_changes,
                     "original_length": len(article_content),
                     "formatted_length": len(final_content),
-                    "toc_broken_links": anchor_result.get('toc_broken_links', []),
-                    "anchor_links_generated": anchor_result.get('anchor_links_generated', 0)
+                    "toc_broken_links": [],
+                    "anchor_links_generated": 0
                 }
                 
             except Exception as llm_error:

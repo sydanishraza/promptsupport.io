@@ -105,9 +105,9 @@ def test_legacy_media_import():
     print("🧪 Testing legacy media import...")
     
     try:
-        from engine.media.legacy import MediaIntelligenceService as LegacyService
+        from engine.media.legacy import LegacyMediaIntelligenceService
         
-        legacy_service = LegacyService()
+        legacy_service = LegacyMediaIntelligenceService()
         if hasattr(legacy_service, 'analyze_media_comprehensive'):
             print("  ✅ Legacy media service available")
         else:

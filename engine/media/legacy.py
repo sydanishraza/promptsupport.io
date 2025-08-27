@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 
 
-class MediaIntelligenceService:
+class LegacyMediaIntelligenceService:
     """
     Intelligent Media Processing Service using LLM + Vision models
     """
@@ -565,4 +565,4 @@ class MediaIntelligenceService:
 
 
 # Global instance
-media_intelligence = MediaIntelligenceService()
+media_intelligence = LegacyMediaIntelligenceService()

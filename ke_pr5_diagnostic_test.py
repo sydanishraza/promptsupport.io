@@ -527,8 +527,8 @@ class KE_PR5_DiagnosticTester:
             missing_method_errors = stage_status.get('missing_method_errors', [])
             
             if attribute_errors:
-                print(f"\n❌ ATTRIBUTE ERRORS DETECTED ({len(stage_status['attribute_errors'])}):")
-                for error in stage_status['attribute_errors']:
+                print(f"\n❌ ATTRIBUTE ERRORS DETECTED ({len(attribute_errors)}):")
+                for error in attribute_errors:
                     print(f"   • Stage: {error['stage']}")
                     print(f"     Error: {error['error']}")
                     print(f"     Severity: {error['severity']}")

@@ -368,7 +368,13 @@ async def get_asset(asset_id: str):
 @router.get("/api/engine")
 async def get_engine_status():
     """V2 Engine status with QA summaries"""
-    from backend.server import get_recent_qa_summaries
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import get_recent_qa_summaries
     
     try:
         # Get QA summaries

@@ -308,5 +308,15 @@ Return your analysis in this JSON format:
         else:
             return '2-3 minutes'
 
-# Global analyzer instance
-v2_analyzer = V2MultiDimensionalAnalyzer()
+# Global analyzer instance - lazy initialization
+_v2_analyzer_instance = None
+
+def get_v2_analyzer():
+    """Get or create global V2 analyzer instance"""
+    global _v2_analyzer_instance
+    if _v2_analyzer_instance is None:
+        _v2_analyzer_instance = V2MultiDimensionalAnalyzer()
+    return _v2_analyzer_instance
+
+# For backward compatibility
+v2_analyzer = None  # Will be initialized when first accessed

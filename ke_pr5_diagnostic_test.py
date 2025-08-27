@@ -523,7 +523,10 @@ class KE_PR5_DiagnosticTester:
             completion_rate = stage_status.get('completion_rate', 0)
             print(f"   Stages Completed: {stages_completed}/17 ({completion_rate:.1f}%)")
             
-            if stage_status['attribute_errors']:
+            attribute_errors = stage_status.get('attribute_errors', [])
+            missing_method_errors = stage_status.get('missing_method_errors', [])
+            
+            if attribute_errors:
                 print(f"\n❌ ATTRIBUTE ERRORS DETECTED ({len(stage_status['attribute_errors'])}):")
                 for error in stage_status['attribute_errors']:
                     print(f"   • Stage: {error['stage']}")

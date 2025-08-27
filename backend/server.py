@@ -34892,6 +34892,7 @@ async def build_cross_document_link(
     environment: str = "content_library"
 ):
     """TICKET 3: Build environment-aware cross-document link"""
+    # KE-PR2: Use extracted linking modules
     try:
         # Get target document
         target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
@@ -34902,11 +34903,10 @@ async def build_cross_document_link(
                 "message": f"Target document not found: {target_doc_uid}"
             }
         
-        v2_style_processor = V2StyleProcessor()
-        route_map = v2_style_processor.get_default_route_map(environment)
+        route_map = get_default_route_map(environment)
         
         # Build href
-        href = v2_style_processor.build_href(target_doc, anchor_id or "", route_map)
+        href = build_href(target_doc, anchor_id or "", route_map)
         
         return {
             "status": "success",

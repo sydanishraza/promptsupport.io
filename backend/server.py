@@ -276,6 +276,45 @@ async def regenerate_articles_with_enhanced_context(extracted_content: dict, con
             html_content = await generate_enhanced_html_content(article_data, template_data)
             markdown_content = await generate_enhanced_markdown_content(article_data, template_data)
             
+            # TICKET 3: Generate universal bookmark and link data
+            # Generate document identifiers
+            import time
+            import random
+            import string
+            import re
+            import unicodedata
+            
+            # Generate doc_uid (ULID-style)
+            timestamp = int(time.time() * 1000)  # milliseconds
+            random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+            timestamp_b36 = format(timestamp, 'x').upper()[-8:]  # Last 8 chars of hex timestamp
+            doc_uid = f"01JZ{timestamp_b36}{random_part[:8]}"
+            
+            # Generate doc_slug from title
+            article_title = f"Article {i+1} From {training_session['filename']}" if not article_data['title'] else article_data['title']
+            norm = unicodedata.normalize("NFKD", article_title).encode("ascii", "ignore").decode("ascii")
+            doc_slug = re.sub(r"\s+", "-", norm.lower())
+            doc_slug = re.sub(r"[^a-z0-9-]", "", doc_slug)
+            doc_slug = re.sub(r"-{2,}", "-", doc_slug).strip("-")[:50]  # Limit length
+            
+            # Extract headings registry from HTML content
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html_content, 'html.parser')
+            headings_registry = []
+            for heading in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+                if heading.get_text(strip=True):
+                    # Generate anchor ID
+                    heading_text = heading.get_text(strip=True)
+                    anchor_id = re.sub(r'[^a-zA-Z0-9\s-]', '', heading_text).strip()
+                    anchor_id = re.sub(r'\s+', '-', anchor_id).lower()[:50]
+                    
+                    headings_registry.append({
+                        'level': int(heading.name[1]),
+                        'text': heading_text,
+                        'anchor': anchor_id,
+                        'id': f"{doc_uid}#{anchor_id}"
+                    })
+            
             # Create media array with placement info
             media_array = []
             for img in article_data['images']:
@@ -289,10 +328,16 @@ async def regenerate_articles_with_enhanced_context(extracted_content: dict, con
             
             article = {
                 "id": str(uuid.uuid4()),
-                "title": f"Article {i+1} From {training_session['filename']}" if not article_data['title'] else article_data['title'],
+                "title": article_title,
                 "html": html_content,
                 "markdown": markdown_content,
                 "content": html_content,  # For backward compatibility
+                # TICKET 3: Universal bookmark and link data
+                "doc_uid": doc_uid,
+                "doc_slug": doc_slug,
+                "headings_registry": headings_registry,
+                "xrefs": article_data.get('xrefs', []),
+                "related_links": article_data.get('related_links', []),
                 "media": media_array,
                 "tags": ["extracted", "generated", "enhanced"],
                 "status": "training",

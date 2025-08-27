@@ -8019,80 +8019,14 @@ class V2ValidationSystem:
             "require_structured_headings": True
         }
     
+    # KE-PR2: Use extracted linking modules instead of inline methods
     def stable_slug(self, text: str, max_len: int = 60) -> str:
-        """TICKET 2: Generate deterministic, URL-safe slugs from heading text"""
-        import re, unicodedata
-        
-        # Normalize unicode characters to ASCII
-        norm = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-        
-        # Convert to lowercase and replace spaces with hyphens
-        s = re.sub(r"\s+", "-", norm.lower())
-        
-        # Remove non-alphanumeric characters except hyphens
-        s = re.sub(r"[^a-z0-9-]", "", s)
-        
-        # Replace multiple consecutive hyphens with single hyphen
-        s = re.sub(r"-{2,}", "-", s).strip("-")
-        
-        # Truncate to max length and provide fallback
-        return s[:max_len] if s else "section"
+        """TICKET 2: Generate deterministic, URL-safe slugs - delegated to engine.linking.anchors"""
+        return stable_slug(text, max_len)
     
     def assign_heading_ids(self, html: str) -> str:
-        """TICKET 2: Assign deterministic IDs to headings before TOC generation"""
-        from bs4 import BeautifulSoup
-        
-        soup = BeautifulSoup(html, 'html.parser')
-        seen_slugs = {}
-        assigned_count = 0
-        
-        # TICKET 2: Clean up duplicate content and headings before processing TOC
-        # Remove duplicate H2 headings that repeat the article title or main topic
-        article_title_words = set()
-        for heading in soup.select("h2, h3, h4"):
-            heading_text = heading.get_text(" ", strip=True).lower()
-            
-            # Remove headings that are just repetitions of the article topic
-            # Look for headings like "Using Google Map Javascript API" when article is about Google Maps
-            if len(heading_text.split()) <= 6:  # Short headings are more likely to be duplicates
-                # Check for simple repetition patterns
-                words = heading_text.split()
-                if len(words) <= 4 and any(word in article_title_words for word in words):
-                    # Skip this check for now, need to be more careful
-                    pass
-                    
-                # Remove specific pattern: heading that matches the first bullet point
-                first_toc_item = soup.find('ul')
-                if first_toc_item:
-                    first_item = first_toc_item.find('li')
-                    if first_item and heading_text == first_item.get_text(strip=True).lower():
-                        print(f"🗑️ TICKET 2: Removing duplicate heading: '{heading_text[:30]}...'")
-                        heading.decompose()
-                        continue
-        
-        # Process H2 and H3 headings in document order
-        for heading in soup.select("h2, h3, h4"):
-            if not heading.get("id"):
-                # Generate base slug from heading text
-                heading_text = heading.get_text(" ", strip=True)
-                base_slug = self.stable_slug(heading_text)
-                
-                # Handle duplicates with suffixes
-                slug = base_slug
-                counter = 2
-                while slug in seen_slugs:
-                    slug = f"{base_slug}-{counter}"
-                    counter += 1
-                
-                # Assign the unique slug
-                seen_slugs[slug] = True
-                heading["id"] = slug
-                assigned_count += 1
-                
-                print(f"📌 TICKET 2: Assigned ID '{slug}' to {heading.name}: '{heading_text[:50]}...'")
-        
-        print(f"📌 TICKET 2: Assigned {assigned_count} heading IDs")
-        return str(soup)
+        """TICKET 2: Assign deterministic IDs to headings - delegated to engine.linking.anchors"""
+        return assign_heading_ids(html)
     
     def validate_heading_ladder(self, html: str) -> bool:
         """TICKET 2: Validate proper heading hierarchy (H2->H3->H4)"""

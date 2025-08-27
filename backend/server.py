@@ -4867,6 +4867,366 @@ Return the fully formatted article with improved clarity, structure, and clickab
                 "anchors_resolve": False,
                 "stable_anchors_applied": False
             }
+    
+    # ========================================
+    # TICKET 3: UNIVERSAL BOOKMARKS & DURABLE LINKS METHODS
+    # ========================================
+    
+    def extract_headings_registry(self, html: str) -> list:
+        """TICKET 3: Extract headings for bookmark registry"""
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        headings = []
+        order = 1
+        
+        for heading in soup.select("h2, h3, h4"):
+            if heading.get("id"):
+                headings.append({
+                    "id": heading.get("id"),
+                    "text": heading.get_text(" ", strip=True),
+                    "level": int(heading.name[1]),
+                    "order": order
+                })
+                order += 1
+                print(f"📖 TICKET 3: Registered bookmark #{order-1}: '{heading.name}#{heading.get('id')}' - '{heading.get_text()[:50]}...'")
+        
+        print(f"📖 TICKET 3: Extracted {len(headings)} headings for bookmark registry")
+        return headings
+    
+    def generate_doc_uid(self) -> str:
+        """TICKET 3: Generate immutable document UID using ULID"""
+        import time
+        import random
+        import string
+        
+        # Simple ULID-like implementation (timestamp + randomness)
+        timestamp = int(time.time() * 1000)  # milliseconds since epoch
+        random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+        
+        # Convert timestamp to base36 and take last 8 chars for compactness
+        timestamp_b36 = format(timestamp, 'x').upper()[-8:]
+        doc_uid = f"01JZ{timestamp_b36}{random_part[:8]}"
+        
+        print(f"🆔 TICKET 3: Generated doc_uid: '{doc_uid}'")
+        return doc_uid
+    
+    def generate_doc_slug(self, title: str) -> str:
+        """TICKET 3: Generate human-readable document slug from title"""
+        import re
+        import unicodedata
+        
+        if not title:
+            return "untitled-document"
+        
+        # Normalize unicode and convert to ASCII
+        normalized = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii")
+        
+        # Convert to lowercase and replace spaces with hyphens
+        slug = re.sub(r"\s+", "-", normalized.lower())
+        
+        # Remove non-alphanumeric characters except hyphens
+        slug = re.sub(r"[^a-z0-9-]", "", slug)
+        
+        # Remove multiple consecutive hyphens and trim
+        slug = re.sub(r"-{2,}", "-", slug).strip("-")
+        
+        # Limit length for document slugs
+        doc_slug = slug[:80] if slug else "untitled-document"
+        
+        print(f"🏷️ TICKET 3: Generated doc_slug: '{doc_slug}' from title: '{title[:50]}...'")
+        return doc_slug
+    
+    def build_href(self, target_doc: dict, anchor_id: str, route_map: dict) -> str:
+        """TICKET 3: Build environment-aware href for cross-document links"""
+        try:
+            base_url = route_map.get("baseUrl", "").rstrip("/")
+            routes = route_map.get("routes", {})
+            prefer = route_map.get("prefer", "slug")
+            
+            # Choose route based on preference and availability
+            if prefer == "slug" and target_doc.get("doc_slug"):
+                route_template = routes.get("articleBySlug", "/articles/:slug")
+                path = route_template.replace(":slug", target_doc["doc_slug"])
+            else:
+                route_template = routes.get("articleByUid", "/library/:uid")
+                path = route_template.replace(":uid", target_doc["doc_uid"])
+            
+            # Build full href
+            if anchor_id:
+                href = f"{base_url}{path}#{anchor_id}"
+            else:
+                href = f"{base_url}{path}"
+            
+            print(f"🔗 TICKET 3: Built href: '{href}' for doc {target_doc.get('doc_uid', 'unknown')}")
+            return href
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error building href - {e}")
+            # Fallback to basic format
+            doc_uid = target_doc.get("doc_uid", "unknown")
+            if anchor_id:
+                return f"/library/{doc_uid}#{anchor_id}"
+            else:
+                return f"/library/{doc_uid}"
+    
+    def get_default_route_map(self, environment: str) -> dict:
+        """TICKET 3: Get default route map for different environments"""
+        route_maps = {
+            "content_library": {
+                "env": "content_library",
+                "baseUrl": "https://content-formatter.preview.emergentagent.com",
+                "routes": {
+                    "articleByUid": "/content-library/article/:uid",
+                    "articleBySlug": "/content-library/:slug"
+                },
+                "prefer": "uid"
+            },
+            "production": {
+                "env": "production",
+                "baseUrl": "https://help.example.com",
+                "routes": {
+                    "articleByUid": "/library/:uid",
+                    "articleBySlug": "/library/articles/:slug"
+                },
+                "prefer": "uid"
+            },
+            "knowledge_base": {
+                "env": "knowledge_base", 
+                "baseUrl": "https://kb.example.com",
+                "routes": {
+                    "articleByUid": "/library/:uid",
+                    "articleBySlug": "/articles/:slug"
+                },
+                "prefer": "slug"
+            },
+            "dev_docs": {
+                "env": "dev_docs",
+                "baseUrl": "https://docs.example.com", 
+                "routes": {
+                    "articleByUid": "/docs/:uid",
+                    "articleBySlug": "/docs/:slug"
+                },
+                "prefer": "slug"
+            }
+        }
+        
+        return route_maps.get(environment, route_maps["content_library"])
+    
+    async def backfill_bookmark_registry(self, limit: int = None) -> dict:
+        """TICKET 3: Backfill existing v2 articles with bookmark registry data"""
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            import os
+            
+            mongo_url = os.environ.get('MONGO_URL')
+            client = AsyncIOMotorClient(mongo_url)
+            db = client.promptsupport
+            
+            print(f"🔄 TICKET 3: Starting bookmark registry backfill for existing v2 articles")
+            
+            # Find v2 articles that need backfilling (missing doc_uid or headings)
+            query = {
+                "$or": [
+                    {"metadata.engine": "v2", "doc_uid": {"$exists": False}},
+                    {"metadata.engine": "v2", "headings": {"$exists": False}},
+                    {"metadata.engine": "v2", "headings": []}  # Empty headings array
+                ]
+            }
+            
+            if limit:
+                articles_cursor = db.content_library.find(query).limit(limit)
+            else:
+                articles_cursor = db.content_library.find(query)
+            
+            articles = await articles_cursor.to_list(None)
+            total_articles = len(articles)
+            
+            if total_articles == 0:
+                print("✅ TICKET 3: No articles need backfilling")
+                return {"articles_processed": 0, "success": True}
+            
+            processed_count = 0
+            error_count = 0
+            
+            for article in articles:
+                try:
+                    article_id = article.get("_id")
+                    title = article.get("title", "Untitled")
+                    
+                    # Generate missing TICKET 3 fields
+                    updates = {}
+                    
+                    if not article.get("doc_uid"):
+                        updates["doc_uid"] = self.generate_doc_uid()
+                    
+                    if not article.get("doc_slug"):
+                        updates["doc_slug"] = self.generate_doc_slug(title)
+                    
+                    # Extract headings registry from content
+                    content = article.get("content", "") or article.get("html", "")
+                    if content and not article.get("headings"):
+                        headings_registry = self.extract_headings_registry(content)
+                        updates["headings"] = headings_registry
+                    
+                    # Initialize empty arrays if missing
+                    if not article.get("xrefs"):
+                        updates["xrefs"] = []
+                    
+                    if not article.get("related_links"):
+                        updates["related_links"] = []
+                    
+                    # Update article in database
+                    if updates:
+                        await db.content_library.update_one(
+                            {"_id": article_id},
+                            {"$set": updates}
+                        )
+                        processed_count += 1
+                        print(f"✅ TICKET 3: Backfilled article '{title[:50]}...' with {len(updates)} fields")
+                    
+                except Exception as e:
+                    error_count += 1
+                    print(f"❌ TICKET 3: Error backfilling article {article.get('title', 'Unknown')}: {e}")
+            
+            print(f"🎉 TICKET 3: Backfill complete - {processed_count} articles processed, {error_count} errors")
+            
+            return {
+                "articles_processed": processed_count,
+                "errors": error_count,
+                "success": error_count == 0
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Backfill failed - {e}")
+            return {"articles_processed": 0, "errors": 1, "success": False}
+    
+    async def validate_cross_document_links(self, doc_uid: str, xrefs: list, related_links: list) -> dict:
+        """TICKET 3: Validate that cross-document links resolve properly"""
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            import os
+            
+            mongo_url = os.environ.get('MONGO_URL')
+            client = AsyncIOMotorClient(mongo_url)
+            db = client.promptsupport
+            
+            print(f"🔍 TICKET 3: Validating cross-document links for {doc_uid}")
+            
+            all_links = xrefs + related_links
+            validation_results = []
+            
+            for link in all_links:
+                try:
+                    # Parse link format: doc_uid#anchor_id
+                    if "#" in link:
+                        target_doc_uid, anchor_id = link.split("#", 1)
+                    else:
+                        target_doc_uid = link
+                        anchor_id = None
+                    
+                    # Check if target document exists
+                    target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+                    
+                    if not target_doc:
+                        validation_results.append({
+                            "link": link,
+                            "valid": False,
+                            "reason": f"Target document not found: {target_doc_uid}"
+                        })
+                        continue
+                    
+                    # If anchor specified, check if it exists in target document
+                    if anchor_id:
+                        headings = target_doc.get("headings", [])
+                        anchor_exists = any(h.get("id") == anchor_id for h in headings)
+                        
+                        if not anchor_exists:
+                            validation_results.append({
+                                "link": link,
+                                "valid": False,
+                                "reason": f"Anchor not found: {anchor_id}"
+                            })
+                            continue
+                    
+                    # Link is valid
+                    validation_results.append({
+                        "link": link,
+                        "valid": True,
+                        "reason": "Link resolves correctly"
+                    })
+                    
+                except Exception as e:
+                    validation_results.append({
+                        "link": link,
+                        "valid": False,
+                        "reason": f"Validation error: {str(e)}"
+                    })
+            
+            # Summary
+            valid_count = sum(1 for r in validation_results if r["valid"])
+            total_count = len(validation_results)
+            
+            print(f"✅ TICKET 3: Validation complete - {valid_count}/{total_count} links valid")
+            
+            return {
+                "doc_uid": doc_uid,
+                "validation_results": validation_results,
+                "summary": {
+                    "total_links": total_count,
+                    "valid_links": valid_count,
+                    "invalid_links": total_count - valid_count,
+                    "success_rate": valid_count / total_count if total_count > 0 else 1.0
+                }
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Link validation failed - {e}")
+            return {
+                "doc_uid": doc_uid,
+                "validation_results": [],
+                "summary": {"total_links": 0, "valid_links": 0, "invalid_links": 0, "success_rate": 0.0}
+            }
+    
+    def _apply_bookmark_registry(self, content: str, article_title: str) -> dict:
+        """TICKET 3: Apply bookmark registry extraction for universal links"""
+        try:
+            print(f"📖 TICKET 3: Applying bookmark registry extraction for '{article_title[:50]}...'")
+            
+            # Generate document identifiers
+            doc_uid = self.generate_doc_uid()
+            doc_slug = self.generate_doc_slug(article_title)
+            
+            # Extract headings registry from content
+            headings = self.extract_headings_registry(content)
+            
+            # Update headings with full TICKET 3 IDs (doc_uid#anchor)
+            for heading in headings:
+                heading["id"] = f"{doc_uid}#{heading['id']}"
+            
+            print(f"📖 TICKET 3: Bookmark registry applied - doc_uid: {doc_uid}, headings: {len(headings)}")
+            
+            return {
+                'content': content,  # Content unchanged for now
+                'doc_uid': doc_uid,
+                'doc_slug': doc_slug,
+                'headings': headings,
+                'xrefs': [],  # Initialize empty, will be populated by cross-reference system
+                'related_links': [],  # Initialize empty, will be populated by related links system
+                'changes_applied': [f"Extracted {len(headings)} bookmarks", f"Generated doc_uid: {doc_uid}", f"Generated doc_slug: {doc_slug}"]
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error applying bookmark registry - {e}")
+            return {
+                'content': content,
+                'doc_uid': None,
+                'doc_slug': None,
+                'headings': [],
+                'xrefs': [],
+                'related_links': [],
+                'changes_applied': [f"TICKET 3 error: {str(e)}"]
+            }
 
 # Global V2 Style Processor instance
 v2_style_processor = V2StyleProcessor()

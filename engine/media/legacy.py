@@ -176,7 +176,7 @@ class MediaIntelligenceService:
                 return self._parse_text_response(ai_response, 'image', format_type, alt_text)
         else:
             print(f"❌ OpenAI Vision API error: {response.status_code} - {response.text}")
-            return self._create_intelligent_fallback_analysis(alt_text, 'image', format_type, context)
+            return self._create_fallback_analysis(alt_text, 'image', format_type)
     
     async def _analyze_video(self, base64_data: str, alt_text: str, 
                            context: str, format_type: str) -> Dict[str, Any]:

@@ -31016,7 +31016,7 @@ async def process_recording(
             content = f"Video recording processed: {title} (Duration: {duration}s)\n\nThis video content has been analyzed and key information extracted."
         
         # V2 PROCESSING: Process the content with V2 engine
-        chunks = await process_text_content_v2(content, {**recording_metadata, "recording_type": recording_type, "duration": duration})
+        chunks = await process_text_content_v2_pipeline(content, {**recording_metadata, "recording_type": recording_type, "duration": duration})
         
         # Update job
         job.chunks = chunks

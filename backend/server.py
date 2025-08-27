@@ -14773,9 +14773,9 @@ class DocumentPreprocessor:
                     has_required = any(req in zip_contents for req in required_files)
                     if not has_required:
                         print(f"⚠️ File appears to be text content with .docx extension, treating as text")
-                        # Read as text file and convert to basic HTML
-                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                            text_content = f.read()
+                        # KE-PR3: Read as text file using assets store
+                        file_bytes = read_file(file_path)
+                        text_content = file_bytes.decode('utf-8', errors='ignore')
                         
                         # Convert text to basic HTML structure
                         html_content = self._convert_text_to_basic_html(text_content)

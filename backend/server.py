@@ -25409,7 +25409,7 @@ async def process_text_content_v2_pipeline(content: str, metadata: Dict[str, Any
             'reviewer': v2_review_system
         }
         
-        # Get pipeline instance with existing V2 implementations
+        # Get pipeline instance with existing V2 implementations (always pass instances)
         pipeline = get_pipeline(existing_v2_instances=existing_v2_instances)
         
         # Run the complete V2 pipeline

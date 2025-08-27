@@ -10791,6 +10791,25 @@ class V2PublishingSystem:
         try:
             print(f"📚 V2 PUBLISHING: Starting V2-only content publishing - run {run_id} - engine=v2")
             
+            # KE-PR7: Check publish gate for P0 issues
+            qa_report = validation_result.get('qa_report')
+            if qa_report:
+                # Import publish gate function
+                try:
+                    from app.engine.v2.validators import is_publishable
+                    
+                    is_pub, pub_message = is_publishable(qa_report)
+                    if not is_pub:
+                        print(f"🚫 V2 PUBLISHING: Publishing blocked - {pub_message} - run {run_id} - engine=v2")
+                        return self._create_publishing_result("blocked", run_id, {
+                            "block_reason": pub_message,
+                            "qa_issues": len(qa_report.flags),
+                            "p0_flags": len([f for f in qa_report.flags if f.severity == "P0"]),
+                            "coverage_percent": qa_report.coverage_percent
+                        })
+                except ImportError as e:
+                    print(f"⚠️ V2 PUBLISHING: Could not import publish gate - {e} - run {run_id} - engine=v2")
+            
             if not articles:
                 print(f"⚠️ V2 PUBLISHING: No articles to publish - run {run_id} - engine=v2")
                 return self._create_publishing_result("no_articles", run_id, {"article_count": 0})

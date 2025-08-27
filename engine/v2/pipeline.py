@@ -339,9 +339,21 @@ class Pipeline:
         """Stage 12: Validation"""
         print(f"🔍 KE-PR5: Stage 12 - Comprehensive validation")
         
-        validation_result = await self.validator.validate_generated_articles(
-            normalized_doc, generated_articles, analysis, run_id
-        )
+        # Use new validators module function-based approach
+        qa_report = run_validators(normalized_doc)
+        
+        # Convert QAReport to validation result format for compatibility
+        validation_result = {
+            'validation_status': 'passed' if qa_report.coverage_percent >= 70.0 and len([f for f in qa_report.flags if f.severity == "P0"]) == 0 else 'issues_found',
+            'qa_report': qa_report,
+            'coverage_percent': qa_report.coverage_percent,
+            'total_flags': len(qa_report.flags),
+            'p0_flags': len([f for f in qa_report.flags if f.severity == "P0"]),
+            'p1_flags': len([f for f in qa_report.flags if f.severity == "P1"]),
+            'broken_links': qa_report.broken_links,
+            'missing_media': qa_report.missing_media,
+            'run_id': run_id
+        }
         
         status = validation_result.get('validation_status', 'unknown')
         print(f"✅ KE-PR5: Stage 12 complete - validation status: {status}")

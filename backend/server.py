@@ -7845,6 +7845,61 @@ class V2ValidationSystem:
         toc_links = soup.select('.mini-toc a[href^="#"]')
         print(f"✅ TICKET 2: All {len(toc_links)} anchor links resolve correctly")
         return True
+    
+    def extract_headings_registry(self, html: str) -> list:
+        """TICKET 3: Extract headings for bookmark registry"""
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        headings = []
+        order = 1
+        
+        for heading in soup.select("h2, h3, h4"):
+            if heading.get("id"):
+                headings.append({
+                    "id": heading.get("id"),
+                    "text": heading.get_text(" ", strip=True),
+                    "level": int(heading.name[1]),
+                    "order": order
+                })
+                order += 1
+                print(f"📖 TICKET 3: Registered bookmark #{order-1}: '{heading.name}#{heading.get('id')}' - '{heading.get_text()[:50]}...'")
+        
+        print(f"📖 TICKET 3: Extracted {len(headings)} headings for bookmark registry")
+        return headings
+    
+    def generate_doc_uid(self) -> str:
+        """TICKET 3: Generate immutable document UID using ULID"""
+        import time
+        import random
+        import string
+        
+        # Simple ULID-like implementation (timestamp + randomness)
+        timestamp = int(time.time() * 1000)  # milliseconds
+        random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+        
+        # Format: 01JZ + timestamp_base36 + random
+        timestamp_b36 = format(timestamp, 'x').upper()[-8:]  # Last 8 chars of hex timestamp
+        doc_uid = f"01JZ{timestamp_b36}{random_part[:8]}"
+        
+        print(f"🆔 TICKET 3: Generated doc_uid: {doc_uid}")
+        return doc_uid
+    
+    def generate_doc_slug(self, title: str) -> str:
+        """TICKET 3: Generate human-readable document slug from title"""
+        import re, unicodedata
+        
+        # Use the same stable_slug logic but optimized for document titles
+        norm = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii")
+        slug = re.sub(r"\s+", "-", norm.lower())
+        slug = re.sub(r"[^a-z0-9-]", "", slug)
+        slug = re.sub(r"-{2,}", "-", slug).strip("-")
+        
+        # Limit length for document slugs
+        doc_slug = slug[:80] if slug else "untitled-document"
+        
+        print(f"🏷️ TICKET 3: Generated doc_slug: '{doc_slug}' from title: '{title[:50]}...'")
+        return doc_slug
 
     
     async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:

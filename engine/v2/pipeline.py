@@ -35,28 +35,49 @@ from .extractor import V2ContentExtractor
 class Pipeline:
     """V2 Pipeline Orchestrator: Coordinates all V2 stages with typed I/O and comprehensive logging"""
     
-    def __init__(self, llm_client=None):
+    def __init__(self, llm_client=None, existing_v2_instances=None):
         """Initialize pipeline with all V2 stage instances"""
         self.llm = llm_client
         
-        # Initialize all V2 stage classes
-        self.extractor = V2ContentExtractor()
-        self.analyzer = V2MultiDimensionalAnalyzer()
-        self.global_planner = V2GlobalOutlinePlanner()
-        self.per_article_planner = V2PerArticleOutlinePlanner()
-        self.prewrite_system = V2PrewriteSystem()
-        self.generator = V2ArticleGenerator()
-        self.style_processor = V2StyleProcessor()
-        self.related_links = V2RelatedLinksSystem()
-        self.gap_filling = V2GapFillingSystem()
-        self.evidence_tagging = V2EvidenceTaggingSystem()
-        self.code_norm = V2CodeNormalizationSystem()
-        self.validator = V2ValidationSystem()
-        self.cross_qa = V2CrossArticleQASystem()
-        self.adaptive_adjustment = V2AdaptiveAdjustmentSystem()
-        self.publisher = V2PublishingSystem()
-        self.versioning = V2VersioningSystem()
-        self.reviewer = V2ReviewSystem()
+        # Use existing V2 instances if provided (for integration with server.py globals)
+        if existing_v2_instances:
+            print("🔗 KE-PR5: Using existing V2 instances from server.py")
+            self.extractor = existing_v2_instances.get('extractor', V2ContentExtractor())
+            self.analyzer = existing_v2_instances.get('analyzer', V2MultiDimensionalAnalyzer())
+            self.global_planner = existing_v2_instances.get('global_planner', V2GlobalOutlinePlanner())
+            self.per_article_planner = existing_v2_instances.get('per_article_planner', V2PerArticleOutlinePlanner())
+            self.prewrite_system = existing_v2_instances.get('prewrite_system', V2PrewriteSystem())
+            self.generator = existing_v2_instances.get('generator', V2ArticleGenerator())
+            self.style_processor = existing_v2_instances.get('style_processor', V2StyleProcessor())
+            self.related_links = existing_v2_instances.get('related_links', V2RelatedLinksSystem())
+            self.gap_filling = existing_v2_instances.get('gap_filling', V2GapFillingSystem())
+            self.evidence_tagging = existing_v2_instances.get('evidence_tagging', V2EvidenceTaggingSystem())
+            self.code_norm = existing_v2_instances.get('code_norm', V2CodeNormalizationSystem())
+            self.validator = existing_v2_instances.get('validator', V2ValidationSystem())
+            self.cross_qa = existing_v2_instances.get('cross_qa', V2CrossArticleQASystem())
+            self.adaptive_adjustment = existing_v2_instances.get('adaptive_adjustment', V2AdaptiveAdjustmentSystem())
+            self.publisher = existing_v2_instances.get('publisher', V2PublishingSystem())
+            self.versioning = existing_v2_instances.get('versioning', V2VersioningSystem())
+            self.reviewer = existing_v2_instances.get('reviewer', V2ReviewSystem())
+        else:
+            # Initialize new V2 stage class instances
+            self.extractor = V2ContentExtractor()
+            self.analyzer = V2MultiDimensionalAnalyzer()
+            self.global_planner = V2GlobalOutlinePlanner()
+            self.per_article_planner = V2PerArticleOutlinePlanner()
+            self.prewrite_system = V2PrewriteSystem()
+            self.generator = V2ArticleGenerator()
+            self.style_processor = V2StyleProcessor()
+            self.related_links = V2RelatedLinksSystem()
+            self.gap_filling = V2GapFillingSystem()
+            self.evidence_tagging = V2EvidenceTaggingSystem()
+            self.code_norm = V2CodeNormalizationSystem()
+            self.validator = V2ValidationSystem()
+            self.cross_qa = V2CrossArticleQASystem()
+            self.adaptive_adjustment = V2AdaptiveAdjustmentSystem()
+            self.publisher = V2PublishingSystem()
+            self.versioning = V2VersioningSystem()
+            self.reviewer = V2ReviewSystem()
         
         print("🚀 KE-PR5: V2 Pipeline orchestrator initialized with 17 stages")
 

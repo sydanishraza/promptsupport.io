@@ -29904,7 +29904,7 @@ File Information:
                     "extraction_method": "legacy_fallback"
                 }
                 
-                return await process_text_content_v2(enriched_content, enhanced_metadata)
+                return await process_text_content_v2_pipeline(enriched_content, enhanced_metadata)
             
             # Set a 10-minute timeout for processing
             chunks = await asyncio.wait_for(process_with_timeout(), timeout=600)

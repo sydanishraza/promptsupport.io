@@ -175,6 +175,11 @@ except ImportError as e:
         def process_media(self, *args, **kwargs): return {}
     
     v2_analyzer = V2MultiDimensionalAnalyzer()
+    
+    # KE-PR5: Fallback pipeline
+    class Pipeline:
+        async def run(self, job_id, content, metadata): return [], None, f"fallback_{job_id}"
+    def get_pipeline(llm_client=None): return Pipeline()
 
 # HTML preprocessing pipeline imports
 import mammoth

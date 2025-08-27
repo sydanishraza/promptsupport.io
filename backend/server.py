@@ -32528,14 +32528,13 @@ async def process_toc_links():
                 
                 print(f"📄 V2 STYLE: Processing TOC links for '{article_title}' - content length: {len(article_content)}")
                 
-                # TICKET 2: Use the stable anchors system instead of old clickable anchors processing
+                # KE-PR2: Use extracted linking modules instead of V2ValidationSystem
                 # This ensures consistent ID generation with the main processing pipeline
-                v2_validator = V2ValidationSystem()
                 
                 # Apply TICKET 2 processing: stable IDs + Mini-TOC 
-                content_with_ids = v2_validator.assign_heading_ids(article_content)
-                processed_content = v2_validator.build_minitoc(content_with_ids)
-                anchors_resolve = v2_validator.anchors_resolve(processed_content)
+                content_with_ids = assign_heading_ids(article_content)
+                processed_content = build_minitoc(content_with_ids)
+                anchors_resolve_result = anchors_resolve(processed_content)
                 
                 # Count TOC links generated
                 from bs4 import BeautifulSoup

@@ -8065,6 +8065,39 @@ class V2ValidationSystem:
                 "links_resolve": False,
                 "error": str(e)
             }
+    
+    def _apply_bookmark_registry(self, content: str, article_title: str) -> dict:
+        """TICKET 3: Apply bookmark registry extraction for universal links"""
+        try:
+            print(f"📖 TICKET 3: Starting bookmark registry for '{article_title[:50]}...'")
+            
+            # Extract headings from content
+            headings = self.extract_headings_registry(content)
+            
+            # Generate document identifiers
+            doc_uid = self.generate_doc_uid()
+            doc_slug = self.generate_doc_slug(article_title)
+            
+            print(f"📖 TICKET 3: Bookmark registry complete - {len(headings)} headings, doc_uid: {doc_uid}")
+            
+            return {
+                'headings': headings,
+                'doc_uid': doc_uid,
+                'doc_slug': doc_slug,
+                'bookmark_count': len(headings),
+                'changes_applied': [f"Extracted {len(headings)} bookmarks", f"Generated doc_uid: {doc_uid}", f"Generated doc_slug: {doc_slug}"]
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error in bookmark registry - {e}")
+            return {
+                'headings': [],
+                'doc_uid': None,
+                'doc_slug': None,
+                'bookmark_count': 0,
+                'changes_applied': [f"Bookmark registry error: {str(e)}"],
+                'error': str(e)
+            }
 
     
     async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:

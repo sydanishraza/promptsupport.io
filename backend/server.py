@@ -41,7 +41,7 @@ import httpx
 import re
 import markdown
 from bs4 import BeautifulSoup
-from media_intelligence import media_intelligence
+# KE-PR3: Media intelligence now imported from engine.media
 
 # New Engine Package Imports (KE-PR1: scaffolding)
 try:

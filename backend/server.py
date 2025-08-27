@@ -131,6 +131,46 @@ except ImportError as e:
     def read_file(path): return b""
     def get_asset_path(filename, upload_dir="static/uploads"): return f"{upload_dir}/{filename}"
     def hash_bytes(data): return hashlib.md5(data).hexdigest()[:8]
+    
+    # KE-PR4: Fallback V2 engine classes
+    class V2MultiDimensionalAnalyzer: 
+        async def analyze_normalized_document(self, *args, **kwargs): return {}
+    class V2GlobalOutlinePlanner: 
+        async def create_global_outline(self, *args, **kwargs): return {}
+    class V2PerArticleOutlinePlanner: 
+        async def create_article_outline(self, *args, **kwargs): return {}
+    class V2PrewriteSystem: 
+        async def extract_prewrite_data(self, *args, **kwargs): return {}
+    class V2StyleProcessor: 
+        def process_style(self, *args, **kwargs): return {}
+    class V2RelatedLinksSystem: 
+        async def generate_related_links(self, *args, **kwargs): return []
+    class V2GapFillingSystem: 
+        async def fill_gaps(self, *args, **kwargs): return ""
+    class V2EvidenceTaggingSystem: 
+        def tag_evidence(self, *args, **kwargs): return ""
+    class V2CodeNormalizationSystem: 
+        def normalize_code_blocks(self, *args, **kwargs): return ""
+    class V2ArticleGenerator: 
+        async def generate_article(self, *args, **kwargs): return {}
+    class V2ValidationSystem: 
+        def validate_content(self, *args, **kwargs): return True
+    class V2CrossArticleQASystem: 
+        async def perform_cross_article_qa(self, *args, **kwargs): return {}
+    class V2AdaptiveAdjustmentSystem: 
+        async def adjust_article_balance(self, *args, **kwargs): return {}
+    class V2PublishingSystem: 
+        async def publish_v2_content(self, *args, **kwargs): return {}
+    class V2VersioningSystem: 
+        async def create_version(self, *args, **kwargs): return {}
+    class V2ReviewSystem: 
+        def create_review_request(self, *args, **kwargs): return {}
+    class V2ContentExtractor: 
+        def extract_content(self, *args, **kwargs): return {}
+    class V2MediaManager: 
+        def process_media(self, *args, **kwargs): return {}
+    
+    v2_analyzer = V2MultiDimensionalAnalyzer()
 
 # HTML preprocessing pipeline imports
 import mammoth

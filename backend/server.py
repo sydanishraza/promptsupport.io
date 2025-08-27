@@ -66,6 +66,25 @@ try:
     from engine.media import media_intelligence
     from engine.stores.assets import save_bytes, save_file, read_file, get_asset_path, hash_bytes
     
+    # KE-PR4: Import V2 engine classes
+    from engine.v2.analyzer import V2MultiDimensionalAnalyzer, v2_analyzer
+    from engine.v2.outline import V2GlobalOutlinePlanner, V2PerArticleOutlinePlanner
+    from engine.v2.prewrite import V2PrewriteSystem
+    from engine.v2.style import V2StyleProcessor
+    from engine.v2.related import V2RelatedLinksSystem
+    from engine.v2.gaps import V2GapFillingSystem
+    from engine.v2.evidence import V2EvidenceTaggingSystem
+    from engine.v2.code_norm import V2CodeNormalizationSystem
+    from engine.v2.generator import V2ArticleGenerator
+    from engine.v2.validate import V2ValidationSystem
+    from engine.v2.crossqa import V2CrossArticleQASystem
+    from engine.v2.adapt import V2AdaptiveAdjustmentSystem
+    from engine.v2.publish import V2PublishingSystem
+    from engine.v2.versioning import V2VersioningSystem
+    from engine.v2.review import V2ReviewSystem
+    from engine.v2.extractor import V2ContentExtractor
+    from engine.v2.media import V2MediaManager
+    
     print("✅ Engine package modules loaded successfully")
     print("✅ KE-PR2: Linking modules loaded successfully")
     print("✅ KE-PR3: Media and assets modules loaded successfully")

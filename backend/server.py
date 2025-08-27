@@ -7758,43 +7758,69 @@ class V2ValidationSystem:
         
         soup = BeautifulSoup(html, 'html.parser')
         
-        # Find all headings with IDs
-        headings = soup.select("h2[id], h3[id], h4[id]")
+        # Find all headings that need TOC entries (H2 and H3)
+        headings = soup.select("h2, h3")
         
         if not headings:
-            print("⚠️ TICKET 2: No headings with IDs found for Mini-TOC")
+            print("⚠️ TICKET 2: No headings found for Mini-TOC")
             return str(soup)
         
-        # Create Mini-TOC container
-        toc_ul = soup.new_tag("ul", **{"class": "mini-toc"})
+        # CRITICAL FIX: Process headings in order and ensure consistent ID assignment
+        toc_items = []
         
         for heading in headings:
-            heading_level = heading.name[1]  # '2', '3', or '4'
             heading_text = heading.get_text(" ", strip=True)
-            heading_id = heading.get("id")
             
-            # Create TOC item
-            li = soup.new_tag("li", **{"class": f"toc-l{heading_level}"})
-            a = soup.new_tag("a", href=f"#{heading_id}", **{"class": "toc-link"})
-            a.string = heading_text
+            # Ensure heading has an ID using the same stable_slug function
+            if not heading.get("id"):
+                heading_id = self.stable_slug(heading_text)
+                heading["id"] = heading_id
+                print(f"📌 TICKET 2: Assigned missing ID '{heading_id}' to heading '{heading_text[:30]}...'")
+            else:
+                heading_id = heading.get("id")
+            
+            # Add to TOC items list
+            toc_items.append({
+                'level': heading.name[1],  # '2' or '3'
+                'text': heading_text,
+                'id': heading_id,
+                'element': heading
+            })
+            
+            print(f"🔗 TICKET 2: TOC entry '{heading_text[:30]}...' -> #{heading_id}")
+        
+        # Create Mini-TOC container with proper structure
+        toc_div = soup.new_tag("div", **{"class": "mini-toc"})
+        toc_ul = soup.new_tag("ul")
+        
+        for item in toc_items:
+            # Create TOC item with proper indentation based on heading level
+            li = soup.new_tag("li", **{"class": f"toc-l{item['level']}"})
+            a = soup.new_tag("a", href=f"#{item['id']}", **{"class": "toc-link"})
+            a.string = item['text']
             li.append(a)
             toc_ul.append(li)
-            
-            print(f"🔗 TICKET 2: Added TOC link '{heading_text[:30]}...' -> #{heading_id}")
         
-        # Insert Mini-TOC at the beginning of content
-        # Look for first paragraph or heading to insert before
-        first_content = soup.find(['p', 'h2', 'h3', 'div'])
-        if first_content:
-            first_content.insert_before(toc_ul)
+        toc_div.append(toc_ul)
+        
+        # Insert Mini-TOC at the beginning of content (after any existing TOC)
+        existing_toc = soup.find(class_="mini-toc")
+        if existing_toc:
+            existing_toc.replace_with(toc_div)
+            print("🔄 TICKET 2: Replaced existing Mini-TOC")
         else:
-            # Fallback: insert at beginning of body content
-            if soup.body:
-                soup.body.insert(0, toc_ul)
+            # Insert at beginning of content
+            first_content = soup.find(['p', 'h2', 'h3', 'div'])
+            if first_content:
+                first_content.insert_before(toc_div)
             else:
-                soup.insert(0, toc_ul)
+                # Fallback: insert at beginning
+                if soup.body:
+                    soup.body.insert(0, toc_div)
+                else:
+                    soup.insert(0, toc_div)
         
-        print(f"✅ TICKET 2: Mini-TOC built with {len(headings)} clickable links")
+        print(f"✅ TICKET 2: Mini-TOC built with {len(toc_items)} clickable links")
         return str(soup)
     
     def anchors_resolve(self, html: str) -> bool:

@@ -62,6 +62,10 @@ try:
     from engine.linking.bookmarks import extract_headings_registry, generate_doc_uid, generate_doc_slug, backfill_registry, get_registry
     from engine.linking.links import build_href, get_default_route_map, build_link
     
+    # KE-PR3: Import media and assets modules
+    from engine.media import media_intelligence
+    from engine.stores.assets import save_bytes, save_file, read_file, get_asset_path, hash_bytes
+    
     print("✅ Engine package modules loaded successfully")
     print("✅ KE-PR2: Linking modules loaded successfully")
 except ImportError as e:

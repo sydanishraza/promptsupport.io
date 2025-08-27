@@ -1,4 +1,12 @@
 """
 Media processing modules.
-Future home for image, video, and audio processing pipelines.
+Intelligent media analysis, classification, and asset management.
 """
+
+from .intelligence import MediaIntelligenceService
+from .legacy import LegacyMediaIntelligenceService
+
+# Current active service
+media_intelligence = MediaIntelligenceService()
+
+__all__ = ["MediaIntelligenceService", "LegacyMediaIntelligenceService", "media_intelligence"]

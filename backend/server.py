@@ -19263,6 +19263,9 @@ class V2MediaManager:
 # Global V2 Media Manager instance
 v2_media_manager = V2MediaManager()
 
+# Global V2 Content Extractor instance
+v2_content_extractor = V2ContentExtractor()
+
 def ensure_no_media_embedding(content: str) -> str:
     """
     V2 MEDIA: Ensure no image embedding in generated content

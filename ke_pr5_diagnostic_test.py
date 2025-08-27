@@ -516,10 +516,12 @@ class KE_PR5_DiagnosticTester:
         print(f"\n📊 OVERALL PIPELINE STATUS: {success_rate:.1f}% ({self.passed_tests}/{self.total_tests} tests passed)")
         
         # V2 Stage Status Analysis
-        if hasattr(self, 'v2_stage_status'):
+        if hasattr(self, 'v2_stage_status') and self.v2_stage_status:
             stage_status = self.v2_stage_status
             print(f"\n🔧 V2 STAGE COMPLETION ANALYSIS:")
-            print(f"   Stages Completed: {stage_status['stages_completed']}/17 ({stage_status['completion_rate']:.1f}%)")
+            stages_completed = stage_status.get('stages_completed', 0)
+            completion_rate = stage_status.get('completion_rate', 0)
+            print(f"   Stages Completed: {stages_completed}/17 ({completion_rate:.1f}%)")
             
             if stage_status['attribute_errors']:
                 print(f"\n❌ ATTRIBUTE ERRORS DETECTED ({len(stage_status['attribute_errors'])}):")

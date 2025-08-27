@@ -30008,6 +30008,20 @@ File Information:
         )
         
         print(f"✅ V2 ENGINE: File processing complete - {len(chunks)} chunks created - engine=v2")
+        
+        # KE-PR1: Add structured logging completion
+        if logger:
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.info({
+                "event": "content_upload_end", 
+                "job_id": job_id, 
+                "stage": "content_upload",
+                "duration_ms": duration_ms,
+                "chunks_created": len(chunks),
+                "file_type": file_extension,
+                "status": "success"
+            })
+        
         return {
             "job_id": job.job_id,
             "status": job.status,
@@ -30019,6 +30033,18 @@ File Information:
         }
         
     except Exception as e:
+        # KE-PR1: Add structured error logging
+        if logger:
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.error({
+                "event": "content_upload_error", 
+                "job_id": job_id, 
+                "stage": "content_upload",
+                "duration_ms": duration_ms,
+                "error": str(e),
+                "status": "failed"
+            })
+        
         # Update job with error
         if 'job' in locals():
             await db.processing_jobs.update_one(

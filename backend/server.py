@@ -232,9 +232,26 @@ QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 # Initialize FastAPI app
 app = FastAPI(
     title="PromptSupport Enhanced Content Engine",
-    description="AI-native content processing and management system",
-    version="1.0.0"
+    description="AI-native content processing and management system with KE-PR8 API Router",
+    version="2.0.0"
 )
+
+# KE-PR8: Include API Router
+try:
+    # Import and include the organized API router
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from api.router import router as api_router
+    
+    app.include_router(api_router)
+    print("✅ KE-PR8: API Router included successfully")
+    print(f"✅ KE-PR8: {len(api_router.routes)} routes organized by domain")
+    
+except Exception as e:
+    print(f"❌ KE-PR8: Failed to include API router - {e}")
+    # Fallback: keep essential routes in server.py if router fails
+    @app.get("/api/health")
+    def fallback_health():
+        return {"status": "fallback", "error": "API router failed to load"}
 
 # Mount static files for serving uploaded images under /api/static route
 import os

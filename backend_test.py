@@ -1,17 +1,40 @@
 #!/usr/bin/env python3
 """
-KE-PR5 Pipeline Orchestrator Complete 17-Stage Testing
-Final verification of complete V2 pipeline with all 17 stages working
+KE-PR8 API Router Split & Feature Flags (Kill Switches) Testing
+Comprehensive test suite for the API router organization and feature flag functionality
 """
 
-import requests
-import json
-import time
+import os
 import sys
+import asyncio
+import json
+import requests
+import time
 from datetime import datetime
+from typing import Dict, List, Any
 
-# Backend URL from environment
-BACKEND_URL = "https://content-processor.preview.emergentagent.com/api"
+# Add backend to path for imports
+backend_path = os.path.join(os.path.dirname(__file__), 'backend')
+if backend_path not in sys.path:
+    sys.path.append(backend_path)
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# Get backend URL from frontend .env
+def get_backend_url():
+    """Get backend URL from frontend .env file"""
+    frontend_env_path = os.path.join(os.path.dirname(__file__), 'frontend', '.env')
+    if os.path.exists(frontend_env_path):
+        with open(frontend_env_path, 'r') as f:
+            for line in f:
+                if line.startswith('REACT_APP_BACKEND_URL='):
+                    return line.split('=', 1)[1].strip()
+    return "http://localhost:8001"
+
+BACKEND_URL = get_backend_url()
+print(f"🌐 Testing backend at: {BACKEND_URL}")
 
 class Complete17StagePipelineTester:
     def __init__(self):

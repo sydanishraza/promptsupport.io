@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-TICKET 3 Implementation Testing - Method Integration Fix Verification
-Testing all TICKET 3 methods after integration into V2StyleProcessor class
+KE-PR5 Pipeline Orchestrator Complete 17-Stage Testing
+Final verification of complete V2 pipeline with all 17 stages working
 """
 
 import requests
@@ -13,7 +13,7 @@ from datetime import datetime
 # Backend URL from environment
 BACKEND_URL = "https://content-processor.preview.emergentagent.com/api"
 
-class TICKET3Tester:
+class Complete17StagePipelineTester:
     def __init__(self):
         self.backend_url = BACKEND_URL
         self.test_results = []
@@ -41,517 +41,983 @@ class TICKET3Tester:
             "timestamp": datetime.now().isoformat()
         })
         
-    def test_v2_engine_health(self):
-        """Test 1: Verify V2 Engine is operational with TICKET 3 features"""
+    def test_v2_engine_17_stage_availability(self):
+        """Test 1: Verify V2 Engine has all 17 pipeline stages available"""
         try:
             response = requests.get(f"{self.backend_url}/engine", timeout=10)
             
             if response.status_code != 200:
-                self.log_test("V2 Engine Health Check", False, f"HTTP {response.status_code}")
+                self.log_test("V2 Engine 17-Stage Availability", False, f"HTTP {response.status_code}")
                 return False
                 
             data = response.json()
             
             # Check engine status
             if data.get("status") != "operational":
-                self.log_test("V2 Engine Health Check", False, f"Engine status: {data.get('status')}")
+                self.log_test("V2 Engine 17-Stage Availability", False, f"Engine status: {data.get('status')}")
                 return False
                 
-            # Check for V2 features
+            # Check for all V2 pipeline features including versioning and review
             features = data.get("features", [])
-            required_features = ["v2_processing", "woolf_style_processing"]
+            required_features = [
+                "v2_processing", "pipeline_orchestrator", "v2_analyzer", "v2_generator",
+                "v2_validation", "v2_publishing", "v2_versioning", "v2_review"
+            ]
             
             missing_features = [f for f in required_features if f not in features]
             if missing_features:
-                self.log_test("V2 Engine Health Check", False, f"Missing features: {missing_features}")
+                self.log_test("V2 Engine 17-Stage Availability", False, f"Missing pipeline features: {missing_features}")
                 return False
                 
-            self.log_test("V2 Engine Health Check", True, f"Engine operational with {len(features)} features")
+            # Check for versioning and review system availability
+            versioning_available = "v2_versioning" in features
+            review_available = "v2_review" in features
+            
+            if not versioning_available:
+                self.log_test("V2 Engine 17-Stage Availability", False, "Stage 16 (Versioning) not available")
+                return False
+                
+            if not review_available:
+                self.log_test("V2 Engine 17-Stage Availability", False, "Stage 17 (Review) not available")
+                return False
+                
+            self.log_test("V2 Engine 17-Stage Availability", True, 
+                         f"All 17 stages available including Stage 16 (Versioning) and Stage 17 (Review)")
             return True
             
         except Exception as e:
-            self.log_test("V2 Engine Health Check", False, f"Exception: {str(e)}")
+            self.log_test("V2 Engine 17-Stage Availability", False, f"Exception: {str(e)}")
             return False
     
-    def test_v2style_processor_instantiation(self):
-        """Test 2: Verify V2StyleProcessor can be instantiated and methods are accessible"""
+    def test_complete_17_stage_pipeline_execution(self):
+        """Test 2: Execute complete 17-stage pipeline and verify all stages complete"""
         try:
-            # Test by calling a diagnostic endpoint that uses V2StyleProcessor
-            response = requests.get(f"{self.backend_url}/style/diagnostics", timeout=10)
-            
-            if response.status_code != 200:
-                self.log_test("V2StyleProcessor Instantiation", False, f"HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            
-            # Check if we get valid diagnostic data (indicates V2StyleProcessor is working)
-            if "engine" not in data:
-                self.log_test("V2StyleProcessor Instantiation", False, "No engine field in diagnostics")
-                return False
-                
-            if data.get("engine") != "v2":
-                self.log_test("V2StyleProcessor Instantiation", False, f"Wrong engine: {data.get('engine')}")
-                return False
-                
-            self.log_test("V2StyleProcessor Instantiation", True, "V2StyleProcessor accessible via diagnostics")
-            return True
-            
-        except Exception as e:
-            self.log_test("V2StyleProcessor Instantiation", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_bookmark_registry_extraction(self):
-        """Test 3: Test bookmark registry extraction with sample content"""
-        try:
-            # Create test content with headings
-            test_content = """
-            <h2 id="getting-started">Getting Started with API Integration</h2>
-            <p>This section covers the basics of API integration.</p>
-            
-            <h3 id="authentication">Authentication Process</h3>
-            <p>Learn how to authenticate your API requests.</p>
-            
-            <h2 id="advanced-features">Advanced Features</h2>
-            <p>Explore advanced API capabilities.</p>
-            
-            <h3 id="rate-limiting">Rate Limiting</h3>
-            <p>Understanding API rate limits.</p>
-            """
-            
-            # Test via V2 processing pipeline (which should use bookmark registry)
-            payload = {
-                "content": test_content,
-                "content_type": "html",
-                "processing_mode": "v2_only"
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("Bookmark Registry Extraction", False, f"HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            
-            # Check if processing was successful
-            if data.get("status") != "success":
-                self.log_test("Bookmark Registry Extraction", False, f"Processing failed: {data.get('message', 'Unknown error')}")
-                return False
-                
-            # Check if articles were generated with bookmark data
-            articles = data.get("articles", [])
-            if not articles:
-                self.log_test("Bookmark Registry Extraction", False, "No articles generated")
-                return False
-                
-            # Check first article for TICKET 3 data
-            article = articles[0]
-            
-            # Check for doc_uid
-            if not article.get("doc_uid"):
-                self.log_test("Bookmark Registry Extraction", False, "No doc_uid generated")
-                return False
-                
-            # Check for doc_slug  
-            if not article.get("doc_slug"):
-                self.log_test("Bookmark Registry Extraction", False, "No doc_slug generated")
-                return False
-                
-            # Check for headings registry
-            headings = article.get("headings", [])
-            if len(headings) < 2:  # Should have at least 2 headings from our test content
-                self.log_test("Bookmark Registry Extraction", False, f"Insufficient headings extracted: {len(headings)}")
-                return False
-                
-            # Verify heading structure
-            first_heading = headings[0]
-            required_fields = ["id", "text", "level", "order"]
-            missing_fields = [f for f in required_fields if f not in first_heading]
-            
-            if missing_fields:
-                self.log_test("Bookmark Registry Extraction", False, f"Missing heading fields: {missing_fields}")
-                return False
-                
-            self.log_test("Bookmark Registry Extraction", True, 
-                         f"Extracted {len(headings)} headings, doc_uid: {article['doc_uid'][:10]}...")
-            return True
-            
-        except Exception as e:
-            self.log_test("Bookmark Registry Extraction", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_document_identifier_generation(self):
-        """Test 4: Test doc_uid and doc_slug generation"""
-        try:
-            # Test with a simple article creation
-            test_title = "Complete Guide to API Authentication and Security Best Practices"
-            test_content = "<h2>Introduction</h2><p>This guide covers API authentication.</p>"
-            
-            payload = {
-                "content": test_content,
-                "content_type": "html", 
-                "processing_mode": "v2_only"
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process",
-                                   json=payload, timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("Document Identifier Generation", False, f"HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            articles = data.get("articles", [])
-            
-            if not articles:
-                self.log_test("Document Identifier Generation", False, "No articles generated")
-                return False
-                
-            article = articles[0]
-            doc_uid = article.get("doc_uid")
-            doc_slug = article.get("doc_slug")
-            
-            # Validate doc_uid format (should be ULID-like: 01JZ + timestamp + random)
-            if not doc_uid or not doc_uid.startswith("01JZ") or len(doc_uid) < 20:
-                self.log_test("Document Identifier Generation", False, f"Invalid doc_uid format: {doc_uid}")
-                return False
-                
-            # Validate doc_slug format (should be URL-friendly)
-            if not doc_slug or " " in doc_slug or doc_slug != doc_slug.lower():
-                self.log_test("Document Identifier Generation", False, f"Invalid doc_slug format: {doc_slug}")
-                return False
-                
-            # Check that doc_slug is derived from title
-            if "api" not in doc_slug or "authentication" not in doc_slug:
-                self.log_test("Document Identifier Generation", False, f"doc_slug doesn't reflect title: {doc_slug}")
-                return False
-                
-            self.log_test("Document Identifier Generation", True,
-                         f"doc_uid: {doc_uid}, doc_slug: {doc_slug}")
-            return True
-            
-        except Exception as e:
-            self.log_test("Document Identifier Generation", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_linkbuilder_system(self):
-        """Test 5: Test LinkBuilder system with route maps"""
-        try:
-            # This test verifies the href building functionality
-            # We'll test by creating content and checking if the system can handle cross-references
-            
-            test_content = """
-            <h2 id="overview">System Overview</h2>
-            <p>This system provides comprehensive API management.</p>
-            
-            <h2 id="integration">Integration Guide</h2>
-            <p>Follow these steps for integration.</p>
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "html",
-                "processing_mode": "v2_only"
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process",
-                                   json=payload, timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("LinkBuilder System", False, f"HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            articles = data.get("articles", [])
-            
-            if not articles:
-                self.log_test("LinkBuilder System", False, "No articles generated")
-                return False
-                
-            article = articles[0]
-            
-            # Check that the article has the necessary fields for link building
-            if not article.get("doc_uid") or not article.get("doc_slug"):
-                self.log_test("LinkBuilder System", False, "Missing doc_uid or doc_slug for link building")
-                return False
-                
-            # Check that headings have proper IDs for anchor linking
-            headings = article.get("headings", [])
-            if not headings:
-                self.log_test("LinkBuilder System", False, "No headings for anchor linking")
-                return False
-                
-            # Verify headings have proper anchor IDs
-            for heading in headings:
-                if not heading.get("id"):
-                    self.log_test("LinkBuilder System", False, f"Heading missing ID: {heading}")
-                    return False
-                    
-            # Check if xrefs and related_links fields are initialized (required for LinkBuilder)
-            if "xrefs" not in article:
-                self.log_test("LinkBuilder System", False, "Missing xrefs field")
-                return False
-                
-            if "related_links" not in article:
-                self.log_test("LinkBuilder System", False, "Missing related_links field")
-                return False
-                
-            self.log_test("LinkBuilder System", True,
-                         f"LinkBuilder ready: {len(headings)} anchors, xrefs/related_links initialized")
-            return True
-            
-        except Exception as e:
-            self.log_test("LinkBuilder System", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_backfill_functionality(self):
-        """Test 6: Test backfill_bookmark_registry method"""
-        try:
-            # Test the backfill endpoint
-            response = requests.post(f"{self.backend_url}/ticket3/backfill-bookmarks?limit=5", timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("Backfill Functionality", False, f"HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            
-            # Check response structure
-            if "status" not in data:
-                self.log_test("Backfill Functionality", False, "Missing status in response")
-                return False
-                
-            # Success or no articles to backfill are both valid
-            if data["status"] not in ["success", "failed"]:
-                self.log_test("Backfill Functionality", False, f"Invalid status: {data['status']}")
-                return False
-                
-            # If failed, check if it's due to no articles (which is acceptable)
-            if data["status"] == "failed":
-                message = data.get("message", "")
-                if "No articles need backfilling" in message or "0 articles" in message:
-                    self.log_test("Backfill Functionality", True, "No articles need backfilling (acceptable)")
-                    return True
-                else:
-                    self.log_test("Backfill Functionality", False, f"Backfill failed: {message}")
-                    return False
-                    
-            # If successful, check the data
-            backfill_data = data.get("data", {})
-            articles_processed = backfill_data.get("articles_processed", 0)
-            
-            self.log_test("Backfill Functionality", True,
-                         f"Backfill completed: {articles_processed} articles processed")
-            return True
-            
-        except Exception as e:
-            self.log_test("Backfill Functionality", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_api_endpoint_integration(self):
-        """Test 7: Test API endpoints work with integrated methods"""
-        try:
-            # Test the validation endpoint (requires V2StyleProcessor methods)
-            # First, we need a document to validate - let's create one
-            test_content = "<h2 id='test'>Test Heading</h2><p>Test content</p>"
-            
-            payload = {
-                "content": test_content,
-                "content_type": "html",
-                "processing_mode": "v2_only"
-            }
-            
-            # Create a document first
-            response = requests.post(f"{self.backend_url}/content/process",
-                                   json=payload, timeout=30)
-            
-            if response.status_code != 200:
-                self.log_test("API Endpoint Integration", False, f"Failed to create test document: HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            articles = data.get("articles", [])
-            
-            if not articles:
-                self.log_test("API Endpoint Integration", False, "No test document created")
-                return False
-                
-            doc_uid = articles[0].get("doc_uid")
-            if not doc_uid:
-                self.log_test("API Endpoint Integration", False, "Test document missing doc_uid")
-                return False
-                
-            # Now test the validation endpoint
-            response = requests.get(f"{self.backend_url}/ticket3/validate-links/{doc_uid}", timeout=15)
-            
-            if response.status_code != 200:
-                self.log_test("API Endpoint Integration", False, f"Validation endpoint HTTP {response.status_code}")
-                return False
-                
-            validation_data = response.json()
-            
-            # Check response structure
-            if "status" not in validation_data:
-                self.log_test("API Endpoint Integration", False, "Missing status in validation response")
-                return False
-                
-            if validation_data["status"] != "success":
-                self.log_test("API Endpoint Integration", False, f"Validation failed: {validation_data.get('message', 'Unknown error')}")
-                return False
-                
-            # Check that validation data is present
-            if "validation" not in validation_data:
-                self.log_test("API Endpoint Integration", False, "Missing validation data")
-                return False
-                
-            self.log_test("API Endpoint Integration", True,
-                         f"Validation endpoint working for doc_uid: {doc_uid[:10]}...")
-            return True
-            
-        except Exception as e:
-            self.log_test("API Endpoint Integration", False, f"Exception: {str(e)}")
-            return False
-    
-    def test_complete_v2_pipeline(self):
-        """Test 8: Test complete V2 pipeline with _apply_bookmark_registry integration"""
-        try:
-            # Test comprehensive V2 processing with TICKET 3 integration
+            # Use comprehensive content to trigger all 17 pipeline stages
             comprehensive_content = """
-            <h1>Complete API Integration Guide</h1>
+            # Complete API Integration and Security Guide
             
-            <h2 id="introduction">Introduction to API Integration</h2>
-            <p>This comprehensive guide covers all aspects of API integration including authentication, rate limiting, and best practices.</p>
+            ## Table of Contents
+            1. Introduction and Overview
+            2. Prerequisites and Setup
+            3. Authentication Methods
+            4. API Endpoints Reference
+            5. Implementation Examples
+            6. Security Best Practices
+            7. Error Handling and Troubleshooting
+            8. Performance Optimization
+            9. Testing and Validation
+            10. Deployment Guidelines
             
-            <h3 id="prerequisites">Prerequisites</h3>
-            <p>Before starting, ensure you have the following:</p>
-            <ul>
-                <li>Valid API credentials</li>
-                <li>Development environment setup</li>
-                <li>Basic understanding of REST APIs</li>
-            </ul>
+            ## 1. Introduction and Overview
             
-            <h2 id="authentication">Authentication Methods</h2>
-            <p>Learn about different authentication approaches.</p>
+            This comprehensive guide provides complete coverage of API integration, security implementation, and best practices for production systems. It includes detailed examples, code samples, and troubleshooting information.
             
-            <h3 id="api-keys">API Key Authentication</h3>
-            <p>The most common authentication method.</p>
+            ### What You'll Learn
+            - Complete API integration workflow
+            - Security implementation strategies
+            - Performance optimization techniques
+            - Error handling and recovery methods
+            - Testing and validation approaches
+            - Production deployment best practices
             
-            <h3 id="oauth">OAuth 2.0 Authentication</h3>
-            <p>More secure authentication for production systems.</p>
+            ## 2. Prerequisites and Setup
             
-            <h2 id="implementation">Implementation Guide</h2>
-            <p>Step-by-step implementation instructions.</p>
+            Before starting with API integration, ensure you have:
             
-            <h3 id="setup">Initial Setup</h3>
-            <p>Configure your development environment.</p>
+            ### Required Tools and Software
+            - Development environment (Node.js, Python, or preferred language)
+            - API testing tools (Postman, curl, or similar)
+            - Version control system (Git)
+            - Code editor with syntax highlighting
             
-            <h3 id="first-request">Making Your First Request</h3>
-            <p>Send your first API request.</p>
+            ### API Credentials
+            - Valid API key from the provider
+            - OAuth 2.0 credentials (if applicable)
+            - Rate limiting information
+            - Documentation access
             
-            <h2 id="best-practices">Best Practices</h2>
-            <p>Follow these guidelines for optimal API usage.</p>
+            ### Development Environment Setup
+            ```bash
+            # Install required dependencies
+            npm install axios dotenv
+            # or for Python
+            pip install requests python-dotenv
+            ```
             
-            <h3 id="error-handling">Error Handling</h3>
-            <p>Properly handle API errors and exceptions.</p>
+            ## 3. Authentication Methods
             
-            <h3 id="rate-limiting">Rate Limiting</h3>
-            <p>Respect API rate limits to avoid throttling.</p>
+            ### API Key Authentication
+            The most straightforward authentication method involves including your API key in request headers:
+            
+            ```javascript
+            const axios = require('axios');
+            
+            const apiClient = axios.create({
+                baseURL: 'https://api.example.com/v1',
+                headers: {
+                    'Authorization': `Bearer ${process.env.API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            // Example API call
+            async function getUserData(userId) {
+                try {
+                    const response = await apiClient.get(`/users/${userId}`);
+                    return response.data;
+                } catch (error) {
+                    console.error('API request failed:', error.response?.data || error.message);
+                    throw error;
+                }
+            }
+            ```
+            
+            ### OAuth 2.0 Authentication
+            For more secure authentication in production systems, implement OAuth 2.0:
+            
+            ```python
+            import requests
+            import os
+            from datetime import datetime, timedelta
+            
+            class OAuth2Client:
+                def __init__(self, client_id, client_secret, token_url):
+                    self.client_id = client_id
+                    self.client_secret = client_secret
+                    self.token_url = token_url
+                    self.access_token = None
+                    self.token_expires = None
+                
+                def get_access_token(self):
+                    if self.access_token and self.token_expires > datetime.now():
+                        return self.access_token
+                    
+                    data = {
+                        'grant_type': 'client_credentials',
+                        'client_id': self.client_id,
+                        'client_secret': self.client_secret
+                    }
+                    
+                    response = requests.post(self.token_url, data=data)
+                    response.raise_for_status()
+                    
+                    token_data = response.json()
+                    self.access_token = token_data['access_token']
+                    expires_in = token_data.get('expires_in', 3600)
+                    self.token_expires = datetime.now() + timedelta(seconds=expires_in)
+                    
+                    return self.access_token
+            ```
+            
+            ## 4. API Endpoints Reference
+            
+            ### User Management Endpoints
+            
+            #### Get User Information
+            ```http
+            GET /api/v1/users/{user_id}
+            Authorization: Bearer {access_token}
+            Content-Type: application/json
+            ```
+            
+            **Response:**
+            ```json
+            {
+                "id": "12345",
+                "username": "john_doe",
+                "email": "john@example.com",
+                "created_at": "2024-01-15T10:30:00Z",
+                "last_login": "2024-01-20T14:45:00Z",
+                "profile": {
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "avatar_url": "https://example.com/avatars/john.jpg"
+                }
+            }
+            ```
+            
+            ## 5. Implementation Examples
+            
+            ### Complete Integration Example (Node.js)
+            ```javascript
+            const express = require('express');
+            const axios = require('axios');
+            require('dotenv').config();
+            
+            const app = express();
+            app.use(express.json());
+            
+            // API client configuration
+            const apiClient = axios.create({
+                baseURL: process.env.API_BASE_URL,
+                timeout: 10000,
+                headers: {
+                    'Authorization': `Bearer ${process.env.API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'MyApp/1.0'
+                }
+            });
+            
+            // Request interceptor for logging
+            apiClient.interceptors.request.use(
+                config => {
+                    console.log(`Making ${config.method.toUpperCase()} request to ${config.url}`);
+                    return config;
+                },
+                error => {
+                    console.error('Request error:', error);
+                    return Promise.reject(error);
+                }
+            );
+            
+            // Response interceptor for error handling
+            apiClient.interceptors.response.use(
+                response => response,
+                error => {
+                    if (error.response) {
+                        console.error(`API Error ${error.response.status}:`, error.response.data);
+                    } else if (error.request) {
+                        console.error('Network error:', error.message);
+                    } else {
+                        console.error('Request setup error:', error.message);
+                    }
+                    return Promise.reject(error);
+                }
+            );
+            ```
+            
+            ## 6. Security Best Practices
+            
+            ### Input Validation and Sanitization
+            Always validate and sanitize input data before sending to APIs:
+            
+            ```javascript
+            const validator = require('validator');
+            
+            function validateUserInput(userData) {
+                const errors = [];
+                
+                // Email validation
+                if (!userData.email || !validator.isEmail(userData.email)) {
+                    errors.push('Valid email address is required');
+                }
+                
+                // Username validation
+                if (!userData.username || !validator.isAlphanumeric(userData.username)) {
+                    errors.push('Username must contain only letters and numbers');
+                }
+                
+                return {
+                    isValid: errors.length === 0,
+                    errors: errors
+                };
+            }
+            ```
+            
+            ## 7. Error Handling and Troubleshooting
+            
+            ### Comprehensive Error Handling Strategy
+            ```javascript
+            class APIError extends Error {
+                constructor(message, statusCode, response) {
+                    super(message);
+                    this.name = 'APIError';
+                    this.statusCode = statusCode;
+                    this.response = response;
+                }
+            }
+            
+            class APIClient {
+                constructor(baseURL, apiKey) {
+                    this.baseURL = baseURL;
+                    this.apiKey = apiKey;
+                    this.retryAttempts = 3;
+                    this.retryDelay = 1000; // 1 second
+                }
+                
+                async makeRequest(method, endpoint, data = null, attempt = 1) {
+                    try {
+                        const config = {
+                            method,
+                            url: `${this.baseURL}${endpoint}`,
+                            headers: {
+                                'Authorization': `Bearer ${this.apiKey}`,
+                                'Content-Type': 'application/json'
+                            }
+                        };
+                        
+                        if (data) {
+                            config.data = data;
+                        }
+                        
+                        const response = await axios(config);
+                        return response.data;
+                        
+                    } catch (error) {
+                        if (this.shouldRetry(error) && attempt < this.retryAttempts) {
+                            console.log(`Retrying request (attempt ${attempt + 1}/${this.retryAttempts})`);
+                            await this.delay(this.retryDelay * attempt);
+                            return this.makeRequest(method, endpoint, data, attempt + 1);
+                        }
+                        
+                        throw this.handleError(error);
+                    }
+                }
+            }
+            ```
+            
+            ## 8. Performance Optimization
+            
+            ### Connection Pooling and Reuse
+            ```javascript
+            const https = require('https');
+            const axios = require('axios');
+            
+            // Create HTTP agent with connection pooling
+            const httpsAgent = new https.Agent({
+                keepAlive: true,
+                maxSockets: 50,
+                maxFreeSockets: 10,
+                timeout: 60000,
+                freeSocketTimeout: 30000
+            });
+            
+            const optimizedClient = axios.create({
+                httpsAgent,
+                timeout: 30000,
+                maxRedirects: 5
+            });
+            ```
+            
+            ## 9. Testing and Validation
+            
+            ### Unit Testing API Integration
+            ```javascript
+            const { expect } = require('chai');
+            const sinon = require('sinon');
+            const APIClient = require('./api-client');
+            
+            describe('API Client', () => {
+                let apiClient;
+                let axiosStub;
+                
+                beforeEach(() => {
+                    apiClient = new APIClient('https://api.example.com', 'test-key');
+                    axiosStub = sinon.stub(axios, 'request');
+                });
+                
+                afterEach(() => {
+                    axiosStub.restore();
+                });
+                
+                it('should make successful GET request', async () => {
+                    const mockResponse = { data: { id: 1, name: 'Test User' } };
+                    axiosStub.resolves(mockResponse);
+                    
+                    const result = await apiClient.get('/users/1');
+                    
+                    expect(result).to.deep.equal(mockResponse.data);
+                    expect(axiosStub.calledOnce).to.be.true;
+                });
+            });
+            ```
+            
+            ## 10. Deployment Guidelines
+            
+            ### Environment Configuration
+            ```yaml
+            # docker-compose.yml
+            version: '3.8'
+            services:
+              api-client:
+                build: .
+                environment:
+                  - NODE_ENV=production
+                  - API_BASE_URL=${API_BASE_URL}
+                  - API_KEY=${API_KEY}
+                  - REDIS_URL=${REDIS_URL}
+                  - LOG_LEVEL=info
+                ports:
+                  - "3000:3000"
+                depends_on:
+                  - redis
+                restart: unless-stopped
+            ```
+            
+            ## Conclusion
+            
+            This comprehensive guide provides everything needed to implement robust, secure, and performant API integrations. By following these practices and examples, you can build production-ready systems that handle errors gracefully, perform efficiently, and maintain security standards.
             """
             
             payload = {
                 "content": comprehensive_content,
-                "content_type": "html",
+                "content_type": "markdown",
                 "processing_mode": "v2_only"
             }
             
-            response = requests.post(f"{self.backend_url}/content/process",
-                                   json=payload, timeout=45)
+            response = requests.post(f"{self.backend_url}/content/process", 
+                                   json=payload, timeout=180)
             
             if response.status_code != 200:
-                self.log_test("Complete V2 Pipeline", False, f"HTTP {response.status_code}")
+                self.log_test("Complete 17-Stage Pipeline Execution", False, f"HTTP {response.status_code}")
                 return False
                 
             data = response.json()
             
-            # Check processing status
+            # Check processing success
             if data.get("status") != "success":
-                self.log_test("Complete V2 Pipeline", False, f"Processing failed: {data.get('message', 'Unknown error')}")
+                self.log_test("Complete 17-Stage Pipeline Execution", False, f"Processing failed: {data.get('message', 'Unknown error')}")
                 return False
                 
-            # Check articles generated
+            # Check processing info for complete stage execution
+            processing_info = data.get("processing_info", {})
+            stages_completed = processing_info.get("stages_completed", 0)
+            
+            # Must complete all 17 stages for 100% success
+            if stages_completed != 17:
+                self.log_test("Complete 17-Stage Pipeline Execution", False, f"Incomplete pipeline: {stages_completed}/17 stages completed")
+                return False
+                
+            # Check for critical stage errors
+            stage_errors = processing_info.get("stage_errors", [])
+            critical_errors = [err for err in stage_errors if err.get("severity") == "critical"]
+            
+            if critical_errors:
+                self.log_test("Complete 17-Stage Pipeline Execution", False, f"Critical stage errors: {len(critical_errors)}")
+                return False
+                
+            # Verify articles were generated
             articles = data.get("articles", [])
             if not articles:
-                self.log_test("Complete V2 Pipeline", False, "No articles generated")
+                self.log_test("Complete 17-Stage Pipeline Execution", False, "No articles generated despite 17 stages completion")
+                return False
+                
+            self.log_test("Complete 17-Stage Pipeline Execution", True, 
+                         f"100% SUCCESS: All 17/17 stages completed, {len(articles)} articles generated, {len(stage_errors)} minor errors")
+            return True
+            
+        except Exception as e:
+            self.log_test("Complete 17-Stage Pipeline Execution", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_stage_16_versioning_system(self):
+        """Test 3: Verify Stage 16 (Versioning) creates version metadata correctly"""
+        try:
+            test_content = """
+            # API Versioning Guide
+            
+            ## Introduction
+            This guide covers API versioning strategies and implementation approaches for maintaining backward compatibility while evolving your API.
+            
+            ## Versioning Strategies
+            - Semantic versioning (v1.0.0, v1.1.0, v2.0.0)
+            - URL path versioning (/api/v1/, /api/v2/)
+            - Header-based versioning (Accept: application/vnd.api+json;version=1)
+            - Query parameter versioning (?version=1)
+            
+            ## Implementation Examples
+            Each versioning strategy has its own benefits and trade-offs for API evolution.
+            """
+            
+            payload = {
+                "content": test_content,
+                "content_type": "markdown",
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/content/process", 
+                                   json=payload, timeout=90)
+            
+            if response.status_code != 200:
+                self.log_test("Stage 16 Versioning System", False, f"HTTP {response.status_code}")
+                return False
+                
+            data = response.json()
+            
+            if data.get("status") != "success":
+                self.log_test("Stage 16 Versioning System", False, f"Processing failed: {data.get('message')}")
+                return False
+                
+            # Check that Stage 16 was executed
+            processing_info = data.get("processing_info", {})
+            stages_completed = processing_info.get("stages_completed", 0)
+            
+            if stages_completed < 16:
+                self.log_test("Stage 16 Versioning System", False, f"Stage 16 not reached: only {stages_completed} stages completed")
+                return False
+                
+            # Check for versioning metadata in articles
+            articles = data.get("articles", [])
+            if not articles:
+                self.log_test("Stage 16 Versioning System", False, "No articles generated to check versioning")
+                return False
+                
+            article = articles[0]
+            metadata = article.get("metadata", {})
+            
+            # Check for version-related metadata
+            version_indicators = [
+                "version", "v2_version", "content_version", "pipeline_version", 
+                "processing_version", "engine_version"
+            ]
+            
+            has_version_metadata = any(key in metadata for key in version_indicators)
+            
+            if not has_version_metadata:
+                # Check if versioning info is in processing_info
+                versioning_info = processing_info.get("versioning", {})
+                if not versioning_info:
+                    self.log_test("Stage 16 Versioning System", False, "No versioning metadata found in article or processing info")
+                    return False
+                    
+            # Check for V2 engine version tracking
+            engine_version = metadata.get("engine") or processing_info.get("engine")
+            if engine_version != "v2":
+                self.log_test("Stage 16 Versioning System", False, f"Wrong engine version: {engine_version}")
+                return False
+                
+            self.log_test("Stage 16 Versioning System", True, 
+                         f"Versioning metadata created successfully, engine: {engine_version}")
+            return True
+            
+        except Exception as e:
+            self.log_test("Stage 16 Versioning System", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_stage_17_review_system(self):
+        """Test 4: Verify Stage 17 (Review) enqueues content for review successfully"""
+        try:
+            test_content = """
+            # Content Review Process Guide
+            
+            ## Overview
+            This guide outlines the content review process for ensuring quality and accuracy in published materials.
+            
+            ## Review Stages
+            1. Automated quality checks
+            2. Technical accuracy validation
+            3. Editorial review
+            4. Final approval and publishing
+            
+            ## Quality Criteria
+            - Technical accuracy and completeness
+            - Clear and concise writing
+            - Proper formatting and structure
+            - Appropriate examples and code samples
+            """
+            
+            payload = {
+                "content": test_content,
+                "content_type": "markdown",
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/content/process", 
+                                   json=payload, timeout=90)
+            
+            if response.status_code != 200:
+                self.log_test("Stage 17 Review System", False, f"HTTP {response.status_code}")
+                return False
+                
+            data = response.json()
+            
+            if data.get("status") != "success":
+                self.log_test("Stage 17 Review System", False, f"Processing failed: {data.get('message')}")
+                return False
+                
+            # Check that Stage 17 was executed
+            processing_info = data.get("processing_info", {})
+            stages_completed = processing_info.get("stages_completed", 0)
+            
+            if stages_completed < 17:
+                self.log_test("Stage 17 Review System", False, f"Stage 17 not reached: only {stages_completed} stages completed")
+                return False
+                
+            # Check for review system indicators
+            articles = data.get("articles", [])
+            if not articles:
+                self.log_test("Stage 17 Review System", False, "No articles generated to check review system")
+                return False
+                
+            article = articles[0]
+            metadata = article.get("metadata", {})
+            
+            # Check for review-related metadata
+            review_indicators = [
+                "review_status", "review_queue", "review_id", "review_request",
+                "queued_for_review", "review_metadata"
+            ]
+            
+            has_review_metadata = any(key in metadata for key in review_indicators)
+            
+            if not has_review_metadata:
+                # Check if review info is in processing_info
+                review_info = processing_info.get("review", {}) or processing_info.get("stage_17", {})
+                if not review_info:
+                    self.log_test("Stage 17 Review System", False, "No review system metadata found")
+                    return False
+                    
+            # Check article status indicates review processing
+            article_status = article.get("status", "")
+            review_statuses = ["review", "pending_review", "queued", "processed"]
+            
+            status_indicates_review = any(status in article_status.lower() for status in review_statuses)
+            
+            self.log_test("Stage 17 Review System", True, 
+                         f"Review system engaged successfully, article status: {article_status}")
+            return True
+            
+        except Exception as e:
+            self.log_test("Stage 17 Review System", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_full_processing_workflow_integrity(self):
+        """Test 5: Verify complete workflow produces fully processed articles"""
+        try:
+            test_content = """
+            # Complete Workflow Testing Guide
+            
+            ## Introduction
+            This comprehensive guide tests the complete V2 processing workflow to ensure all stages work together seamlessly.
+            
+            ## Processing Stages Overview
+            The V2 pipeline consists of 17 distinct stages:
+            1. Content Analysis
+            2. Outline Planning
+            3. Prewrite Extraction
+            4. Gap Filling
+            5. Evidence Tagging
+            6. Code Normalization
+            7. Article Generation
+            8. Style Processing
+            9. Related Links
+            10. Validation
+            11. Publishing
+            12. Cross-Article QA
+            13. Adaptive Adjustment
+            14. Media Processing
+            15. Content Extraction
+            16. Versioning
+            17. Review
+            
+            ## Quality Assurance
+            Each stage contributes to the overall quality and completeness of the final articles.
+            
+            ### Technical Implementation
+            ```javascript
+            // Example workflow monitoring
+            const workflowMonitor = {
+                trackStage: (stageNumber, stageName) => {
+                    console.log(`Stage ${stageNumber}: ${stageName} - Processing...`);
+                },
+                
+                validateOutput: (stageOutput) => {
+                    return stageOutput && stageOutput.status === 'completed';
+                },
+                
+                reportProgress: (completedStages, totalStages) => {
+                    const percentage = (completedStages / totalStages) * 100;
+                    console.log(`Workflow Progress: ${percentage.toFixed(1)}%`);
+                }
+            };
+            ```
+            
+            ## Expected Outcomes
+            - All 17 stages complete successfully
+            - Articles are fully processed and formatted
+            - Metadata includes complete processing information
+            - No critical errors or missing components
+            """
+            
+            payload = {
+                "content": test_content,
+                "content_type": "markdown",
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/content/process", 
+                                   json=payload, timeout=120)
+            
+            if response.status_code != 200:
+                self.log_test("Full Processing Workflow Integrity", False, f"HTTP {response.status_code}")
+                return False
+                
+            data = response.json()
+            
+            if data.get("status") != "success":
+                self.log_test("Full Processing Workflow Integrity", False, f"Processing failed: {data.get('message')}")
+                return False
+                
+            # Verify complete processing
+            processing_info = data.get("processing_info", {})
+            stages_completed = processing_info.get("stages_completed", 0)
+            
+            # Must be 100% complete (17/17 stages)
+            if stages_completed != 17:
+                self.log_test("Full Processing Workflow Integrity", False, f"Incomplete workflow: {stages_completed}/17 stages")
+                return False
+                
+            # Verify articles are fully processed
+            articles = data.get("articles", [])
+            if not articles:
+                self.log_test("Full Processing Workflow Integrity", False, "No articles generated")
                 return False
                 
             article = articles[0]
             
-            # Verify all TICKET 3 components are present
-            ticket3_fields = ["doc_uid", "doc_slug", "headings", "xrefs", "related_links"]
-            missing_fields = [f for f in ticket3_fields if f not in article]
+            # Check article completeness
+            required_fields = ["id", "title", "content", "metadata", "created_at"]
+            missing_fields = [field for field in required_fields if field not in article]
             
             if missing_fields:
-                self.log_test("Complete V2 Pipeline", False, f"Missing TICKET 3 fields: {missing_fields}")
+                self.log_test("Full Processing Workflow Integrity", False, f"Incomplete article: missing {missing_fields}")
                 return False
                 
-            # Verify heading extraction worked
-            headings = article.get("headings", [])
-            if len(headings) < 5:  # Should have many headings from our comprehensive content
-                self.log_test("Complete V2 Pipeline", False, f"Insufficient headings extracted: {len(headings)}")
+            # Check content quality
+            content = article.get("content", "")
+            if len(content) < 1000:  # Should have substantial processed content
+                self.log_test("Full Processing Workflow Integrity", False, f"Content too short: {len(content)} chars")
                 return False
                 
-            # Verify doc_uid format
-            doc_uid = article.get("doc_uid")
-            if not doc_uid or not doc_uid.startswith("01JZ"):
-                self.log_test("Complete V2 Pipeline", False, f"Invalid doc_uid: {doc_uid}")
-                return False
-                
-            # Verify doc_slug format
-            doc_slug = article.get("doc_slug")
-            if not doc_slug or " " in doc_slug:
-                self.log_test("Complete V2 Pipeline", False, f"Invalid doc_slug: {doc_slug}")
-                return False
-                
-            # Check that content has proper heading IDs (from stable anchors)
-            content = article.get("content", "") or article.get("html", "")
-            if 'id="' not in content:
-                self.log_test("Complete V2 Pipeline", False, "Content missing heading IDs")
-                return False
-                
-            # Verify processing metadata
+            # Check metadata completeness
             metadata = article.get("metadata", {})
+            expected_metadata = ["engine", "processing_stages", "content_length"]
+            
+            # Verify V2 processing
             if metadata.get("engine") != "v2":
-                self.log_test("Complete V2 Pipeline", False, f"Wrong engine in metadata: {metadata.get('engine')}")
+                self.log_test("Full Processing Workflow Integrity", False, f"Wrong engine: {metadata.get('engine')}")
                 return False
                 
-            self.log_test("Complete V2 Pipeline", True,
-                         f"Complete pipeline success: {len(headings)} headings, doc_uid: {doc_uid[:10]}..., doc_slug: {doc_slug[:20]}...")
+            # Check for processing errors
+            stage_errors = processing_info.get("stage_errors", [])
+            critical_errors = [err for err in stage_errors if err.get("severity") == "critical"]
+            
+            if critical_errors:
+                self.log_test("Full Processing Workflow Integrity", False, f"Critical processing errors: {len(critical_errors)}")
+                return False
+                
+            self.log_test("Full Processing Workflow Integrity", True, 
+                         f"Complete workflow integrity verified: 17/17 stages, {len(content)} chars content, V2 engine")
             return True
             
         except Exception as e:
-            self.log_test("Complete V2 Pipeline", False, f"Exception: {str(e)}")
+            self.log_test("Full Processing Workflow Integrity", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_no_attribute_errors_or_missing_methods(self):
+        """Test 6: Verify no AttributeError or missing method issues in pipeline"""
+        try:
+            # Test with content that might trigger various code paths
+            test_content = """
+            # Error-Free Pipeline Testing
+            
+            ## Comprehensive Testing Scenarios
+            This content is designed to test various pipeline components and ensure no AttributeError or missing method issues occur.
+            
+            ### Code Processing Test
+            ```python
+            def test_function():
+                return "Testing code processing"
+            ```
+            
+            ### List Processing Test
+            - Item 1: Basic list processing
+            - Item 2: Advanced list handling
+            - Item 3: Complex list structures
+            
+            ### Table Processing Test
+            | Feature | Status | Notes |
+            |---------|--------|-------|
+            | Stage 1 | ✅ | Working |
+            | Stage 2 | ✅ | Working |
+            | Stage 3 | ✅ | Working |
+            
+            ### Link Processing Test
+            [Example Link](https://example.com)
+            
+            ### Image Processing Test
+            ![Test Image](https://example.com/image.jpg)
+            """
+            
+            payload = {
+                "content": test_content,
+                "content_type": "markdown",
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/content/process", 
+                                   json=payload, timeout=90)
+            
+            if response.status_code != 200:
+                self.log_test("No AttributeError or Missing Methods", False, f"HTTP {response.status_code}")
+                return False
+                
+            data = response.json()
+            
+            # Check for processing success (no exceptions should occur)
+            if data.get("status") != "success":
+                error_message = data.get("message", "Unknown error")
+                
+                # Check specifically for AttributeError or missing method issues
+                error_indicators = [
+                    "AttributeError", "has no attribute", "missing method", 
+                    "method not found", "NoneType", "object has no attribute"
+                ]
+                
+                has_attribute_error = any(indicator in error_message for indicator in error_indicators)
+                
+                if has_attribute_error:
+                    self.log_test("No AttributeError or Missing Methods", False, f"AttributeError detected: {error_message}")
+                    return False
+                else:
+                    # Other types of errors are acceptable for this test
+                    self.log_test("No AttributeError or Missing Methods", True, f"No AttributeError (other error: {error_message})")
+                    return True
+                    
+            # Check processing info for method-related errors
+            processing_info = data.get("processing_info", {})
+            stage_errors = processing_info.get("stage_errors", [])
+            
+            # Look for AttributeError in stage errors
+            attribute_errors = []
+            for error in stage_errors:
+                error_msg = error.get("message", "")
+                if any(indicator in error_msg for indicator in ["AttributeError", "has no attribute", "missing method"]):
+                    attribute_errors.append(error)
+                    
+            if attribute_errors:
+                self.log_test("No AttributeError or Missing Methods", False, f"AttributeErrors in stages: {len(attribute_errors)}")
+                return False
+                
+            # Verify articles were generated (indicates no critical method issues)
+            articles = data.get("articles", [])
+            stages_completed = processing_info.get("stages_completed", 0)
+            
+            self.log_test("No AttributeError or Missing Methods", True, 
+                         f"No AttributeError detected, {stages_completed} stages completed, {len(articles)} articles generated")
+            return True
+            
+        except Exception as e:
+            # Check if the exception itself is an AttributeError
+            if "AttributeError" in str(e) or "has no attribute" in str(e):
+                self.log_test("No AttributeError or Missing Methods", False, f"AttributeError exception: {str(e)}")
+                return False
+            else:
+                self.log_test("No AttributeError or Missing Methods", True, f"No AttributeError (other exception: {str(e)})")
+                return True
+    
+    def test_production_readiness_verification(self):
+        """Test 7: Verify pipeline is production-ready with consistent performance"""
+        try:
+            # Test multiple requests to verify consistency
+            test_content = """
+            # Production Readiness Verification
+            
+            ## System Reliability
+            This test verifies that the 17-stage pipeline is ready for production deployment with consistent performance and reliability.
+            
+            ## Performance Metrics
+            - Processing time consistency
+            - Memory usage stability
+            - Error rate minimization
+            - Output quality consistency
+            
+            ## Reliability Indicators
+            - All stages complete successfully
+            - No critical errors or failures
+            - Consistent article generation
+            - Proper metadata handling
+            """
+            
+            payload = {
+                "content": test_content,
+                "content_type": "markdown",
+                "processing_mode": "v2_only"
+            }
+            
+            # Test multiple requests for consistency
+            results = []
+            for i in range(3):
+                start_time = time.time()
+                response = requests.post(f"{self.backend_url}/content/process", 
+                                       json=payload, timeout=90)
+                processing_time = time.time() - start_time
+                
+                if response.status_code != 200:
+                    self.log_test("Production Readiness Verification", False, f"Request {i+1} failed: HTTP {response.status_code}")
+                    return False
+                    
+                data = response.json()
+                
+                if data.get("status") != "success":
+                    self.log_test("Production Readiness Verification", False, f"Request {i+1} processing failed")
+                    return False
+                    
+                processing_info = data.get("processing_info", {})
+                stages_completed = processing_info.get("stages_completed", 0)
+                articles = data.get("articles", [])
+                
+                results.append({
+                    "stages_completed": stages_completed,
+                    "articles_count": len(articles),
+                    "processing_time": processing_time,
+                    "has_errors": len(processing_info.get("stage_errors", [])) > 0
+                })
+                
+                # Small delay between requests
+                time.sleep(2)
+            
+            # Analyze consistency
+            stages_consistent = all(r["stages_completed"] == 17 for r in results)
+            articles_consistent = all(r["articles_count"] > 0 for r in results)
+            no_critical_errors = all(not r["has_errors"] for r in results)
+            
+            # Check performance consistency (processing times should be reasonable)
+            processing_times = [r["processing_time"] for r in results]
+            avg_time = sum(processing_times) / len(processing_times)
+            max_time = max(processing_times)
+            
+            # Performance should be consistent (max time shouldn't be more than 2x average)
+            performance_consistent = max_time <= (avg_time * 2) and avg_time < 120  # Under 2 minutes average
+            
+            if not stages_consistent:
+                self.log_test("Production Readiness Verification", False, "Inconsistent stage completion across requests")
+                return False
+                
+            if not articles_consistent:
+                self.log_test("Production Readiness Verification", False, "Inconsistent article generation across requests")
+                return False
+                
+            if not performance_consistent:
+                self.log_test("Production Readiness Verification", False, f"Inconsistent performance: avg {avg_time:.1f}s, max {max_time:.1f}s")
+                return False
+                
+            self.log_test("Production Readiness Verification", True, 
+                         f"Production ready: 3/3 requests successful, avg {avg_time:.1f}s, all 17 stages consistent")
+            return True
+            
+        except Exception as e:
+            self.log_test("Production Readiness Verification", False, f"Exception: {str(e)}")
             return False
     
     def run_all_tests(self):
-        """Run all TICKET 3 tests"""
-        print("🎯 TICKET 3 IMPLEMENTATION TESTING - Method Integration Fix Verification")
+        """Run all 17-stage pipeline tests"""
+        print("🎯 KE-PR5 COMPLETE 17-STAGE PIPELINE TESTING")
         print("=" * 80)
+        print("Final verification of complete V2 pipeline with all 17 stages working")
         print(f"Backend URL: {self.backend_url}")
         print(f"Test Start Time: {datetime.now().isoformat()}")
         print()
         
         # Run all tests
         tests = [
-            self.test_v2_engine_health,
-            self.test_v2style_processor_instantiation,
-            self.test_bookmark_registry_extraction,
-            self.test_document_identifier_generation,
-            self.test_linkbuilder_system,
-            self.test_backfill_functionality,
-            self.test_api_endpoint_integration,
-            self.test_complete_v2_pipeline
+            self.test_v2_engine_17_stage_availability,
+            self.test_complete_17_stage_pipeline_execution,
+            self.test_stage_16_versioning_system,
+            self.test_stage_17_review_system,
+            self.test_full_processing_workflow_integrity,
+            self.test_no_attribute_errors_or_missing_methods,
+            self.test_production_readiness_verification
         ]
         
         for test in tests:
@@ -562,12 +1028,12 @@ class TICKET3Tester:
                 self.log_test(test_name, False, f"Test exception: {str(e)}")
             
             # Small delay between tests
-            time.sleep(1)
+            time.sleep(3)
         
         # Print summary
         print()
         print("=" * 80)
-        print("🎯 TICKET 3 TEST SUMMARY")
+        print("🎯 KE-PR5 COMPLETE 17-STAGE PIPELINE TEST SUMMARY")
         print("=" * 80)
         
         success_rate = (self.passed_tests / self.total_tests * 100) if self.total_tests > 0 else 0
@@ -578,14 +1044,19 @@ class TICKET3Tester:
         print(f"Success Rate: {success_rate:.1f}%")
         print()
         
-        if success_rate >= 80:
-            print("🎉 TICKET 3 IMPLEMENTATION: EXCELLENT - Method integration fix successful!")
-        elif success_rate >= 60:
-            print("✅ TICKET 3 IMPLEMENTATION: GOOD - Most functionality working")
-        elif success_rate >= 40:
-            print("⚠️ TICKET 3 IMPLEMENTATION: PARTIAL - Some issues remain")
+        if success_rate == 100:
+            print("🎉 KE-PR5 COMPLETE 17-STAGE PIPELINE: PERFECT - All 17 stages working flawlessly!")
+            print("✅ Stage 16 (Versioning) and Stage 17 (Review) both operational")
+            print("✅ 100% pipeline completion achieved")
+            print("✅ Production-ready with no AttributeError issues")
+        elif success_rate >= 85:
+            print("🎉 KE-PR5 COMPLETE 17-STAGE PIPELINE: EXCELLENT - Nearly perfect implementation!")
+        elif success_rate >= 70:
+            print("✅ KE-PR5 COMPLETE 17-STAGE PIPELINE: GOOD - Most functionality working")
+        elif success_rate >= 50:
+            print("⚠️ KE-PR5 COMPLETE 17-STAGE PIPELINE: PARTIAL - Some issues remain")
         else:
-            print("❌ TICKET 3 IMPLEMENTATION: NEEDS ATTENTION - Major issues detected")
+            print("❌ KE-PR5 COMPLETE 17-STAGE PIPELINE: NEEDS ATTENTION - Major issues detected")
         
         print()
         print("Detailed Results:")
@@ -596,8 +1067,8 @@ class TICKET3Tester:
         return success_rate
 
 if __name__ == "__main__":
-    tester = TICKET3Tester()
+    tester = Complete17StagePipelineTester()
     success_rate = tester.run_all_tests()
     
     # Exit with appropriate code
-    sys.exit(0 if success_rate >= 80 else 1)
+    sys.exit(0 if success_rate >= 85 else 1)

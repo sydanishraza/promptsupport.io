@@ -158,7 +158,13 @@ async def process_url_v2_route(
 @router.get("/api/content/library")
 async def get_content_library():
     """Get all articles from content library"""
-    from backend.server import db
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import db
     
     try:
         cursor = db.content_library.find().sort("created_at", -1).limit(100)
@@ -206,7 +212,13 @@ async def update_article(article_id: str):
 @router.delete("/api/content/library/{article_id}")
 async def delete_article(article_id: str):
     """Delete article from content library"""
-    from backend.server import db
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    from server import db
     
     try:
         result = await db.content_library.delete_one({"id": article_id})

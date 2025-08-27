@@ -185,6 +185,15 @@ except ImportError as e:
     class Pipeline:
         async def run(self, job_id, content, metadata): return [], None, f"fallback_{job_id}"
     def get_pipeline(llm_client=None): return Pipeline()
+    
+    # KE-PR6: Fallback LLM client
+    class LLMClient:
+        def __init__(self, provider=None, **kwargs):
+            self.provider = provider or "fallback"
+        async def complete(self, *args, **kwargs): return "Fallback LLM response"
+        async def moderate(self, *args, **kwargs): return {"ok": True}
+        async def analyze_content(self, *args, **kwargs): return {"analysis": "fallback", "success": False}
+    def get_llm_client(provider=None, **kwargs): return LLMClient(provider, **kwargs)
 
 # HTML preprocessing pipeline imports
 import mammoth

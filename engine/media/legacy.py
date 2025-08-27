@@ -65,7 +65,7 @@ class MediaIntelligenceService:
                 # Fall back to rule-based analysis
         
         # Rule-based analysis fallback
-        return self._create_intelligent_fallback_analysis(alt_text, 'image', format_type, context)
+        return self._create_fallback_analysis(alt_text, 'image', format_type)
     
     async def _analyze_with_openai_vision(self, base64_data: str, alt_text: str, 
                                         context: str, format_type: str) -> Dict[str, Any]:

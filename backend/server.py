@@ -17660,11 +17660,7 @@ async def call_built_in_local_llm(system_message: str, user_message: str) -> Opt
     print("⚠️ Built-in local LLM is disabled for performance optimization")
     return None
 
-# Import centralized LLM client
-from app.engine.llm.client import get_llm_client
 
-# Global LLM client instance
-llm_client = None
 
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
     """

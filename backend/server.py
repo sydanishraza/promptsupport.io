@@ -8095,6 +8095,34 @@ class V2ValidationSystem:
         
         toc_div.append(toc_ul)
         
+        # TICKET 2: Remove old static TOC lists before inserting the new functional Mini-TOC
+        # Look for <ul> lists that appear to be old TOCs (contain heading-like text)
+        static_toc_removed = 0
+        
+        for ul in soup.find_all('ul'):
+            # Skip if this is already part of our new mini-toc structure
+            if ul.find_parent(class_="mini-toc"):
+                continue
+                
+            # Check if this UL looks like an old static TOC
+            li_items = ul.find_all('li', recursive=False)
+            if len(li_items) >= 3:  # Likely a TOC if it has 3+ items
+                # Check if items match our heading structure
+                matching_headings = 0
+                for li in li_items:
+                    li_text = li.get_text(strip=True)
+                    # Check if this text matches any of our headings
+                    for item in toc_items:
+                        if li_text.lower() == item['text'].lower():
+                            matching_headings += 1
+                            break
+                
+                # If 60%+ of the items match our headings, it's likely an old TOC
+                if matching_headings / len(li_items) >= 0.6:
+                    print(f"🗑️ TICKET 2: Removing old static TOC list with {len(li_items)} items ({matching_headings} matching headings)")
+                    ul.decompose()  # Remove the old static TOC
+                    static_toc_removed += 1
+        
         # Insert Mini-TOC at the beginning of content (after any existing TOC)
         existing_toc = soup.find(class_="mini-toc")
         if existing_toc:
@@ -8112,7 +8140,10 @@ class V2ValidationSystem:
                 else:
                     soup.insert(0, toc_div)
         
-        print(f"✅ TICKET 2: Mini-TOC built with {len(toc_items)} clickable links")
+        if static_toc_removed > 0:
+            print(f"✅ TICKET 2: Mini-TOC built with {len(toc_items)} clickable links, removed {static_toc_removed} old static TOC(s)")
+        else:
+            print(f"✅ TICKET 2: Mini-TOC built with {len(toc_items)} clickable links")
         return str(soup)
     
     def anchors_resolve(self, html: str) -> bool:

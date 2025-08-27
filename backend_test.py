@@ -13,13 +13,14 @@ from datetime import datetime
 # Backend URL from environment
 BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
 
-class TICKET2Tester:
+class TICKET3Tester:
     def __init__(self):
+        self.backend_url = BACKEND_URL
         self.test_results = []
         self.total_tests = 0
         self.passed_tests = 0
         
-    def log_test(self, test_name, passed, details=""):
+    def log_test(self, test_name: str, passed: bool, details: str = ""):
         """Log test result"""
         self.total_tests += 1
         if passed:
@@ -27,653 +28,576 @@ class TICKET2Tester:
             status = "✅ PASS"
         else:
             status = "❌ FAIL"
-        
-        result = {
+            
+        result = f"{status} - {test_name}"
+        if details:
+            result += f" | {details}"
+            
+        print(result)
+        self.test_results.append({
             "test": test_name,
             "passed": passed,
             "details": details,
             "timestamp": datetime.now().isoformat()
-        }
-        self.test_results.append(result)
-        print(f"{status} | {test_name}")
-        if details:
-            print(f"    📝 {details}")
-        print()
-    
-    def test_stable_slug_generation(self):
-        """Test 1: Verify stable slug generation with special characters and duplicates"""
-        print("🔧 TEST 1: Stable Slug Generation")
+        })
         
-        # Test content with various heading types
-        test_content = """
-        <h2>Getting Started with API Integration</h2>
-        <p>This section covers the basics.</p>
-        
-        <h3>API Key & Authentication Setup</h3>
-        <p>Configure your API credentials.</p>
-        
-        <h2>Getting Started with API Integration</h2>
-        <p>Duplicate heading to test collision handling.</p>
-        
-        <h3>Special Characters: Testing (Symbols) & Unicode™</h3>
-        <p>Testing special character handling.</p>
-        
-        <h4>Step-by-Step Configuration Process</h4>
-        <p>Detailed configuration steps.</p>
-        """
-        
+    def test_v2_engine_health(self):
+        """Test 1: Verify V2 Engine is operational with TICKET 3 features"""
         try:
-            # Process content through V2 style system to trigger TICKET 2 implementation
-            response = requests.post(f"{API_BASE}/content/process", 
-                json={
-                    "content": test_content,
-                    "content_type": "text",
-                    "metadata": {
-                        "title": "TICKET 2 Slug Test",
-                        "test_type": "stable_slug_generation"
-                    }
-                },
-                timeout=30
-            )
+            response = requests.get(f"{self.backend_url}/engine", timeout=10)
             
-            if response.status_code == 200:
-                result = response.json()
+            if response.status_code != 200:
+                self.log_test("V2 Engine Health Check", False, f"HTTP {response.status_code}")
+                return False
                 
-                # Check if articles were generated
-                if 'articles' in result and len(result['articles']) > 0:
-                    article_content = result['articles'][0].get('content', '')
-                    
-                    # Verify stable slug patterns
-                    expected_patterns = [
-                        'id="getting-started-with-api-integration"',  # First occurrence
-                        'id="getting-started-with-api-integration-2"',  # Duplicate with suffix
-                        'id="api-key-authentication-setup"',  # Special chars normalized
-                        'id="special-characters-testing-symbols-unicode"',  # Unicode normalized
-                        'id="step-by-step-configuration-process"'  # Hyphens preserved
-                    ]
-                    
-                    found_patterns = 0
-                    for pattern in expected_patterns:
-                        if pattern in article_content:
-                            found_patterns += 1
-                            print(f"    ✅ Found expected pattern: {pattern}")
-                        else:
-                            print(f"    ❌ Missing pattern: {pattern}")
-                    
-                    success_rate = found_patterns / len(expected_patterns)
-                    passed = success_rate >= 0.8  # 80% success rate required
-                    
-                    self.log_test(
-                        "Stable Slug Generation", 
-                        passed,
-                        f"Found {found_patterns}/{len(expected_patterns)} expected slug patterns ({success_rate:.1%})"
-                    )
-                else:
-                    self.log_test("Stable Slug Generation", False, "No articles generated from test content")
-            else:
-                self.log_test("Stable Slug Generation", False, f"API error: {response.status_code}")
+            data = response.json()
+            
+            # Check engine status
+            if data.get("status") != "operational":
+                self.log_test("V2 Engine Health Check", False, f"Engine status: {data.get('status')}")
+                return False
                 
+            # Check for V2 features
+            features = data.get("features", [])
+            required_features = ["v2_processing", "woolf_style_processing"]
+            
+            missing_features = [f for f in required_features if f not in features]
+            if missing_features:
+                self.log_test("V2 Engine Health Check", False, f"Missing features: {missing_features}")
+                return False
+                
+            self.log_test("V2 Engine Health Check", True, f"Engine operational with {len(features)} features")
+            return True
+            
         except Exception as e:
-            self.log_test("Stable Slug Generation", False, f"Exception: {str(e)}")
+            self.log_test("V2 Engine Health Check", False, f"Exception: {str(e)}")
+            return False
     
-    def test_heading_id_assignment(self):
-        """Test 2: Verify ID assignment before TOC generation"""
-        print("🔧 TEST 2: Heading ID Assignment Before TOC")
-        
-        test_content = """
-        <h2>Introduction to the System</h2>
-        <p>Overview content here.</p>
-        
-        <h3>Key Features and Benefits</h3>
-        <p>Feature descriptions.</p>
-        
-        <h3>Implementation Requirements</h3>
-        <p>Requirements details.</p>
-        
-        <h4>Technical Specifications</h4>
-        <p>Technical details.</p>
-        
-        <h2>Advanced Configuration</h2>
-        <p>Advanced topics.</p>
-        """
-        
+    def test_v2style_processor_instantiation(self):
+        """Test 2: Verify V2StyleProcessor can be instantiated and methods are accessible"""
         try:
-            response = requests.post(f"{API_BASE}/content/process", 
-                json={
-                    "content": test_content,
-                    "content_type": "text",
-                    "metadata": {
-                        "title": "TICKET 2 ID Assignment Test",
-                        "test_type": "heading_id_assignment"
-                    }
-                },
-                timeout=30
-            )
+            # Test by calling a diagnostic endpoint that uses V2StyleProcessor
+            response = requests.get(f"{self.backend_url}/style/diagnostics", timeout=10)
             
-            if response.status_code == 200:
-                result = response.json()
+            if response.status_code != 200:
+                self.log_test("V2StyleProcessor Instantiation", False, f"HTTP {response.status_code}")
+                return False
                 
-                if 'articles' in result and len(result['articles']) > 0:
-                    article_content = result['articles'][0].get('content', '')
-                    
-                    # Check for proper ID assignment to H2, H3, H4 headings
-                    h2_with_ids = article_content.count('<h2 id="')
-                    h3_with_ids = article_content.count('<h3 id="')
-                    h4_with_ids = article_content.count('<h4 id="')
-                    
-                    # Count total headings
-                    total_h2 = article_content.count('<h2')
-                    total_h3 = article_content.count('<h3')
-                    total_h4 = article_content.count('<h4')
-                    
-                    # All headings should have IDs assigned
-                    all_h2_have_ids = h2_with_ids == total_h2 and total_h2 > 0
-                    all_h3_have_ids = h3_with_ids == total_h3 and total_h3 > 0
-                    all_h4_have_ids = h4_with_ids == total_h4 and total_h4 > 0
-                    
-                    passed = all_h2_have_ids and all_h3_have_ids and all_h4_have_ids
-                    
-                    self.log_test(
-                        "Heading ID Assignment", 
-                        passed,
-                        f"H2: {h2_with_ids}/{total_h2}, H3: {h3_with_ids}/{total_h3}, H4: {h4_with_ids}/{total_h4} have IDs"
-                    )
-                else:
-                    self.log_test("Heading ID Assignment", False, "No articles generated")
-            else:
-                self.log_test("Heading ID Assignment", False, f"API error: {response.status_code}")
+            data = response.json()
+            
+            # Check if we get valid diagnostic data (indicates V2StyleProcessor is working)
+            if "engine" not in data:
+                self.log_test("V2StyleProcessor Instantiation", False, "No engine field in diagnostics")
+                return False
                 
+            if data.get("engine") != "v2":
+                self.log_test("V2StyleProcessor Instantiation", False, f"Wrong engine: {data.get('engine')}")
+                return False
+                
+            self.log_test("V2StyleProcessor Instantiation", True, "V2StyleProcessor accessible via diagnostics")
+            return True
+            
         except Exception as e:
-            self.log_test("Heading ID Assignment", False, f"Exception: {str(e)}")
+            self.log_test("V2StyleProcessor Instantiation", False, f"Exception: {str(e)}")
+            return False
     
-    def test_minitoc_creation(self):
-        """Test 3: Verify Mini-TOC creation with clickable links"""
-        print("🔧 TEST 3: Mini-TOC Creation with Clickable Links")
-        
-        test_content = """
-        <h2>Getting Started Guide</h2>
-        <p>This guide will help you get started quickly.</p>
-        
-        <h3>Prerequisites and Setup</h3>
-        <p>What you need before starting.</p>
-        
-        <h3>Installation Process</h3>
-        <p>Step-by-step installation.</p>
-        
-        <h2>Configuration Options</h2>
-        <p>Available configuration settings.</p>
-        
-        <h3>Basic Configuration</h3>
-        <p>Essential settings.</p>
-        
-        <h4>Environment Variables</h4>
-        <p>Required environment setup.</p>
-        """
-        
+    def test_bookmark_registry_extraction(self):
+        """Test 3: Test bookmark registry extraction with sample content"""
         try:
-            response = requests.post(f"{API_BASE}/content/process", 
-                json={
-                    "content": test_content,
-                    "content_type": "text",
-                    "metadata": {
-                        "title": "TICKET 2 Mini-TOC Test",
-                        "test_type": "minitoc_creation"
-                    }
-                },
-                timeout=30
-            )
+            # Create test content with headings
+            test_content = """
+            <h2 id="getting-started">Getting Started with API Integration</h2>
+            <p>This section covers the basics of API integration.</p>
             
-            if response.status_code == 200:
-                result = response.json()
+            <h3 id="authentication">Authentication Process</h3>
+            <p>Learn how to authenticate your API requests.</p>
+            
+            <h2 id="advanced-features">Advanced Features</h2>
+            <p>Explore advanced API capabilities.</p>
+            
+            <h3 id="rate-limiting">Rate Limiting</h3>
+            <p>Understanding API rate limits.</p>
+            """
+            
+            # Test via V2 processing pipeline (which should use bookmark registry)
+            payload = {
+                "content": test_content,
+                "content_type": "html",
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/v2/process-text", 
+                                   json=payload, timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("Bookmark Registry Extraction", False, f"HTTP {response.status_code}")
+                return False
                 
-                if 'articles' in result and len(result['articles']) > 0:
-                    article_content = result['articles'][0].get('content', '')
-                    
-                    # Check for Mini-TOC structure
-                    has_minitoc_container = 'class="mini-toc"' in article_content
-                    
-                    # Count TOC links
-                    toc_links = article_content.count('class="toc-link"')
-                    
-                    # Check for proper href attributes pointing to heading IDs
-                    href_patterns = [
-                        'href="#getting-started-guide"',
-                        'href="#prerequisites-and-setup"',
-                        'href="#installation-process"',
-                        'href="#configuration-options"',
-                        'href="#basic-configuration"',
-                        'href="#environment-variables"'
-                    ]
-                    
-                    found_hrefs = 0
-                    for pattern in href_patterns:
-                        if pattern in article_content:
-                            found_hrefs += 1
-                    
-                    # Verify TOC is positioned at the beginning
-                    toc_position = article_content.find('class="mini-toc"')
-                    first_heading_position = article_content.find('<h2')
-                    toc_before_content = toc_position < first_heading_position if toc_position != -1 and first_heading_position != -1 else False
-                    
-                    passed = (has_minitoc_container and 
-                             toc_links >= 5 and  # Should have links for all headings
-                             found_hrefs >= 4 and  # Most href patterns found
-                             toc_before_content)  # TOC positioned correctly
-                    
-                    self.log_test(
-                        "Mini-TOC Creation", 
-                        passed,
-                        f"TOC container: {has_minitoc_container}, Links: {toc_links}, Hrefs: {found_hrefs}/6, Position: {'correct' if toc_before_content else 'incorrect'}"
-                    )
-                else:
-                    self.log_test("Mini-TOC Creation", False, "No articles generated")
-            else:
-                self.log_test("Mini-TOC Creation", False, f"API error: {response.status_code}")
+            data = response.json()
+            
+            # Check if processing was successful
+            if data.get("status") != "success":
+                self.log_test("Bookmark Registry Extraction", False, f"Processing failed: {data.get('message', 'Unknown error')}")
+                return False
                 
+            # Check if articles were generated with bookmark data
+            articles = data.get("articles", [])
+            if not articles:
+                self.log_test("Bookmark Registry Extraction", False, "No articles generated")
+                return False
+                
+            # Check first article for TICKET 3 data
+            article = articles[0]
+            
+            # Check for doc_uid
+            if not article.get("doc_uid"):
+                self.log_test("Bookmark Registry Extraction", False, "No doc_uid generated")
+                return False
+                
+            # Check for doc_slug  
+            if not article.get("doc_slug"):
+                self.log_test("Bookmark Registry Extraction", False, "No doc_slug generated")
+                return False
+                
+            # Check for headings registry
+            headings = article.get("headings", [])
+            if len(headings) < 2:  # Should have at least 2 headings from our test content
+                self.log_test("Bookmark Registry Extraction", False, f"Insufficient headings extracted: {len(headings)}")
+                return False
+                
+            # Verify heading structure
+            first_heading = headings[0]
+            required_fields = ["id", "text", "level", "order"]
+            missing_fields = [f for f in required_fields if f not in first_heading]
+            
+            if missing_fields:
+                self.log_test("Bookmark Registry Extraction", False, f"Missing heading fields: {missing_fields}")
+                return False
+                
+            self.log_test("Bookmark Registry Extraction", True, 
+                         f"Extracted {len(headings)} headings, doc_uid: {article['doc_uid'][:10]}...")
+            return True
+            
         except Exception as e:
-            self.log_test("Mini-TOC Creation", False, f"Exception: {str(e)}")
+            self.log_test("Bookmark Registry Extraction", False, f"Exception: {str(e)}")
+            return False
     
-    def test_heading_ladder_validation(self):
-        """Test 4: Verify proper heading hierarchy validation"""
-        print("🔧 TEST 4: Heading Ladder Validation")
-        
-        # Test with proper hierarchy
-        valid_content = """
-        <h2>Main Section</h2>
-        <p>Main content.</p>
-        
-        <h3>Subsection A</h3>
-        <p>Subsection content.</p>
-        
-        <h4>Detail Level</h4>
-        <p>Detailed information.</p>
-        
-        <h3>Subsection B</h3>
-        <p>More subsection content.</p>
-        
-        <h2>Another Main Section</h2>
-        <p>More main content.</p>
-        """
-        
+    def test_document_identifier_generation(self):
+        """Test 4: Test doc_uid and doc_slug generation"""
         try:
-            response = requests.post(f"{API_BASE}/content/process", 
-                json={
-                    "content": valid_content,
-                    "content_type": "text",
-                    "metadata": {
-                        "title": "TICKET 2 Heading Ladder Test",
-                        "test_type": "heading_ladder_validation"
-                    }
-                },
-                timeout=30
-            )
+            # Test with a simple article creation
+            test_title = "Complete Guide to API Authentication and Security Best Practices"
+            test_content = "<h2>Introduction</h2><p>This guide covers API authentication.</p>"
             
-            if response.status_code == 200:
-                result = response.json()
+            payload = {
+                "content": test_content,
+                "content_type": "html", 
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/v2/process-text",
+                                   json=payload, timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("Document Identifier Generation", False, f"HTTP {response.status_code}")
+                return False
                 
-                if 'articles' in result and len(result['articles']) > 0:
-                    # Check if processing succeeded (proper hierarchy should be accepted)
-                    article_content = result['articles'][0].get('content', '')
-                    
-                    # Verify the content was processed and contains expected structure
-                    has_h2 = '<h2' in article_content
-                    has_h3 = '<h3' in article_content
-                    has_h4 = '<h4' in article_content
-                    has_minitoc = 'mini-toc' in article_content
-                    
-                    # Proper hierarchy should result in successful processing
-                    passed = has_h2 and has_h3 and has_h4 and has_minitoc
-                    
-                    self.log_test(
-                        "Heading Ladder Validation", 
-                        passed,
-                        f"Valid hierarchy processed successfully: H2={has_h2}, H3={has_h3}, H4={has_h4}, TOC={has_minitoc}"
-                    )
-                else:
-                    self.log_test("Heading Ladder Validation", False, "No articles generated from valid hierarchy")
-            else:
-                self.log_test("Heading Ladder Validation", False, f"API error: {response.status_code}")
+            data = response.json()
+            articles = data.get("articles", [])
+            
+            if not articles:
+                self.log_test("Document Identifier Generation", False, "No articles generated")
+                return False
                 
+            article = articles[0]
+            doc_uid = article.get("doc_uid")
+            doc_slug = article.get("doc_slug")
+            
+            # Validate doc_uid format (should be ULID-like: 01JZ + timestamp + random)
+            if not doc_uid or not doc_uid.startswith("01JZ") or len(doc_uid) < 20:
+                self.log_test("Document Identifier Generation", False, f"Invalid doc_uid format: {doc_uid}")
+                return False
+                
+            # Validate doc_slug format (should be URL-friendly)
+            if not doc_slug or " " in doc_slug or doc_slug != doc_slug.lower():
+                self.log_test("Document Identifier Generation", False, f"Invalid doc_slug format: {doc_slug}")
+                return False
+                
+            # Check that doc_slug is derived from title
+            if "api" not in doc_slug or "authentication" not in doc_slug:
+                self.log_test("Document Identifier Generation", False, f"doc_slug doesn't reflect title: {doc_slug}")
+                return False
+                
+            self.log_test("Document Identifier Generation", True,
+                         f"doc_uid: {doc_uid}, doc_slug: {doc_slug}")
+            return True
+            
         except Exception as e:
-            self.log_test("Heading Ladder Validation", False, f"Exception: {str(e)}")
+            self.log_test("Document Identifier Generation", False, f"Exception: {str(e)}")
+            return False
     
-    def test_anchor_resolution(self):
-        """Test 5: Verify all TOC links resolve to actual headings"""
-        print("🔧 TEST 5: Anchor Resolution Validation")
-        
-        test_content = """
-        <h2>System Overview</h2>
-        <p>Overview of the system architecture.</p>
-        
-        <h3>Core Components</h3>
-        <p>Description of core components.</p>
-        
-        <h3>Data Flow</h3>
-        <p>How data flows through the system.</p>
-        
-        <h2>Implementation Guide</h2>
-        <p>Step-by-step implementation.</p>
-        
-        <h3>Setup Instructions</h3>
-        <p>Initial setup process.</p>
-        
-        <h4>Configuration Files</h4>
-        <p>Required configuration.</p>
-        """
-        
+    def test_linkbuilder_system(self):
+        """Test 5: Test LinkBuilder system with route maps"""
         try:
-            response = requests.post(f"{API_BASE}/content/process", 
-                json={
-                    "content": test_content,
-                    "content_type": "text",
-                    "metadata": {
-                        "title": "TICKET 2 Anchor Resolution Test",
-                        "test_type": "anchor_resolution"
-                    }
-                },
-                timeout=30
-            )
+            # This test verifies the href building functionality
+            # We'll test by creating content and checking if the system can handle cross-references
             
-            if response.status_code == 200:
-                result = response.json()
+            test_content = """
+            <h2 id="overview">System Overview</h2>
+            <p>This system provides comprehensive API management.</p>
+            
+            <h2 id="integration">Integration Guide</h2>
+            <p>Follow these steps for integration.</p>
+            """
+            
+            payload = {
+                "content": test_content,
+                "content_type": "html",
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/v2/process-text",
+                                   json=payload, timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("LinkBuilder System", False, f"HTTP {response.status_code}")
+                return False
                 
-                if 'articles' in result and len(result['articles']) > 0:
-                    article_content = result['articles'][0].get('content', '')
-                    
-                    # Extract all TOC links (href="#...")
-                    toc_links = re.findall(r'href="#([^"]+)"', article_content)
-                    
-                    # Extract all heading IDs (id="...")
-                    heading_ids = re.findall(r'<h[234][^>]*id="([^"]+)"', article_content)
-                    
-                    # Check if all TOC links have corresponding heading IDs
-                    resolved_links = 0
-                    broken_links = []
-                    
-                    for link in toc_links:
-                        if link in heading_ids:
-                            resolved_links += 1
-                        else:
-                            broken_links.append(link)
-                    
-                    total_links = len(toc_links)
-                    resolution_rate = resolved_links / total_links if total_links > 0 else 0
-                    
-                    # All links should resolve (100% resolution rate)
-                    passed = resolution_rate == 1.0 and total_links > 0
-                    
-                    self.log_test(
-                        "Anchor Resolution", 
-                        passed,
-                        f"Resolved {resolved_links}/{total_links} links ({resolution_rate:.1%}). Broken: {broken_links}"
-                    )
-                else:
-                    self.log_test("Anchor Resolution", False, "No articles generated")
-            else:
-                self.log_test("Anchor Resolution", False, f"API error: {response.status_code}")
+            data = response.json()
+            articles = data.get("articles", [])
+            
+            if not articles:
+                self.log_test("LinkBuilder System", False, "No articles generated")
+                return False
                 
+            article = articles[0]
+            
+            # Check that the article has the necessary fields for link building
+            if not article.get("doc_uid") or not article.get("doc_slug"):
+                self.log_test("LinkBuilder System", False, "Missing doc_uid or doc_slug for link building")
+                return False
+                
+            # Check that headings have proper IDs for anchor linking
+            headings = article.get("headings", [])
+            if not headings:
+                self.log_test("LinkBuilder System", False, "No headings for anchor linking")
+                return False
+                
+            # Verify headings have proper anchor IDs
+            for heading in headings:
+                if not heading.get("id"):
+                    self.log_test("LinkBuilder System", False, f"Heading missing ID: {heading}")
+                    return False
+                    
+            # Check if xrefs and related_links fields are initialized (required for LinkBuilder)
+            if "xrefs" not in article:
+                self.log_test("LinkBuilder System", False, "Missing xrefs field")
+                return False
+                
+            if "related_links" not in article:
+                self.log_test("LinkBuilder System", False, "Missing related_links field")
+                return False
+                
+            self.log_test("LinkBuilder System", True,
+                         f"LinkBuilder ready: {len(headings)} anchors, xrefs/related_links initialized")
+            return True
+            
         except Exception as e:
-            self.log_test("Anchor Resolution", False, f"Exception: {str(e)}")
+            self.log_test("LinkBuilder System", False, f"Exception: {str(e)}")
+            return False
     
-    def test_duplicate_heading_handling(self):
-        """Test 6: Verify duplicate heading handling with suffixes"""
-        print("🔧 TEST 6: Duplicate Heading Handling")
-        
-        test_content = """
-        <h2>Introduction</h2>
-        <p>First introduction section.</p>
-        
-        <h3>Getting Started</h3>
-        <p>Initial getting started guide.</p>
-        
-        <h2>Introduction</h2>
-        <p>Second introduction section (duplicate).</p>
-        
-        <h3>Getting Started</h3>
-        <p>Another getting started section (duplicate).</p>
-        
-        <h3>Getting Started</h3>
-        <p>Third getting started section (triple).</p>
-        
-        <h2>Conclusion</h2>
-        <p>Final thoughts.</p>
-        """
-        
+    def test_backfill_functionality(self):
+        """Test 6: Test backfill_bookmark_registry method"""
         try:
-            response = requests.post(f"{API_BASE}/content/process", 
-                json={
-                    "content": test_content,
-                    "content_type": "text",
-                    "metadata": {
-                        "title": "TICKET 2 Duplicate Handling Test",
-                        "test_type": "duplicate_handling"
-                    }
-                },
-                timeout=30
-            )
+            # Test the backfill endpoint
+            response = requests.post(f"{self.backend_url}/ticket3/backfill-bookmarks?limit=5", timeout=30)
             
-            if response.status_code == 200:
-                result = response.json()
+            if response.status_code != 200:
+                self.log_test("Backfill Functionality", False, f"HTTP {response.status_code}")
+                return False
                 
-                if 'articles' in result and len(result['articles']) > 0:
-                    article_content = result['articles'][0].get('content', '')
-                    
-                    # Check for expected duplicate handling patterns
-                    expected_ids = [
-                        'id="introduction"',      # First occurrence
-                        'id="introduction-2"',    # Second occurrence with suffix
-                        'id="getting-started"',   # First occurrence
-                        'id="getting-started-2"', # Second occurrence with suffix
-                        'id="getting-started-3"', # Third occurrence with suffix
-                        'id="conclusion"'         # Unique heading
-                    ]
-                    
-                    found_ids = 0
-                    for expected_id in expected_ids:
-                        if expected_id in article_content:
-                            found_ids += 1
-                            print(f"    ✅ Found: {expected_id}")
-                        else:
-                            print(f"    ❌ Missing: {expected_id}")
-                    
-                    # Check that TOC links also use the correct suffixed IDs
-                    toc_has_suffixes = ('href="#introduction-2"' in article_content and 
-                                       'href="#getting-started-2"' in article_content and
-                                       'href="#getting-started-3"' in article_content)
-                    
-                    success_rate = found_ids / len(expected_ids)
-                    passed = success_rate >= 0.8 and toc_has_suffixes  # 80% success + TOC consistency
-                    
-                    self.log_test(
-                        "Duplicate Heading Handling", 
-                        passed,
-                        f"Found {found_ids}/{len(expected_ids)} expected IDs ({success_rate:.1%}), TOC suffixes: {toc_has_suffixes}"
-                    )
+            data = response.json()
+            
+            # Check response structure
+            if "status" not in data:
+                self.log_test("Backfill Functionality", False, "Missing status in response")
+                return False
+                
+            # Success or no articles to backfill are both valid
+            if data["status"] not in ["success", "failed"]:
+                self.log_test("Backfill Functionality", False, f"Invalid status: {data['status']}")
+                return False
+                
+            # If failed, check if it's due to no articles (which is acceptable)
+            if data["status"] == "failed":
+                message = data.get("message", "")
+                if "No articles need backfilling" in message or "0 articles" in message:
+                    self.log_test("Backfill Functionality", True, "No articles need backfilling (acceptable)")
+                    return True
                 else:
-                    self.log_test("Duplicate Heading Handling", False, "No articles generated")
-            else:
-                self.log_test("Duplicate Heading Handling", False, f"API error: {response.status_code}")
-                
+                    self.log_test("Backfill Functionality", False, f"Backfill failed: {message}")
+                    return False
+                    
+            # If successful, check the data
+            backfill_data = data.get("data", {})
+            articles_processed = backfill_data.get("articles_processed", 0)
+            
+            self.log_test("Backfill Functionality", True,
+                         f"Backfill completed: {articles_processed} articles processed")
+            return True
+            
         except Exception as e:
-            self.log_test("Duplicate Heading Handling", False, f"Exception: {str(e)}")
+            self.log_test("Backfill Functionality", False, f"Exception: {str(e)}")
+            return False
     
-    def test_order_of_operations(self):
-        """Test 7: Verify correct order of operations (IDs → TOC → Validation)"""
-        print("🔧 TEST 7: Order of Operations Verification")
-        
-        test_content = """
-        <h2>System Architecture</h2>
-        <p>Overview of the system design and architecture.</p>
-        
-        <h3>Frontend Components</h3>
-        <p>User interface components and their responsibilities.</p>
-        
-        <h3>Backend Services</h3>
-        <p>Server-side services and API endpoints.</p>
-        
-        <h4>Database Layer</h4>
-        <p>Data persistence and storage mechanisms.</p>
-        
-        <h2>API Documentation</h2>
-        <p>Complete API reference and usage examples.</p>
-        
-        <h3>Authentication Endpoints</h3>
-        <p>User authentication and authorization.</p>
-        """
-        
+    def test_api_endpoint_integration(self):
+        """Test 7: Test API endpoints work with integrated methods"""
         try:
-            response = requests.post(f"{API_BASE}/content/process", 
-                json={
-                    "content": test_content,
-                    "content_type": "text",
-                    "metadata": {
-                        "title": "TICKET 2 Order of Operations Test",
-                        "test_type": "order_of_operations"
-                    }
-                },
-                timeout=30
-            )
+            # Test the validation endpoint (requires V2StyleProcessor methods)
+            # First, we need a document to validate - let's create one
+            test_content = "<h2 id='test'>Test Heading</h2><p>Test content</p>"
             
-            if response.status_code == 200:
-                result = response.json()
+            payload = {
+                "content": test_content,
+                "content_type": "html",
+                "processing_mode": "v2_only"
+            }
+            
+            # Create a document first
+            response = requests.post(f"{self.backend_url}/v2/process-text",
+                                   json=payload, timeout=30)
+            
+            if response.status_code != 200:
+                self.log_test("API Endpoint Integration", False, f"Failed to create test document: HTTP {response.status_code}")
+                return False
                 
-                if 'articles' in result and len(result['articles']) > 0:
-                    article_content = result['articles'][0].get('content', '')
-                    
-                    # Verify the complete pipeline worked correctly:
-                    # 1. All headings have IDs assigned
-                    headings_with_ids = len(re.findall(r'<h[234][^>]*id="[^"]+"', article_content))
-                    total_headings = article_content.count('<h2') + article_content.count('<h3') + article_content.count('<h4')
-                    
-                    # 2. Mini-TOC was built using those IDs
-                    has_minitoc = 'class="mini-toc"' in article_content
-                    toc_links_count = article_content.count('class="toc-link"')
-                    
-                    # 3. All TOC links resolve to existing heading IDs
-                    toc_hrefs = re.findall(r'class="toc-link"[^>]*href="#([^"]+)"', article_content)
-                    heading_ids = re.findall(r'<h[234][^>]*id="([^"]+)"', article_content)
-                    
-                    all_links_resolve = all(href in heading_ids for href in toc_hrefs)
-                    
-                    # 4. TOC appears before the first heading (correct positioning)
-                    toc_position = article_content.find('class="mini-toc"')
-                    first_heading_pos = article_content.find('<h2')
-                    correct_positioning = toc_position < first_heading_pos if toc_position != -1 and first_heading_pos != -1 else False
-                    
-                    # All operations should complete successfully
-                    ids_assigned = headings_with_ids == total_headings and total_headings > 0
-                    toc_built = has_minitoc and toc_links_count > 0
-                    validation_passed = all_links_resolve and len(toc_hrefs) > 0
-                    
-                    passed = ids_assigned and toc_built and validation_passed and correct_positioning
-                    
-                    self.log_test(
-                        "Order of Operations", 
-                        passed,
-                        f"IDs: {headings_with_ids}/{total_headings}, TOC: {toc_links_count} links, Resolution: {all_links_resolve}, Position: {'correct' if correct_positioning else 'incorrect'}"
-                    )
-                else:
-                    self.log_test("Order of Operations", False, "No articles generated")
-            else:
-                self.log_test("Order of Operations", False, f"API error: {response.status_code}")
+            data = response.json()
+            articles = data.get("articles", [])
+            
+            if not articles:
+                self.log_test("API Endpoint Integration", False, "No test document created")
+                return False
                 
+            doc_uid = articles[0].get("doc_uid")
+            if not doc_uid:
+                self.log_test("API Endpoint Integration", False, "Test document missing doc_uid")
+                return False
+                
+            # Now test the validation endpoint
+            response = requests.get(f"{self.backend_url}/ticket3/validate-links/{doc_uid}", timeout=15)
+            
+            if response.status_code != 200:
+                self.log_test("API Endpoint Integration", False, f"Validation endpoint HTTP {response.status_code}")
+                return False
+                
+            validation_data = response.json()
+            
+            # Check response structure
+            if "status" not in validation_data:
+                self.log_test("API Endpoint Integration", False, "Missing status in validation response")
+                return False
+                
+            if validation_data["status"] != "success":
+                self.log_test("API Endpoint Integration", False, f"Validation failed: {validation_data.get('message', 'Unknown error')}")
+                return False
+                
+            # Check that validation data is present
+            if "validation" not in validation_data:
+                self.log_test("API Endpoint Integration", False, "Missing validation data")
+                return False
+                
+            self.log_test("API Endpoint Integration", True,
+                         f"Validation endpoint working for doc_uid: {doc_uid[:10]}...")
+            return True
+            
         except Exception as e:
-            self.log_test("Order of Operations", False, f"Exception: {str(e)}")
+            self.log_test("API Endpoint Integration", False, f"Exception: {str(e)}")
+            return False
     
-    def test_style_diagnostics_integration(self):
-        """Test 8: Verify TICKET 2 integration with V2 Style Diagnostics"""
-        print("🔧 TEST 8: Style Diagnostics Integration")
-        
+    def test_complete_v2_pipeline(self):
+        """Test 8: Test complete V2 pipeline with _apply_bookmark_registry integration"""
         try:
-            # Get style diagnostics to verify TICKET 2 features are tracked
-            response = requests.get(f"{API_BASE}/style/diagnostics", timeout=15)
+            # Test comprehensive V2 processing with TICKET 3 integration
+            comprehensive_content = """
+            <h1>Complete API Integration Guide</h1>
             
-            if response.status_code == 200:
-                diagnostics = response.json()
+            <h2 id="introduction">Introduction to API Integration</h2>
+            <p>This comprehensive guide covers all aspects of API integration including authentication, rate limiting, and best practices.</p>
+            
+            <h3 id="prerequisites">Prerequisites</h3>
+            <p>Before starting, ensure you have the following:</p>
+            <ul>
+                <li>Valid API credentials</li>
+                <li>Development environment setup</li>
+                <li>Basic understanding of REST APIs</li>
+            </ul>
+            
+            <h2 id="authentication">Authentication Methods</h2>
+            <p>Learn about different authentication approaches.</p>
+            
+            <h3 id="api-keys">API Key Authentication</h3>
+            <p>The most common authentication method.</p>
+            
+            <h3 id="oauth">OAuth 2.0 Authentication</h3>
+            <p>More secure authentication for production systems.</p>
+            
+            <h2 id="implementation">Implementation Guide</h2>
+            <p>Step-by-step implementation instructions.</p>
+            
+            <h3 id="setup">Initial Setup</h3>
+            <p>Configure your development environment.</p>
+            
+            <h3 id="first-request">Making Your First Request</h3>
+            <p>Send your first API request.</p>
+            
+            <h2 id="best-practices">Best Practices</h2>
+            <p>Follow these guidelines for optimal API usage.</p>
+            
+            <h3 id="error-handling">Error Handling</h3>
+            <p>Properly handle API errors and exceptions.</p>
+            
+            <h3 id="rate-limiting">Rate Limiting</h3>
+            <p>Respect API rate limits to avoid throttling.</p>
+            """
+            
+            payload = {
+                "content": comprehensive_content,
+                "content_type": "html",
+                "processing_mode": "v2_only"
+            }
+            
+            response = requests.post(f"{self.backend_url}/v2/process-text",
+                                   json=payload, timeout=45)
+            
+            if response.status_code != 200:
+                self.log_test("Complete V2 Pipeline", False, f"HTTP {response.status_code}")
+                return False
                 
-                # Check for TICKET 2 related metrics in diagnostics
-                has_recent_runs = len(diagnostics.get('recent_results', [])) > 0
+            data = response.json()
+            
+            # Check processing status
+            if data.get("status") != "success":
+                self.log_test("Complete V2 Pipeline", False, f"Processing failed: {data.get('message', 'Unknown error')}")
+                return False
                 
-                if has_recent_runs:
-                    recent_run = diagnostics['recent_results'][0]
-                    
-                    # Look for TICKET 2 related fields
-                    ticket2_indicators = [
-                        'anchors_resolve' in str(recent_run),
-                        'heading_ladder_valid' in str(recent_run),
-                        'stable_anchors_applied' in str(recent_run),
-                        'toc' in str(recent_run).lower()
-                    ]
-                    
-                    integration_score = sum(ticket2_indicators) / len(ticket2_indicators)
-                    passed = integration_score >= 0.5  # At least 50% of indicators present
-                    
-                    self.log_test(
-                        "Style Diagnostics Integration", 
-                        passed,
-                        f"TICKET 2 integration indicators: {sum(ticket2_indicators)}/{len(ticket2_indicators)} ({integration_score:.1%})"
-                    )
-                else:
-                    self.log_test("Style Diagnostics Integration", False, "No recent style processing runs found")
-            else:
-                self.log_test("Style Diagnostics Integration", False, f"Diagnostics API error: {response.status_code}")
+            # Check articles generated
+            articles = data.get("articles", [])
+            if not articles:
+                self.log_test("Complete V2 Pipeline", False, "No articles generated")
+                return False
                 
+            article = articles[0]
+            
+            # Verify all TICKET 3 components are present
+            ticket3_fields = ["doc_uid", "doc_slug", "headings", "xrefs", "related_links"]
+            missing_fields = [f for f in ticket3_fields if f not in article]
+            
+            if missing_fields:
+                self.log_test("Complete V2 Pipeline", False, f"Missing TICKET 3 fields: {missing_fields}")
+                return False
+                
+            # Verify heading extraction worked
+            headings = article.get("headings", [])
+            if len(headings) < 5:  # Should have many headings from our comprehensive content
+                self.log_test("Complete V2 Pipeline", False, f"Insufficient headings extracted: {len(headings)}")
+                return False
+                
+            # Verify doc_uid format
+            doc_uid = article.get("doc_uid")
+            if not doc_uid or not doc_uid.startswith("01JZ"):
+                self.log_test("Complete V2 Pipeline", False, f"Invalid doc_uid: {doc_uid}")
+                return False
+                
+            # Verify doc_slug format
+            doc_slug = article.get("doc_slug")
+            if not doc_slug or " " in doc_slug:
+                self.log_test("Complete V2 Pipeline", False, f"Invalid doc_slug: {doc_slug}")
+                return False
+                
+            # Check that content has proper heading IDs (from stable anchors)
+            content = article.get("content", "") or article.get("html", "")
+            if 'id="' not in content:
+                self.log_test("Complete V2 Pipeline", False, "Content missing heading IDs")
+                return False
+                
+            # Verify processing metadata
+            metadata = article.get("metadata", {})
+            if metadata.get("engine") != "v2":
+                self.log_test("Complete V2 Pipeline", False, f"Wrong engine in metadata: {metadata.get('engine')}")
+                return False
+                
+            self.log_test("Complete V2 Pipeline", True,
+                         f"Complete pipeline success: {len(headings)} headings, doc_uid: {doc_uid[:10]}..., doc_slug: {doc_slug[:20]}...")
+            return True
+            
         except Exception as e:
-            self.log_test("Style Diagnostics Integration", False, f"Exception: {str(e)}")
+            self.log_test("Complete V2 Pipeline", False, f"Exception: {str(e)}")
+            return False
     
     def run_all_tests(self):
-        """Run all TICKET 2 tests"""
-        print("🚀 Starting TICKET 2 Implementation Testing")
+        """Run all TICKET 3 tests"""
+        print("🎯 TICKET 3 IMPLEMENTATION TESTING - Method Integration Fix Verification")
         print("=" * 80)
+        print(f"Backend URL: {self.backend_url}")
+        print(f"Test Start Time: {datetime.now().isoformat()}")
+        print()
         
-        # Run all test methods
-        self.test_stable_slug_generation()
-        self.test_heading_id_assignment()
-        self.test_minitoc_creation()
-        self.test_heading_ladder_validation()
-        self.test_anchor_resolution()
-        self.test_duplicate_heading_handling()
-        self.test_order_of_operations()
-        self.test_style_diagnostics_integration()
+        # Run all tests
+        tests = [
+            self.test_v2_engine_health,
+            self.test_v2style_processor_instantiation,
+            self.test_bookmark_registry_extraction,
+            self.test_document_identifier_generation,
+            self.test_linkbuilder_system,
+            self.test_backfill_functionality,
+            self.test_api_endpoint_integration,
+            self.test_complete_v2_pipeline
+        ]
+        
+        for test in tests:
+            try:
+                test()
+            except Exception as e:
+                test_name = test.__name__.replace("test_", "").replace("_", " ").title()
+                self.log_test(test_name, False, f"Test exception: {str(e)}")
+            
+            # Small delay between tests
+            time.sleep(1)
         
         # Print summary
+        print()
         print("=" * 80)
-        print("🏁 TICKET 2 TESTING SUMMARY")
+        print("🎯 TICKET 3 TEST SUMMARY")
         print("=" * 80)
         
-        success_rate = (self.passed_tests / self.total_tests) * 100 if self.total_tests > 0 else 0
+        success_rate = (self.passed_tests / self.total_tests * 100) if self.total_tests > 0 else 0
         
-        print(f"📊 Total Tests: {self.total_tests}")
-        print(f"✅ Passed: {self.passed_tests}")
-        print(f"❌ Failed: {self.total_tests - self.passed_tests}")
-        print(f"📈 Success Rate: {success_rate:.1f}%")
+        print(f"Total Tests: {self.total_tests}")
+        print(f"Passed: {self.passed_tests}")
+        print(f"Failed: {self.total_tests - self.passed_tests}")
+        print(f"Success Rate: {success_rate:.1f}%")
         print()
         
-        # Detailed results
-        print("📋 DETAILED RESULTS:")
-        for result in self.test_results:
-            status = "✅" if result['passed'] else "❌"
-            print(f"{status} {result['test']}")
-            if result['details']:
-                print(f"    {result['details']}")
-        
-        print()
-        print("🎯 TICKET 2 IMPLEMENTATION STATUS:")
         if success_rate >= 80:
-            print("✅ TICKET 2 implementation is working correctly!")
-            print("   All major components (stable slugs, ID assignment, Mini-TOC, validation) are functional.")
+            print("🎉 TICKET 3 IMPLEMENTATION: EXCELLENT - Method integration fix successful!")
         elif success_rate >= 60:
-            print("⚠️  TICKET 2 implementation is partially working.")
-            print("   Some components are functional but issues remain.")
+            print("✅ TICKET 3 IMPLEMENTATION: GOOD - Most functionality working")
+        elif success_rate >= 40:
+            print("⚠️ TICKET 3 IMPLEMENTATION: PARTIAL - Some issues remain")
         else:
-            print("❌ TICKET 2 implementation has significant issues.")
-            print("   Major components are not working as expected.")
+            print("❌ TICKET 3 IMPLEMENTATION: NEEDS ATTENTION - Major issues detected")
         
-        return success_rate >= 60  # Consider 60%+ as acceptable
+        print()
+        print("Detailed Results:")
+        for result in self.test_results:
+            status = "✅" if result["passed"] else "❌"
+            print(f"{status} {result['test']}: {result['details']}")
+        
+        return success_rate
 
 if __name__ == "__main__":
-    tester = TICKET2Tester()
-    success = tester.run_all_tests()
+    tester = TICKET3Tester()
+    success_rate = tester.run_all_tests()
     
     # Exit with appropriate code
-    sys.exit(0 if success else 1)
+    sys.exit(0 if success_rate >= 80 else 1)

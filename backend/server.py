@@ -2461,8 +2461,10 @@ Return ONLY a JSON object in this exact format:
             print(f"❌ V2 ANALYSIS: Error retrieving analysis - {e} - engine=v2")
             return None
 
-# Global V2 Multi-Dimensional Analyzer instance
-v2_analyzer = V2MultiDimensionalAnalyzer()
+# Global V2 Multi-Dimensional Analyzer instance - lazy initialization
+def get_v2_analyzer_instance():
+    """Get V2 analyzer instance with lazy initialization"""
+    return get_v2_analyzer()
 
 # ========================================
 # V2 ENGINE: GLOBAL OUTLINE PLANNER SYSTEM

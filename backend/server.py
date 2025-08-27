@@ -5065,8 +5065,9 @@ Return the fully formatted article with improved clarity, structure, and clickab
         try:
             print(f"📖 TICKET 3: Starting bookmark registry for '{article_title[:50]}...'")
             
-            # Extract headings from content
-            headings = self.extract_headings_registry(content)
+            # Extract headings from content using V2ValidationSystem method
+            v2_validator = V2ValidationSystem()
+            headings = v2_validator.extract_headings_registry(content)
             
             # Generate document identifiers
             doc_uid = self.generate_doc_uid()

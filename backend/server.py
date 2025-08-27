@@ -14865,8 +14865,9 @@ class DocumentPreprocessor:
             # ENHANCED: Fallback to text processing if DOCX conversion fails
             try:
                 print(f"🔄 Attempting text fallback for DOCX file")
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    text_content = f.read()
+                # KE-PR3: Read using assets store 
+                file_bytes = read_file(file_path)
+                text_content = file_bytes.decode('utf-8', errors='ignore')
                 
                 html_content = self._convert_text_to_basic_html(text_content)
                 print(f"✅ Text fallback successful: {len(html_content)} characters")

@@ -17656,122 +17656,42 @@ async def call_built_in_local_llm(system_message: str, user_message: str) -> Opt
     print("⚠️ Built-in local LLM is disabled for performance optimization")
     return None
 
+# Import centralized LLM client
+from app.engine.llm.client import get_llm_client
+
+# Global LLM client instance
+llm_client = None
+
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:
     """
-    Call LLM with three-tier fallback system:
-    1. OpenAI (GPT-4o-mini) - Primary
-    2. Claude (Anthropic) - Secondary fallback
-    3. Local LLM - Final fallback
-    Returns the response text or None if all fail
+    Centralized LLM call using the new LLM client with automatic provider switching
+    Maintains backward compatibility while using the new architecture
     """
-    if session_id is None:
-        session_id = str(uuid.uuid4())
+    global llm_client
     
-    # Try OpenAI first
-    if OPENAI_API_KEY:
-        try:
-            print("🤖 Attempting OpenAI (GPT-4o-mini) call...")
-            
-            headers = {
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            
-            data = {
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": user_message}
-                ],
-                "max_tokens": 8000,  # Increased from 6000 to 8000
-                "temperature": 0.1
-            }
-            
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=data,
-                timeout=300  # Increased to 300 seconds (5 minutes) for very large chunks
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                ai_response = result["choices"][0]["message"]["content"]
-                print(f"✅ OpenAI response successful: {len(ai_response)} characters")
-                # PHANTOM LINK CLEANUP: Clean all LLM responses
-                ai_response = validate_and_remove_phantom_links(ai_response)
-                ai_response = aggressive_phantom_link_cleanup_final_pass(ai_response)
-                return ai_response
-            else:
-                error_msg = str(response.status_code) + " " + response.text
-                print(f"❌ OpenAI failed: {error_msg}")
-                
-                # Check if it's a quota/rate limit error
-                if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
-                    print("🔄 OpenAI quota/rate limit exceeded, switching to Claude...")
-                else:
-                    print("🔄 OpenAI error detected, switching to Claude...")
-                    
-        except Exception as e:
-            print(f"❌ OpenAI failed with exception: {e}")
-            print("🔄 Switching to Claude...")
-    
-    # Try Claude as fallback
-    if ANTHROPIC_API_KEY:
-        try:
-            print("🤖 Attempting Claude fallback call...")
-            
-            headers = {
-                "x-api-key": ANTHROPIC_API_KEY,
-                "Content-Type": "application/json",
-                "anthropic-version": "2023-06-01"
-            }
-            
-            data = {
-                "model": "claude-3-5-sonnet-20241022",
-                "max_tokens": 8000,  # Increased from 6000 to 8000
-                "temperature": 0.1,
-                "system": system_message,
-                "messages": [
-                    {"role": "user", "content": user_message}
-                ]
-            }
-            
-            response = requests.post(
-                "https://api.anthropic.com/v1/messages",
-                headers=headers,
-                json=data,
-                timeout=300  # Increased to 300 seconds (5 minutes) for very large chunks
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                ai_response = result["content"][0]["text"]
-                print(f"✅ Claude response successful: {len(ai_response)} characters")
-                # PHANTOM LINK CLEANUP: Clean all LLM responses
-                ai_response = validate_and_remove_phantom_links(ai_response)
-                ai_response = aggressive_phantom_link_cleanup_final_pass(ai_response)
-                return ai_response
-            else:
-                print(f"❌ Claude also failed: {response.status_code} - {response.text}")
-                
-        except Exception as e:
-            print(f"❌ Claude also failed with exception: {e}")
-    
-    # Try Local LLM as final fallback
     try:
-        print("🤖 Attempting Local LLM fallback...")
-        local_response = await call_local_llm(system_message, user_message)
-        if local_response:
-            # PHANTOM LINK CLEANUP: Clean all LLM responses
-            local_response = validate_and_remove_phantom_links(local_response)
-            local_response = aggressive_phantom_link_cleanup_final_pass(local_response)
-            return local_response
+        # Initialize LLM client if not already done
+        if llm_client is None:
+            llm_client = get_llm_client()
+        
+        # Use centralized LLM client
+        response = await llm_client.complete(
+            system_message=system_message,
+            user_message=user_message,
+            temperature=0.1,
+            max_tokens=8000
+        )
+        
+        if response:
+            # Apply existing phantom link cleanup
+            response = validate_and_remove_phantom_links(response)
+            response = aggressive_phantom_link_cleanup_final_pass(response)
+            
+        return response
+        
     except Exception as e:
-        print(f"❌ Local LLM also failed: {e}")
-    
-    print("❌ All LLM options failed - no AI response available")
-    return None
+        print(f"❌ Centralized LLM call failed: {e}")
+        return None
 
 # Startup event
 @app.on_event("startup")

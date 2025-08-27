@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timedelta
 
 # Backend URL
-BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
+BACKEND_URL = "https://content-engine-10.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def get_recent_articles(hours_back=2):

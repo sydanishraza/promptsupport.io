@@ -13,7 +13,7 @@ from datetime import datetime
 import sys
 
 # Configuration
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-formatter.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-engine-10.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 def print_test_header(title):
@@ -356,7 +356,7 @@ if __name__ == "__main__":
     
     try:
         # Set environment variable
-        os.environ['REACT_APP_BACKEND_URL'] = 'https://content-formatter.preview.emergentagent.com'
+        os.environ['REACT_APP_BACKEND_URL'] = 'https://content-engine-10.preview.emergentagent.com'
         
         # Run the focused test
         success = asyncio.run(run_focused_mini_toc_test())

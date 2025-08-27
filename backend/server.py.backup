@@ -93,8 +93,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "*",  # Allow all origins for development
-        "https://content-formatter.preview.emergentagent.com",
-        "https://content-formatter.preview.emergentagent.com", 
+        "https://content-engine-10.preview.emergentagent.com",
+        "https://content-engine-10.preview.emergentagent.com", 
         "http://localhost:3000",
         "http://127.0.0.1:3000"
     ],

@@ -11,7 +11,7 @@ import re
 from datetime import datetime
 
 # Backend URL
-BACKEND_URL = "https://content-formatter.preview.emergentagent.com"
+BACKEND_URL = "https://content-engine-10.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test(message, status="INFO"):

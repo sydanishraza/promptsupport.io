@@ -15,7 +15,7 @@ from collections import Counter
 import difflib
 
 # Get backend URL from environment
-BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
+BACKEND_URL = "https://content-engine-10.preview.emergentagent.com/api"
 
 class GoogleMapsArticleAnalyzer:
     def __init__(self):

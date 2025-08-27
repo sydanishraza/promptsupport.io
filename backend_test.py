@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://content-formatter.preview.emergentagent.com/api"
+BACKEND_URL = "https://content-engine-10.preview.emergentagent.com/api"
 
 class TICKET3Tester:
     def __init__(self):

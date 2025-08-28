@@ -29206,7 +29206,10 @@ async def create_basic_fallback_article(content: str, metadata: Dict[str, Any]) 
         "updated_at": datetime.utcnow()
     }
     
-    await db.content_library.insert_one(article_record)
+    # Use repository pattern for insertion (KE-PR9.4)
+    from engine.stores.mongo import RepositoryFactory
+    content_repo = RepositoryFactory.get_content_library()
+    await content_repo.insert_article(article_record)
     print(f"✅ Created basic Content Library article: {article_record['title']}")
     return [article_record]
 

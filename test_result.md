@@ -257,9 +257,7 @@ During KE-PR4, only **V2MultiDimensionalAnalyzer** was fully migrated. The remai
    - Content library structure preparation with comprehensive V2 metadata
    - Repository pattern integration for content persistence
 
-**🚧 REMAINING MIGRATIONS (7/17):**
-- **KE-M9**: V2ArticleGenerator - Article generation prompts and LLM integration
-- **KE-M10**: V2ValidationSystem - Legacy validation code migration
+**🚧 REMAINING MIGRATIONS (5/17):**
 - **KE-M11**: V2CrossArticleQASystem - Inter-article QA generator
 - **KE-M14**: V2VersioningSystem - Version management logic
 - **KE-M15**: V2ReviewSystem - Review queueing logic

@@ -7,11 +7,17 @@ import uuid
 import time
 from datetime import datetime
 from ..stores.mongo import RepositoryFactory
+
+class V2ReviewSystem:
     """V2 Engine: Human-in-the-loop review and quality assurance system"""
     
     def __init__(self):
-        self.review_queue_types = ["quality_review", "fact_check", "style_review", "content_review"]
-        self.priority_levels = ["low", "medium", "high", "urgent"]
+        self.review_statuses = ['pending_review', 'approved', 'rejected', 'published']
+        self.rejection_reasons = [
+            'quality_issues', 'incomplete_content', 'factual_errors', 
+            'formatting_problems', 'missing_sections', 'redundancy_issues',
+            'coverage_insufficient', 'fidelity_low', 'style_violations', 'other'
+        ]
     
     async def enqueue_for_review(self, version_id: str, qa_result: dict, run_id: str) -> dict:
         """Enqueue content version for human review"""

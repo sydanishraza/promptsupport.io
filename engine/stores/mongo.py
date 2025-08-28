@@ -513,6 +513,128 @@ class MediaLibraryRepository:
             raise
 
 # ========================================
+# KE-PR9.5: PROCESSING JOBS REPOSITORY
+# ========================================
+
+class ProcessingJobsRepository:
+    """Repository for processing job operations (KE-PR9.5)"""
+    
+    def __init__(self):
+        self.db = get_database()
+        self.collection = self.db.processing_jobs
+    
+    async def insert_job(self, job_data: Dict[str, Any]) -> str:
+        """Insert new processing job"""
+        try:
+            job_data['created_at'] = datetime.utcnow()
+            job_data['status'] = job_data.get('status', 'pending')
+            job_data['job_id'] = job_data.get('job_id', f"job_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{hash(str(job_data))}")
+            
+            result = await self.collection.insert_one(job_data)
+            
+            if result.inserted_id:
+                print(f"✅ ProcessingJobs: Job inserted - {job_data.get('job_id', str(result.inserted_id))}")
+                return str(result.inserted_id)
+            else:
+                print(f"❌ ProcessingJobs: Failed to insert job")
+                return None
+                
+        except Exception as e:
+            print(f"❌ ProcessingJobs: Error inserting job - {e}")
+            return None
+    
+    async def update_job_status(self, job_id: str, status: str, details: Optional[Dict] = None) -> bool:
+        """Update job status by job ID"""
+        try:
+            from bson import ObjectId
+            
+            updates = {
+                'status': status,
+                'updated_at': datetime.utcnow()
+            }
+            
+            if details:
+                updates.update(details)
+                
+            # Try to update by ObjectId first, then by job_id field
+            result = None
+            try:
+                result = await self.collection.update_one(
+                    {"_id": ObjectId(job_id)},
+                    {"$set": updates}
+                )
+            except:
+                # Fallback to job_id field
+                result = await self.collection.update_one(
+                    {"job_id": job_id},
+                    {"$set": updates}
+                )
+            
+            if result and result.matched_count > 0:
+                print(f"✅ ProcessingJobs: Job updated - {job_id} -> {status}")
+                return True
+            else:
+                print(f"⚠️ ProcessingJobs: No job found with id - {job_id}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ ProcessingJobs: Error updating job {job_id} - {e}")
+            return False
+    
+    async def find_job(self, job_id: str) -> Optional[Dict]:
+        """Find job by ID (ObjectId or job_id field)"""
+        try:
+            from bson import ObjectId
+            
+            # Try ObjectId first, then job_id field
+            job = None
+            try:
+                job = await self.collection.find_one({"_id": ObjectId(job_id)})
+            except:
+                job = await self.collection.find_one({"job_id": job_id})
+            
+            if job and '_id' in job:
+                job['_id'] = str(job['_id'])
+            
+            return job
+            
+        except Exception as e:
+            print(f"❌ ProcessingJobs: Error finding job {job_id} - {e}")
+            return None
+    
+    async def find_jobs_by_status(self, status: str, limit: int = 50) -> List[Dict]:
+        """Find jobs by status"""
+        try:
+            cursor = self.collection.find({"status": status}).sort("created_at", -1).limit(limit)
+            jobs = await cursor.to_list(length=limit)
+            
+            for job in jobs:
+                if '_id' in job:
+                    job['_id'] = str(job['_id'])
+            
+            return jobs
+            
+        except Exception as e:
+            print(f"❌ ProcessingJobs: Error finding jobs by status {status} - {e}")
+            return []
+    
+    async def find_recent_jobs(self, limit: int = 20) -> List[Dict]:
+        """Find recent jobs across all statuses"""
+        try:
+            cursor = self.collection.find({}).sort("created_at", -1).limit(limit)
+            jobs = await cursor.to_list(length=limit)
+            
+            for job in jobs:
+                if '_id' in job:
+                    job['_id'] = str(job['_id'])
+            
+            return jobs
+            
+        except Exception as e:
+            print(f"❌ ProcessingJobs: Error finding recent jobs - {e}")
+            return []
+
+# ========================================
 # REPOSITORY FACTORY
 # ========================================
 

@@ -5284,11 +5284,7 @@ Return the fully formatted article with improved clarity, structure, and clickab
                     if "related_links" not in article:
                         update_data["related_links"] = []
                     
-                    # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+                    await db.content_library.update_one(
                         {"_id": article_id},
                         {"$set": update_data}
                     )
@@ -8341,11 +8337,7 @@ class V2ValidationSystem:
                     if "related_links" not in article:
                         update_data["related_links"] = []
                     
-                    # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+                    await db.content_library.update_one(
                         {"_id": article_id},
                         {"$set": update_data}
                     )
@@ -14062,11 +14054,7 @@ async def intelligent_content_processing_pipeline(content: str, metadata: Dict[s
             print(f"🔗 STEP 4: Updating cross-references in database")
             for article in generated_articles:
                 try:
-                    # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+                    await db.content_library.update_one(
                         {"id": article["id"]},
                         {"$set": {"content": article["content"]}}
                     )
@@ -14144,10 +14132,7 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             for i, topic in enumerate(outline_topics, 1):
                 article = await generate_topic_article(content, topic, metadata, i, len(outline_topics))
                 if article:
-                    # KE-PR9.3: Use repository pattern
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.insert_article(article)
+                    await db.content_library.insert_one(article)
                     generated_articles.append(article)
                     print(f"💾 SAVED ARTICLE {i}/{len(outline_topics)}: {article['title']}")
             
@@ -14155,10 +14140,7 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             if generated_articles:
                 overview_article = await create_overview_article(generated_articles, outline_data, metadata)
                 if overview_article:
-                    # KE-PR9.3: Use repository pattern
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.insert_article(overview_article)
+                    await db.content_library.insert_one(overview_article)
                     generated_articles.insert(0, overview_article)
                     print(f"💾 SAVED OVERVIEW ARTICLE with mini-TOC")
         
@@ -14166,10 +14148,7 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
         if len(content) > 2000:
             faq_article = await create_faq_article(content, generated_articles, metadata)
             if faq_article:
-                # KE-PR9.3: Use repository pattern
-                from engine.stores.mongo import RepositoryFactory
-                content_repo = RepositoryFactory.get_content_library()
-                await content_repo.insert_article(faq_article)
+                await db.content_library.insert_one(faq_article)
                 generated_articles.append(faq_article)
                 print(f"💾 SAVED FAQ ARTICLE")
         
@@ -14179,11 +14158,7 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             
             # Update articles in database with cross-references
             for article in enhanced_articles:
-                # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+                await db.content_library.update_one(
                     {"id": article["id"]},
                     {"$set": {"content": article["content"]}}
                 )
@@ -24484,10 +24459,8 @@ async def process_content(request: ContentProcessRequest):
                             article['metadata']['processing_version'] = '2.0'
                             article['metadata']['format'] = article.get('format', 'html_canonical')
                             
-                            # Save to content library using repository pattern (KE-PR9.4)
-                            from engine.stores.mongo import RepositoryFactory
-                            content_repo = RepositoryFactory.get_content_library()
-                            await content_repo.insert_article(article)
+                            # Save to content library
+                            await db.content_library.insert_one(article)
                             saved_articles.append(article)
                             print(f"✅ V2 ENGINE: Saved article '{article.get('title', 'Untitled')}' with format='{article.get('format', 'unknown')}'")
                         except Exception as save_error:
@@ -25836,12 +25809,9 @@ async def process_text_content_v2_pipeline(content: str, metadata: Dict[str, Any
         if articles:
             try:
                 for article in articles:
-                    # Only store if not already in database (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    existing_article = await content_repo.find_by_id(article["id"])
-                    if not existing_article:
-                        await content_repo.insert_article(article)
+                    # Only store if not already in database
+                    if not await db.content_library.find_one({"id": article["id"]}):
+                        await db.content_library.insert_one(article)
                         print(f"📚 KE-PR5: Stored article in content library - {article['title']}")
             except Exception as storage_error:
                 print(f"⚠️ KE-PR5: Error storing articles in content library - {storage_error}")
@@ -27794,11 +27764,9 @@ async def create_content_library_article_from_chunks(chunks: List[Dict[str, Any]
             articles = await add_related_links_to_articles(articles)
             print(f"✅ FIXED: Related links added to all articles")
         
-        # Insert articles with related links included using repository pattern (KE-PR9.4)
-        from engine.stores.mongo import RepositoryFactory
-        content_repo = RepositoryFactory.get_content_library()
+        # Insert articles with related links included
         for article in articles:
-            await content_repo.insert_article(article)
+            await db.content_library.insert_one(article)
             print(f"✅ Created article with related links: '{article['title']}'")
         return articles
     else:
@@ -27808,10 +27776,7 @@ async def create_content_library_article_from_chunks(chunks: List[Dict[str, Any]
             print(f"🔍 DEBUG: Before DB insert - article keys: {list(article.keys())}")
             print(f"🔍 DEBUG: Before DB insert - has content: {'content' in article}")
             print(f"🔍 DEBUG: Before DB insert - content preview: {article.get('content', 'NO CONTENT')[:100]}...")
-            # Use repository pattern for insertion (KE-PR9.4)
-            from engine.stores.mongo import RepositoryFactory
-            content_repo = RepositoryFactory.get_content_library()
-            await content_repo.insert_article(article)
+            await db.content_library.insert_one(article)
             print(f"✅ Created article: '{article['title']}'")
             return [article]
         else:
@@ -29222,10 +29187,7 @@ async def create_basic_fallback_article(content: str, metadata: Dict[str, Any]) 
         "updated_at": datetime.utcnow()
     }
     
-    # Use repository pattern for insertion (KE-PR9.4)
-    from engine.stores.mongo import RepositoryFactory
-    content_repo = RepositoryFactory.get_content_library()
-    await content_repo.insert_article(article_record)
+    await db.content_library.insert_one(article_record)
     print(f"✅ Created basic Content Library article: {article_record['title']}")
     return [article_record]
 
@@ -29309,11 +29271,7 @@ async def inject_real_images_into_articles():
                 
                 if enhanced_content != content and len(enhanced_content) > len(content):
                     # Update article in database
-                    # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+                    await db.content_library.update_one(
                         {"_id": article_id},
                         {"$set": {
                             "content": enhanced_content, 
@@ -30770,10 +30728,8 @@ async def create_content_library_article(
                         "updated_at": datetime.utcnow()
                     }
                     
-                    # Store in Content Library collection using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.insert_article(article_record)
+                    # Store in Content Library collection
+                    await db.content_library.insert_one(article_record)
                     
                     return {
                         "success": True,
@@ -30798,10 +30754,7 @@ async def create_content_library_article(
                         "updated_at": datetime.utcnow()
                     }
                     
-                    # Store in Content Library collection using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.insert_article(article_record)
+                    await db.content_library.insert_one(article_record)
                     
                     return {
                         "success": True,
@@ -30825,10 +30778,7 @@ async def create_content_library_article(
             "updated_at": datetime.utcnow()
         }
         
-        # Store in Content Library collection using repository pattern (KE-PR9.4)
-        from engine.stores.mongo import RepositoryFactory
-        content_repo = RepositoryFactory.get_content_library()
-        await content_repo.insert_article(article_record)
+        await db.content_library.insert_one(article_record)
         
         return {
             "success": True,
@@ -31685,11 +31635,7 @@ async def update_content_library_article(
             "updated_by": "user"
         }
         
-        # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+        await db.content_library.update_one(
             {"id": article_id},
             {"$set": updated_article}
         )
@@ -31737,10 +31683,7 @@ async def create_content_library_article(
             "updated_by": "user"
         }
         
-        # Insert new article using repository pattern (KE-PR9.4)
-        from engine.stores.mongo import RepositoryFactory
-        content_repo = RepositoryFactory.get_content_library()
-        await content_repo.insert_article(new_article)
+        await db.content_library.insert_one(new_article)
         
         return {
             "success": True,
@@ -31827,11 +31770,7 @@ async def restore_article_version(article_id: str, version: int):
             "restored_from_version": version
         }
         
-        # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+        await db.content_library.update_one(
             {"id": article_id},
             {"$set": restored_article}
         )
@@ -33172,11 +33111,7 @@ async def fix_google_maps_content_defects():
                 
                 # Update article if any changes were made
                 if changes_made or anchor_links > 0:
-                    update_result = # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+                    update_result = await db.content_library.update_one(
                         {"_id": article["_id"]},
                         {
                             "$set": {
@@ -33446,11 +33381,7 @@ async def process_toc_links():
                 print(f"🔧 TICKET 2: Processing results for '{article_title}' - {anchor_links_generated} links, anchors resolve: {anchors_resolve_result}")
                 
                 # Always update articles to ensure processing is applied (even if no changes detected)
-                update_result = # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+                update_result = await db.content_library.update_one(
                     {"_id": article["_id"]},
                     {
                         "$set": {
@@ -34509,11 +34440,7 @@ async def approve_and_publish_run(
         articles_published = 0
         async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
             # Update article status to published
-            # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+            await db.content_library.update_one(
                 {"id": article["id"]},
                 {"$set": {
                     "status": "published",
@@ -34594,11 +34521,7 @@ async def reject_run(
         # Update articles to partial status
         articles_updated = 0
         async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
-            # Update using repository pattern (KE-PR9.4)
-                    from engine.stores.mongo import RepositoryFactory
-                    content_repo = RepositoryFactory.get_content_library()
-                    await content_repo.update_by_object_id(str(article_id), update_data)
-                    # Original: await db.content_library.update_one(
+            await db.content_library.update_one(
                 {"id": article["id"]},
                 {"$set": {
                     "status": "partial",
@@ -35702,11 +35625,10 @@ async def create_seed_articles():
                 }
             }
             
-            # Insert new article using repository pattern (KE-PR9.4)
-            from engine.stores.mongo import RepositoryFactory
-            content_repo = RepositoryFactory.get_content_library()
-            await content_repo.insert_article(article)
+            # Insert into content library
+            result = await db.content_library.insert_one(article)
             
+            article['_id'] = str(result.inserted_id)
             created_articles.append(article)
             
             print(f"✅ Created seed article: {article_data['title']}")

@@ -45,6 +45,75 @@ class V2ValidationSystem:
             "require_structured_headings": True
         }
     
+    async def run(self, content: dict, **kwargs) -> dict:
+        """Run validation using centralized LLM client (new interface)"""
+        try:
+            print("🔍 V2 VALIDATION: Starting validation process - engine=v2")
+            
+            # Extract parameters from kwargs
+            normalized_doc = kwargs.get('normalized_doc')
+            generated_articles_result = kwargs.get('generated_articles_result', {})
+            analysis = kwargs.get('analysis', {})
+            run_id = kwargs.get('run_id', 'unknown')
+            
+            # Call the original validate_generated_articles method
+            result = await self.validate_generated_articles(
+                normalized_doc, generated_articles_result, analysis, run_id
+            )
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in run method - {e}")
+            return {
+                "validation_status": "error",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+    
+    # KE-PR2: Use extracted linking modules instead of inline methods
+    def stable_slug(self, text: str, max_len: int = 60) -> str:
+        """TICKET 2: Generate deterministic, URL-safe slugs - delegated to engine.linking.anchors"""
+        return stable_slug(text, max_len)
+    
+    def assign_heading_ids(self, html: str) -> str:
+        """TICKET 2: Assign deterministic IDs to headings - delegated to engine.linking.anchors"""
+        return assign_heading_ids(html)
+    
+    def validate_heading_ladder(self, html: str) -> bool:
+        """TICKET 2: Validate proper heading hierarchy - delegated to engine.linking.anchors"""
+        return validate_heading_ladder(html)
+    
+    def build_minitoc(self, html: str) -> str:
+        """TICKET 2: Build Mini-TOC with clickable links - delegated to engine.linking.toc"""
+        return build_minitoc(html)
+    
+    def anchors_resolve(self, html: str) -> bool:
+        """TICKET 2: Validate TOC links resolve - delegated to engine.linking.toc"""
+        return anchors_resolve(html)
+    
+    def extract_headings_registry(self, html: str) -> list:
+        """TICKET 3: Extract headings for bookmark registry - delegated to engine.linking.bookmarks"""
+        return extract_headings_registry(html)
+    
+    # KE-PR2: Use extracted linking modules 
+    def generate_doc_uid(self) -> str:
+        """TICKET 3: Generate document UID - delegated to engine.linking.bookmarks"""
+        return generate_doc_uid()
+    
+    def generate_doc_slug(self, title: str) -> str:
+        """TICKET 3: Generate document slug - delegated to engine.linking.bookmarks"""
+        return generate_doc_slug(title)
+    
+    def build_href(self, target_doc: dict, anchor_id: str, route_map: dict) -> str:
+        """TICKET 3: Build environment-aware href - delegated to engine.linking.links"""
+        return build_href(target_doc, anchor_id, route_map)
+    
+    def get_default_route_map(self, environment: str = "content_library") -> dict:
+        """TICKET 3: Get default route map - delegated to engine.linking.links"""
+        return get_default_route_map(environment)
+    
     async def validate_content(self, styled_content: dict, raw_source: dict = None, **kwargs) -> dict:
         """Perform comprehensive content validation"""
         try:

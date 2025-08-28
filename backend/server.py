@@ -30490,8 +30490,6 @@ File Information:
         processing_jobs_repo = RepositoryFactory.get_processing_jobs()
         await processing_jobs_repo.update_job_status(job.job_id, "completed", 
                                                    {"completed_at": job.completed_at})
-            }}
-        )
         
         print(f"✅ V2 ENGINE: File processing complete - {len(chunks)} chunks created - engine=v2")
         

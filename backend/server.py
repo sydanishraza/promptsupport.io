@@ -8437,7 +8437,9 @@ class V2ValidationSystem:
                     content_repo = RepositoryFactory.get_content_library()
                     target_doc = await content_repo.find_by_doc_uid(target_doc_uid)
                 else:
-                    target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+                    # KE-PR9.3: Fallback to repository pattern
+                    content_repo = RepositoryFactory.get_content_library()
+                    target_doc = await content_repo.find_by_doc_uid(target_doc_uid)
                 
                 if not target_doc:
                     broken_links.append({

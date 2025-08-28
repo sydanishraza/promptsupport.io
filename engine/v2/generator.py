@@ -655,28 +655,17 @@ CRITICAL REQUIREMENTS:
     async def get_generated_articles_for_run(self, run_id: str) -> dict:
         """Retrieve stored generated articles for a processing run"""
         try:
-            # Try using repository pattern first
+            # Use repository pattern only
             try:
-                from pymongo import MongoClient
-                import os
-                
-                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-                client = MongoClient(mongo_url)
-                db = client.get_default_database()
-                
-                articles_record = db.v2_generated_articles.find_one({"run_id": run_id})
+                v2_repo = RepositoryFactory.get_v2_processing()
+                articles_record = await v2_repo.find_one(
+                    collection="v2_generated_articles",
+                    query={"run_id": run_id}
+                )
                 
             except Exception as repo_error:
-                print(f"⚠️ V2 ARTICLE GEN: Repository error, using direct DB access - {repo_error}")
-                # Direct database fallback
-                from pymongo import MongoClient
-                import os
-                
-                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-                client = MongoClient(mongo_url)
-                db = client.get_default_database()
-                
-                articles_record = db.v2_generated_articles.find_one({"run_id": run_id})
+                print(f"❌ KE-PR9.3: Repository error retrieving generated articles - {repo_error}")
+                articles_record = None
             
             if articles_record:
                 return articles_record

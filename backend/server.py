@@ -17782,6 +17782,78 @@ async def call_built_in_local_llm(system_message: str, user_message: str) -> Opt
 
 
 
+# KE-PR9: TICKET-3 Fields Helper Functions
+def generate_ticket3_fields(title: str, content: str = "") -> Dict[str, Any]:
+    """Generate TICKET-3 fields for articles (doc_uid, doc_slug, headings, xrefs)"""
+    import uuid
+    import re
+    
+    try:
+        # Generate doc_uid (unique document identifier)
+        doc_uid = f"doc_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
+        # Generate doc_slug from title
+        if title:
+            # Convert to lowercase, replace spaces/special chars with hyphens
+            doc_slug = re.sub(r'[^a-z0-9]+', '-', title.lower().strip())
+            doc_slug = doc_slug.strip('-')[:50]  # Limit length
+            if not doc_slug:
+                doc_slug = f"article-{uuid.uuid4().hex[:8]}"
+        else:
+            doc_slug = f"article-{uuid.uuid4().hex[:8]}"
+        
+        # Extract headings from content
+        headings = []
+        if content:
+            # Look for markdown headings
+            heading_matches = re.findall(r'^(#{1,6})\s+(.+)$', content, re.MULTILINE)
+            for i, (hashes, text) in enumerate(heading_matches):
+                level = len(hashes)
+                heading_id = re.sub(r'[^a-z0-9]+', '-', text.lower().strip()).strip('-')[:30]
+                if not heading_id:
+                    heading_id = f"heading-{i+1}"
+                
+                headings.append({
+                    "id": heading_id,
+                    "text": text.strip(),
+                    "level": level,
+                    "anchor_id": heading_id  # For TICKET-3 linking
+                })
+        
+        # Initialize empty xrefs (will be populated by linking system)
+        xrefs = []
+        
+        return {
+            "doc_uid": doc_uid,
+            "doc_slug": doc_slug,
+            "headings": headings,
+            "xrefs": xrefs
+        }
+        
+    except Exception as e:
+        print(f"⚠️ KE-PR9: Error generating TICKET-3 fields: {e}")
+        return {
+            "doc_uid": f"doc_fallback_{uuid.uuid4().hex[:8]}",
+            "doc_slug": f"article-{uuid.uuid4().hex[:8]}",
+            "headings": [],
+            "xrefs": []
+        }
+
+def ensure_ticket3_fields(article: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure article has all TICKET-3 fields"""
+    title = article.get('title', 'Untitled Article')
+    content = article.get('content', '')
+    
+    # Generate fields if missing
+    ticket3_fields = generate_ticket3_fields(title, content)
+    
+    # Add fields if not already present
+    for field, value in ticket3_fields.items():
+        if field not in article:
+            article[field] = value
+    
+    return article
+
 async def persist_qa_report(qa_report, job_id: str = None):
     """
     KE-PR7 + KE-PR9: Persist QA report to database using repository layer

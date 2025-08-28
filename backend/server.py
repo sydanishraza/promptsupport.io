@@ -928,12 +928,11 @@ CRITICAL OUTPUT FORMAT:
                             if mongo_repo_available:
                                 content_repo = RepositoryFactory.get_content_library()
                                 await content_repo.insert_article(faq_article)
+                                enhanced_articles.append(faq_article)
+                                print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']} ({len(faq_content_text)} chars)")
                             else:
                                 # KE-PR9.3: Repository unavailable - skip FAQ article
                                 print("❌ KE-PR9.3: Repository unavailable, skipping FAQ article creation")
-                                continue
-                            enhanced_articles.append(faq_article)
-                            print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']} ({len(faq_content_text)} chars)")
                         else:
                             print(f"⚠️ FAQ content too short ({len(faq_content_text)} chars), skipping FAQ article")
                     else:

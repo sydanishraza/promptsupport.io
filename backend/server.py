@@ -17829,17 +17829,44 @@ async def persist_qa_report(qa_report, job_id: str = None):
 
 async def get_recent_qa_summaries(limit: int = 10):
     """
-    KE-PR7: Get recent QA summaries for API exposure
+    KE-PR7 + KE-PR9: Get recent QA summaries using repository layer
     """
     try:
-        global qa_results_collection
+        if not mongo_repo_available:
+            print("⚠️ KE-PR9: MongoDB repository not available, falling back to direct access")
+            # Fallback to direct database access
+            global qa_results_collection
+            
+            if not qa_results_collection:
+                return []
+            
+            # Get recent QA reports
+            cursor = qa_results_collection.find().sort("created_at", -1).limit(limit)
+            qa_reports = await cursor.to_list(length=limit)
+            
+            # Convert to summaries
+            summaries = []
+            for report in qa_reports:
+                try:
+                    summary = {
+                        "job_id": report.get('job_id', 'unknown'),
+                        "coverage_percent": report.get('coverage_percent', 0),
+                        "total_flags": len(report.get('flags', [])),
+                        "p0_flags": len([f for f in report.get('flags', []) if f.get('severity') == 'P0']),
+                        "p1_flags": len([f for f in report.get('flags', []) if f.get('severity') == 'P1']),
+                        "created_at": report.get('created_at'),
+                        "is_publishable": len([f for f in report.get('flags', []) if f.get('severity') == 'P0']) == 0
+                    }
+                    summaries.append(summary)
+                except Exception as e:
+                    print(f"⚠️ KE-PR7: Error processing QA report summary - {e}")
+                    continue
+            
+            return summaries
         
-        if not qa_results_collection:
-            return []
-        
-        # Get recent QA reports
-        cursor = qa_results_collection.find().sort("created_at", -1).limit(limit)
-        qa_reports = await cursor.to_list(length=limit)
+        # Use KE-PR9 repository layer
+        qa_repo = RepositoryFactory.get_qa_results()
+        qa_reports = await qa_repo.find_recent_qa_summaries(limit)
         
         # Convert to summaries
         summaries = []
@@ -17856,13 +17883,14 @@ async def get_recent_qa_summaries(limit: int = 10):
                 }
                 summaries.append(summary)
             except Exception as e:
-                print(f"⚠️ KE-PR7: Error processing QA report summary - {e}")
+                print(f"⚠️ KE-PR9: Error processing QA report summary - {e}")
                 continue
         
+        print(f"✅ KE-PR9: Retrieved {len(summaries)} QA summaries via repository")
         return summaries
         
     except Exception as e:
-        print(f"❌ KE-PR7: Error getting QA summaries - {e}")
+        print(f"❌ KE-PR9: Error getting QA summaries - {e}")
         return []
 
 async def call_llm_with_fallback(system_message: str, user_message: str, session_id: str = None) -> Optional[str]:

@@ -872,8 +872,13 @@ CRITICAL OUTPUT FORMAT:
                 print(f"📋 Creating introductory Table of Contents article for {len(articles)} articles")
                 intro_article = await create_introductory_toc_article(articles, metadata)
                 if intro_article:
-                    # Save introductory article to database
-                    await db.content_library.insert_one(intro_article)
+                    # KE-PR9: Use repository pattern for introductory article
+                    intro_article = ensure_ticket3_fields(intro_article)
+                    if mongo_repo_available:
+                        content_repo = RepositoryFactory.get_content_library()
+                        await content_repo.insert_article(intro_article)
+                    else:
+                        await db.content_library.insert_one(intro_article)
                     articles.insert(0, intro_article)  # Add as first article
                     print(f"✅ Introductory TOC article created and saved: {intro_article['title']}")
             

@@ -840,6 +840,9 @@ CRITICAL OUTPUT FORMAT:
                             }
                         }
                         
+                        # KE-PR9: Add TICKET-3 fields
+                        article = ensure_ticket3_fields(article)
+                        
                         # CRITICAL FIX: Save article to database using KE-PR9 repository
                         if mongo_repo_available:
                             content_repo = RepositoryFactory.get_content_library()

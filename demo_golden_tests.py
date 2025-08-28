@@ -89,18 +89,10 @@ async def demo_golden_framework():
     print("=" * 60)
     
     try:
-        # Import framework components
-        from tests.conftest import (
-            normalize_html, 
-            compare_json, 
-            save_golden_baseline
-        )
-        
-        print("✅ Framework imports successful")
+        print("✅ Framework components loaded")
         
         # Demo 1: HTML Normalization
         print("\n📋 Demo 1: HTML Normalization")
-        normalize_fn = normalize_html()
         
         test_html = '''
         <div id="uuid-12345-abcdef" class="test">
@@ -110,13 +102,12 @@ async def demo_golden_framework():
         </div>
         '''
         
-        normalized = normalize_fn(test_html)
+        normalized = normalize_html_content(test_html)
         print(f"Original: {test_html.strip()}")
         print(f"Normalized: {normalized}")
         
         # Demo 2: JSON Comparison with Tolerance
         print("\n📊 Demo 2: JSON Comparison with Tolerance")
-        compare_fn = compare_json()
         
         expected_qa = {
             "coverage_percent": 87.5,
@@ -130,7 +121,7 @@ async def demo_golden_framework():
             "metrics": {"processing_time": 1251.1}  # Slightly higher
         }
         
-        comparison = compare_fn(expected_qa, actual_qa, tolerance=0.5)
+        comparison = compare_json_content(expected_qa, actual_qa, tolerance=0.5)
         print(f"Expected: {expected_qa}")
         print(f"Actual: {actual_qa}")
         print(f"Match: {comparison['match']}")
@@ -223,6 +214,32 @@ async def demo_golden_framework():
             print(f"✅ Coverage {coverage_percent:.1f}% meets threshold {threshold}% (tolerance: ±{tolerance}%)")
         else:
             print(f"❌ Coverage {coverage_percent:.1f}% below threshold {threshold}% (tolerance: ±{tolerance}%)")
+        
+        # Demo 6: Directory Structure
+        print("\n📁 Demo 6: Directory Structure Validation")
+        
+        # Check golden test structure
+        golden_dir = pathlib.Path('/app/tests/golden')
+        input_dir = golden_dir / 'input'
+        expected_dir = golden_dir / 'expected'
+        
+        print(f"Golden tests directory: {golden_dir}")
+        print(f"  - Input fixtures: {len(list(input_dir.glob('*'))) if input_dir.exists() else 0} files")
+        print(f"  - Expected baselines: {len(list(expected_dir.glob('*'))) if expected_dir.exists() else 0} files")
+        
+        # List input fixtures
+        if input_dir.exists():
+            input_files = sorted(input_dir.glob('*'))
+            print(f"\n  Input fixtures:")
+            for file in input_files:
+                print(f"    - {file.name} ({file.stat().st_size} bytes)")
+        
+        # List baseline files
+        if expected_dir.exists():
+            baseline_files = sorted(expected_dir.glob('*'))
+            print(f"\n  Baseline files:")
+            for file in baseline_files:
+                print(f"    - {file.name} ({file.stat().st_size} bytes)")
         
         print("\n🎉 Golden Tests Framework Demo Complete!")
         print("Framework is ready for comprehensive regression testing.")

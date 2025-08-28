@@ -37,12 +37,50 @@ def get_backend_url():
 BACKEND_URL = get_backend_url()
 print(f"🌐 Testing backend at: {BACKEND_URL}")
 
-class Complete17StagePipelineTester:
+class V2EngineMigrationTester:
     def __init__(self):
         self.backend_url = BACKEND_URL
         self.test_results = []
         self.total_tests = 0
         self.passed_tests = 0
+        
+        # List of all 15 migrated V2 classes
+        self.migrated_classes = [
+            "V2GlobalOutlinePlanner",
+            "V2PerArticleOutlinePlanner", 
+            "V2PrewriteSystem",
+            "V2StyleProcessor",
+            "V2RelatedLinksSystem",
+            "V2GapFillingSystem",
+            "V2EvidenceTaggingSystem",
+            "V2CodeNormalizationSystem",
+            "V2ArticleGenerator",
+            "V2ValidationSystem",
+            "V2CrossArticleQASystem",
+            "V2AdaptiveAdjustmentSystem",
+            "V2VersioningSystem",
+            "V2ReviewSystem",
+            "V2PublishingSystem"
+        ]
+        
+        # Module mapping for each class
+        self.class_modules = {
+            "V2GlobalOutlinePlanner": "engine.v2.outline",
+            "V2PerArticleOutlinePlanner": "engine.v2.outline",
+            "V2PrewriteSystem": "engine.v2.prewrite",
+            "V2StyleProcessor": "engine.v2.style",
+            "V2RelatedLinksSystem": "engine.v2.related",
+            "V2GapFillingSystem": "engine.v2.gaps",
+            "V2EvidenceTaggingSystem": "engine.v2.evidence",
+            "V2CodeNormalizationSystem": "engine.v2.code_norm",
+            "V2ArticleGenerator": "engine.v2.generator",
+            "V2ValidationSystem": "engine.v2.validate",
+            "V2CrossArticleQASystem": "engine.v2.crossqa",
+            "V2AdaptiveAdjustmentSystem": "engine.v2.adapt",
+            "V2VersioningSystem": "engine.v2.versioning",
+            "V2ReviewSystem": "engine.v2.review",
+            "V2PublishingSystem": "engine.v2.publish"
+        }
         
     def log_test(self, test_name: str, passed: bool, details: str = ""):
         """Log test result"""

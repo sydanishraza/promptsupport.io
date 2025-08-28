@@ -14166,10 +14166,13 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             
             # Update articles in database with cross-references
             for article in enhanced_articles:
-                await db.content_library.update_one(
-                    {"id": article["id"]},
-                    {"$set": {"content": article["content"]}}
-                )
+                try:
+                    # KE-PR9.5: Use repository pattern for content updates
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    await content_repo.update_by_id(article["id"], {"content": article["content"]})
+                except Exception as update_error:
+                    print(f"⚠️ Error updating cross-references for {article['title']}: {update_error}")
             
             generated_articles = enhanced_articles
         

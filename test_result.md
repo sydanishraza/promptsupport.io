@@ -176,7 +176,7 @@ Successfully implemented Step 11 of the V2 Engine plan: "Publishing Flow (V2 onl
 **MIGRATION COMPLETION STATUS:**
 During KE-PR4, only **V2MultiDimensionalAnalyzer** was fully migrated. The remaining 17 classes were scaffolded with placeholder implementations in `server.py`. This ticket pack extracts the full implementation of each V2 class from `server.py` into its dedicated module while ensuring pipeline orchestrator calls migrated versions and maintaining golden test compatibility.
 
-**✅ COMPLETED MIGRATIONS (7/17):**
+**✅ COMPLETED MIGRATIONS (10/17):**
 
 1. **✅ KE-M16: V2 Engine Utilities** - `/engine/v2/_utils.py`
    - Extracted shared utility functions from server.py for V2 processing stages
@@ -196,25 +196,49 @@ During KE-PR4, only **V2MultiDimensionalAnalyzer** was fully migrated. The remai
    - Multiple article distribution and section management
    - Comprehensive outline structure generation with processing priority assignment
 
-4. **✅ KE-M5: V2RelatedLinksSystem** - `/engine/v2/related.py`
+4. **✅ KE-M3: V2PrewriteSystem** - `/engine/v2/prewrite.py`
+   - Migrated section-grounded prewrite pass with facts extraction
+   - LLM-based fact extraction and source block correlation
+   - Repository pattern integration with centralized LLM client
+   - Comprehensive error handling and fallback mechanisms
+
+5. **✅ KE-M4: V2StyleProcessor** - `/engine/v2/style.py`
+   - Migrated Woolf-aligned style formatting rules and structural requirements
+   - Heading policy enforcement and style consistency validation
+   - LLM-based style enhancement and formatting normalization
+   - Comprehensive style metadata generation and reporting
+
+6. **✅ KE-M5: V2RelatedLinksSystem** - `/engine/v2/related.py`
    - Migrated enhanced related links system with content library indexing
    - Lightweight vector/keyword index for similarity matching
    - Internal and external link extraction with comprehensive link merging
    - Repository pattern integration with fallback to direct database access
 
-5. **✅ KE-M8: V2CodeNormalizationSystem** - `/engine/v2/code_norm.py`
+7. **✅ KE-M6: V2GapFillingSystem** - `/engine/v2/gaps.py`
+   - Migrated intelligent gap filling system with in-corpus retrieval and LLM integration
+   - Gap detection using patterns ([MISSING], [PLACEHOLDER], etc.) and type inference
+   - Context retrieval from source blocks and content library with relevance scoring
+   - LLM-based patch generation and application with confidence indicators
+
+8. **✅ KE-M7: V2EvidenceTaggingSystem** - `/engine/v2/evidence.py`
+   - Migrated evidence tagging system to enforce fidelity by mapping paragraphs to source blocks
+   - HTML/markdown paragraph parsing with FAQ detection and skipping
+   - Evidence block matching using prewrite facts and direct block correlation
+   - Comprehensive evidence mapping with confidence scoring and metadata
+
+9. **✅ KE-M8: V2CodeNormalizationSystem** - `/engine/v2/code_norm.py`
    - Migrated complete code normalization and beautification for Prism compatibility
    - Comprehensive language mapping for 40+ programming languages and formats
    - Fenced code blocks, inline code, and indented code block processing
    - HTML entity escaping and Prism-compatible code block generation
 
-6. **✅ KE-M12: V2AdaptiveAdjustmentSystem** - `/engine/v2/adapt.py`
+10. **✅ KE-M12: V2AdaptiveAdjustmentSystem** - `/engine/v2/adapt.py`
    - Migrated adaptive adjustment system for balancing article lengths and splits
    - LLM-based and programmatic adjustment analysis with consolidation
    - Word count analysis, granularity validation, and readability scoring
    - Comprehensive adjustment priority determination and application
 
-7. **✅ KE-M13: V2PublishingSystem** - `/engine/v2/publish.py` (Already Complete)
+11. **✅ KE-M13: V2PublishingSystem** - `/engine/v2/publish.py` (Already Complete)
    - Publishing system was already fully migrated in earlier work
    - V2-only content validation and 100% coverage requirement verification
    - Content library structure preparation with comprehensive V2 metadata

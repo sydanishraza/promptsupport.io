@@ -192,16 +192,8 @@ async def get_content_library():
                 content_repo = RepositoryFactory.get_content_library()
                 articles = await content_repo.find_recent(limit=100)
             except Exception as repo_error:
-                print(f"⚠️ KE-PR9: Repository fallback to direct DB access: {repo_error}")
-                # Fallback to direct database access
-                from server import db
-                cursor = db.content_library.find().sort("created_at", -1).limit(100)
-                articles = await cursor.to_list(length=100)
-                
-                # Convert ObjectId to string
-                for article in articles:
-                    if '_id' in article:
-                        article['_id'] = str(article['_id'])
+                print(f"❌ KE-PR9.3: Repository access failed - {repo_error}")
+                raise HTTPException(status_code=500, detail=f"Database access failed: {str(repo_error)}")
             
             return {
                 "articles": articles,

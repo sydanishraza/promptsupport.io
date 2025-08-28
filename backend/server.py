@@ -30307,7 +30307,10 @@ File Information:
             
             # Store adjustment result separately for analysis
             try:
-                await db.v2_adjustment_results.insert_one(adjustment_result)
+                # KE-PR9.4: Always use repository pattern
+                from engine.stores.mongo import RepositoryFactory
+                v2_repo = RepositoryFactory.get_v2_analysis()
+                await v2_repo.store_analysis(adjustment_result)
                 print(f"💾 V2 ENGINE: Stored file adjustment result for analysis - adjustment_id: {adjustment_result.get('adjustment_id')} - engine=v2")
             except Exception as adjustment_storage_error:
                 print(f"❌ V2 ENGINE: Error storing file adjustment result - {adjustment_storage_error} - engine=v2")

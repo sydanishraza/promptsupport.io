@@ -3551,32 +3551,32 @@ async def v2_prewrite_system_process(articles: List[Dict[str, Any]], metadata: D
         failed_prewrites = 0
         
         for i, article in enumerate(articles):
-                try:
-                    article_prewrite = await self._process_article_prewrite(
-                        article, content, per_article_outlines, global_analysis, run_id, i
-                    )
-                    
-                    if article_prewrite.get('prewrite_status') == 'success':
-                        successful_prewrites += 1
-                        # Add prewrite data to article for use in generation
-                        article['prewrite_data'] = article_prewrite.get('prewrite_data', {})
-                        article['prewrite_file'] = article_prewrite.get('prewrite_file', '')
-                    else:
-                        failed_prewrites += 1
-                    
-                    prewrite_results.append(article_prewrite)
-                    
-                except Exception as article_error:
-                    print(f"❌ V2 PREWRITE: Error processing article {i+1} - {article_error} - engine=v2")
+            try:
+                article_prewrite = await self._process_article_prewrite(
+                    article, content, per_article_outlines, global_analysis, run_id, i
+                )
+                
+                if article_prewrite.get('prewrite_status') == 'success':
+                    successful_prewrites += 1
+                    # Add prewrite data to article for use in generation
+                    article['prewrite_data'] = article_prewrite.get('prewrite_data', {})
+                    article['prewrite_file'] = article_prewrite.get('prewrite_file', '')
+                else:
                     failed_prewrites += 1
-                    prewrite_results.append({
-                        "article_index": i,
-                        "prewrite_status": "error",
-                        "error": str(article_error)
-                    })
-            
-            # Calculate overall success metrics
-            total_articles = len(articles)
+                
+                prewrite_results.append(article_prewrite)
+                
+            except Exception as article_error:
+                print(f"❌ V2 PREWRITE: Error processing article {i+1} - {article_error} - engine=v2")
+                failed_prewrites += 1
+                prewrite_results.append({
+                    "article_index": i,
+                    "prewrite_status": "error",
+                    "error": str(article_error)
+                })
+        
+        # Calculate overall success metrics
+        total_articles = len(articles)
             success_rate = (successful_prewrites / total_articles * 100) if total_articles > 0 else 0
             
             prewrite_summary = {

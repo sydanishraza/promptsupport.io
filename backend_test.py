@@ -861,23 +861,24 @@ class V2EngineMigrationTester:
             return False
     
     def run_all_tests(self):
-        """Run all 17-stage pipeline tests"""
-        print("🎯 KE-PR5 COMPLETE 17-STAGE PIPELINE TESTING")
+        """Run all V2 engine migration validation tests"""
+        print("🎯 KE-M17: FINAL INTEGRATION & CLEANUP - V2 ENGINE MIGRATION TESTING")
         print("=" * 80)
-        print("Final verification of complete V2 pipeline with all 17 stages working")
+        print("Comprehensive validation of all 15 V2 engine classes migrated from server.py to /engine/v2/")
         print(f"Backend URL: {self.backend_url}")
         print(f"Test Start Time: {datetime.now().isoformat()}")
         print()
         
         # Run all tests
         tests = [
-            self.test_v2_engine_17_stage_availability,
-            self.test_complete_17_stage_pipeline_execution,
-            self.test_stage_16_versioning_system,
-            self.test_stage_17_review_system,
-            self.test_full_processing_workflow_integrity,
-            self.test_no_attribute_errors_or_missing_methods,
-            self.test_production_readiness_verification
+            self.test_v2_class_imports_validation,
+            self.test_v2_class_instantiation,
+            self.test_v2_pipeline_integration,
+            self.test_method_interface_compatibility,
+            self.test_repository_integration,
+            self.test_llm_client_integration,
+            self.test_cross_module_dependencies,
+            self.test_system_stability_no_regressions
         ]
         
         for test in tests:

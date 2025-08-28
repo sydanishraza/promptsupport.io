@@ -633,32 +633,17 @@ CRITICAL REQUIREMENTS:
                 "version": "2.0"
             }
             
-            # Store using repository pattern with fallback to direct DB access
+            # Store using repository pattern only
             try:
-                repository = RepositoryFactory.get_content_library()
-                # Note: This might need a dedicated repository for generated articles
-                # For now using a direct DB approach
-                from pymongo import MongoClient
-                import os
-                
-                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-                client = MongoClient(mongo_url)
-                db = client.get_default_database()
-                
-                # Store in generated articles collection
-                await db.v2_generated_articles.insert_one(articles_record)
+                v2_repo = RepositoryFactory.get_v2_processing()
+                await v2_repo.create(
+                    collection="v2_generated_articles",
+                    document=articles_record
+                )
                 
             except Exception as repo_error:
-                print(f"⚠️ V2 ARTICLE GEN: Repository error, using direct DB access - {repo_error}")
-                # Direct database fallback
-                from pymongo import MongoClient
-                import os
-                
-                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-                client = MongoClient(mongo_url)
-                db = client.get_default_database()
-                
-                db.v2_generated_articles.insert_one(articles_record)
+                print(f"❌ KE-PR9.3: Repository error storing generated articles - {repo_error}")
+                # Don't fall back to direct DB - fail gracefully
             
             print(f"📊 V2 ARTICLE GEN: Generated articles stored with run {run_id} - engine=v2")
             return articles_record

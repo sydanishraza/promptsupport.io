@@ -11630,8 +11630,10 @@ class V2PublishingSystem:
             
             for article in content_library_articles:
                 try:
-                    # Insert into content library
-                    result = await db.content_library.insert_one(article)
+                    # Insert into content library using repository pattern
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    result_id = await content_repo.insert_article(article)
                     
                     if result.inserted_id:
                         published_articles.append({

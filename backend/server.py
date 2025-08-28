@@ -3536,7 +3536,6 @@ v2_per_article_outline_planner = V2PerArticleOutlinePlanner()
 
 # V2PrewriteSystem class implementation moved to /app/engine/v2/prewrite.py (KE-M3)
 # Global instance below uses the imported migrated class
-        """Execute section-grounded prewrite pass for all articles"""
         try:
             print(f"🔍 V2 PREWRITE: Starting section-grounded prewrite pass - {len(articles)} articles - engine=v2")
             

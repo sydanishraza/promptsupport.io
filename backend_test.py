@@ -467,8 +467,8 @@ class V2EngineMigrationTester:
             self.log_test("Method Interface Compatibility", False, f"Exception: {str(e)}")
             return False
     
-    def test_full_processing_workflow_integrity(self):
-        """Test 5: Verify complete workflow produces fully processed articles"""
+    def test_repository_integration(self):
+        """Test 5: Verify classes properly use centralized MongoDB repository pattern"""
         try:
             test_content = """
             # Complete Workflow Testing Guide

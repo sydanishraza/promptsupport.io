@@ -121,19 +121,12 @@ class V2ReviewSystem:
                 "metadata": metadata or {}
             }
             
-            # Store in review queue using database connection
+            # Store in review queue using repository pattern
             try:
-                from pymongo import MongoClient
-                import os
-                
-                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-                client = MongoClient(mongo_url)
-                db = client.get_default_database()
-                
-                # Store in review queue
-                await db.v2_review_queue.insert_one(review_entry)
-            except Exception as db_error:
-                print(f"⚠️ V2 REVIEW: Database storage error - {db_error}")
+                v2_repo = RepositoryFactory.get_v2_processing()
+                await v2_repo.insert_one("v2_review_queue", review_entry)
+            except Exception as repo_error:
+                print(f"⚠️ V2 REVIEW: Repository storage error - {repo_error}")
             
             print(f"✅ V2 REVIEW: Run enqueued for review - {review_id}")
             

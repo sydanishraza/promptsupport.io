@@ -22360,8 +22360,10 @@ async def download_article_pdf(article_id: str):
     try:
         print(f"🔍 Generating PDF for Content Library article: {article_id}")
         
-        # Find the article in Content Library
-        article = await db.content_library.find_one({"id": article_id})
+        # Find the article in Content Library using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        article = await content_repo.find_by_id(article_id)
         
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")

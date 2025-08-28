@@ -1,11 +1,21 @@
 """
-KE-PR5: V2 Validation System - Complete Implementation
-Extracted from server.py - Comprehensive validation with fidelity checking and coverage validation
+KE-M10: V2 Validation System - Complete Implementation Migration
+Migrated from server.py - Comprehensive validation system for fidelity, coverage, placeholders, and style
 """
 
+import json
+import re
+import uuid
 from typing import Dict, Any, List
+from datetime import datetime
+from bs4 import BeautifulSoup
 from ..llm.client import get_llm_client
-from ..llm.prompts import CONTENT_VALIDATION_PROMPT
+from ..stores.mongo import RepositoryFactory
+from ..linking.anchors import stable_slug, assign_heading_ids, validate_heading_ladder
+from ..linking.toc import build_minitoc, anchors_resolve
+from ..linking.bookmarks import extract_headings_registry, generate_doc_uid, generate_doc_slug
+from ..linking.links import build_href, get_default_route_map
+from ._utils import create_processing_metadata
 
 class V2ValidationSystem:
     """V2 Engine: Comprehensive validation with fidelity checking, coverage validation, and placeholder detection"""

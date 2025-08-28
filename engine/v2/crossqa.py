@@ -5,7 +5,6 @@ Migrated from server.py - Cross-article quality assurance for coherence, dedupli
 
 import json
 import re
-from typing import Dict, List
 from datetime import datetime
 from bs4 import BeautifulSoup
 from ..llm.client import get_llm_client

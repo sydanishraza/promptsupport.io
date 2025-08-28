@@ -929,7 +929,9 @@ CRITICAL OUTPUT FORMAT:
                                 content_repo = RepositoryFactory.get_content_library()
                                 await content_repo.insert_article(faq_article)
                             else:
-                                await content_repo.insert_article(faq_article)
+                                # KE-PR9.3: Repository unavailable - skip FAQ article
+                                print("❌ KE-PR9.3: Repository unavailable, skipping FAQ article creation")
+                                continue
                             enhanced_articles.append(faq_article)
                             print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']} ({len(faq_content_text)} chars)")
                         else:

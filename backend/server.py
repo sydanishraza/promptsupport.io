@@ -3577,9 +3577,9 @@ async def v2_prewrite_system_process(articles: List[Dict[str, Any]], metadata: D
         
         # Calculate overall success metrics
         total_articles = len(articles)
-            success_rate = (successful_prewrites / total_articles * 100) if total_articles > 0 else 0
-            
-            prewrite_summary = {
+        success_rate = (successful_prewrites / total_articles * 100) if total_articles > 0 else 0
+        
+        prewrite_summary = {
                 "prewrite_id": f"prewrite_{run_id}_{int(datetime.utcnow().timestamp())}",
                 "run_id": run_id,
                 "prewrite_status": "success" if failed_prewrites == 0 else "partial" if successful_prewrites > 0 else "failed",

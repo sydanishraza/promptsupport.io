@@ -25578,9 +25578,11 @@ async def process_text_content_v2_legacy(content: str, metadata: Dict[str, Any])
                 article['validation_status'] = 'partial'
                 article['validation_diagnostics'] = validation_result.get('diagnostics', [])
         
-        # Store validation result separately for diagnostics endpoint
+        # Store validation result separately for diagnostics endpoint using repository (KE-PR9.4)
         try:
-            await db.v2_validation_results.insert_one(validation_result)
+            from engine.stores.mongo import RepositoryFactory
+            validation_repo = RepositoryFactory.get_v2_validation()
+            await validation_repo.store_validation(validation_result)
             print(f"💾 V2 ENGINE: Stored validation result for diagnostics - validation_id: {validation_result.get('validation_id')} - engine=v2")
         except Exception as validation_storage_error:
             print(f"❌ V2 ENGINE: Error storing validation result - {validation_storage_error} - engine=v2")

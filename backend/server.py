@@ -2481,8 +2481,12 @@ Return ONLY a JSON object in this exact format:
                 "version": "2.0"
             }
             
-            # Store in analysis collection
-            await db.v2_analysis.insert_one(analysis_record)
+            # Store in analysis collection using repository
+            if mongo_repo_available:
+                v2_repo = RepositoryFactory.get_v2_analysis()
+                await v2_repo.store_analysis(analysis_record)
+            else:
+                await db.v2_analysis.insert_one(analysis_record)
             
             print(f"📊 V2 ANALYSIS: Analysis stored with run {run_id} - engine=v2")
             return analysis_record

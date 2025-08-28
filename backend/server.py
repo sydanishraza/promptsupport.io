@@ -35715,8 +35715,10 @@ async def backfill_bookmarks(limit: int = None):
 async def validate_document_links(doc_uid: str):
     """TICKET 3: Validate cross-document links for a specific document"""
     try:
-        # Get document from content library
-        doc = await db.content_library.find_one({"doc_uid": doc_uid})
+        # Get document from content library using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        doc = await content_repo.find_by_doc_uid(doc_uid)
         
         if not doc:
             return {

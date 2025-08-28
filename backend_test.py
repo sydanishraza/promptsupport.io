@@ -634,8 +634,8 @@ class V2EngineMigrationTester:
             self.log_test("LLM Client Integration", False, f"Exception: {str(e)}")
             return False
     
-    def test_production_readiness_verification(self):
-        """Test 7: Verify pipeline is production-ready with consistent performance"""
+    def test_cross_module_dependencies(self):
+        """Test 7: Verify migrated classes interact properly with each other"""
         try:
             # Test multiple requests to verify consistency
             test_content = """

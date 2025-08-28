@@ -1,0 +1,114 @@
+[
+  {
+    "level": 1,
+    "text": "MongoDB Repository Pattern Integration Guide", 
+    "anchor": "mongodb-repository-pattern-integration-guide",
+    "id": "mongodb-repository-pattern-integration-guide",
+    "position": 0
+  },
+  {
+    "level": 2,
+    "text": "Overview",
+    "anchor": "overview",
+    "id": "overview", 
+    "position": 1
+  },
+  {
+    "level": 2,
+    "text": "Key Features",
+    "anchor": "key-features",
+    "id": "key-features",
+    "position": 2
+  },
+  {
+    "level": 3,
+    "text": "Repository Pattern Benefits",
+    "anchor": "repository-pattern-benefits", 
+    "id": "repository-pattern-benefits",
+    "position": 3
+  },
+  {
+    "level": 3,
+    "text": "TICKET-3 Field Support",
+    "anchor": "ticket-3-field-support",
+    "id": "ticket-3-field-support",
+    "position": 4
+  },
+  {
+    "level": 2,
+    "text": "Implementation Details",
+    "anchor": "implementation-details",
+    "id": "implementation-details",
+    "position": 5
+  },
+  {
+    "level": 3,
+    "text": "Repository Classes",
+    "anchor": "repository-classes",
+    "id": "repository-classes", 
+    "position": 6
+  },
+  {
+    "level": 4,
+    "text": "ContentLibraryRepository",
+    "anchor": "contentlibraryrepository",
+    "id": "contentlibraryrepository",
+    "position": 7
+  },
+  {
+    "level": 4,
+    "text": "QA Results Repository", 
+    "anchor": "qa-results-repository",
+    "id": "qa-results-repository",
+    "position": 8
+  },
+  {
+    "level": 3,
+    "text": "Error Handling Strategy",
+    "anchor": "error-handling-strategy",
+    "id": "error-handling-strategy",
+    "position": 9
+  },
+  {
+    "level": 2,
+    "text": "Code Examples",
+    "anchor": "code-examples", 
+    "id": "code-examples",
+    "position": 10
+  },
+  {
+    "level": 3,
+    "text": "Basic Article Creation",
+    "anchor": "basic-article-creation",
+    "id": "basic-article-creation",
+    "position": 11
+  },
+  {
+    "level": 3,
+    "text": "Cross-Document Operations",
+    "anchor": "cross-document-operations",
+    "id": "cross-document-operations",
+    "position": 12
+  },
+  {
+    "level": 2,
+    "text": "Testing & Validation",
+    "anchor": "testing-validation",
+    "id": "testing-validation", 
+    "position": 13
+  },
+  {
+    "level": 3,
+    "text": "Golden Test Suite",
+    "anchor": "golden-test-suite",
+    "id": "golden-test-suite",
+    "position": 14
+  },
+  {
+    "level": 3,
+    "text": "Success Metrics",
+    "anchor": "success-metrics",
+    "id": "success-metrics",
+    "position": 15
+  }
+]

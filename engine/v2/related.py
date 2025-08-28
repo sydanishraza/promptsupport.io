@@ -137,15 +137,11 @@ class V2RelatedLinksSystem:
                 articles = await content_repo.find_all_articles(limit=100)
             except Exception:
                 # Fallback to direct database access
-                from motor.motor_asyncio import AsyncIOMotorClient
-                import os
+                from ..stores.mongo import RepositoryFactory
                 
-                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/')
-                client = AsyncIOMotorClient(mongo_url)
-                db = client.promptsupport
-                
-                cursor = db.content_library.find({}).limit(100)
-                articles = await cursor.to_list(length=100)
+                # Use repository pattern instead of direct database access
+                content_repo = RepositoryFactory.get_content_library()
+                articles = await content_repo.find_recent(limit=100)
             
             # Index articles by keywords and metadata
             for article in articles:

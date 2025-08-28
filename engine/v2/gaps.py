@@ -366,11 +366,11 @@ class V2GapFillingSystem:
             library_results = []
             
             # Use repository pattern for content library access
-            repository = get_repository()
+            repository = RepositoryFactory.get_content_library()
             
             try:
                 # Search content library for articles with matching keywords
-                articles = await repository.content_library.find({"engine": "v2"}, limit=20)
+                articles = await repository.find_many({"engine": "v2"}, limit=20)
                 
                 for article in articles:
                     try:

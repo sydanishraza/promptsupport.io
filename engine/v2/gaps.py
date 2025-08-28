@@ -406,19 +406,9 @@ class V2GapFillingSystem:
                         continue
                 
             except Exception as repo_error:
-                print(f"⚠️ V2 GAP FILLING: Repository error, using direct DB access - {repo_error}")
-                # Fallback to direct database access if repository fails
-                from pymongo import MongoClient
-                import os
-                
-                try:
-                    mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-                    client = MongoClient(mongo_url)
-                    db = client.get_default_database()
-                    
-                    articles_cursor = db.content_library.find({"engine": "v2"}).limit(20)
-                    
-                    for article in articles_cursor:
+                print(f"❌ KE-PR9.3: Repository error, no fallback DB access - {repo_error}")
+                # Return empty results instead of using direct database access
+                library_results = []
                         try:
                             content = article.get('content', '') or article.get('html', '')
                             title = article.get('title', '')

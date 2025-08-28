@@ -149,7 +149,7 @@ class V2ReviewSystem:
 
     # Helper methods migrated from server.py
 
-    async def _compile_run_data_for_review(self, run_id: str, validation_result: dict, db) -> dict:
+    async def _compile_run_data_for_review(self, run_id: str, validation_result: dict) -> dict:
         """Compile comprehensive data for a processing run for review"""
         try:
             # Get related results from other V2 collections

@@ -8,7 +8,7 @@ import json
 import sys
 
 # Backend URL from environment
-BACKEND_URL = "https://promptsupport-3.preview.emergentagent.com/api"
+BACKEND_URL = "https://engineextract.preview.emergentagent.com/api"
 
 def test_simple_processing():
     """Test simple content processing to debug the issue"""

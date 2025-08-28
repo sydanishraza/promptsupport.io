@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 import re
 
 # Backend URL from environment
-BACKEND_URL = "https://promptsupport-3.preview.emergentagent.com/api"
+BACKEND_URL = "https://engineextract.preview.emergentagent.com/api"
 
 class TICKET2TICKET3IntegrationTester:
     def __init__(self):

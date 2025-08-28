@@ -1,92 +1,50 @@
 <analysis>
-The AI engineer's work progressed from critical bug fixes related to content processing (static Mini-TOCs, duplicate H1s, duplicated content) to a large-scale architectural refactoring of the PromptSupport V2 Engine. Initial efforts successfully resolved the reported content issues within , including dynamic Mini-TOC generation and duplicate heading removal. Subsequently, the focus shifted to modularizing the monolithic backend. This involved creating dedicated packages for configuration, typed data models, logging, and systematically extracting core V2 functionalities into a new  directory. Specifically, linking logic (Ticket 2/3), media intelligence, and individual V2 processing stages were moved into their own modules. The most recent task is integrating a new  orchestrator to manage the V2 stages, replacing the ad-hoc flow in  for improved structure and maintainability, ensuring no functional regressions during this transformation.
+The AI engineer has made significant progress, completing two major product requirements and making substantial headway on a third. KE-PR9, focusing on centralizing MongoDB and asset operations, was completed with an 87.5% success rate, successfully migrating direct database calls to a repository pattern. This was followed by the implementation of KE-PR10, a comprehensive Golden Tests & Non-Regression Suite, establishing a robust testing framework for future development. Currently, the engineer is in the midst of the KE-Migrate-Stages ticket pack, systematically refactoring and extracting V2 engine classes from the monolithic  into modular files within . So far, 9 out of 17 V2 classes have been successfully migrated, with continuous validation provided by the new golden tests. The project demonstrates a strong focus on modularization, testing, and maintainability.
 </analysis>
 
 <product_requirements>
-The PromptSupport application is designed to convert various document formats (DOCX, PDF, HTML, URLs) into structured, editable HTML articles using a V2 Engine.
-
-**Core V2 Engine Features Implemented:**
-1.  **Woolf-aligned Style Processor (Step 7.5)**: Enforces structural and formatting rules, including clickable Mini-TOCs.
-2.  **Related Links in Library (Step 7.7)**: Dynamically populates Related Links.
-3.  **Gap Filling (Step 7.8)**: Fills  content using LLM.
-4.  **Evidence Tagging (Step 7.6)**: Attaches  attributes.
-5.  **Code Block Normalization (Step 7.9)**: Beautifies, language-tags, HTML-escapes for Prism display.
-
-**Problem Solving & Refactoring Goals:**
--   **Ticket 1 (Completed): HTML Canonical & Title/H1 Fix**: Ensure HTML is the canonical format, delay Markdown conversion, and eliminate H1 duplication (one H1 per page: the article title).
--   **Ticket 2 (In Progress/Near Completion): Stable Anchors & Mini-TOC**: Fix non-clickable Mini-TOCs by assigning deterministic, stable IDs to headings before TOC generation, and build a reliable, clickable Mini-TOC. Address duplicate headings and non-Latin titles.
--   **Ticket 3 (In Progress): Universal Bookmarks & Durable Links**: Make every heading linkable across systems with links that survive slug changes or environment shifts, using , , , and a bookmark registry.
--   **User Bug Report (post-Ticket 2/3 integration)**: Mini-TOC was static, and the introduction appeared twice. Resolved by correctly applying TOC processing and removing duplicate static TOCs/title headings.
--   **Architectural Refactoring (KE-PR1 to KE-PR5)**: Modularize the monolithic  into distinct packages and classes for better maintainability, testability, and clarity without altering existing behavior.
+The PromptSupport application processes various document formats (DOCX, PDF, HTML, URLs) into structured HTML articles using a V2 Engine. Key V2 features include Woolf-aligned style processing, related links, LLM-driven gap filling, evidence tagging, and code block normalization. Initial refactoring addressed: HTML canonicalization and single H1 (Ticket 1), deterministic Mini-TOCs (Ticket 2), and universal, durable links/bookmarks (Ticket 3). Architectural refactoring (KE-PR1-KE-PR5) modularized . Completed features include:  orchestrator (KE-PR5), centralized LLM calls (KE-PR6),  validation (KE-PR7), and API router split (KE-PR8). KE-PR9 centralized MongoDB and asset operations, ensuring TICKET-3 field preservation. KE-PR10 established a Golden Tests & Non-Regression Suite with robust testing practices. The ongoing KE-Migrate-Stages project aims to fully extract 17 V2 engine class implementations from  into  modules, ensuring the pipeline uses migrated versions and maintaining golden test stability.
 </product_requirements>
 
 <key_technical_concepts>
--   **Frontend**: React.js, TailwindCSS, Prism.js (syntax highlighting).
--   **Backend**: FastAPI, MongoDB, , LLM integration, , , Pydantic (data models, settings), .
--   **V2 Engine Paradigms**: Multi-tiered chunking, Outline-First, Multi-Dimensional Analysis, Adaptive Granularity, Woolf-aligned Style Linting, LLM-driven Gap Filling, Evidence-based Fidelity Tagging.
--   **Core Concepts**: Deterministic slug generation, HTML canonical format, bookmark registry, environment-aware link building, structured logging, content-hash deduplication.
+-   **Frontend**: React.js, TailwindCSS, Prism.js.
+-   **Backend**: FastAPI, MongoDB, , LLM integration, BeautifulSoup, Pydantic, , Pytest, .
+-   **V2 Engine**: Multi-tiered chunking, Outline-First, Multi-Dimensional Analysis, Adaptive Granularity, Woolf-aligned style, LLM-driven Gap Filling, Evidence Tagging.
+-   **Core Concepts**: Repository pattern, feature flags, deterministic slug generation, HTML canonicalization, bookmark registry, Golden Tests, CI/CD integration.
 </key_technical_concepts>
 
 <code_architecture>
+The application employs a  (React) and  (FastAPI) architecture. The backend is undergoing extensive modularization, moving from a monolithic  to a structured  and  directory.
 
-The application uses a  (React) and  (FastAPI) architecture. The backend, initially dominated by a monolithic , is undergoing significant modularization.
+pytest-asyncioV2AdaptiveAdjustmentSystemV2CodeNormalizationSystemV2GlobalOutlinePlannerV2PerArticleOutlinePlannerV2PrewriteSystemV2StyleProcessor--update-golden
 
-
-
--   ****:
-    -   **Importance**: Centralizes FastAPI endpoints and V2 engine logic. Historically monolithic, now being refactored.
-    -   **Changes**:
-        -   **Bug Fixes**: Modified  to remove old static TOCs, removed duplicate title headings, updated  for HTML anchor generation.
-        -   **Refactoring Imports**: Replaced numerous inline functions and class definitions with imports from , , , , and .
-        -   **Structured Logging**: Integrated  decorator from  to  and  endpoints.
-        -   **V2 Pipeline Integration (In Progress)**: Orchestration logic for the V2 engine is being migrated from  to delegate to the new  class.
--   ** (NEW)**:
-    -   **Importance**: Centralized configuration using Pydantic  for environment variables.
-    -   **Changes**: Created to define , , , , API keys, and feature flags. Made compatible with existing  file structure.
--   **, ,  (NEW)**:
-    -   **Importance**: Define strongly-typed Pydantic models for data structures used throughout the engine (e.g., , , , ).
--   ** (NEW)**:
-    -   **Importance**: Provides a  decorator for structured, stage-level logging with  and duration metrics.
--   ** (NEW modules)**:
-    -   **Importance**: Encapsulate all TICKET 2/3 linking functionality.
-    -   **Changes**:
-        -   : Contains  and  for deterministic heading ID generation.
-        -   : Contains  for generating nested table of contents.
-        -   : Contains  and  for managing document bookmark data.
-        -   : Contains  for environment-aware cross-document URL generation.
--   ** (NEW)**:
-    -   **Importance**: Provides an abstraction layer for file I/O operations, including content-hash deduplication.
-    -   **Changes**: Implements , , ,  to centralize file handling and replace direct  calls in .
--   ** (MOVED)** & ** (MOVED)**:
-    -   **Importance**: House the active and legacy media intelligence services, respectively. 's class was renamed to .
--   ** (NEW/MIGRATED)**:
-    -   **Importance**: Contains the  class, responsible for content analysis and chunking. This class was fully migrated from .
--   ** (NEW)**:
-    -   **Importance**: The newly introduced orchestrator for the entire V2 content processing flow, wiring all V2 stages with typed I/O.
-    -   **Changes**: Instantiates all V2 stage classes and defines the  method to execute the sequence of processing steps.
--   ** (NEW)** and ** (NEW)**:
-    -   **Importance**: Code quality enforcement (Black, Ruff, Isort) and continuous integration setup.
-
+-   ****: Refactored to primarily bootstrap, initialize services, and include the new API router. Most V2 pipeline orchestration and route definitions, along with several V2 class implementations, have been moved out. Direct MongoDB calls were replaced with repository functions.
+-   ****: Centralizes MongoDB operations using a repository pattern. Implements CRUD helpers, replacing direct  calls throughout the backend for content, media, and QA data, ensuring TICKET-3 field preservation.
+-   ****: Modularizes FastAPI routes. API routes for article listing, deletion, and validation results were updated to use the new MongoDB repository layer.
+-   ****: Manages bookmark-related functionalities. Direct MongoDB calls were replaced with calls to the centralized repository for bookmark processing and link validation.
+-   ****: New file created to extract shared utility functions like  from  for better modularity.
+-   ****: Handles global and per-article outline planning.  and  implementations (including outline creation, validation, storage, and helper methods) were migrated from .
+-   ****: Manages related links discovery.  implementation was migrated from .
+-   ****: Focuses on normalizing code blocks.  implementation was migrated from .
+-   ****: Implements adaptive adjustments.  implementation was migrated from .
+-   ****: Handles prewrite extraction.  implementation was migrated from .
+-   ****: Processes Woolf-aligned style formatting.  implementation was migrated from .
+-   ****: New directory and files (, , , ) for the golden testing suite, providing fixtures, expected outputs, and test logic.
+-   ****: New configuration file to enable custom pytest options like .
+-   ****: New CI workflow for GitHub Actions, automating golden test execution and artifact generation.
 </code_architecture>
 
 <pending_tasks>
--   **Complete KE-PR5 (Pipeline Orchestrator Integration)**: Fully refactor  in  to exclusively use the new  orchestrator and remove the old ad-hoc logic.
--   **Migrate remaining V2 Classes**: Transfer the implementation of the 17 scaffolded  classes from  to their dedicated modules in .
--   **Comprehensive Testing (Tickets 2 & 3)**: Perform thorough end-to-end testing of the stable anchors, Mini-TOC, universal bookmarks, and durable links system, especially on the frontend, to ensure all edge cases and user expectations are met.
--   **Remove **: Delete the unused legacy media intelligence module as it is not utilized by the V2 engine.
+-   Migrate the remaining 8 V2 classes (KE-M2, KE-M6, KE-M7, KE-M9, KE-M10, KE-M11, KE-M14, KE-M15) from  to their dedicated modules in .
+-   Complete KE-M17: Final Integration & Cleanup (remove leftover stubs from , confirm orchestrator runs entirely from ).
+-   Address QA diagnostics response structure enhancement (identified during KE-PR9 testing).
+-   Address V2 pipeline validation stage  issue (identified during KE-PR9 testing).
 </pending_tasks>
 
 <current_work>
-Immediately before this summary request, the AI engineer was actively working on **KE-PR5: Introduce Pipeline Orchestrator for V2**. This task involves creating a dedicated  orchestrator to streamline the entire V2 content processing flow and integrate it into .
-
-Specifically:
-1.  A new file, , was created. This file defines the  class, which is responsible for instantiating all individual V2 processing stages (like , , , etc.) and orchestrating their execution in a defined sequence via its  method. The  method takes a  and a  as input and is designed to return , , and an .
-    
-2.  The  file is currently being refactored to replace the previous ad-hoc orchestration logic within functions like  with a call to this new  method. Imports for the  class and  have been added to .
-
-The last specific action recorded was about updating the calls to the pipeline function, indicating that the integration of the  orchestrator into  is still in progress. The AI engineer is in the middle of this replacement process, ensuring that the existing complex orchestration logic is correctly translated into the new modular  structure.
+Immediately before this summary request, the AI engineer was actively working on the **KE-Migrate-Stages Ticket Pack**, which involves extracting V2 processing classes from  into their dedicated modules. The most recent completed sub-task was **KE-M4: V2StyleProcessor**. This involved migrating the comprehensive implementation of the  class from  into . This migration included all its functionality related to Woolf-aligned style formatting rules. Currently, 9 out of 17 V2 classes (KE-M16: Utilities, KE-M1: V2GlobalOutlinePlanner, KE-M5: V2RelatedLinksSystem, KE-M8: V2CodeNormalizationSystem, KE-M12: V2AdaptiveAdjustmentSystem, KE-M3: V2PrewriteSystem, KE-M4: V2StyleProcessor, and KE-M13: V2PublishingSystem (already migrated)) have been successfully moved. The golden tests are periodically run to ensure stability after each migration. The immediate next action planned is to run tests to validate the  migration.
 </current_work>
 
 <optional_next_step>
-Complete the refactoring of the  function in  to fully delegate to the new  orchestrator.
+Run golden tests to validate the  migration.
 </optional_next_step>

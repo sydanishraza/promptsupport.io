@@ -17,7 +17,7 @@ import tempfile
 import requests
 
 # Configuration
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://promptsupport-3.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://engineextract.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 # DOCX file URL from the review request

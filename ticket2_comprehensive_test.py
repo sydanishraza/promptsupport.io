@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 
 # Use configured backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://engineextract.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 print(f"🎯 TICKET 2 COMPREHENSIVE TESTING - Final Integration Verification")

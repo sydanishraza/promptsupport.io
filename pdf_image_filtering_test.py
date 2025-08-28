@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://engineextract.preview.emergentagent.com/api"
+BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com/api"
 
 class PDFImageFilteringTester:
     def __init__(self):

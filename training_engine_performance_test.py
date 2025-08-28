@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://engineextract.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com') + '/api'
 
 class TrainingEnginePerformanceTest:
     def __init__(self):
@@ -39,7 +39,7 @@ class TrainingEnginePerformanceTest:
             
             # Test OPTIONS request for training/process endpoint
             headers = {
-                'Origin': 'https://engineextract.preview.emergentagent.com',
+                'Origin': 'https://mongo-repo-refactor.preview.emergentagent.com',
                 'Access-Control-Request-Method': 'POST',
                 'Access-Control-Request-Headers': 'Content-Type'
             }

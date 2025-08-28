@@ -286,8 +286,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "*",  # Allow all origins for development
-        "https://engineextract.preview.emergentagent.com",
-        "https://engineextract.preview.emergentagent.com", 
+        "https://mongo-repo-refactor.preview.emergentagent.com",
+        "https://mongo-repo-refactor.preview.emergentagent.com", 
         "http://localhost:3000",
         "http://127.0.0.1:3000"
     ],

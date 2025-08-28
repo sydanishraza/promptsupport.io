@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://engineextract.preview.emergentagent.com"
+BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com"
 
 def test_v2_engine_code_normalization_system():
     """

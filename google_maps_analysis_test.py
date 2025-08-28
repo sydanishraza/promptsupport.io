@@ -15,7 +15,7 @@ from collections import Counter
 import difflib
 
 # Get backend URL from environment
-BACKEND_URL = "https://engineextract.preview.emergentagent.com/api"
+BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com/api"
 
 class GoogleMapsArticleAnalyzer:
     def __init__(self):

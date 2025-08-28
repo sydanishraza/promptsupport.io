@@ -22,7 +22,7 @@ import io
 import base64
 
 # Configuration
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://engineextract.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 def print_test_header(title):

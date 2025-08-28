@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Get backend URL from frontend .env
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://engineextract.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class TICKET1DirectTestSuite:

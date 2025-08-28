@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://engineextract.preview.emergentagent.com/api"
+BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com/api"
 
 def test_v2_engine_gap_filling_system():
     """Comprehensive testing of V2 Engine Gap Filling System"""

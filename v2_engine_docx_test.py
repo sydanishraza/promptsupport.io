@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 # Configuration
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://engineextract.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 # Test file URL

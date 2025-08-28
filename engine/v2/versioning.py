@@ -432,19 +432,19 @@ class V2VersioningSystem:
             # Step 1: Find previous version articles
             previous_articles = []
             
-            # Search in content library for previous version articles
-            from pymongo import MongoClient
-            import os
-            
-            mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-            client = MongoClient(mongo_url)
-            db = client.get_default_database()
-            
-            async for article in db.content_library.find({"metadata.run_id": previous_run_id, "engine": "v2"}):
-                previous_articles.append(article)
+            # Search in content library for previous version articles using repository
+            content_repo = RepositoryFactory.get_content_library()
+            previous_articles = await content_repo.find_many({
+                "metadata.run_id": previous_run_id, 
+                "engine": "v2"
+            })
             
             # Also search in v2_version_records for previous articles
-            previous_version_record = await db.v2_version_records.find_one({"run_id": previous_run_id})
+            v2_repo = RepositoryFactory.get_v2_processing()
+            previous_version_record = await v2_repo.find_one(
+                collection="v2_version_records",
+                query={"run_id": previous_run_id}
+            )
             
             if not previous_articles and not previous_version_record:
                 print(f"⚠️ V2 VERSIONING: No previous version data found for diff - run {current_run_id} - engine=v2")

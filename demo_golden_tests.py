@@ -7,12 +7,80 @@ Demonstrates the golden test framework functionality
 import asyncio
 import json
 import pathlib
+import re
 import sys
 import os
+from datetime import datetime
 
 # Add paths for imports
 sys.path.insert(0, '/app')
 sys.path.insert(0, '/app/backend')
+
+def normalize_html_content(html_content: str) -> str:
+    """Normalize HTML content for comparison (standalone version)"""
+    # Remove timestamps
+    html_content = re.sub(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?', 'TIMESTAMP', html_content)
+    
+    # Remove random UUIDs and IDs
+    html_content = re.sub(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', 'UUID', html_content)
+    html_content = re.sub(r'id="[^"]*"', 'id="NORMALIZED_ID"', html_content)
+    
+    # Remove processing timestamps and metadata
+    html_content = re.sub(r'"created_at":\s*"[^"]*"', '"created_at": "TIMESTAMP"', html_content)
+    html_content = re.sub(r'"updated_at":\s*"[^"]*"', '"updated_at": "TIMESTAMP"', html_content)
+    html_content = re.sub(r'"run_id":\s*"[^"]*"', '"run_id": "RUN_ID"', html_content)
+    
+    # Normalize whitespace
+    html_content = re.sub(r'\s+', ' ', html_content)
+    html_content = html_content.strip()
+    
+    return html_content
+
+def compare_json_content(expected: dict, actual: dict, tolerance: float = 0.5) -> dict:
+    """Compare JSON objects with tolerance (standalone version)"""
+    def _compare_values(exp_val, act_val, path=""):
+        differences = []
+        
+        if isinstance(exp_val, dict) and isinstance(act_val, dict):
+            # Compare dictionaries
+            all_keys = set(exp_val.keys()) | set(act_val.keys())
+            for key in all_keys:
+                key_path = f"{path}.{key}" if path else key
+                if key not in exp_val:
+                    differences.append(f"Unexpected key: {key_path}")
+                elif key not in act_val:
+                    differences.append(f"Missing key: {key_path}")
+                else:
+                    differences.extend(_compare_values(exp_val[key], act_val[key], key_path))
+                    
+        elif isinstance(exp_val, list) and isinstance(act_val, list):
+            # Compare lists
+            if len(exp_val) != len(act_val):
+                differences.append(f"List length mismatch at {path}: expected {len(exp_val)}, got {len(act_val)}")
+            else:
+                for i, (exp_item, act_item) in enumerate(zip(exp_val, act_val)):
+                    differences.extend(_compare_values(exp_item, act_item, f"{path}[{i}]"))
+                    
+        elif isinstance(exp_val, (int, float)) and isinstance(act_val, (int, float)):
+            # Compare numbers with tolerance
+            if abs(exp_val - act_val) > tolerance:
+                differences.append(f"Number mismatch at {path}: expected {exp_val}, got {act_val} (tolerance: {tolerance})")
+                
+        else:
+            # Compare other types directly
+            if exp_val != act_val:
+                differences.append(f"Value mismatch at {path}: expected {exp_val}, got {act_val}")
+        
+        return differences
+    
+    differences = _compare_values(expected, actual)
+    
+    return {
+        "match": len(differences) == 0,
+        "differences": differences,
+        "expected": expected,
+        "actual": actual
+    }
 
 async def demo_golden_framework():
     """Demonstrate the golden test framework"""

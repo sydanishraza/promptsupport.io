@@ -30778,7 +30778,10 @@ async def create_content_library_article(
                         "updated_at": datetime.utcnow()
                     }
                     
-                    await db.content_library.insert_one(article_record)
+                    # Store in Content Library collection using repository pattern (KE-PR9.4)
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    await content_repo.insert_article(article_record)
                     
                     return {
                         "success": True,

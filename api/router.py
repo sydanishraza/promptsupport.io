@@ -487,7 +487,6 @@ async def get_validation_diagnostics(run_id: str = None, validation_id: str = No
             print(f"❌ KE-PR9.3: Validation repository access failed - {repo_error}")
             # Return empty results instead of falling back to direct DB
             validation_results = []
-                result['_id'] = str(result['_id'])
         
         return {
             "total_validations": len(validation_results),

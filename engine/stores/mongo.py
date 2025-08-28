@@ -208,6 +208,63 @@ class ContentLibraryRepository:
             print(f"❌ KE-PR9: Error updating xrefs for {doc_uid}: {e}")
             return False
     
+    async def find_by_id(self, article_id: str, projection: Optional[Dict] = None) -> Optional[Dict]:
+        """Find article by id field (KE-PR9.4)"""
+        try:
+            result = await self.collection.find_one({"id": article_id}, projection)
+            if result and '_id' in result:
+                result['_id'] = str(result['_id'])
+            return result
+        except Exception as e:
+            print(f"❌ KE-PR9.4: Error finding by id {article_id}: {e}")
+            return None
+    
+    async def update_by_id(self, article_id: str, updates: Dict[str, Any]) -> bool:
+        """Update article by id field (KE-PR9.4)"""
+        try:
+            # Preserve TICKET-3 fields during updates
+            updates['updated_at'] = datetime.utcnow()
+            
+            result = await self.collection.update_one(
+                {"id": article_id},
+                {"$set": updates}
+            )
+            
+            if result.matched_count > 0:
+                print(f"✅ KE-PR9.4: Article updated by id - {article_id}")
+                return True
+            else:
+                print(f"⚠️ KE-PR9.4: No article found with id - {article_id}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ KE-PR9.4: Error updating article {article_id}: {e}")
+            return False
+    
+    async def update_by_object_id(self, object_id: str, updates: Dict[str, Any]) -> bool:
+        """Update article by MongoDB ObjectId (KE-PR9.4 - legacy compatibility)"""
+        try:
+            from bson import ObjectId
+            
+            # Preserve TICKET-3 fields during updates
+            updates['updated_at'] = datetime.utcnow()
+            
+            result = await self.collection.update_one(
+                {"_id": ObjectId(object_id)},
+                {"$set": updates}
+            )
+            
+            if result.matched_count > 0:
+                print(f"✅ KE-PR9.4: Article updated by ObjectId - {object_id}")
+                return True
+            else:
+                print(f"⚠️ KE-PR9.4: No article found with ObjectId - {object_id}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ KE-PR9.4: Error updating article by ObjectId {object_id}: {e}")
+            return False
+
     async def delete_by_id(self, article_id: str) -> bool:
         """Delete article by id"""
         try:

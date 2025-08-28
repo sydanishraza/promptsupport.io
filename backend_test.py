@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-KE-PR8 API Router Split & Feature Flags (Kill Switches) Testing
-Comprehensive test suite for the API router organization and feature flag functionality
+KE-M17: Final Integration & Cleanup - V2 Engine Migration Testing
+Comprehensive test suite for validating the complete migration of all 15 V2 engine classes
+from server.py to dedicated modules in /app/engine/v2/
 """
 
 import os

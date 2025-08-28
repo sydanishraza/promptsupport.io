@@ -406,7 +406,7 @@ Analyze these articles and return ONLY JSON in this exact format:
             
             return intersection / union if union > 0 else 0.0
             
-        except Exception as e:
+        except Exception:
             return 0.0
     
     async def _perform_programmatic_qa_analysis(self, article_set: dict, run_id: str) -> dict:

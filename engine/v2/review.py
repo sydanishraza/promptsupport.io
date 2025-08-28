@@ -152,11 +152,12 @@ class V2ReviewSystem:
     async def _compile_run_data_for_review(self, run_id: str, validation_result: dict) -> dict:
         """Compile comprehensive data for a processing run for review"""
         try:
-            # Get related results from other V2 collections
-            qa_result = await db.v2_qa_results.find_one({"run_id": run_id})
-            adjustment_result = await db.v2_adjustment_results.find_one({"run_id": run_id})
-            publishing_result = await db.v2_publishing_results.find_one({"run_id": run_id})
-            versioning_result = await db.v2_versioning_results.find_one({"run_id": run_id})
+            # Get related results from other V2 collections using repository
+            v2_repo = RepositoryFactory.get_v2_processing()
+            qa_result = await v2_repo.find_one("v2_qa_results", {"run_id": run_id})
+            adjustment_result = await v2_repo.find_one("v2_adjustment_results", {"run_id": run_id})
+            publishing_result = await v2_repo.find_one("v2_publishing_results", {"run_id": run_id})
+            versioning_result = await v2_repo.find_one("v2_versioning_results", {"run_id": run_id})
             
             # Convert ObjectIds to strings for serialization
             qa_result = self._objectid_to_str(qa_result) if qa_result else None

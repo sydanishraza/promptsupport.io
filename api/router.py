@@ -501,57 +501,80 @@ async def get_validation_diagnostics(run_id: str = None, validation_id: str = No
 
 @router.get("/api/qa/diagnostics")
 async def get_qa_diagnostics(run_id: str = None, qa_id: str = None):
-    """V2 QA diagnostics"""
+    """V2 QA diagnostics using repository layer"""
     import sys
     import os
     backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
     if backend_path not in sys.path:
         sys.path.append(backend_path)
     
-    from server import qa_results_collection
-    
     try:
-        query_filter = {}
-        if run_id:
-            query_filter["job_id"] = run_id
-        if qa_id:
-            query_filter["qa_id"] = qa_id
+        # Try to use repository layer first
+        from server import mongo_repo_available, RepositoryFactory
         
-        if not qa_results_collection:
+        if mongo_repo_available:
+            qa_repo = RepositoryFactory.get_qa_results()
+            
+            if run_id:
+                qa_results = await qa_repo.find_by_job_id(run_id)
+            else:
+                qa_results = await qa_repo.find_recent_qa_summaries(limit=10)
+            
             return {
-                "total_qa_runs": 0,
-                "qa_results": [],
-                "message": "QA results collection not initialized"
+                "total_qa_runs": len(qa_results),
+                "passed_qa_runs": len([r for r in qa_results if len(r.get('flags', [])) == 0]),
+                "qa_runs_with_issues": len([r for r in qa_results if len(r.get('flags', [])) > 0]),
+                "qa_results": qa_results,
+                "source": "repository_layer"
             }
-        
-        if not query_filter:
-            try:
-                qa_results = await qa_results_collection.find().sort("created_at", -1).limit(10).to_list(10)
-            except Exception as db_error:
-                qa_results = []
         else:
-            try:
-                qa_results = await qa_results_collection.find(query_filter).sort("created_at", -1).to_list(100)
-            except Exception as db_error:
-                qa_results = []
-        
-        # Convert ObjectId to string
-        for result in qa_results:
-            if '_id' in result:
-                result['_id'] = str(result['_id'])
-        
-        return {
-            "total_qa_runs": len(qa_results),
-            "passed_qa_runs": len([r for r in qa_results if len(r.get('flags', [])) == 0]),
-            "qa_runs_with_issues": len([r for r in qa_results if len(r.get('flags', [])) > 0]),
-            "qa_results": qa_results
-        }
+            # Fallback to direct database access
+            from server import qa_results_collection
+            
+            query_filter = {}
+            if run_id:
+                query_filter["job_id"] = run_id
+            if qa_id:
+                query_filter["qa_id"] = qa_id
+            
+            if not qa_results_collection:
+                return {
+                    "total_qa_runs": 0,
+                    "qa_results": [],
+                    "message": "QA results collection not initialized",
+                    "source": "direct_database"
+                }
+            
+            if not query_filter:
+                try:
+                    qa_results = await qa_results_collection.find().sort("created_at", -1).limit(10).to_list(10)
+                except Exception as db_error:
+                    qa_results = []
+            else:
+                try:
+                    qa_results = await qa_results_collection.find(query_filter).sort("created_at", -1).to_list(100)
+                except Exception as db_error:
+                    qa_results = []
+            
+            # Convert ObjectId to string
+            for result in qa_results:
+                if '_id' in result:
+                    result['_id'] = str(result['_id'])
+            
+            return {
+                "total_qa_runs": len(qa_results),
+                "passed_qa_runs": len([r for r in qa_results if len(r.get('flags', [])) == 0]),
+                "qa_runs_with_issues": len([r for r in qa_results if len(r.get('flags', [])) > 0]),
+                "qa_results": qa_results,
+                "source": "direct_database"
+            }
         
     except Exception as e:
         return {
             "total_qa_runs": 0,
             "qa_results": [],
-            "error": str(e)
+            "error": str(e),
+            "source": "error_fallback"
         }
 
 

@@ -30883,7 +30883,10 @@ async def process_url_content(
             status="processing"
         )
         
-        await db.processing_jobs.insert_one(job.dict())
+        # Store job using ProcessingJobsRepository (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        processing_jobs_repo = RepositoryFactory.get_processing_jobs()
+        await processing_jobs_repo.insert_job(job.dict())
         
         print(f"🌐 Processing URL: {url}")
         

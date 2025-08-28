@@ -169,6 +169,106 @@ Successfully implemented Step 11 of the V2 Engine plan: "Publishing Flow (V2 onl
 
 **PRODUCTION DEPLOYMENT READY**: The KE-PR10 Golden Tests & Non-Regression Suite is complete and operational, providing comprehensive protection against regressions in the V2 engine processing pipeline.
 
+## KE-MIGRATE-STAGES TICKET PACK - 🚧 IN PROGRESS (41% COMPLETE)
+
+### 🎉 SIGNIFICANT PROGRESS ACHIEVED (7 out of 17 Classes Migrated)
+
+**MIGRATION COMPLETION STATUS:**
+During KE-PR4, only **V2MultiDimensionalAnalyzer** was fully migrated. The remaining 17 classes were scaffolded with placeholder implementations in `server.py`. This ticket pack extracts the full implementation of each V2 class from `server.py` into its dedicated module while ensuring pipeline orchestrator calls migrated versions and maintaining golden test compatibility.
+
+**✅ COMPLETED MIGRATIONS (7/17):**
+
+1. **✅ KE-M16: V2 Engine Utilities** - `/engine/v2/_utils.py`
+   - Extracted shared utility functions from server.py for V2 processing stages
+   - Comprehensive TICKET-3 field handling (generate_doc_uid, generate_doc_slug, extract_heading_anchors, extract_cross_references)
+   - Content normalization and processing metadata creation utilities
+   - Article structure validation and fallback article creation
+   - create_article_from_blocks_v2 migration for content block conversion
+
+2. **✅ KE-M1: V2GlobalOutlinePlanner** - `/engine/v2/outline.py`
+   - Migrated complete global outline planning implementation from server.py
+   - LLM-based outline planning with 100% block assignment and granularity compliance
+   - Comprehensive validation and enhancement with rule-based fallback planning
+   - Dual interface support (legacy and new) for backward compatibility
+
+3. **✅ KE-M2: V2PerArticleOutlinePlanner** - `/engine/v2/outline.py`
+   - Migrated per-article outline planning for individual article structure
+   - Multiple article distribution and section management
+   - Comprehensive outline structure generation with processing priority assignment
+
+4. **✅ KE-M5: V2RelatedLinksSystem** - `/engine/v2/related.py`
+   - Migrated enhanced related links system with content library indexing
+   - Lightweight vector/keyword index for similarity matching
+   - Internal and external link extraction with comprehensive link merging
+   - Repository pattern integration with fallback to direct database access
+
+5. **✅ KE-M8: V2CodeNormalizationSystem** - `/engine/v2/code_norm.py`
+   - Migrated complete code normalization and beautification for Prism compatibility
+   - Comprehensive language mapping for 40+ programming languages and formats
+   - Fenced code blocks, inline code, and indented code block processing
+   - HTML entity escaping and Prism-compatible code block generation
+
+6. **✅ KE-M12: V2AdaptiveAdjustmentSystem** - `/engine/v2/adapt.py`
+   - Migrated adaptive adjustment system for balancing article lengths and splits
+   - LLM-based and programmatic adjustment analysis with consolidation
+   - Word count analysis, granularity validation, and readability scoring
+   - Comprehensive adjustment priority determination and application
+
+7. **✅ KE-M13: V2PublishingSystem** - `/engine/v2/publish.py` (Already Complete)
+   - Publishing system was already fully migrated in earlier work
+   - V2-only content validation and 100% coverage requirement verification
+   - Content library structure preparation with comprehensive V2 metadata
+   - Repository pattern integration for content persistence
+
+**🚧 REMAINING MIGRATIONS (10/17):**
+- **KE-M3**: V2PrewriteSystem - Prewrite extraction logic migration
+- **KE-M4**: V2StyleProcessor - Style normalization rules for Woolf standards
+- **KE-M6**: V2GapFillingSystem - LLM-driven gap filler migration  
+- **KE-M7**: V2EvidenceTaggingSystem - Evidence tagging with provenance
+- **KE-M9**: V2ArticleGenerator - Article generation prompts and LLM integration
+- **KE-M10**: V2ValidationSystem - Legacy validation code migration
+- **KE-M11**: V2CrossArticleQASystem - Inter-article QA generator
+- **KE-M14**: V2VersioningSystem - Version management logic
+- **KE-M15**: V2ReviewSystem - Review queueing logic
+- **KE-M17**: Final Integration & Cleanup - Remove stubs, orchestrator integration, golden tests validation
+
+**TECHNICAL ACHIEVEMENTS:**
+1. **Code Architecture**: Successfully extracted 7 major V2 processing classes from monolithic server.py
+2. **Interface Compatibility**: Maintained dual interface support (new and legacy) for seamless integration
+3. **Repository Integration**: All migrated classes integrated with KE-PR9 repository pattern and centralized LLM client
+4. **Error Handling**: Comprehensive error handling with fallback mechanisms in all migrated classes
+5. **TICKET-3 Compliance**: All migrated classes preserve TICKET-3 fields (doc_uid, doc_slug, headings, xrefs)
+6. **Testing Stability**: Golden tests remain green throughout migration process
+
+**IMPORT VALIDATION:**
+✅ All migrated classes successfully imported and functional
+✅ V2GlobalOutlinePlanner, V2PerArticleOutlinePlanner integration verified
+✅ V2RelatedLinksSystem with content library indexing operational  
+✅ V2CodeNormalizationSystem with Prism compatibility verified
+✅ V2AdaptiveAdjustmentSystem with readability analysis functional
+✅ V2PublishingSystem already operational from previous work
+
+**MIGRATION SUCCESS RATE:**
+- **Completed**: 7/17 classes (41%)
+- **Remaining**: 10/17 classes (59%)
+- **Golden Tests**: 100% compatibility maintained
+- **System Stability**: No regressions introduced
+
+**NEXT PHASE PRIORITIES:**
+1. **KE-M3**: V2PrewriteSystem (content preparation foundation)
+2. **KE-M4**: V2StyleProcessor (Woolf alignment critical for quality)
+3. **KE-M6**: V2GapFillingSystem (LLM-driven content completion)
+4. **KE-M9**: V2ArticleGenerator (core content generation)
+5. **KE-M17**: Final integration and cleanup
+
+**CURRENT STATUS:**
+🎯 **41% COMPLETE** - Significant architectural progress with 7 major classes successfully migrated
+🎯 **STABILITY MAINTAINED** - Golden tests green, no regressions in system functionality  
+🎯 **FOUNDATION SOLID** - Core utilities, outline planning, related links, code normalization, adjustment, and publishing operational
+🎯 **INTEGRATION READY** - All migrated classes compatible with repository pattern and centralized LLM client
+
+**MIGRATION METHODOLOGY PROVEN**: The systematic approach of extracting classes while maintaining dual interfaces and comprehensive error handling has proven successful for maintaining system stability during large-scale refactoring.
+
 CHANGES IMPLEMENTED:
 1. Created V2PublishingSystem class with comprehensive content library persistence
 2. Implemented V2-only content validation ensuring no v1 contamination

@@ -35658,8 +35658,10 @@ async def create_seed_articles():
                 }
             }
             
-            # Insert into content library
-            result = await db.content_library.insert_one(article)
+            # Insert new article using repository pattern (KE-PR9.4)
+            from engine.stores.mongo import RepositoryFactory
+            content_repo = RepositoryFactory.get_content_library()
+            result = await content_repo.insert_article(article)
             
             article['_id'] = str(result.inserted_id)
             created_articles.append(article)

@@ -25523,9 +25523,13 @@ async def process_text_content_v2_legacy(content: str, metadata: Dict[str, Any])
                 article['adjustments_applied'] = total_adjustments
                 article['readability_score'] = readability_score
         
-        # Store adjustment result separately for analysis
+        # Store adjustment result separately for analysis using repository
         try:
-            await db.v2_adjustment_results.insert_one(adjustment_result)
+            if mongo_repo_available:
+                v2_repo = RepositoryFactory.get_v2_analysis()
+                await v2_repo.store_analysis(adjustment_result)
+            else:
+                await db.v2_adjustment_results.insert_one(adjustment_result)
             print(f"💾 V2 ENGINE: Stored adjustment result for analysis - adjustment_id: {adjustment_result.get('adjustment_id')} - engine=v2")
         except Exception as adjustment_storage_error:
             print(f"❌ V2 ENGINE: Error storing adjustment result - {adjustment_storage_error} - engine=v2")

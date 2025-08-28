@@ -14154,7 +14154,10 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
         if len(content) > 2000:
             faq_article = await create_faq_article(content, generated_articles, metadata)
             if faq_article:
-                await db.content_library.insert_one(faq_article)
+                # KE-PR9.3: Use repository pattern
+                from engine.stores.mongo import RepositoryFactory
+                content_repo = RepositoryFactory.get_content_library()
+                await content_repo.insert_article(faq_article)
                 generated_articles.append(faq_article)
                 print(f"💾 SAVED FAQ ARTICLE")
         

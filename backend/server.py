@@ -24474,8 +24474,10 @@ async def process_content(request: ContentProcessRequest):
                             article['metadata']['processing_version'] = '2.0'
                             article['metadata']['format'] = article.get('format', 'html_canonical')
                             
-                            # Save to content library
-                            await db.content_library.insert_one(article)
+                            # Save to content library using repository pattern (KE-PR9.5)
+                            from engine.stores.mongo import RepositoryFactory
+                            content_repo = RepositoryFactory.get_content_library()
+                            await content_repo.insert_article(article)
                             saved_articles.append(article)
                             print(f"✅ V2 ENGINE: Saved article '{article.get('title', 'Untitled')}' with format='{article.get('format', 'unknown')}'")
                         except Exception as save_error:

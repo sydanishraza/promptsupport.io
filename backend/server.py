@@ -14041,7 +14041,10 @@ async def intelligent_content_processing_pipeline(content: str, metadata: Dict[s
         print(f"💾 STEP 3: Saving {len(generated_articles)} articles to database")
         for i, article in enumerate(generated_articles, 1):
             try:
-                await db.content_library.insert_one(article)
+                # KE-PR9.3: Use repository pattern for article insertion
+                from engine.stores.mongo import RepositoryFactory
+                content_repo = RepositoryFactory.get_content_library()
+                await content_repo.insert_article(article)
                 print(f"💾 SAVED ARTICLE {i}/{len(generated_articles)}: {article['title']}")
             except Exception as save_error:
                 print(f"⚠️ Error saving article {i}: {save_error}")

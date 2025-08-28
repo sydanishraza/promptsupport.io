@@ -3544,9 +3544,9 @@ async def v2_prewrite_system_process(articles: List[Dict[str, Any]], metadata: D
     """V2 Prewrite System - Section-grounded prewrite processing"""
     try:
         print(f"🔍 V2 PREWRITE: Starting section-grounded prewrite pass - {len(articles)} articles - engine=v2")
-            
-            # Process each article individually
-            prewrite_results = []
+        
+        # Process each article individually
+        prewrite_results = []
             successful_prewrites = 0
             failed_prewrites = 0
             

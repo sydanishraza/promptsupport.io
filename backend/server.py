@@ -3547,8 +3547,8 @@ async def v2_prewrite_system_process(articles: List[Dict[str, Any]], metadata: D
         
         # Process each article individually
         prewrite_results = []
-            successful_prewrites = 0
-            failed_prewrites = 0
+        successful_prewrites = 0
+        failed_prewrites = 0
             
             for i, article in enumerate(articles):
                 try:

@@ -879,7 +879,9 @@ CRITICAL OUTPUT FORMAT:
                         content_repo = RepositoryFactory.get_content_library()
                         await content_repo.insert_article(intro_article)
                     else:
-                        await db.content_library.insert_one(intro_article)
+                        # KE-PR9.3: Repository unavailable - skip intro article
+                        print("❌ KE-PR9.3: Repository unavailable, skipping intro article creation")
+                        continue
                     articles.insert(0, intro_article)  # Add as first article
                     print(f"✅ Introductory TOC article created and saved: {intro_article['title']}")
             

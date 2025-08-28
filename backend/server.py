@@ -14143,7 +14143,10 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             if generated_articles:
                 overview_article = await create_overview_article(generated_articles, outline_data, metadata)
                 if overview_article:
-                    await db.content_library.insert_one(overview_article)
+                    # KE-PR9.3: Use repository pattern
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    await content_repo.insert_article(overview_article)
                     generated_articles.insert(0, overview_article)
                     print(f"💾 SAVED OVERVIEW ARTICLE with mini-TOC")
         

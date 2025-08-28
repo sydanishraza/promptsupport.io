@@ -142,10 +142,24 @@ async def backfill_registry(limit: int = None) -> Dict[str, Any]:
                     "bookmarks_updated": True
                 }
                 
-                await db.content_library.update_one(
-                    {"_id": article["_id"]}, 
-                    {"$set": update_data}
-                )
+                # KE-PR9: Update article using repository pattern
+                try:
+                    from ..stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    
+                    # Use upsert_content to preserve TICKET-3 fields
+                    success = await content_repo.upsert_content(doc_uid, update_data)
+                    if not success:
+                        print(f"⚠️ KE-PR9: Repository update failed, using direct DB for {title}")
+                        raise Exception("Repository update failed")
+                        
+                except Exception as repo_error:
+                    print(f"⚠️ KE-PR9: Bookmark update fallback to direct DB: {repo_error}")
+                    # Fallback to direct database update
+                    await db.content_library.update_one(
+                        {"_id": article["_id"]}, 
+                        {"$set": update_data}
+                    )
                 
                 processed_count += 1
                 print(f"✅ TICKET 3: Updated article '{title}' with {len(headings)} bookmarks - doc_uid: {doc_uid}")

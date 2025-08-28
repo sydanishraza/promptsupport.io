@@ -251,11 +251,29 @@ Return ONLY JSON in this exact format:
             
             if llm_response:
                 # Parse JSON response
-                outline_result = json.loads(llm_response)
-                print(f"✅ V2 OUTLINE: LLM outline planning successful - {len(outline_result.get('articles', []))} articles")
-                return outline_result
+                import re
+                
+                # Clean response and extract JSON
+                cleaned_response = re.sub(r'[-\x1f\x7f-\x9f]', '', llm_response)
+                
+                # Try to extract JSON from response
+                json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    outline_data = json.loads(json_str)
+                    
+                    # Validate required fields
+                    if 'articles' in outline_data and 'discarded_blocks' in outline_data:
+                        print(f"🎯 V2 OUTLINE: LLM outline planning successful - {len(outline_data['articles'])} articles, {len(outline_data['discarded_blocks'])} discarded - engine=v2")
+                        return outline_data
+                    else:
+                        print(f"⚠️ V2 OUTLINE: Invalid outline structure from LLM - engine=v2")
+                        return None
+                else:
+                    print(f"⚠️ V2 OUTLINE: No JSON found in LLM outline response - engine=v2")
+                    return None
             else:
-                print("⚠️ V2 OUTLINE: No response from LLM")
+                print(f"❌ V2 OUTLINE: No response from LLM for outline planning - engine=v2")
                 return None
                 
         except json.JSONDecodeError as e:
@@ -264,6 +282,244 @@ Return ONLY JSON in this exact format:
         except Exception as e:
             print(f"❌ V2 OUTLINE: Error in LLM outline planning - {e}")
             return None
+    
+    async def _validate_and_enhance_outline(self, llm_outline: dict, normalized_doc, granularity: str) -> dict:
+        """Validate LLM outline and enhance with rule-based validation"""
+        try:
+            enhanced_outline = llm_outline.copy()
+            
+            # Get all block IDs that should exist
+            expected_block_ids = [f"block_{i + 1}" for i in range(len(normalized_doc.blocks))]
+            
+            # Get all assigned and discarded block IDs
+            assigned_blocks = set()
+            for article in enhanced_outline.get('articles', []):
+                for block_id in article.get('block_ids', []):
+                    assigned_blocks.add(block_id)
+            
+            discarded_blocks = set()
+            for discarded in enhanced_outline.get('discarded_blocks', []):
+                discarded_blocks.add(discarded.get('block_id'))
+            
+            # Find missing blocks
+            all_accounted_blocks = assigned_blocks.union(discarded_blocks)
+            missing_blocks = set(expected_block_ids) - all_accounted_blocks
+            
+            # Assign missing blocks to appropriate articles or discard them
+            if missing_blocks:
+                print(f"⚠️ V2 OUTLINE: Found {len(missing_blocks)} unassigned blocks, assigning them - engine=v2")
+                
+                for block_id in missing_blocks:
+                    # Get block index
+                    block_index = int(block_id.split('_')[1]) - 1
+                    if block_index < len(normalized_doc.blocks):
+                        block = normalized_doc.blocks[block_index]
+                        
+                        # Decide whether to assign or discard based on content
+                        if self._should_discard_block(block):
+                            enhanced_outline.setdefault('discarded_blocks', []).append({
+                                "block_id": block_id,
+                                "reason": "boilerplate"
+                            })
+                        else:
+                            # Assign to most appropriate article
+                            self._assign_block_to_best_article(block_id, block, enhanced_outline)
+            
+            # Validate article count against granularity
+            article_count = len(enhanced_outline.get('articles', []))
+            target_count = self._get_target_article_count(granularity)
+            
+            if isinstance(target_count, tuple):
+                min_count, max_count = target_count
+                if article_count < min_count or article_count > max_count:
+                    print(f"⚠️ V2 OUTLINE: Article count {article_count} outside {granularity} range {min_count}-{max_count} - engine=v2")
+            else:
+                if article_count != target_count:
+                    print(f"⚠️ V2 OUTLINE: Article count {article_count} doesn't match {granularity} target {target_count} - engine=v2")
+            
+            # Add validation metadata
+            enhanced_outline['validation_metadata'] = {
+                "total_blocks": len(normalized_doc.blocks),
+                "assigned_blocks": len(assigned_blocks),
+                "discarded_blocks": len(discarded_blocks),
+                "missing_blocks_found": len(missing_blocks),
+                "article_count": article_count,
+                "granularity": granularity,
+                "validation_passed": True
+            }
+            
+            return enhanced_outline
+            
+        except Exception as e:
+            print(f"❌ V2 OUTLINE: Error validating outline - {e}")
+            return llm_outline
+    
+    def _should_discard_block(self, block) -> bool:
+        """Determine if a block should be discarded"""
+        if not block or not block.content:
+            return True
+        
+        content_lower = block.content.lower().strip()
+        
+        # Check for boilerplate patterns
+        boilerplate_patterns = [
+            'copyright', '©', 'all rights reserved', 'confidential',
+            'page', 'slide', 'header', 'footer', 'draft', 'version',
+            'document number', 'revision', 'last updated'
+        ]
+        
+        if any(pattern in content_lower for pattern in boilerplate_patterns):
+            return True
+        
+        # Check if content is too short to be meaningful
+        if len(content_lower) < 20:
+            return True
+        
+        # Check for repetitive content (basic heuristic)
+        words = content_lower.split()
+        if len(words) > 0 and len(set(words)) / len(words) < 0.3:
+            return True
+        
+        return False
+    
+    def _assign_block_to_best_article(self, block_id: str, block, enhanced_outline: dict):
+        """Assign unassigned block to the most appropriate article"""
+        articles = enhanced_outline.get('articles', [])
+        
+        if not articles:
+            # Create a default article if none exist
+            enhanced_outline['articles'] = [{
+                "article_id": "a1",
+                "proposed_title": "Main Content",
+                "scope_summary": "Primary content from document",
+                "block_ids": [block_id]
+            }]
+            return
+        
+        # Simple assignment: add to the first article (could be enhanced with content similarity)
+        articles[0]['block_ids'].append(block_id)
+    
+    def _get_target_article_count(self, granularity: str):
+        """Get target article count for granularity"""
+        return self.granularity_article_counts.get(granularity, 3)
+    
+    async def _store_global_outline(self, outline: dict, run_id: str, doc_id: str) -> dict:
+        """Store global outline with run and return enhanced version"""
+        try:
+            # Add storage metadata
+            outline['storage_metadata'] = {
+                'run_id': run_id,
+                'doc_id': doc_id,
+                'stored_at': create_processing_metadata('global_outline')['timestamp'],
+                'engine': 'v2'
+            }
+            
+            # TODO: Implement actual storage to repository if needed
+            # For now, return enhanced outline
+            
+            return outline
+            
+        except Exception as e:
+            print(f"❌ V2 OUTLINE: Error storing outline - {e}")
+            return outline
+    
+    async def _rule_based_outline_planning(self, normalized_doc, analysis: dict) -> dict:
+        """Fallback rule-based outline planning when LLM fails"""
+        try:
+            print(f"📋 V2 OUTLINE: Using rule-based fallback planning - engine=v2")
+            
+            granularity = analysis.get('granularity', 'shallow')
+            target_count = self._get_target_article_count(granularity)
+            
+            if isinstance(target_count, tuple):
+                target_count = target_count[0]  # Use minimum for fallback
+            
+            # Simple distribution of blocks across articles
+            blocks = normalized_doc.blocks
+            blocks_per_article = max(1, len(blocks) // target_count)
+            
+            articles = []
+            for i in range(target_count):
+                start_idx = i * blocks_per_article
+                end_idx = start_idx + blocks_per_article if i < target_count - 1 else len(blocks)
+                
+                block_ids = [f"block_{j + 1}" for j in range(start_idx, end_idx)]
+                
+                articles.append({
+                    "article_id": f"a{i + 1}",
+                    "proposed_title": f"Article {i + 1}: Content Section",
+                    "scope_summary": f"Content blocks {start_idx + 1} to {end_idx}",
+                    "block_ids": block_ids
+                })
+            
+            return {
+                'articles': articles,
+                'discarded_blocks': [],
+                'planning_method': 'rule_based_fallback',
+                'validation_metadata': {
+                    "total_blocks": len(blocks),
+                    "assigned_blocks": len(blocks),
+                    "discarded_blocks": 0,
+                    "article_count": len(articles),
+                    "granularity": granularity
+                }
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 OUTLINE: Error in rule-based planning - {e}")
+            return self._get_emergency_fallback_outline(normalized_doc)
+    
+    async def _create_fallback_outline(self, normalized_doc, run_id: str) -> dict:
+        """Create basic fallback outline when all else fails"""
+        try:
+            title = getattr(normalized_doc, 'title', 'Document') if normalized_doc else 'Document'
+            block_count = len(getattr(normalized_doc, 'blocks', [])) if normalized_doc else 0
+            
+            fallback_outline = {
+                'articles': [{
+                    "article_id": "fallback_a1",
+                    "proposed_title": f"Processed: {title}",
+                    "scope_summary": "Complete document content",
+                    "block_ids": [f"block_{i + 1}" for i in range(block_count)]
+                }],
+                'discarded_blocks': [],
+                'planning_method': 'emergency_fallback',
+                'storage_metadata': {
+                    'run_id': run_id,
+                    'doc_id': getattr(normalized_doc, 'doc_id', 'unknown') if normalized_doc else 'unknown',
+                    'engine': 'v2'
+                }
+            }
+            
+            return fallback_outline
+            
+        except Exception as e:
+            print(f"❌ V2 OUTLINE: Error creating fallback outline - {e}")
+            return {
+                'articles': [{
+                    "article_id": "emergency_a1",
+                    "proposed_title": "Document Content",
+                    "scope_summary": "Emergency fallback content",
+                    "block_ids": []
+                }],
+                'discarded_blocks': [],
+                'planning_method': 'emergency_fallback'
+            }
+    
+    def _get_emergency_fallback_outline(self, normalized_doc) -> dict:
+        """Emergency fallback when everything fails"""
+        block_count = len(getattr(normalized_doc, 'blocks', [])) if normalized_doc else 0
+        
+        return {
+            'articles': [{
+                "article_id": "emergency_a1",
+                "proposed_title": "Document Content",
+                "scope_summary": "Emergency processing fallback",
+                "block_ids": [f"block_{i + 1}" for i in range(block_count)]
+            }],
+            'discarded_blocks': [],
+            'planning_method': 'emergency_fallback'
+        }
     
     def _create_outline_sections(self, analysis: dict) -> List[dict]:
         """Create outline sections based on analysis"""

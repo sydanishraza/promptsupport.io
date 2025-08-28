@@ -86,11 +86,32 @@ async def backfill_registry(limit: int = None) -> Dict[str, Any]:
             ]
         }
         
-        cursor = db.content_library.find(query)
-        if limit:
-            cursor = cursor.limit(limit)
+        # KE-PR9: Use repository pattern to find articles needing backfill
+        try:
+            from ..stores.mongo import RepositoryFactory
+            content_repo = RepositoryFactory.get_content_library()
+            # Find V2 articles that need bookmark backfill
+            all_articles = await content_repo.find_by_engine("v2", limit=limit if limit else None)
             
-        articles = await cursor.to_list(length=None)
+            # Filter articles needing backfill (missing TICKET-3 fields)
+            articles = []
+            for article in all_articles:
+                needs_backfill = (
+                    not article.get("doc_uid") or 
+                    not article.get("doc_slug") or 
+                    not article.get("headings")
+                )
+                if needs_backfill:
+                    articles.append(article)
+                    
+        except Exception as repo_error:
+            print(f"⚠️ KE-PR9: Bookmark backfill fallback to direct DB: {repo_error}")
+            # Fallback to direct database access
+            cursor = db.content_library.find(query)
+            if limit:
+                cursor = cursor.limit(limit)
+                
+            articles = await cursor.to_list(length=None)
         
         print(f"📖 TICKET 3: Found {len(articles)} V2 articles needing bookmark backfill")
         

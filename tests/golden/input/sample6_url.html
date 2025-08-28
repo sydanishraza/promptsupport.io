@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromptSupport V2 Engine API Documentation</title>
+    <meta name="description" content="Comprehensive API documentation for PromptSupport V2 Engine processing pipeline">
+    <meta name="keywords" content="API, documentation, V2 engine, processing, pipeline">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007acc;
+            --secondary-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #e9ecef;
+            --code-bg: #f5f5f5;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            background: var(--primary-color);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        h1, h2, h3, h4 { 
+            margin-top: 0;
+            font-weight: 600;
+        }
+        
+        .api-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .endpoint {
+            background: var(--secondary-color);
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-right: 0.5rem;
+        }
+        
+        .method.get { background: var(--success-color); color: white; }
+        .method.post { background: var(--primary-color); color: white; }
+        .method.put { background: var(--warning-color); color: black; }
+        .method.delete { background: var(--danger-color); color: white; }
+        
+        .code-block {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+        }
+        
+        .response-example {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .response-header {
+            background: var(--secondary-color);
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .response-body {
+            padding: 1rem;
+            background: white;
+        }
+        
+        .nav-toc {
+            background: var(--secondary-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        
+        .nav-toc ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+        
+        .nav-toc li {
+            margin: 0.5rem 0;
+        }
+        
+        .nav-toc a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .nav-toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-stable { background: #d4edda; color: #155724; }
+        .status-beta { background: #fff3cd; color: #856404; }
+        .status-experimental { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PromptSupport V2 Engine API</h1>
+            <p>Comprehensive API documentation for content processing pipeline</p>
+            <span class="status-badge status-stable">Stable v2.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="nav-toc">
+            <h3>API Reference</h3>
+            <ul>
+                <li><a href="#content-processing">Content Processing</a></li>
+                <li><a href="#content-library">Content Library</a></li>
+                <li><a href="#ticket3-operations">TICKET-3 Operations</a></li>
+                <li><a href="#qa-diagnostics">QA & Diagnostics</a></li>
+                <li><a href="#system-endpoints">System Endpoints</a></li>
+            </ul>
+        </nav>
+
+        <section id="content-processing" class="api-section">
+            <h2>Content Processing Endpoints</h2>
+            
+            <div class="endpoint">
+                <h3>
+                    <span class="method post">POST</span>
+                    /api/content/process
+                </h3>
+                <p>Process raw content through V2 engine pipeline</p>
+                
+                <h4>Request Parameters:</h4>
+                <div class="code-block">
+{
+  "content": "string (required)",
+  "content_type": "markdown|html|text|docx|pdf",
+  "processing_mode": "v2_only|hybrid|v1_fallback",
+  "metadata": {
+    "source_url": "string (optional)",
+    "original_filename": "string (optional)",
+    "processing_options": {}
+  }
+}
+                </div>
+
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Success</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "status": "success",
+  "articles": [
+    {
+      "id": "01JZ12345678ABCDEFGH",
+      "doc_uid": "01JZ12345678ABCDEFGH",
+      "doc_slug": "processed-article-title",
+      "title": "Processed Article Title",
+      "content": "<h1>Article Content</h1>",
+      "html": "<h1>Article Content</h1>",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Article Content",
+          "anchor": "article-content",
+          "id": "article-content"
+        }
+      ],
+      "xrefs": [],
+      "metadata": {
+        "engine": "v2",
+        "processing_timestamp": "2024-01-15T10:30:00Z",
+        "coverage_percent": 95.5
+      }
+    }
+  ],
+  "processing_time": 1.25,
+  "qa_report": {
+    "coverage_percent": 95.5,
+    "total_issues": 0,
+    "critical_issues": 0
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>
+                    <span class="method post">POST</span>
+                    /api/content/process-file
+                </h3>
+                <p>Process uploaded file through V2 pipeline</p>
+                
+                <h4>Request: Multipart Form Data</h4>
+                <div class="code-block">
+Content-Type: multipart/form-data
+
+file: [binary file data]
+processing_options: {
+  "extract_images": true,
+  "preserve_formatting": true,
+  "generate_toc": true
+}
+                </div>
+            </div>
+        </section>
+
+        <section id="content-library" class="api-section">
+            <h2>Content Library Management</h2>
+            
+            <div class="endpoint">
+                <h3>
+                    <span class="method get">GET</span>
+                    /api/content/library
+                </h3>
+                <p>List articles in content library</p>
+                
+                <h4>Query Parameters:</h4>
+                <ul>
+                    <li><code>limit</code> - Number of articles to return (default: 100)</li>
+                    <li><code>engine</code> - Filter by processing engine (v1|v2)</li>
+                    <li><code>search</code> - Search query for title/content</li>
+                </ul>
+
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Success</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "articles": [
+    {
+      "id": "article-id-1",
+      "title": "Sample Article",
+      "doc_uid": "01JZ12345678ABCDEFGH",
+      "doc_slug": "sample-article",
+      "created_at": "2024-01-15T10:30:00Z",
+      "engine": "v2",
+      "status": "published"
+    }
+  ],
+  "total": 1,
+  "source": "repository_layer"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>
+                    <span class="method delete">DELETE</span>
+                    /api/content/library/{article_id}
+                </h3>
+                <p>Delete article from content library</p>
+                
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Success</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "message": "Article deleted successfully",
+  "source": "repository_layer"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ticket3-operations" class="api-section">
+            <h2>TICKET-3 Operations</h2>
+            
+            <div class="endpoint">
+                <h3>
+                    <span class="method post">POST</span>
+                    /api/ticket3/backfill-bookmarks
+                </h3>
+                <p>Backfill TICKET-3 fields for existing articles</p>
+                
+                <h4>Request Body:</h4>
+                <div class="code-block">
+{
+  "limit": 50,
+  "engine": "v2"
+}
+                </div>
+
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Success</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "status": "success",
+  "message": "Backfilled 25 articles",
+  "data": {
+    "articles_processed": 25,
+    "errors": 0,
+    "total_found": 25,
+    "status": "success"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>
+                    <span class="method get">GET</span>
+                    /api/ticket3/document-registry/{doc_uid}
+                </h3>
+                <p>Get document registry information</p>
+                
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Success</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "doc_uid": "01JZ12345678ABCDEFGH",
+  "doc_slug": "sample-document",
+  "title": "Sample Document",
+  "headings": [
+    {
+      "level": 1,
+      "text": "Main Heading",
+      "anchor": "main-heading",
+      "id": "main-heading"
+    }
+  ],
+  "bookmark_registry": "active"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="qa-diagnostics" class="api-section">
+            <h2>QA & Diagnostics</h2>
+            
+            <div class="endpoint">
+                <h3>
+                    <span class="method get">GET</span>
+                    /api/qa/reports
+                </h3>
+                <p>Get quality assurance reports</p>
+                
+                <h4>Query Parameters:</h4>
+                <ul>
+                    <li><code>run_id</code> - Filter by processing run ID</li>
+                    <li><code>validation_id</code> - Filter by validation ID</li>
+                    <li><code>limit</code> - Number of reports to return</li>
+                </ul>
+
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Success</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "total_validations": 10,
+  "validation_results": [
+    {
+      "validation_id": "val_123",
+      "run_id": "run_456", 
+      "coverage_percent": 87.5,
+      "total_issues": 2,
+      "critical_issues": 0,
+      "timestamp": "2024-01-15T10:30:00Z",
+      "status": "passed"
+    }
+  ]
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="system-endpoints" class="api-section">
+            <h2>System Endpoints</h2>
+            
+            <div class="endpoint">
+                <h3>
+                    <span class="method get">GET</span>
+                    /api/engine
+                </h3>
+                <p>Get V2 engine status and capabilities</p>
+                
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Success</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "status": "active",
+  "version": "2.0",
+  "features": [
+    "repository_pattern",
+    "ticket3_support", 
+    "woolf_style_processing",
+    "structural_linting",
+    "qa_validation"
+  ],
+  "message": "V2 Engine operational with repository pattern integration"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3>
+                    <span class="method get">GET</span>
+                    /api/health
+                </h3>
+                <p>Health check endpoint</p>
+                
+                <div class="response-example">
+                    <div class="response-header">Response 200 - Healthy</div>
+                    <div class="response-body">
+                        <div class="code-block">
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "uptime": "72h 15m",
+  "database": "connected",
+  "repository_layer": "operational"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer style="margin-top: 3rem; padding: 2rem 0; border-top: 1px solid var(--border-color); text-align: center; color: #666;">
+            <p><strong>PromptSupport V2 Engine API Documentation</strong></p>
+            <p>Generated: <span id="api-doc-timestamp">2024-01-15T10:30:00Z</span> | Version: 2.0.0</p>
+            <p>Repository Pattern: Enabled | TICKET-3 Support: Active | Golden Tests: Validated</p>
+        </footer>
+    </div>
+
+    <script>
+        // Update timestamp
+        document.getElementById('api-doc-timestamp').textContent = new Date().toISOString();
+        
+        // Add smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+        // Add copy-to-clipboard for code blocks
+        document.querySelectorAll('.code-block').forEach(block => {
+            block.style.position = 'relative';
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = 'Copy';
+            copyBtn.style.cssText = `
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: var(--primary-color);
+                color: white;
+                border: none;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+            `;
+            
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(block.textContent).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                });
+            });
+            
+            block.appendChild(copyBtn);
+        });
+    </script>
+</body>
+</html>

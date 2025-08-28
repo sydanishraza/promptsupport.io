@@ -13,7 +13,7 @@ import time
 from datetime import datetime
 
 # Get backend URL from environment
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-processor.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://promptsupport-3.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 def create_test_image_base64():

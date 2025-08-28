@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 # Test configuration
-BACKEND_URL = "https://content-processor.preview.emergentagent.com/api"
+BACKEND_URL = "https://promptsupport-3.preview.emergentagent.com/api"
 
 class KE_PR7_Tester:
     def __init__(self):

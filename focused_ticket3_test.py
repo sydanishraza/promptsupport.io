@@ -13,7 +13,7 @@ from datetime import datetime
 
 # Use configured backend URL from environment
 import os
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://content-processor.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://promptsupport-3.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 print(f"🧪 FOCUSED TICKET 3 TESTING")

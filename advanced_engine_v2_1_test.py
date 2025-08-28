@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Any
 
 # Backend URL from environment
-BACKEND_URL = "https://content-processor.preview.emergentagent.com/api"
+BACKEND_URL = "https://promptsupport-3.preview.emergentagent.com/api"
 
 class AdvancedEngineV21Tester:
     def __init__(self):

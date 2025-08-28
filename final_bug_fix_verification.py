@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://content-processor.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://promptsupport-3.preview.emergentagent.com') + '/api'
 
 def test_training_endpoint_bug_fix():
     """Test the training endpoint bug fix - this is where the bug was originally reported"""

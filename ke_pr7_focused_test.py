@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 
 # Test configuration
-BACKEND_URL = "https://content-processor.preview.emergentagent.com/api"
+BACKEND_URL = "https://promptsupport-3.preview.emergentagent.com/api"
 
 class KE_PR7_FocusedTester:
     def __init__(self):

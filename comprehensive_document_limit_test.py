@@ -25,7 +25,7 @@ from datetime import datetime
 import subprocess
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://content-processor.preview.emergentagent.com"
+BACKEND_URL = "https://promptsupport-3.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 # Test documents with expected article counts

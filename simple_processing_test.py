@@ -7,7 +7,7 @@ import requests
 import json
 import time
 
-BACKEND_URL = "https://content-processor.preview.emergentagent.com"
+BACKEND_URL = "https://promptsupport-3.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def test_simple_processing():

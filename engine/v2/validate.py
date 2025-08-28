@@ -149,6 +149,329 @@ class V2ValidationSystem:
                 'error': str(e)
             }
     
+    async def backfill_bookmark_registry(self, limit: int = None) -> dict:
+        """TICKET 3: Backfill existing v2 articles with bookmark registry data"""
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            import os
+            
+            mongo_url = os.environ.get('MONGO_URL')
+            client = AsyncIOMotorClient(mongo_url)
+            db = client.promptsupport
+            
+            print("🔄 TICKET 3: Starting bookmark registry backfill for existing v2 articles")
+            
+            # KE-PR9: Use repository pattern to find articles needing backfill
+            try:
+                content_repo = RepositoryFactory.get_content_library()
+                # Get all V2 articles and filter those needing backfill
+                all_articles = await content_repo.find_many({"engine": "v2"}, limit=limit)
+                
+                # Filter articles that need backfilling
+                articles = []
+                for article in all_articles:
+                    needs_backfill = (
+                        not article.get("doc_uid") or 
+                        not article.get("headings") or 
+                        (isinstance(article.get("headings"), list) and len(article.get("headings")) == 0)
+                    )
+                    if needs_backfill:
+                        articles.append(article)
+            except Exception as repo_error:
+                print(f"⚠️ KE-PR9: Backfill query fallback to direct DB: {repo_error}")
+                # Final fallback to direct database query
+                query = {
+                    "$or": [
+                        {"metadata.engine": "v2", "doc_uid": {"$exists": False}},
+                        {"metadata.engine": "v2", "headings": {"$exists": False}},
+                        {"metadata.engine": "v2", "headings": []}  # Empty headings array
+                    ]
+                }
+                
+                if limit:
+                    articles_cursor = db.content_library.find(query).limit(limit)
+                else:
+                    articles_cursor = db.content_library.find(query)
+                
+                articles = await articles_cursor.to_list(None)
+                
+            total_articles = len(articles)
+            
+            if total_articles == 0:
+                print("✅ TICKET 3: No articles need backfilling")
+                return {"articles_processed": 0, "success": True}
+            
+            processed_count = 0
+            error_count = 0
+            
+            for article in articles:
+                try:
+                    article_id = article.get('_id')
+                    title = article.get('title', 'Untitled')
+                    content = article.get('content', '') or article.get('html', '')
+                    
+                    if not content:
+                        print(f"⚠️ TICKET 3: Skipping article '{title}' - no content found")
+                        continue
+                    
+                    # Generate doc_uid and doc_slug if missing
+                    doc_uid = article.get('doc_uid')
+                    if not doc_uid:
+                        doc_uid = self.generate_doc_uid()
+                    
+                    doc_slug = article.get('doc_slug')  
+                    if not doc_slug:
+                        doc_slug = self.generate_doc_slug(title)
+                    
+                    # Apply Ticket 2 stable anchors if needed (ensure IDs exist)
+                    processed_content = self.assign_heading_ids(content)
+                    
+                    # Extract headings registry
+                    headings = self.extract_headings_registry(processed_content)
+                    
+                    # Update article in database
+                    update_data = {
+                        "doc_uid": doc_uid,
+                        "doc_slug": doc_slug,
+                        "headings": headings,
+                        "content": processed_content,  # Updated content with IDs
+                        "html": processed_content     # Sync html field
+                    }
+                    
+                    # Initialize xrefs and related_links if missing
+                    if "xrefs" not in article:
+                        update_data["xrefs"] = []
+                    if "related_links" not in article:
+                        update_data["related_links"] = []
+                    
+                    await db.content_library.update_one(
+                        {"_id": article_id},
+                        {"$set": update_data}
+                    )
+                    
+                    processed_count += 1
+                    print(f"📖 TICKET 3: Backfilled article '{title[:50]}...' - doc_uid: {doc_uid}, {len(headings)} headings")
+                    
+                except Exception as article_error:
+                    error_count += 1
+                    print(f"❌ TICKET 3: Error backfilling article '{article.get('title', 'Unknown')}' - {article_error}")
+            
+            success_rate = (processed_count / total_articles * 100) if total_articles > 0 else 100
+            
+            print(f"✅ TICKET 3: Backfill complete - {processed_count}/{total_articles} articles processed ({success_rate:.1f}% success)")
+            
+            return {
+                "articles_found": total_articles,
+                "articles_processed": processed_count,
+                "articles_failed": error_count,
+                "success_rate": success_rate,
+                "success": error_count == 0
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error in backfill process - {e}")
+            return {
+                "articles_found": 0,
+                "articles_processed": 0,
+                "articles_failed": 0,
+                "success_rate": 0,
+                "success": False,
+                "error": str(e)
+            }
+    
+    async def validate_cross_document_links(self, doc_uid: str, xrefs: list, related_links: list) -> dict:
+        """TICKET 3: Validate that cross-document links resolve properly"""
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            import os
+            
+            # Get database connection
+            mongo_url = os.environ.get('MONGO_URL')
+            client = AsyncIOMotorClient(mongo_url)
+            db = client.promptsupport
+            
+            broken_links = []
+            total_links = len(xrefs) + len(related_links)
+            
+            print(f"🔍 TICKET 3: Validating {total_links} cross-document links for doc {doc_uid}")
+            
+            # Validate xrefs
+            for xref in xrefs:
+                target_doc_uid = xref.get("doc_uid")
+                anchor_id = xref.get("anchor_id")
+                label = xref.get("label", "Unknown")
+                
+                # KE-PR9: Find target document using repository pattern
+                try:
+                    content_repo = RepositoryFactory.get_content_library()
+                    target_doc = await content_repo.find_one({"doc_uid": target_doc_uid})
+                except:
+                    target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+                
+                if not target_doc:
+                    broken_links.append({
+                        "type": "xref",
+                        "target_doc_uid": target_doc_uid,
+                        "anchor_id": anchor_id,
+                        "label": label,
+                        "reason": "target_document_not_found"
+                    })
+                    continue
+                
+                # Check if anchor exists in target document headings
+                target_headings = target_doc.get("headings", [])
+                anchor_exists = any(h.get("id") == anchor_id for h in target_headings)
+                
+                if not anchor_exists:
+                    broken_links.append({
+                        "type": "xref", 
+                        "target_doc_uid": target_doc_uid,
+                        "anchor_id": anchor_id,
+                        "label": label,
+                        "reason": "anchor_not_found_in_target",
+                        "available_anchors": [h.get("id") for h in target_headings[:5]]  # First 5 for debugging
+                    })
+            
+            # Validate related_links (similar process)
+            for related in related_links:
+                target_doc_uid = related.get("doc_uid")
+                anchor_id = related.get("anchor_id", "")
+                
+                # KE-PR9: Find target document using repository pattern
+                try:
+                    content_repo = RepositoryFactory.get_content_library()
+                    target_doc = await content_repo.find_one({"doc_uid": target_doc_uid})
+                except:
+                    target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+                
+                if not target_doc:
+                    broken_links.append({
+                        "type": "related_link",
+                        "target_doc_uid": target_doc_uid,
+                        "anchor_id": anchor_id,
+                        "reason": "target_document_not_found"
+                    })
+                    continue
+                
+                if anchor_id:  # Only validate anchor if specified
+                    target_headings = target_doc.get("headings", [])
+                    anchor_exists = any(h.get("id") == anchor_id for h in target_headings)
+                    
+                    if not anchor_exists:
+                        broken_links.append({
+                            "type": "related_link",
+                            "target_doc_uid": target_doc_uid, 
+                            "anchor_id": anchor_id,
+                            "reason": "anchor_not_found_in_target"
+                        })
+            
+            resolution_rate = ((total_links - len(broken_links)) / total_links * 100) if total_links > 0 else 100
+            
+            print(f"🔍 TICKET 3: Link validation complete - {resolution_rate:.1f}% resolved ({len(broken_links)} broken)")
+            
+            return {
+                "total_links": total_links,
+                "broken_links": broken_links,
+                "resolution_rate": resolution_rate,
+                "links_resolve": len(broken_links) == 0
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error validating cross-document links - {e}")
+            return {
+                "total_links": 0,
+                "broken_links": [],
+                "resolution_rate": 0,
+                "links_resolve": False,
+                "error": str(e)
+            }
+    
+    def _apply_bookmark_registry(self, content: str, article_title: str) -> dict:
+        """TICKET 3: Apply bookmark registry extraction for universal links"""
+        try:
+            print(f"📖 TICKET 3: Starting bookmark registry for '{article_title[:50]}...'")
+            
+            # Extract headings from content
+            headings = self.extract_headings_registry(content)
+            
+            # Generate document identifiers
+            doc_uid = self.generate_doc_uid()
+            doc_slug = self.generate_doc_slug(article_title)
+            
+            print(f"📖 TICKET 3: Bookmark registry complete - {len(headings)} headings, doc_uid: {doc_uid}")
+            
+            return {
+                'headings': headings,
+                'doc_uid': doc_uid,
+                'doc_slug': doc_slug,
+                'bookmark_count': len(headings),
+                'changes_applied': [f"Extracted {len(headings)} bookmarks", f"Generated doc_uid: {doc_uid}", f"Generated doc_slug: {doc_slug}"]
+            }
+            
+        except Exception as e:
+            print(f"❌ TICKET 3: Error in bookmark registry - {e}")
+            return {
+                'headings': [],
+                'doc_uid': None,
+                'doc_slug': None,
+                'bookmark_count': 0,
+                'changes_applied': [f"Bookmark registry error: {str(e)}"],
+                'error': str(e)
+            }
+
+    
+    async def validate_generated_articles(self, normalized_doc, generated_articles_result: dict, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: Comprehensive validation of generated articles"""
+        try:
+            print(f"🔍 V2 VALIDATION: Starting comprehensive validation - run {run_id} - engine=v2")
+            
+            generated_articles = generated_articles_result.get('generated_articles', [])
+            if not generated_articles:
+                print(f"⚠️ V2 VALIDATION: No articles to validate - run {run_id} - engine=v2")
+                return self._create_validation_result("no_articles", run_id, {})
+            
+            # Step 1: Fidelity and Coverage Validation
+            fidelity_coverage_result = await self._validate_fidelity_and_coverage(
+                normalized_doc, generated_articles, run_id
+            )
+            
+            # Step 2: Placeholder Detection
+            placeholder_result = await self._detect_placeholders(generated_articles, run_id)
+            
+            # Step 3: Style Guard Validation
+            style_result = await self._validate_style_guard(generated_articles, run_id)
+            
+            # Step 4: Evidence Tagging Validation
+            evidence_result = await self._validate_evidence_tagging(generated_articles, normalized_doc, run_id)
+            
+            # Step 5: Metrics Calculation
+            metrics_result = await self._calculate_validation_metrics(
+                normalized_doc, generated_articles, analysis, run_id
+            )
+            
+            # Step 6: Overall Validation Decision
+            validation_result = self._consolidate_validation_results(
+                fidelity_coverage_result,
+                placeholder_result,
+                style_result,
+                evidence_result,
+                metrics_result,
+                run_id
+            )
+            
+            # Log validation outcome
+            status = validation_result.get('validation_status', 'unknown')
+            if status == 'passed':
+                print(f"✅ V2 VALIDATION: All validation checks passed - run {run_id} - engine=v2")
+            else:
+                print(f"⚠️ V2 VALIDATION: Validation failed with status '{status}' - run {run_id} - engine=v2")
+            
+            return validation_result
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error during validation - {e} - run {run_id} - engine=v2")
+            return self._create_validation_result("error", run_id, {"error": str(e)})
+    
     async def _validate_single_article(self, article: dict, raw_source: dict = None) -> tuple:
         """Validate a single article and return issues found"""
         try:

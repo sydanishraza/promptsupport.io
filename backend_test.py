@@ -103,52 +103,50 @@ class V2EngineMigrationTester:
             "timestamp": datetime.now().isoformat()
         })
         
-    def test_v2_engine_17_stage_availability(self):
-        """Test 1: Verify V2 Engine has all 17 pipeline stages available"""
+    def test_v2_class_imports_validation(self):
+        """Test 1: Verify all 15 V2 classes import correctly from migrated modules"""
         try:
-            response = requests.get(f"{self.backend_url}/engine", timeout=10)
+            import sys
+            import os
             
-            if response.status_code != 200:
-                self.log_test("V2 Engine 17-Stage Availability", False, f"HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
+            # Add engine path to sys.path
+            engine_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'engine')
+            if engine_path not in sys.path:
+                sys.path.insert(0, engine_path)
             
-            # Check engine status
-            if data.get("status") not in ["operational", "active"]:
-                self.log_test("V2 Engine 17-Stage Availability", False, f"Engine status: {data.get('status')}")
-                return False
-                
-            # Check for all V2 pipeline features including versioning and review
-            features = data.get("features", [])
-            required_features = [
-                "multi_dimensional_analysis", "comprehensive_validation", "woolf_style_processing",
-                "version_management", "human_in_the_loop_review"
-            ]
+            imported_classes = {}
+            failed_imports = []
             
-            missing_features = [f for f in required_features if f not in features]
-            if missing_features:
-                self.log_test("V2 Engine 17-Stage Availability", False, f"Missing pipeline features: {missing_features}")
-                return False
-                
-            # Check for versioning and review system availability
-            versioning_available = "version_management" in features
-            review_available = "human_in_the_loop_review" in features
+            for class_name in self.migrated_classes:
+                try:
+                    module_name = self.class_modules[class_name]
+                    module = __import__(module_name, fromlist=[class_name])
+                    class_obj = getattr(module, class_name)
+                    imported_classes[class_name] = class_obj
+                    
+                except ImportError as e:
+                    failed_imports.append(f"{class_name}: ImportError - {str(e)}")
+                except AttributeError as e:
+                    failed_imports.append(f"{class_name}: AttributeError - {str(e)}")
+                except Exception as e:
+                    failed_imports.append(f"{class_name}: {type(e).__name__} - {str(e)}")
             
-            if not versioning_available:
-                self.log_test("V2 Engine 17-Stage Availability", False, "Stage 16 (Versioning) not available")
+            if failed_imports:
+                self.log_test("V2 Class Imports Validation", False, f"Failed imports: {failed_imports}")
                 return False
-                
-            if not review_available:
-                self.log_test("V2 Engine 17-Stage Availability", False, "Stage 17 (Review) not available")
-                return False
-                
-            self.log_test("V2 Engine 17-Stage Availability", True, 
-                         f"All 17 stages available including Stage 16 (Versioning) and Stage 17 (Review)")
+            
+            # Verify all classes are actual classes (not placeholders)
+            for class_name, class_obj in imported_classes.items():
+                if not isinstance(class_obj, type):
+                    self.log_test("V2 Class Imports Validation", False, f"{class_name} is not a proper class")
+                    return False
+            
+            self.log_test("V2 Class Imports Validation", True, 
+                         f"All 15/15 V2 classes imported successfully from dedicated modules")
             return True
             
         except Exception as e:
-            self.log_test("V2 Engine 17-Stage Availability", False, f"Exception: {str(e)}")
+            self.log_test("V2 Class Imports Validation", False, f"Exception: {str(e)}")
             return False
     
     def test_complete_17_stage_pipeline_execution(self):

@@ -405,19 +405,16 @@ class V2VersioningSystem:
             }
     
     async def _store_version_record(self, version_record: dict, run_id: str) -> bool:
-        """Store version record in database"""
+        """Store version record using repository pattern"""
         try:
-            from pymongo import MongoClient
-            import os
+            v2_repo = RepositoryFactory.get_v2_processing()
+            result = await v2_repo.create(
+                collection="v2_version_records",
+                document=version_record
+            )
             
-            mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-            client = MongoClient(mongo_url)
-            db = client.get_default_database()
-            
-            result = await db.v2_version_records.insert_one(version_record)
-            
-            if result.inserted_id:
-                print(f"💾 V2 VERSIONING: Version record stored - ID: {result.inserted_id} - run {run_id} - engine=v2")
+            if result:
+                print(f"💾 V2 VERSIONING: Version record stored - run {run_id} - engine=v2")
                 return True
             else:
                 print(f"❌ V2 VERSIONING: Failed to store version record - run {run_id} - engine=v2")

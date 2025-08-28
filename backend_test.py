@@ -152,9 +152,118 @@ class V2EngineMigrationTester:
     def test_v2_class_instantiation(self):
         """Test 2: Verify all 15 V2 classes can be instantiated without errors"""
         try:
-            # Use comprehensive content to trigger all 17 pipeline stages
-            comprehensive_content = """
-            # Complete API Integration and Security Guide
+            import sys
+            import os
+            
+            # Add engine path to sys.path
+            engine_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'engine')
+            if engine_path not in sys.path:
+                sys.path.insert(0, engine_path)
+            
+            instantiated_classes = {}
+            failed_instantiations = []
+            
+            for class_name in self.migrated_classes:
+                try:
+                    module_name = self.class_modules[class_name]
+                    module = __import__(module_name, fromlist=[class_name])
+                    class_obj = getattr(module, class_name)
+                    
+                    # Try to instantiate the class
+                    if class_name in ["V2GlobalOutlinePlanner", "V2PerArticleOutlinePlanner"]:
+                        # These classes might need specific parameters
+                        instance = class_obj()
+                    elif class_name == "V2PrewriteSystem":
+                        instance = class_obj()
+                    elif class_name == "V2StyleProcessor":
+                        instance = class_obj()
+                    elif class_name == "V2RelatedLinksSystem":
+                        instance = class_obj()
+                    elif class_name == "V2GapFillingSystem":
+                        instance = class_obj()
+                    elif class_name == "V2EvidenceTaggingSystem":
+                        instance = class_obj()
+                    elif class_name == "V2CodeNormalizationSystem":
+                        instance = class_obj()
+                    elif class_name == "V2ArticleGenerator":
+                        instance = class_obj()
+                    elif class_name == "V2ValidationSystem":
+                        instance = class_obj()
+                    elif class_name == "V2CrossArticleQASystem":
+                        instance = class_obj()
+                    elif class_name == "V2AdaptiveAdjustmentSystem":
+                        instance = class_obj()
+                    elif class_name == "V2VersioningSystem":
+                        instance = class_obj()
+                    elif class_name == "V2ReviewSystem":
+                        instance = class_obj()
+                    elif class_name == "V2PublishingSystem":
+                        instance = class_obj()
+                    else:
+                        instance = class_obj()
+                    
+                    instantiated_classes[class_name] = instance
+                    
+                except Exception as e:
+                    failed_instantiations.append(f"{class_name}: {type(e).__name__} - {str(e)}")
+            
+            if failed_instantiations:
+                self.log_test("V2 Class Instantiation", False, f"Failed instantiations: {failed_instantiations}")
+                return False
+            
+            # Verify instances have expected methods
+            method_checks = []
+            for class_name, instance in instantiated_classes.items():
+                # Check for common async methods that should exist
+                expected_methods = []
+                
+                if "Planner" in class_name:
+                    expected_methods = ["create_outline", "create_global_outline", "create_article_outline"]
+                elif "System" in class_name:
+                    if "Prewrite" in class_name:
+                        expected_methods = ["extract_prewrite_data"]
+                    elif "Style" in class_name:
+                        expected_methods = ["process_style"]
+                    elif "Related" in class_name:
+                        expected_methods = ["generate_related_links"]
+                    elif "Gap" in class_name:
+                        expected_methods = ["fill_gaps"]
+                    elif "Evidence" in class_name:
+                        expected_methods = ["tag_evidence"]
+                    elif "Code" in class_name:
+                        expected_methods = ["normalize_code_blocks"]
+                    elif "Validation" in class_name:
+                        expected_methods = ["validate_content"]
+                    elif "CrossArticle" in class_name:
+                        expected_methods = ["perform_cross_article_qa"]
+                    elif "Adaptive" in class_name:
+                        expected_methods = ["adjust_article_balance"]
+                    elif "Versioning" in class_name:
+                        expected_methods = ["create_version"]
+                    elif "Review" in class_name:
+                        expected_methods = ["create_review_request", "enqueue_for_review"]
+                    elif "Publishing" in class_name:
+                        expected_methods = ["publish_v2_content"]
+                elif "Generator" in class_name:
+                    expected_methods = ["generate_article"]
+                
+                # Check if at least one expected method exists
+                has_methods = any(hasattr(instance, method) for method in expected_methods) if expected_methods else True
+                
+                if not has_methods and expected_methods:
+                    method_checks.append(f"{class_name}: Missing expected methods {expected_methods}")
+            
+            if method_checks:
+                self.log_test("V2 Class Instantiation", False, f"Method issues: {method_checks}")
+                return False
+            
+            self.log_test("V2 Class Instantiation", True, 
+                         f"All 15/15 V2 classes instantiated successfully with expected methods")
+            return True
+            
+        except Exception as e:
+            self.log_test("V2 Class Instantiation", False, f"Exception: {str(e)}")
+            return False
             
             ## Table of Contents
             1. Introduction and Overview

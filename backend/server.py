@@ -238,7 +238,15 @@ app = FastAPI(
 
 # KE-PR9: Import MongoDB Repository Layer
 try:
-    from app.engine.stores.mongo import (
+    import sys
+    import os
+    
+    # Add engine path for repository imports
+    engine_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'engine')
+    if engine_path not in sys.path:
+        sys.path.insert(0, engine_path)
+    
+    from stores.mongo import (
         RepositoryFactory, 
         upsert_content, 
         fetch_article_by_slug, 

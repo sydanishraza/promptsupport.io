@@ -149,8 +149,8 @@ class V2EngineMigrationTester:
             self.log_test("V2 Class Imports Validation", False, f"Exception: {str(e)}")
             return False
     
-    def test_complete_17_stage_pipeline_execution(self):
-        """Test 2: Execute complete 17-stage pipeline and verify all stages complete"""
+    def test_v2_class_instantiation(self):
+        """Test 2: Verify all 15 V2 classes can be instantiated without errors"""
         try:
             # Use comprehensive content to trigger all 17 pipeline stages
             comprehensive_content = """

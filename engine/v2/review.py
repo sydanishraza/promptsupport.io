@@ -48,26 +48,20 @@ class V2ReviewSystem:
         try:
             print(f"📋 V2 REVIEW: Getting runs for review - limit: {limit} - engine=v2")
             
-            # Get database connection
-            from pymongo import MongoClient
-            import os
-            
-            mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-            client = MongoClient(mongo_url)
-            db = client.get_default_database()
-            
-            # Get recent processing runs
-            runs_query = {}
-            if status_filter and status_filter in self.review_statuses:
-                runs_query['review_status'] = status_filter
-            
-            # Get runs from various V2 collections
+            # Get recent processing runs using repository pattern
             runs_data = []
             
-            # Get from validation results
-            validation_cursor = db.v2_validation_results.find(runs_query).sort("timestamp", -1).limit(limit)
-            
-            for validation_result in validation_cursor:
+            try:
+                # Get from validation results using V2 processing repository
+                v2_repo = RepositoryFactory.get_v2_processing()
+                validation_results = await v2_repo.find_many(
+                    collection="v2_validation_results",
+                    query=runs_query,
+                    sort=[("timestamp", -1)],
+                    limit=limit
+                )
+                
+                for validation_result in validation_results:
                 # Convert ObjectId to string for serialization
                 validation_result = self._objectid_to_str(validation_result)
                 run_id = validation_result.get('run_id')

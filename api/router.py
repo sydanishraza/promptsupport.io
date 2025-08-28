@@ -263,15 +263,8 @@ async def delete_article(article_id: str):
                 
                 return {"message": "Article deleted successfully", "source": "repository_layer_fallback"}
             except Exception as repo_error:
-                print(f"⚠️ KE-PR9: Repository fallback to direct DB access: {repo_error}")
-                # Final fallback to direct database access
-                from server import db
-                result = await db.content_library.delete_one({"id": article_id})
-                
-                if result.deleted_count == 0:
-                    raise HTTPException(status_code=404, detail="Article not found")
-                
-                return {"message": "Article deleted successfully", "source": "direct_database"}
+                print(f"❌ KE-PR9.3: Repository delete failed - {repo_error}")
+                raise HTTPException(status_code=500, detail=f"Failed to delete article: {str(repo_error)}")
         
     except HTTPException:
         raise

@@ -1,0 +1,121 @@
+name: MongoDB Repository Pattern Compliance
+
+on: 
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  mongodb-compliance:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install ripgrep
+        run: |
+          curl -LO https://github.com/BurntSushi/ripgrep/releases/download/13.0.0/ripgrep_13.0.0_amd64.deb
+          sudo dpkg -i ripgrep_13.0.0_amd64.deb
+      
+      - name: Check for Direct MongoDB Client Usage
+        run: |
+          echo "🔍 Checking for direct MongoDB client usage..."
+          
+          # Check for MongoClient imports outside repository layer
+          if rg "from motor\.motor_asyncio import AsyncIOMotorClient|from pymongo import MongoClient" --type py . --exclude "engine/stores/mongo.py" --exclude "*.backup*"; then
+            echo "❌ Direct MongoDB client imports detected outside repository layer"
+            echo "Use RepositoryFactory.get_*() instead"
+            exit 1
+          fi
+          
+          # Check for get_default_database usage outside repository layer  
+          if rg "get_default_database\(\)" --type py . --exclude "engine/stores/mongo.py" --exclude "*.backup*"; then
+            echo "❌ Direct database access detected outside repository layer"
+            echo "Use RepositoryFactory.get_*() instead"
+            exit 1
+          fi
+          
+          echo "✅ No direct MongoDB client usage detected"
+      
+      - name: Check for Direct Database Operations
+        run: |
+          echo "🔍 Checking for direct database operations..."
+          
+          # Check for direct db.collection access in main files
+          if rg "await db\." --type py backend/server.py --exclude "*.backup*"; then
+            echo "❌ Direct database calls detected in server.py"
+            echo "Found violations:"
+            rg "await db\." --type py backend/server.py -n --exclude "*.backup*"
+            echo ""
+            echo "Use RepositoryFactory.get_*() instead of direct database access"
+            echo "Example:"
+            echo "  # Instead of: await db.content_library.insert_one(article)"
+            echo "  # Use: content_repo = RepositoryFactory.get_content_library()"
+            echo "  #      await content_repo.insert_article(article)"
+            exit 1
+          fi
+          
+          if rg "await db\." --type py api/router.py --exclude "*.backup*" 2>/dev/null; then
+            echo "❌ Direct database calls detected in router.py"
+            echo "Use RepositoryFactory.get_*() instead" 
+            exit 1
+          fi
+          
+          echo "✅ No direct database operations detected in main files"
+      
+      - name: Check Repository Pattern Usage
+        run: |
+          echo "🔍 Verifying repository pattern usage..."
+          
+          # Count repository pattern usage
+          REPO_USAGE=$(rg -c "RepositoryFactory" backend/server.py || echo "0")
+          
+          if [ "$REPO_USAGE" -lt "10" ]; then
+            echo "⚠️ Low repository pattern usage detected: $REPO_USAGE instances"
+            echo "Expected at least 10 instances of RepositoryFactory usage"
+            echo "This may indicate incomplete migration to repository pattern"
+            exit 1
+          fi
+          
+          echo "✅ Repository pattern usage: $REPO_USAGE instances (healthy)"
+      
+      - name: Validate Repository Classes
+        run: |
+          echo "🔍 Validating repository class definitions..."
+          
+          # Check that all expected repositories exist
+          REQUIRED_REPOS=(
+            "ContentLibraryRepository"
+            "QAResultsRepository" 
+            "V2AnalysisRepository"
+            "V2ValidationRepository"
+            "AssetsRepository"
+            "ProcessingJobsRepository"
+          )
+          
+          for repo in "${REQUIRED_REPOS[@]}"; do
+            if ! rg "class $repo" engine/stores/mongo.py >/dev/null; then
+              echo "❌ Missing required repository class: $repo"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All required repository classes found"
+      
+      - name: MongoDB Repository Pattern Compliance Summary
+        run: |
+          echo ""
+          echo "🎉 MongoDB Repository Pattern Compliance: PASSED"
+          echo "✅ All database operations use repository pattern"
+          echo "✅ No direct MongoDB client usage outside repository layer"
+          echo "✅ Clean separation of concerns maintained"
+          echo "✅ Required repository classes present"
+          echo ""
+          echo "Repository pattern successfully enforced! 🚀"

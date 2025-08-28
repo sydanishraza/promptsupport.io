@@ -27787,9 +27787,11 @@ async def create_content_library_article_from_chunks(chunks: List[Dict[str, Any]
             articles = await add_related_links_to_articles(articles)
             print(f"✅ FIXED: Related links added to all articles")
         
-        # Insert articles with related links included
+        # Insert articles with related links included using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
         for article in articles:
-            await db.content_library.insert_one(article)
+            await content_repo.insert_article(article)
             print(f"✅ Created article with related links: '{article['title']}'")
         return articles
     else:

@@ -212,7 +212,7 @@ class V2ReviewSystem:
                 "media": media_references,
                 
                 # Review metadata (if exists)
-                "review_metadata": await self._get_review_metadata(run_id, db)
+                "review_metadata": await self._get_review_metadata(run_id)
             }
             
             return run_data

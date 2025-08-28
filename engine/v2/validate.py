@@ -284,12 +284,13 @@ class V2ValidationSystem:
                 anchor_id = xref.get("anchor_id")
                 label = xref.get("label", "Unknown")
                 
-                # KE-PR9: Find target document using repository pattern
+                # KE-PR9.3: Find target document using repository pattern only
                 try:
                     content_repo = RepositoryFactory.get_content_library()
                     target_doc = await content_repo.find_one({"doc_uid": target_doc_uid})
-                except:
-                    target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+                except Exception as repo_error:
+                    print(f"❌ KE-PR9.3: Repository error finding target doc {target_doc_uid} - {repo_error}")
+                    target_doc = None
                 
                 if not target_doc:
                     broken_links.append({

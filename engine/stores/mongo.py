@@ -583,6 +583,17 @@ async def update_article_xrefs(doc_uid: str, xrefs: List[Dict]) -> bool:
     repo = RepositoryFactory.get_content_library()
     return await repo.update_xrefs(doc_uid, xrefs)
 
+# KE-PR9.4: New convenience functions for id-based operations
+async def fetch_article_by_id(article_id: str, projection: Optional[Dict] = None) -> Optional[Dict]:
+    """Convenience function for fetching by article id (KE-PR9.4)"""
+    repo = RepositoryFactory.get_content_library()
+    return await repo.find_by_id(article_id, projection)
+
+async def update_article_by_id(article_id: str, updates: Dict[str, Any]) -> bool:
+    """Convenience function for updating by article id (KE-PR9.4)"""
+    repo = RepositoryFactory.get_content_library()
+    return await repo.update_by_id(article_id, updates)
+
 # ========================================
 # INTEGRATION TEST HELPER
 # ========================================

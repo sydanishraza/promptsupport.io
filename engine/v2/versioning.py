@@ -1,11 +1,13 @@
 """
-KE-PR4: V2 Versioning System
-Extracted from server.py - Versioning and diff system for reprocessing support
+KE-M14: V2 Versioning System - Complete Implementation Migration
+Migrated from server.py - Versioning and diff system for reprocessing support and version comparison
 """
 
 import uuid
 import hashlib
 from datetime import datetime
+from ..stores.mongo import RepositoryFactory
+from ._utils import create_processing_metadata
 
 class V2VersioningSystem:
     """V2 Engine: Versioning and diff system for reprocessing support and version comparison"""

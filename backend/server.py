@@ -35634,8 +35634,12 @@ async def build_cross_document_link(
     """TICKET 3: Build environment-aware cross-document link"""
     # KE-PR2: Use extracted linking modules
     try:
-        # Get target document
-        target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
+        # KE-PR9: Get target document using repository pattern
+        if mongo_repo_available:
+            content_repo = RepositoryFactory.get_content_library()
+            target_doc = await content_repo.find_by_doc_uid(target_doc_uid)
+        else:
+            target_doc = await db.content_library.find_one({"doc_uid": target_doc_uid})
         
         if not target_doc:
             return {

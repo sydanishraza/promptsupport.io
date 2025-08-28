@@ -315,8 +315,9 @@ class V2ReviewSystem:
     async def _determine_review_status(self, run_id: str, publishing_result: dict) -> str:
         """Determine the current review status for a processing run"""
         try:
-            # Check if there's existing review metadata
-            review_metadata = await db.v2_review_metadata.find_one({"run_id": run_id})
+            # Check if there's existing review metadata using repository
+            v2_repo = RepositoryFactory.get_v2_processing()
+            review_metadata = await v2_repo.find_one("v2_review_metadata", {"run_id": run_id})
             
             if review_metadata:
                 return review_metadata.get('review_status', 'pending_review')

@@ -843,11 +843,12 @@ CRITICAL OUTPUT FORMAT:
                         # KE-PR9: Add TICKET-3 fields
                         article = ensure_ticket3_fields(article)
                         
-                        # CRITICAL FIX: Save article to database using KE-PR9 repository
+                        # KE-PR9: Use repository pattern for consistent data access
                         if mongo_repo_available:
                             content_repo = RepositoryFactory.get_content_library()
                             await content_repo.insert_article(article)
                         else:
+                            # Fallback to direct database access if repository unavailable
                             await db.content_library.insert_one(article)
                         articles.append(article)
                         print(f"✅ Article created and saved: {article['title']} ({len(content_text)} chars)")

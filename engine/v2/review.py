@@ -312,7 +312,7 @@ class V2ReviewSystem:
             print(f"❌ V2 REVIEW: Error calculating quality badges - {e}")
             return {}
     
-    async def _determine_review_status(self, run_id: str, publishing_result: dict, db) -> str:
+    async def _determine_review_status(self, run_id: str, publishing_result: dict) -> str:
         """Determine the current review status for a processing run"""
         try:
             # Check if there's existing review metadata

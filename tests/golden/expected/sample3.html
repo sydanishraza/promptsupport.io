@@ -1,0 +1,171 @@
+<article class="processed-content v2-engine">
+  <header>
+    <h1 id="mongodb-repository-pattern-integration-guide">MongoDB Repository Pattern Integration Guide</h1>
+    <div class="article-metadata">
+      <span class="engine-badge">V2 Engine</span>
+      <span class="coverage-badge">87.5% Coverage</span>
+      <span class="timestamp">TIMESTAMP</span>
+    </div>
+  </header>
+
+  <div class="mini-toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li class="toc-l2"><a class="toc-link" href="#overview">Overview</a></li>
+      <li class="toc-l2"><a class="toc-link" href="#key-features">Key Features</a></li>
+      <li class="toc-l2"><a class="toc-link" href="#implementation-details">Implementation Details</a></li>
+      <li class="toc-l2"><a class="toc-link" href="#code-examples">Code Examples</a></li>
+      <li class="toc-l2"><a class="toc-link" href="#testing-validation">Testing & Validation</a></li>
+    </ul>
+  </div>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <p>This comprehensive guide demonstrates the implementation of MongoDB repository pattern with TICKET-3 field preservation in the PromptSupport application's V2 engine.</p>
+  </section>
+
+  <section id="key-features">
+    <h2>Key Features</h2>
+    
+    <section id="repository-pattern-benefits">
+      <h3>Repository Pattern Benefits</h3>
+      <ul>
+        <li><strong>Centralized Data Access</strong>: Single point of entry for all MongoDB operations</li>
+        <li><strong>TICKET-3 Field Preservation</strong>: Automatic handling of doc_uid, doc_slug, headings, and xrefs</li>
+        <li><strong>Error Handling</strong>: Robust fallback mechanisms for high availability</li>
+        <li><strong>Clean Architecture</strong>: Separation between business logic and data persistence</li>
+      </ul>
+    </section>
+
+    <section id="ticket-3-field-support">
+      <h3>TICKET-3 Field Support</h3>
+      <p>The repository layer ensures comprehensive support for:</p>
+      <ol>
+        <li><strong>doc_uid</strong>: Universal document identifier for cross-references</li>
+        <li><strong>doc_slug</strong>: Human-readable URL slug for document linking</li>
+        <li><strong>headings</strong>: Structured heading registry for bookmark navigation</li>
+        <li><strong>xrefs</strong>: Cross-reference tracking for document relationships</li>
+      </ol>
+    </section>
+  </section>
+
+  <section id="implementation-details">
+    <h2>Implementation Details</h2>
+    
+    <section id="repository-classes">
+      <h3>Repository Classes</h3>
+      
+      <section id="contentlibraryrepository">
+        <h4>ContentLibraryRepository</h4>
+        <div class="code-block">
+          <pre><code class="language-python">
+class ContentLibraryRepository:
+    async def insert_article(self, article: Dict[str, Any]) -> str:
+        # Ensure TICKET-3 fields are preserved
+        if 'doc_uid' not in article:
+            article['doc_uid'] = generate_doc_uid()
+        
+        if 'doc_slug' not in article and 'title' in article:
+            article['doc_slug'] = generate_doc_slug(article['title'])
+        
+        # Ensure arrays exist
+        if 'headings' not in article:
+            article['headings'] = []
+        
+        if 'xrefs' not in article:
+            article['xrefs'] = []
+          </code></pre>
+        </div>
+      </section>
+
+      <section id="qa-results-repository">
+        <h4>QA Results Repository</h4>
+        <p>The QA results repository handles validation and diagnostic data:</p>
+        <ul>
+          <li>Quality assurance report storage</li>
+          <li>Validation result tracking</li>
+          <li>Performance metrics collection</li>
+        </ul>
+      </section>
+    </section>
+
+    <section id="error-handling-strategy">
+      <h3>Error Handling Strategy</h3>
+      <p>The repository pattern implements a three-tier error handling approach:</p>
+      <ol>
+        <li><strong>Repository Layer</strong>: Try repository operations first</li>
+        <li><strong>Fallback Layer</strong>: Fall back to direct database access if repository fails</li>
+        <li><strong>Error Recovery</strong>: Graceful degradation with logging and monitoring</li>
+      </ol>
+    </section>
+  </section>
+
+  <section id="code-examples">
+    <h2>Code Examples</h2>
+    
+    <section id="basic-article-creation">
+      <h3>Basic Article Creation</h3>
+      <div class="code-block">
+        <pre><code class="language-python">
+# Using repository pattern
+repo = RepositoryFactory.get_content_library()
+article = {
+    "title": "Sample Article",
+    "content": "Article content here",
+    "engine": "v2"
+}
+article_id = await repo.insert_article(article)
+        </code></pre>
+      </div>
+    </section>
+
+    <section id="cross-document-operations">
+      <h3>Cross-Document Operations</h3>
+      <div class="code-block">
+        <pre><code class="language-python">
+# Find article by doc_uid for cross-references
+target_article = await repo.find_by_doc_uid(target_doc_uid)
+
+if target_article:
+    # Build cross-document link
+    link = build_cross_document_link(target_doc_uid, anchor_id)
+        </code></pre>
+      </div>
+    </section>
+  </section>
+
+  <section id="testing-validation">
+    <h2>Testing & Validation</h2>
+    
+    <section id="golden-test-suite">
+      <h3>Golden Test Suite</h3>
+      <p>The repository pattern is validated through comprehensive golden tests:</p>
+      <ul>
+        <li><strong>Regression Protection</strong>: Detect unintended changes in data processing</li>
+        <li><strong>Coverage Enforcement</strong>: Maintain minimum test coverage thresholds</li>
+        <li><strong>Anchor Stability</strong>: Ensure deterministic anchor generation</li>
+        <li><strong>Performance Monitoring</strong>: Track operation performance over time</li>
+      </ul>
+    </section>
+
+    <section id="success-metrics">
+      <h3>Success Metrics</h3>
+      <ul>
+        <li><strong>87.5% Success Rate</strong>: Current repository pattern implementation success rate</li>
+        <li><strong>100% TICKET-3 Compliance</strong>: All operations preserve required fields</li>
+        <li><strong>Zero Data Loss</strong>: No data corruption during repository migration</li>
+        <li><strong>High Availability</strong>: Fallback mechanisms ensure continuous operation</li>
+      </ul>
+    </section>
+  </section>
+
+  <footer class="article-footer">
+    <p><em>Generated by PromptSupport V2 Engine with MongoDB Repository Pattern</em></p>
+    <div class="processing-metadata">
+      <span>Processing Time: 1.25s</span>
+      <span>Coverage: 87.5%</span>
+      <span>Issues: 2 minor</span>
+      <span>Generated: TIMESTAMP</span>
+    </div>
+  </footer>
+</article>

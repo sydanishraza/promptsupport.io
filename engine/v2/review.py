@@ -48,6 +48,11 @@ class V2ReviewSystem:
         try:
             print(f"📋 V2 REVIEW: Getting runs for review - limit: {limit} - engine=v2")
             
+            # Build query for filtering
+            runs_query = {}
+            if status_filter and status_filter in self.review_statuses:
+                runs_query['review_status'] = status_filter
+            
             # Get recent processing runs using repository pattern
             runs_data = []
             

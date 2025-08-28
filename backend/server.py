@@ -832,8 +832,12 @@ CRITICAL OUTPUT FORMAT:
                             }
                         }
                         
-                        # CRITICAL FIX: Save article to database
-                        await db.content_library.insert_one(article)
+                        # CRITICAL FIX: Save article to database using KE-PR9 repository
+                        if mongo_repo_available:
+                            content_repo = RepositoryFactory.get_content_library()
+                            await content_repo.insert_article(article)
+                        else:
+                            await db.content_library.insert_one(article)
                         articles.append(article)
                         print(f"✅ Article created and saved: {article['title']} ({len(content_text)} chars)")
                     else:

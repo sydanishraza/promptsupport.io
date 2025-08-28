@@ -24491,10 +24491,11 @@ async def process_content(request: ContentProcessRequest):
                 print(f"⏰ V2 ENGINE: Processing timeout after 10 minutes - job: {job.job_id} - engine=v2")
                 job.status = "failed"
                 job.error_message = "Processing timeout - content too complex or system overloaded"
-                await db.processing_jobs.update_one(
-                    {"job_id": job.job_id},
-                    {"$set": {"status": "failed", "error_message": job.error_message}}
-                )
+                # Update job status using ProcessingJobsRepository (KE-PR9.5)
+                from engine.stores.mongo import RepositoryFactory
+                processing_jobs_repo = RepositoryFactory.get_processing_jobs()
+                await processing_jobs_repo.update_job_status(job.job_id, "failed", 
+                                                           {"error_message": job.error_message})
                 raise HTTPException(status_code=408, detail="Processing timeout after 10 minutes")
         else:
             raise HTTPException(status_code=400, detail=f"Content type {request.content_type} not supported yet")

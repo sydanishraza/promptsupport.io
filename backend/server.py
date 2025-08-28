@@ -920,8 +920,13 @@ CRITICAL OUTPUT FORMAT:
                                 }
                             }
                             
-                            # Save FAQ article to database
-                            await db.content_library.insert_one(faq_article)
+                            # KE-PR9: Use repository pattern for FAQ article
+                            faq_article = ensure_ticket3_fields(faq_article)
+                            if mongo_repo_available:
+                                content_repo = RepositoryFactory.get_content_library()
+                                await content_repo.insert_article(faq_article)
+                            else:
+                                await db.content_library.insert_one(faq_article)
                             enhanced_articles.append(faq_article)
                             print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']} ({len(faq_content_text)} chars)")
                         else:

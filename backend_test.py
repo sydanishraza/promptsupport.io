@@ -266,8 +266,8 @@ class V2EngineMigrationTester:
             return False
 
     
-    def test_stage_16_versioning_system(self):
-        """Test 3: Verify Stage 16 (Versioning) creates version metadata correctly"""
+    def test_v2_pipeline_integration(self):
+        """Test 3: Verify V2 Pipeline orchestrator works with all migrated classes"""
         try:
             test_content = """
             # API Versioning Guide

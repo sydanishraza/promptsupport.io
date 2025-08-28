@@ -521,6 +521,7 @@ Return ONLY JSON in this exact format:
             'planning_method': 'emergency_fallback'
         }
     
+    # Methods for backward compatibility with new interface
     def _create_outline_sections(self, analysis: dict) -> List[dict]:
         """Create outline sections based on analysis"""
         content_type = analysis.get('content_type', 'mixed')
@@ -651,6 +652,11 @@ class V2PerArticleOutlinePlanner:
                 'error': str(e)
             }
     
+    # Legacy interface support for backward compatibility
+    async def create_article_outline(self, *args, **kwargs) -> dict:
+        """Legacy interface - redirect to create_per_article_outlines"""
+        return await self.create_per_article_outlines(*args, **kwargs)
+    
     def _get_fallback_article(self) -> dict:
         """Fallback article outline"""
         return {
@@ -668,3 +674,6 @@ class V2PerArticleOutlinePlanner:
             'content_blocks': [],
             'processing_priority': 'high'
         }
+
+
+print("✅ KE-M1: V2 Outline Planning classes migrated from server.py")

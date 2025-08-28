@@ -14132,7 +14132,10 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             for i, topic in enumerate(outline_topics, 1):
                 article = await generate_topic_article(content, topic, metadata, i, len(outline_topics))
                 if article:
-                    await db.content_library.insert_one(article)
+                    # KE-PR9.4: Use repository pattern for content insertion
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    await content_repo.insert_article(article)
                     generated_articles.append(article)
                     print(f"💾 SAVED ARTICLE {i}/{len(outline_topics)}: {article['title']}")
             

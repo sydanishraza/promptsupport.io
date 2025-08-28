@@ -344,88 +344,127 @@ class V2EngineMigrationTester:
     def test_method_interface_compatibility(self):
         """Test 4: Verify all key methods are accessible and maintain expected signatures"""
         try:
-            test_content = """
-            # Content Review Process Guide
+            import sys
+            import os
+            import inspect
             
-            ## Overview
-            This guide outlines the content review process for ensuring quality and accuracy in published materials.
+            # Add engine path to sys.path
+            engine_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'engine')
+            if engine_path not in sys.path:
+                sys.path.insert(0, engine_path)
             
-            ## Review Stages
-            1. Automated quality checks
-            2. Technical accuracy validation
-            3. Editorial review
-            4. Final approval and publishing
+            method_compatibility_results = []
             
-            ## Quality Criteria
-            - Technical accuracy and completeness
-            - Clear and concise writing
-            - Proper formatting and structure
-            - Appropriate examples and code samples
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "markdown",
-                "processing_mode": "v2_only"
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=90)
-            
-            if response.status_code != 200:
-                self.log_test("Stage 17 Review System", False, f"HTTP {response.status_code}")
-                return False
-                
-            data = response.json()
-            
-            if data.get("status") != "success":
-                self.log_test("Stage 17 Review System", False, f"Processing failed: {data.get('message')}")
-                return False
-                
-            # Check that Stage 17 was executed
-            processing_info = data.get("processing_info", {})
-            stages_completed = processing_info.get("stages_completed", 0)
-            
-            if stages_completed < 17:
-                self.log_test("Stage 17 Review System", False, f"Stage 17 not reached: only {stages_completed} stages completed")
-                return False
-                
-            # Check for review system indicators
-            articles = data.get("articles", [])
-            if not articles:
-                self.log_test("Stage 17 Review System", False, "No articles generated to check review system")
-                return False
-                
-            article = articles[0]
-            metadata = article.get("metadata", {})
-            
-            # Check for review-related metadata
-            review_indicators = [
-                "review_status", "review_queue", "review_id", "review_request",
-                "queued_for_review", "review_metadata"
-            ]
-            
-            has_review_metadata = any(key in metadata for key in review_indicators)
-            
-            if not has_review_metadata:
-                # Check if review info is in processing_info
-                review_info = processing_info.get("review", {}) or processing_info.get("stage_17", {})
-                if not review_info:
-                    self.log_test("Stage 17 Review System", False, "No review system metadata found")
-                    return False
+            for class_name in self.migrated_classes:
+                try:
+                    module_name = self.class_modules[class_name]
+                    module = __import__(module_name, fromlist=[class_name])
+                    class_obj = getattr(module, class_name)
                     
-            # Check article status indicates review processing
-            article_status = article.get("status", "")
-            review_statuses = ["review", "pending_review", "queued", "processed"]
+                    # Get all methods of the class
+                    methods = [method for method in dir(class_obj) if not method.startswith('_')]
+                    
+                    # Check for expected key methods based on class type
+                    expected_methods = []
+                    method_signatures = {}
+                    
+                    if "Planner" in class_name:
+                        expected_methods = ["create_outline", "create_global_outline", "create_article_outline"]
+                    elif "Prewrite" in class_name:
+                        expected_methods = ["extract_prewrite_data"]
+                    elif "Style" in class_name:
+                        expected_methods = ["process_style"]
+                    elif "Related" in class_name:
+                        expected_methods = ["generate_related_links"]
+                    elif "Gap" in class_name:
+                        expected_methods = ["fill_gaps"]
+                    elif "Evidence" in class_name:
+                        expected_methods = ["tag_evidence"]
+                    elif "Code" in class_name:
+                        expected_methods = ["normalize_code_blocks"]
+                    elif "Generator" in class_name:
+                        expected_methods = ["generate_article"]
+                    elif "Validation" in class_name:
+                        expected_methods = ["validate_content"]
+                    elif "CrossArticle" in class_name:
+                        expected_methods = ["perform_cross_article_qa"]
+                    elif "Adaptive" in class_name:
+                        expected_methods = ["adjust_article_balance"]
+                    elif "Publishing" in class_name:
+                        expected_methods = ["publish_v2_content"]
+                    elif "Versioning" in class_name:
+                        expected_methods = ["create_version"]
+                    elif "Review" in class_name:
+                        expected_methods = ["create_review_request", "enqueue_for_review"]
+                    
+                    # Check method availability
+                    available_methods = []
+                    missing_methods = []
+                    
+                    for expected_method in expected_methods:
+                        if hasattr(class_obj, expected_method):
+                            available_methods.append(expected_method)
+                            # Try to get method signature
+                            try:
+                                method_obj = getattr(class_obj, expected_method)
+                                if callable(method_obj):
+                                    sig = inspect.signature(method_obj)
+                                    method_signatures[expected_method] = str(sig)
+                            except Exception:
+                                method_signatures[expected_method] = "signature_unavailable"
+                        else:
+                            missing_methods.append(expected_method)
+                    
+                    # Check if class has any callable methods (not just attributes)
+                    callable_methods = [method for method in methods if callable(getattr(class_obj, method, None))]
+                    
+                    result = {
+                        "class_name": class_name,
+                        "total_methods": len(methods),
+                        "callable_methods": len(callable_methods),
+                        "expected_methods": expected_methods,
+                        "available_methods": available_methods,
+                        "missing_methods": missing_methods,
+                        "method_signatures": method_signatures
+                    }
+                    
+                    method_compatibility_results.append(result)
+                    
+                except Exception as e:
+                    method_compatibility_results.append({
+                        "class_name": class_name,
+                        "error": f"{type(e).__name__}: {str(e)}"
+                    })
             
-            status_indicates_review = any(status in article_status.lower() for status in review_statuses)
+            # Analyze results
+            classes_with_errors = [r for r in method_compatibility_results if "error" in r]
+            classes_missing_methods = [r for r in method_compatibility_results if r.get("missing_methods")]
+            classes_with_no_methods = [r for r in method_compatibility_results if r.get("callable_methods", 0) == 0]
             
-            self.log_test("Stage 17 Review System", True, 
-                         f"Review system engaged successfully, article status: {article_status}")
+            if classes_with_errors:
+                self.log_test("Method Interface Compatibility", False, f"Classes with errors: {[c['class_name'] for c in classes_with_errors]}")
+                return False
+            
+            if classes_with_no_methods:
+                self.log_test("Method Interface Compatibility", False, f"Classes with no callable methods: {[c['class_name'] for c in classes_with_no_methods]}")
+                return False
+            
+            # Calculate overall method availability
+            total_expected = sum(len(r.get("expected_methods", [])) for r in method_compatibility_results)
+            total_available = sum(len(r.get("available_methods", [])) for r in method_compatibility_results)
+            
+            method_availability_rate = (total_available / total_expected * 100) if total_expected > 0 else 100
+            
+            if method_availability_rate < 80:  # At least 80% of expected methods should be available
+                self.log_test("Method Interface Compatibility", False, f"Low method availability: {method_availability_rate:.1f}%")
+                return False
+            
+            self.log_test("Method Interface Compatibility", True, 
+                         f"Method interfaces compatible: {method_availability_rate:.1f}% method availability, {len(method_compatibility_results)} classes checked")
             return True
             
         except Exception as e:
-            self.log_test("Stage 17 Review System", False, f"Exception: {str(e)}")
+            self.log_test("Method Interface Compatibility", False, f"Exception: {str(e)}")
             return False
     
     def test_full_processing_workflow_integrity(self):

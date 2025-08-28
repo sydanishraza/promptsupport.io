@@ -409,40 +409,6 @@ class V2GapFillingSystem:
                 print(f"❌ KE-PR9.3: Repository error, no fallback DB access - {repo_error}")
                 # Return empty results instead of using direct database access
                 library_results = []
-                        try:
-                            content = article.get('content', '') or article.get('html', '')
-                            title = article.get('title', '')
-                            
-                            if not content:
-                                continue
-                            
-                            # Calculate keyword relevance
-                            content_lower = content.lower()
-                            relevance_score = 0
-                            
-                            for keyword in keywords:
-                                if keyword.lower() in content_lower:
-                                    relevance_score += 1
-                                if keyword.lower() in title.lower():
-                                    relevance_score += 2  # Title matches get higher score
-                            
-                            if relevance_score > 0:
-                                # Extract relevant snippet
-                                snippet = self._extract_relevant_snippet(content, keywords)
-                                
-                                library_results.append({
-                                    "block_id": f"lib_{str(article.get('_id', ''))}",
-                                    "content": snippet,
-                                    "relevance_score": relevance_score,
-                                    "block_type": "library_article",
-                                    "source_title": title
-                                })
-                        
-                        except Exception as article_error:
-                            continue
-                
-                except Exception as db_error:
-                    print(f"❌ V2 GAP FILLING: Direct DB access also failed - {db_error}")
             
             # Sort by relevance
             library_results.sort(key=lambda x: x['relevance_score'], reverse=True)

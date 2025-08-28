@@ -67,13 +67,13 @@ class V2ReviewSystem:
                 )
                 
                 for validation_result in validation_results:
-                # Convert ObjectId to string for serialization
-                validation_result = self._objectid_to_str(validation_result)
-                run_id = validation_result.get('run_id')
-                if run_id:
-                    run_data = await self._compile_run_data_for_review(run_id, validation_result, db)
-                    if run_data:
-                        runs_data.append(run_data)
+                    # Convert ObjectId to string for serialization
+                    validation_result = self._objectid_to_str(validation_result)
+                    run_id = validation_result.get('run_id')
+                    if run_id:
+                        run_data = await self._compile_run_data_for_review(run_id, validation_result)
+                        if run_data:
+                            runs_data.append(run_data)
             
             # Sort by timestamp
             runs_data.sort(key=lambda x: x.get('processing_timestamp', ''), reverse=True)

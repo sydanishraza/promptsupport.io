@@ -105,13 +105,9 @@ async def backfill_registry(limit: int = None) -> Dict[str, Any]:
                     articles.append(article)
                     
         except Exception as repo_error:
-            print(f"⚠️ KE-PR9: Bookmark backfill fallback to direct DB: {repo_error}")
-            # Fallback to direct database access
-            cursor = db.content_library.find(query)
-            if limit:
-                cursor = cursor.limit(limit)
-                
-            articles = await cursor.to_list(length=None)
+            print(f"❌ KE-PR9.3: Repository error for bookmark backfill - {repo_error}")
+            # Return empty list instead of falling back to direct DB
+            articles = []
         
         print(f"📖 TICKET 3: Found {len(articles)} V2 articles needing bookmark backfill")
         

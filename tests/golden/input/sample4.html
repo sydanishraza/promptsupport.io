@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V2 Engine Processing Pipeline Guide</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1, h2, h3 { color: #333; }
+        .code-block { background: #f5f5f5; padding: 15px; border-left: 4px solid #007acc; margin: 15px 0; }
+        .highlight { background: #ffffcc; padding: 2px 4px; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; margin: 10px 0; }
+        .mini-toc { background: #f8f9fa; padding: 15px; border: 1px solid #e9ecef; margin-bottom: 20px; }
+        .mini-toc ul { margin: 0; padding-left: 20px; }
+    </style>
+</head>
+<body>
+    <h1 id="v2-engine-processing-guide">V2 Engine Processing Pipeline Guide</h1>
+    
+    <div class="mini-toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#pipeline-overview">Pipeline Overview</a></li>
+            <li><a href="#processing-stages">Processing Stages</a></li>
+            <li><a href="#quality-assurance">Quality Assurance</a></li>
+            <li><a href="#implementation-examples">Implementation Examples</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+    </div>
+
+    <h2 id="pipeline-overview">Pipeline Overview</h2>
+    
+    <p>The V2 Engine processing pipeline transforms raw content through multiple stages to produce high-quality, structured articles with comprehensive metadata and cross-references.</p>
+    
+    <h3 id="key-features">Key Features</h3>
+    <ul>
+        <li><strong>Multi-Stage Processing</strong>: Content flows through analyzer, generator, validator, and publisher stages</li>
+        <li><strong>TICKET-3 Compliance</strong>: Automatic generation and preservation of doc_uid, doc_slug, headings, and xrefs</li>
+        <li><strong>Quality Gates</strong>: Each stage includes validation checkpoints</li>
+        <li><strong>Repository Integration</strong>: Centralized data access through repository pattern</li>
+    </ul>
+
+    <h2 id="processing-stages">Processing Stages</h2>
+
+    <h3 id="stage-1-analysis">Stage 1: Content Analysis</h3>
+    <p>The analyzer stage examines raw content to extract structure and metadata:</p>
+    
+    <div class="code-block">
+        <strong>Analyzer Input:</strong><br>
+        - Raw content (DOCX, PDF, MD, HTML)<br>
+        - Processing metadata<br>
+        - Content type information
+    </div>
+
+    <div class="code-block">
+        <strong>Analyzer Output:</strong><br>
+        - Normalized document structure<br>
+        - Extracted headings and sections<br>
+        - Content complexity metrics<br>
+        - Processing recommendations
+    </div>
+
+    <h3 id="stage-2-generation">Stage 2: Content Generation</h3>
+    <p>The generator creates structured articles from analyzed content:</p>
+
+    <ul>
+        <li><strong>Outline Generation</strong>: Create hierarchical content structure</li>
+        <li><strong>Section Processing</strong>: Transform content sections into articles</li>
+        <li><strong>Cross-Reference Creation</strong>: Generate internal and external links</li>
+        <li><strong>Metadata Enhancement</strong>: Add TICKET-3 fields and processing metadata</li>
+    </ul>
+
+    <h3 id="stage-3-validation">Stage 3: Quality Validation</h3>
+    <p>The validator ensures content quality and completeness:</p>
+
+    <div class="warning">
+        <strong>Quality Checkpoints:</strong><br>
+        ✓ Content coverage analysis (minimum 80% threshold)<br>
+        ✓ Heading structure validation<br>
+        ✓ Cross-reference integrity checks<br>
+        ✓ TICKET-3 field validation<br>
+        ✓ HTML structure compliance
+    </div>
+
+    <h2 id="quality-assurance">Quality Assurance</h2>
+
+    <h3 id="coverage-metrics">Coverage Metrics</h3>
+    <p>The QA system tracks multiple coverage dimensions:</p>
+
+    <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+        <thead>
+            <tr style="background: #f8f9fa;">
+                <th>Metric</th>
+                <th>Target</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Content Coverage</td>
+                <td>&gt;= 80%</td>
+                <td>Percentage of source content successfully processed</td>
+            </tr>
+            <tr>
+                <td>Heading Coverage</td>
+                <td>&gt;= 90%</td>
+                <td>Percentage of headings with proper anchor IDs</td>
+            </tr>
+            <tr>
+                <td>Link Integrity</td>
+                <td>100%</td>
+                <td>All internal links resolve to valid targets</td>
+            </tr>
+            <tr>
+                <td>TICKET-3 Compliance</td>
+                <td>100%</td>
+                <td>All articles have required TICKET-3 fields</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3 id="validation-reports">Validation Reports</h3>
+    <p>Each processing run generates comprehensive QA reports with:</p>
+
+    <ul>
+        <li><span class="highlight">Coverage percentages</span> for all tracked metrics</li>
+        <li><span class="highlight">Issue identification</span> with severity levels</li>
+        <li><span class="highlight">Recommendations</span> for content improvements</li>
+        <li><span class="highlight">Processing statistics</span> and performance data</li>
+    </ul>
+
+    <h2 id="implementation-examples">Implementation Examples</h2>
+
+    <h3 id="basic-processing">Basic Pipeline Processing</h3>
+    
+    <div class="code-block">
+        <strong>Python Example:</strong><br>
+        <code>
+        from app.engine.v2.pipeline import Pipeline<br>
+        from app.engine.models.io import RawBundle<br><br>
+        
+        # Create pipeline instance<br>
+        pipeline = Pipeline()<br><br>
+        
+        # Process content<br>
+        result = await pipeline.run(raw_bundle)<br><br>
+        
+        # Access results<br>
+        articles = result.articles<br>
+        qa_report = result.qa_report
+        </code>
+    </div>
+
+    <h3 id="repository-integration">Repository Integration</h3>
+    
+    <div class="code-block">
+        <strong>Repository Usage:</strong><br>
+        <code>
+        from app.engine.stores.mongo import RepositoryFactory<br><br>
+        
+        # Get repository instance<br>
+        repo = RepositoryFactory.get_content_library()<br><br>
+        
+        # Store processed articles<br>
+        for article in articles:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;article_id = await repo.insert_article(article)
+        </code>
+    </div>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+
+    <h3 id="common-issues">Common Processing Issues</h3>
+
+    <div class="warning">
+        <strong>Low Coverage Issues:</strong><br>
+        • Check content complexity and processing timeouts<br>
+        • Verify input format compatibility<br>
+        • Review analyzer stage logs for extraction errors
+    </div>
+
+    <div class="warning">
+        <strong>Validation Failures:</strong><br>
+        • Ensure TICKET-3 fields are properly generated<br>
+        • Check heading ID assignment and anchor stability<br>
+        • Verify cross-reference target resolution
+    </div>
+
+    <h3 id="performance-optimization">Performance Optimization</h3>
+    
+    <p>For optimal V2 engine performance:</p>
+    
+    <ol>
+        <li><strong>Content Preprocessing</strong>: Clean and normalize input content</li>
+        <li><strong>Batch Processing</strong>: Process multiple documents in batches</li>
+        <li><strong>Caching Strategy</strong>: Cache intermediate results for reprocessing</li>
+        <li><strong>Resource Monitoring</strong>: Track memory and CPU usage during processing</li>
+    </ol>
+
+    <hr style="margin-top: 40px;">
+    
+    <footer style="text-align: center; color: #666; font-size: 12px;">
+        <p><em>Generated by PromptSupport V2 Engine Processing Pipeline</em></p>
+        <p>Pipeline Version: 2.0 | Generated: <span id="timestamp">2024-01-15T10:30:00Z</span></p>
+    </footer>
+
+    <script>
+        // Update timestamp
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        
+        // Add click tracking for TOC links
+        document.querySelectorAll('.mini-toc a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                console.log('TOC navigation:', this.getAttribute('href'));
+            });
+        });
+    </script>
+</body>
+</html>

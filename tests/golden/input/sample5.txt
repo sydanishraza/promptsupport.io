@@ -1,0 +1,173 @@
+KE-PR10: Golden Tests & Non-Regression Suite Implementation Guide
+
+INTRODUCTION
+
+This document describes the implementation of KE-PR10, which establishes comprehensive golden tests and non-regression protection for the PromptSupport V2 engine processing pipeline.
+
+GOLDEN TEST FRAMEWORK OVERVIEW
+
+The golden test framework provides regression protection through:
+- Fixture-based testing with known inputs and expected outputs
+- Coverage threshold enforcement to prevent regression
+- Anchor stability validation to ensure deterministic behavior
+- CI integration with automated diff reporting
+
+KEY COMPONENTS
+
+1. Test Infrastructure
+   - Pytest configuration with custom fixtures
+   - Pipeline runner for automated content processing  
+   - JSON comparison utilities with float tolerance
+   - HTML normalization for stable comparisons
+
+2. Golden Fixtures
+   - sample1.docx: Microsoft Word document processing
+   - sample2.pdf: PDF document extraction and conversion
+   - sample3.md: Markdown content with complex structure
+   - sample4.html: HTML content with embedded CSS and JavaScript
+   - sample5.txt: Plain text content processing (this file)
+   - sample6_url.html: URL-sourced HTML content
+   - sample7.mp4: Media file processing
+   - sample8_complex.md: Complex multi-element document
+
+3. Expected Outputs
+   Each fixture generates baseline outputs:
+   - .anchors.json: Heading anchor structure and IDs
+   - .toc.json: Table of contents hierarchy
+   - .qa.json: Quality assurance metrics and coverage
+   - .html: Final processed HTML output
+
+TESTING METHODOLOGY
+
+Coverage Enforcement:
+The framework enforces minimum coverage thresholds with tolerance for float precision:
+- Expected coverage: >= baseline - 0.5%
+- Critical issues: Must remain at 0 or decrease
+- Total issues: Tracked for regression detection
+
+Anchor Stability:
+Anchor IDs must remain deterministic across runs:
+- Heading IDs generated consistently
+- Cross-reference targets remain stable
+- Bookmark registry maintains integrity
+
+HTML Normalization:
+Output HTML is normalized for reliable comparison:
+- Timestamps replaced with TIMESTAMP placeholder
+- UUIDs and random IDs normalized to consistent values
+- Whitespace standardized
+- Non-deterministic metadata stripped
+
+BASELINE REFRESH PROCESS
+
+To update golden baselines after intentional changes:
+
+1. Run tests with update flag:
+   pytest tests/golden/ --update-golden
+
+2. Review generated baselines:
+   - Verify anchors.json structure is correct
+   - Check toc.json hierarchy matches expectations
+   - Validate qa.json metrics are reasonable
+   - Inspect html output for correctness
+
+3. Commit updated baselines:
+   git add tests/golden/expected/
+   git commit -m "Update golden baselines for [change description]"
+
+CI INTEGRATION
+
+The CI pipeline includes:
+- Automated golden test execution
+- Coverage threshold enforcement
+- Diff artifact generation on failures
+- Baseline drift detection and reporting
+
+Failure Handling:
+When tests fail, CI generates artifacts:
+- sample1_qa_diff.json: QA metric differences
+- sample1_anchors_diff.json: Anchor structure changes  
+- sample1_toc_diff.json: TOC hierarchy changes
+- sample1_html_diff.txt: HTML output differences
+
+QUALITY METRICS
+
+Coverage Thresholds:
+- Minimum content coverage: 80%
+- Heading coverage target: 90%
+- Link integrity requirement: 100%
+- TICKET-3 compliance: 100%
+
+Performance Benchmarks:
+- Processing time per 1KB content: < 50ms
+- Memory usage growth: < 10MB per document
+- Pipeline success rate: > 95%
+
+Regression Detection:
+- Coverage drop > 0.5%: Test failure
+- New critical issues: Test failure
+- Anchor ID changes: Test failure (unless intentional)
+- HTML structure changes: Review required
+
+IMPLEMENTATION BENEFITS
+
+1. Regression Protection
+   - Automatic detection of unintended behavior changes
+   - Coverage enforcement prevents quality degradation
+   - Anchor stability ensures reliable cross-references
+
+2. Development Confidence
+   - Safe refactoring with immediate feedback
+   - Baseline comparison for impact assessment
+   - Automated validation of complex pipeline changes
+
+3. Quality Assurance
+   - Consistent output validation across environments
+   - Performance regression detection
+   - Integration testing at scale
+
+4. Documentation
+   - Living examples of expected pipeline behavior
+   - Baseline references for debugging issues
+   - Change impact visibility through diff artifacts
+
+TROUBLESHOOTING
+
+Common Test Failures:
+
+Coverage Regression:
+- Check for changes in content extraction logic
+- Verify analyzer stage is processing all sections
+- Review timeout configurations for complex content
+
+Anchor Drift:
+- Ensure heading ID generation is deterministic
+- Check for changes in text normalization
+- Verify slug generation algorithm consistency
+
+HTML Output Changes:
+- Review template modifications
+- Check for CSS/JS injection changes
+- Verify metadata field updates
+
+False Positives:
+- Update normalization rules for new timestamp formats
+- Add exception handling for acceptable variations
+- Adjust tolerance levels for floating-point comparisons
+
+MAINTENANCE
+
+Regular maintenance tasks:
+1. Review and update fixtures quarterly
+2. Add new test cases for edge conditions
+3. Update baselines for intentional improvements
+4. Monitor CI performance and optimize as needed
+
+The golden test framework ensures the V2 engine maintains high quality and reliability while enabling confident development and deployment of improvements.
+
+---
+Document generated by KE-PR10 Golden Test Framework
+Processing pipeline: V2 Engine
+Test coverage: 87.5% (target: >= 80%)
+Anchor stability: 100% deterministic
+Quality gate: PASSED

@@ -5283,10 +5283,10 @@ Return the fully formatted article with improved clarity, structure, and clickab
                     if "related_links" not in article:
                         update_data["related_links"] = []
                     
-                    await db.content_library.update_one(
-                        {"_id": article_id},
-                        {"$set": update_data}
-                    )
+                    # KE-PR9.5: Use repository pattern for update operations
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    await content_repo.update_by_object_id(str(article_id), update_data)
                     
                     processed_count += 1
                     print(f"📖 TICKET 3: Backfilled article '{title[:50]}...' - doc_uid: {doc_uid}, {len(headings)} headings")

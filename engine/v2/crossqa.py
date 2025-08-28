@@ -301,3 +301,519 @@ Analyze these articles and return ONLY JSON in this exact format:
         except Exception as e:
             print(f"❌ V2 CROSS-ARTICLE QA: Error in LLM cross-article analysis - {e} - run {run_id} - engine=v2")
             return self._create_fallback_qa_analysis(article_set)
+    
+    def _create_fallback_qa_analysis(self, article_set: dict) -> dict:
+        """Create fallback QA analysis using programmatic methods"""
+        try:
+            articles = article_set.get('articles', [])
+            
+            # Basic duplicate detection
+            duplicates = []
+            for i, article_a in enumerate(articles):
+                for j, article_b in enumerate(articles[i+1:], i+1):
+                    # Check title similarity
+                    title_a = article_a.get('title', '').lower()
+                    title_b = article_b.get('title', '').lower()
+                    
+                    if title_a and title_b and self._calculate_similarity(title_a, title_b) > self.duplicate_threshold:
+                        duplicates.append({
+                            "article_id": article_a.get('article_id'),
+                            "other_article_id": article_b.get('article_id'),
+                            "section": "title",
+                            "similarity_score": self._calculate_similarity(title_a, title_b),
+                            "duplicate_type": "similar_title"
+                        })
+            
+            # Basic FAQ duplicate detection
+            duplicate_faqs = []
+            faq_questions = {}
+            
+            for article in articles:
+                article_id = article.get('article_id')
+                faqs = article.get('faqs', [])
+                
+                for faq in faqs:
+                    question = faq.get('question', '').lower().strip()
+                    if question:
+                        if question in faq_questions:
+                            faq_questions[question].append(article_id)
+                        else:
+                            faq_questions[question] = [article_id]
+            
+            for question, article_ids in faq_questions.items():
+                if len(article_ids) > 1:
+                    duplicate_faqs.append({
+                        "question": question,
+                        "article_ids": article_ids,
+                        "identical_answer": False  # Can't determine without deeper analysis
+                    })
+            
+            # Basic terminology detection
+            terminology_issues = []
+            for pattern in self.terminology_patterns:
+                standard = pattern["standard"]
+                variations = pattern["variations"]
+                found_variations = []
+                found_in_articles = []
+                
+                for article in articles:
+                    html_content = article.get('html_content', '').lower()
+                    for variation in variations:
+                        if variation.lower() in html_content:
+                            if variation not in found_variations:
+                                found_variations.append(variation)
+                            if article.get('article_id') not in found_in_articles:
+                                found_in_articles.append(article.get('article_id'))
+                
+                if len(found_variations) > 1:
+                    terminology_issues.append({
+                        "term": standard,
+                        "inconsistent_usages": found_variations,
+                        "suggested_standard": standard,
+                        "article_ids": found_in_articles
+                    })
+            
+            print(f"🔧 V2 CROSS-ARTICLE QA: Fallback analysis found {len(duplicates)} duplicates, {len(duplicate_faqs)} duplicate FAQs, {len(terminology_issues)} terminology issues")
+            
+            return {
+                "duplicates": duplicates,
+                "invalid_related_links": [],  # Requires URL resolution
+                "duplicate_faqs": duplicate_faqs,
+                "terminology_issues": terminology_issues,
+                "analysis_method": "fallback_programmatic"
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 CROSS-ARTICLE QA: Error in fallback QA analysis - {e}")
+            return {
+                "duplicates": [],
+                "invalid_related_links": [],
+                "duplicate_faqs": [],
+                "terminology_issues": [],
+                "analysis_method": "error"
+            }
+    
+    def _calculate_similarity(self, text_a: str, text_b: str) -> float:
+        """Calculate text similarity using simple word overlap"""
+        try:
+            words_a = set(text_a.lower().split())
+            words_b = set(text_b.lower().split())
+            
+            if not words_a or not words_b:
+                return 0.0
+            
+            intersection = len(words_a & words_b)
+            union = len(words_a | words_b)
+            
+            return intersection / union if union > 0 else 0.0
+            
+        except Exception as e:
+            return 0.0
+    
+    async def _perform_programmatic_qa_analysis(self, article_set: dict, run_id: str) -> dict:
+        """V2 Engine: Programmatic QA analysis for validation"""
+        try:
+            print(f"🔍 V2 CROSS-ARTICLE QA: Performing programmatic QA validation - run {run_id} - engine=v2")
+            
+            articles = article_set.get('articles', [])
+            
+            # Validate related links
+            invalid_related_links = []
+            existing_article_ids = set(article.get('article_id', '') for article in articles)
+            existing_sections = set()
+            
+            # Build section index
+            for article in articles:
+                article_id = article.get('article_id', '')
+                sections = article.get('sections', [])
+                for section in sections:
+                    section_id = section.get('id', '')
+                    if section_id:
+                        existing_sections.add(f"#{section_id}")
+                        existing_sections.add(f"{article_id}#{section_id}")
+            
+            # Check related links validity
+            for article in articles:
+                article_id = article.get('article_id', '')
+                related_links = article.get('related_links', [])
+                
+                for link in related_links:
+                    url = link.get('url', '')
+                    label = link.get('label', '')
+                    is_internal = link.get('is_internal', False)
+                    
+                    if is_internal:
+                        # Check if internal link exists
+                        if url.startswith('#'):
+                            if url not in existing_sections:
+                                invalid_related_links.append({
+                                    "article_id": article_id,
+                                    "label": label,
+                                    "url": url,
+                                    "issue": "section_anchor_not_found"
+                                })
+                        elif url.startswith('/'):
+                            # Check if it's a reference to another article
+                            if not any(article_ref in url for article_ref in existing_article_ids):
+                                invalid_related_links.append({
+                                    "article_id": article_id,
+                                    "label": label,
+                                    "url": url,
+                                    "issue": "internal_article_not_found"
+                                })
+            
+            # Additional consistency checks
+            title_consistency = self._check_title_consistency(articles)
+            section_consistency = self._check_section_consistency(articles)
+            
+            programmatic_result = {
+                "invalid_related_links_validated": invalid_related_links,
+                "title_consistency": title_consistency,
+                "section_consistency": section_consistency,
+                "analysis_method": "programmatic_validation"
+            }
+            
+            print(f"🔍 V2 CROSS-ARTICLE QA: Programmatic validation found {len(invalid_related_links)} invalid links - run {run_id} - engine=v2")
+            return programmatic_result
+            
+        except Exception as e:
+            print(f"❌ V2 CROSS-ARTICLE QA: Error in programmatic QA analysis - {e} - run {run_id} - engine=v2")
+            return {
+                "invalid_related_links_validated": [],
+                "title_consistency": {"consistent": True, "issues": []},
+                "section_consistency": {"consistent": True, "issues": []},
+                "analysis_method": "error"
+            }
+    
+    def _check_title_consistency(self, articles: list) -> dict:
+        """Check title formatting consistency"""
+        try:
+            title_patterns = []
+            for article in articles:
+                title = article.get('title', '')
+                if title:
+                    pattern = {
+                        "has_numbers": any(char.isdigit() for char in title),
+                        "has_colons": ':' in title,
+                        "has_dashes": '-' in title,
+                        "title_case": title.istitle(),
+                        "length": len(title)
+                    }
+                    title_patterns.append(pattern)
+            
+            # Analyze consistency
+            if not title_patterns:
+                return {"consistent": True, "issues": []}
+            
+            consistency_issues = []
+            title_case_count = sum(1 for p in title_patterns if p['title_case'])
+            if 0 < title_case_count < len(title_patterns):
+                consistency_issues.append("Inconsistent title case formatting")
+            
+            return {
+                "consistent": len(consistency_issues) == 0,
+                "issues": consistency_issues,
+                "title_patterns": title_patterns
+            }
+            
+        except Exception as e:
+            return {
+                "consistent": False,
+                "issues": [f"Error checking title consistency: {str(e)}"]
+            }
+    
+    def _check_section_consistency(self, articles: list) -> dict:
+        """Check section heading consistency"""
+        try:
+            section_patterns = []
+            all_headings = []
+            
+            for article in articles:
+                sections = article.get('sections', [])
+                for section in sections:
+                    heading = section.get('heading', '')
+                    if heading:
+                        all_headings.append(heading)
+                        pattern = {
+                            "level": section.get('level', 'h2'),
+                            "has_numbers": any(char.isdigit() for char in heading),
+                            "title_case": heading.istitle(),
+                            "length": len(heading)
+                        }
+                        section_patterns.append(pattern)
+            
+            # Check for consistency issues
+            consistency_issues = []
+            if len(all_headings) > 1:
+                title_case_count = sum(1 for p in section_patterns if p['title_case'])
+                if 0 < title_case_count < len(section_patterns):
+                    consistency_issues.append("Inconsistent section heading case")
+            
+            return {
+                "consistent": len(consistency_issues) == 0,
+                "issues": consistency_issues,
+                "total_sections": len(section_patterns)
+            }
+            
+        except Exception as e:
+            return {
+                "consistent": False,
+                "issues": [f"Error checking section consistency: {str(e)}"]
+            }
+    
+    def _consolidate_qa_findings(self, llm_result: dict, programmatic_result: dict, run_id: str) -> dict:
+        """Consolidate LLM and programmatic QA findings"""
+        try:
+            # Merge LLM and programmatic results
+            consolidated = {
+                "duplicates": llm_result.get('duplicates', []),
+                "invalid_related_links": llm_result.get('invalid_related_links', []),
+                "duplicate_faqs": llm_result.get('duplicate_faqs', []),
+                "terminology_issues": llm_result.get('terminology_issues', []),
+                "run_id": run_id,
+                "analysis_methods": []
+            }
+            
+            # Add programmatic validation for invalid links
+            programmatic_invalid_links = programmatic_result.get('invalid_related_links_validated', [])
+            for link in programmatic_invalid_links:
+                # Check if not already found by LLM
+                if not any(existing_link.get('url') == link.get('url') 
+                         for existing_link in consolidated['invalid_related_links']):
+                    consolidated['invalid_related_links'].append(link)
+            
+            # Add analysis methods used
+            if llm_result.get('analysis_method') != 'error':
+                consolidated['analysis_methods'].append('llm_analysis')
+            if programmatic_result.get('analysis_method') != 'error':
+                consolidated['analysis_methods'].append('programmatic_validation')
+            
+            # Add additional findings
+            consolidated['title_consistency'] = programmatic_result.get('title_consistency', {})
+            consolidated['section_consistency'] = programmatic_result.get('section_consistency', {})
+            
+            # Summary statistics
+            consolidated['summary'] = {
+                "total_duplicates": len(consolidated['duplicates']),
+                "total_invalid_links": len(consolidated['invalid_related_links']),
+                "total_duplicate_faqs": len(consolidated['duplicate_faqs']),
+                "total_terminology_issues": len(consolidated['terminology_issues']),
+                "issues_found": (
+                    len(consolidated['duplicates']) + 
+                    len(consolidated['invalid_related_links']) + 
+                    len(consolidated['duplicate_faqs']) + 
+                    len(consolidated['terminology_issues'])
+                )
+            }
+            
+            print(f"🔍 V2 CROSS-ARTICLE QA: Consolidated findings - {consolidated['summary']['issues_found']} total issues - run {run_id} - engine=v2")
+            return consolidated
+            
+        except Exception as e:
+            print(f"❌ V2 CROSS-ARTICLE QA: Error consolidating QA findings - {e} - run {run_id} - engine=v2")
+            return {
+                "duplicates": [],
+                "invalid_related_links": [],
+                "duplicate_faqs": [],
+                "terminology_issues": [],
+                "summary": {"issues_found": 0}
+            }
+    
+    async def _perform_consolidation_pass(self, generated_articles: list, qa_findings: dict, run_id: str) -> dict:
+        """V2 Engine: Perform consolidation pass to resolve QA issues"""
+        try:
+            print(f"🔧 V2 CROSS-ARTICLE QA: Starting consolidation pass - run {run_id} - engine=v2")
+            
+            consolidation_actions = []
+            
+            # Handle duplicates
+            duplicates = qa_findings.get('duplicates', [])
+            for duplicate in duplicates:
+                action = await self._handle_duplicate_content(generated_articles, duplicate, run_id)
+                consolidation_actions.append(action)
+            
+            # Handle invalid related links
+            invalid_links = qa_findings.get('invalid_related_links', [])
+            for invalid_link in invalid_links:
+                action = await self._handle_invalid_related_link(generated_articles, invalid_link, run_id)
+                consolidation_actions.append(action)
+            
+            # Handle duplicate FAQs
+            duplicate_faqs = qa_findings.get('duplicate_faqs', [])
+            for duplicate_faq in duplicate_faqs:
+                action = await self._handle_duplicate_faq(generated_articles, duplicate_faq, run_id)
+                consolidation_actions.append(action)
+            
+            # Handle terminology issues
+            terminology_issues = qa_findings.get('terminology_issues', [])
+            for terminology_issue in terminology_issues:
+                action = await self._handle_terminology_issue(generated_articles, terminology_issue, run_id)
+                consolidation_actions.append(action)
+            
+            consolidation_result = {
+                "actions_taken": consolidation_actions,
+                "total_actions": len(consolidation_actions),
+                "successful_actions": len([a for a in consolidation_actions if a.get('status') == 'success']),
+                "failed_actions": len([a for a in consolidation_actions if a.get('status') == 'failed']),
+                "consolidation_method": "automated_pass"
+            }
+            
+            print(f"🔧 V2 CROSS-ARTICLE QA: Consolidation complete - {consolidation_result['successful_actions']}/{consolidation_result['total_actions']} successful actions - run {run_id} - engine=v2")
+            return consolidation_result
+            
+        except Exception as e:
+            print(f"❌ V2 CROSS-ARTICLE QA: Error in consolidation pass - {e} - run {run_id} - engine=v2")
+            return {
+                "actions_taken": [],
+                "total_actions": 0,
+                "successful_actions": 0,
+                "failed_actions": 0,
+                "consolidation_method": "error"
+            }
+    
+    async def _handle_duplicate_content(self, generated_articles: list, duplicate: dict, run_id: str) -> dict:
+        """Handle duplicate content between articles"""
+        try:
+            article_id = duplicate.get('article_id')
+            other_article_id = duplicate.get('other_article_id')
+            section = duplicate.get('section', 'unknown')
+            
+            # For now, just record the action (full implementation would modify articles)
+            action = {
+                "type": "duplicate_content",
+                "article_id": article_id,
+                "other_article_id": other_article_id,
+                "section": section,
+                "action": "recorded_for_manual_review",
+                "status": "success",
+                "details": f"Duplicate {section} content identified between {article_id} and {other_article_id}"
+            }
+            
+            print(f"📝 V2 CROSS-ARTICLE QA: Recorded duplicate content - {article_id} <-> {other_article_id} - run {run_id} - engine=v2")
+            return action
+            
+        except Exception as e:
+            return {
+                "type": "duplicate_content",
+                "action": "error",
+                "status": "failed",
+                "error": str(e)
+            }
+    
+    async def _handle_invalid_related_link(self, generated_articles: list, invalid_link: dict, run_id: str) -> dict:
+        """Handle invalid related links"""
+        try:
+            article_id = invalid_link.get('article_id')
+            url = invalid_link.get('url')
+            label = invalid_link.get('label')
+            
+            # Find the article and attempt to fix the link
+            for generated_article in generated_articles:
+                if generated_article.get('article_id') == article_id:
+                    article_data = generated_article.get('article_data', {})
+                    html_content = article_data.get('html', '')
+                    
+                    # Simple approach: remove the invalid link or mark it for review
+                    # In a full implementation, this would intelligently fix or replace links
+                    if url in html_content:
+                        # Mark for manual review rather than auto-remove
+                        action = {
+                            "type": "invalid_related_link",
+                            "article_id": article_id,
+                            "url": url,
+                            "label": label,
+                            "action": "marked_for_manual_review",
+                            "status": "success",
+                            "details": f"Invalid link '{label}' -> '{url}' marked for review"
+                        }
+                        
+                        print(f"🔗 V2 CROSS-ARTICLE QA: Marked invalid link for review - {article_id}: {url} - run {run_id} - engine=v2")
+                        return action
+            
+            return {
+                "type": "invalid_related_link",
+                "article_id": article_id,
+                "action": "article_not_found",
+                "status": "failed"
+            }
+            
+        except Exception as e:
+            return {
+                "type": "invalid_related_link",
+                "action": "error", 
+                "status": "failed",
+                "error": str(e)
+            }
+    
+    async def _handle_duplicate_faq(self, generated_articles: list, duplicate_faq: dict, run_id: str) -> dict:
+        """Handle duplicate FAQ across articles"""
+        try:
+            question = duplicate_faq.get('question')
+            article_ids = duplicate_faq.get('article_ids', [])
+            
+            # For now, record the duplication for potential consolidation
+            action = {
+                "type": "duplicate_faq",
+                "question": question,
+                "article_ids": article_ids,
+                "action": "recorded_for_consolidation",
+                "status": "success",
+                "details": f"Duplicate FAQ '{question}' found in {len(article_ids)} articles",
+                "consolidation_recommendation": "Consider creating a centralized FAQ section"
+            }
+            
+            print(f"❓ V2 CROSS-ARTICLE QA: Recorded duplicate FAQ - '{question}' in {len(article_ids)} articles - run {run_id} - engine=v2")
+            return action
+            
+        except Exception as e:
+            return {
+                "type": "duplicate_faq",
+                "action": "error",
+                "status": "failed", 
+                "error": str(e)
+            }
+    
+    async def _handle_terminology_issue(self, generated_articles: list, terminology_issue: dict, run_id: str) -> dict:
+        """Handle terminology consistency issues"""
+        try:
+            term = terminology_issue.get('term')
+            inconsistent_usages = terminology_issue.get('inconsistent_usages', [])
+            suggested_standard = terminology_issue.get('suggested_standard')
+            article_ids = terminology_issue.get('article_ids', [])
+            
+            # Record terminology standardization action
+            action = {
+                "type": "terminology_issue",
+                "term": term,
+                "inconsistent_usages": inconsistent_usages,
+                "suggested_standard": suggested_standard,
+                "article_ids": article_ids,
+                "action": "recorded_for_standardization",
+                "status": "success",
+                "details": f"Terminology '{term}' has {len(inconsistent_usages)} variations across {len(article_ids)} articles",
+                "standardization_recommendation": f"Standardize all variations to '{suggested_standard}'"
+            }
+            
+            print(f"📝 V2 CROSS-ARTICLE QA: Recorded terminology issue - '{term}' needs standardization - run {run_id} - engine=v2")
+            return action
+            
+        except Exception as e:
+            return {
+                "type": "terminology_issue",
+                "action": "error",
+                "status": "failed",
+                "error": str(e)
+            }
+    
+    def _create_qa_result(self, status: str, run_id: str, additional_data: dict) -> dict:
+        """Create a standard QA result structure"""
+        return {
+            "qa_id": f"qa_{run_id}_{int(datetime.utcnow().timestamp())}",
+            "run_id": run_id,
+            "qa_status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2",
+            **additional_data
+        }
+
+print("✅ KE-M11: V2 Cross-Article QA System migrated from server.py")

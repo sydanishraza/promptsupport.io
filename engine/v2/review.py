@@ -432,10 +432,11 @@ class V2ReviewSystem:
             print(f"❌ V2 REVIEW: Error compiling summary stats - {e}")
             return {"total_runs": 0, "pending_review": 0, "approved": 0, "rejected": 0, "published": 0, "approval_rate": 0}
     
-    async def _get_review_metadata(self, run_id: str, db) -> dict:
+    async def _get_review_metadata(self, run_id: str) -> dict:
         """Get existing review metadata for a run"""
         try:
-            review_metadata = await db.v2_review_metadata.find_one({"run_id": run_id})
+            v2_repo = RepositoryFactory.get_v2_processing()
+            review_metadata = await v2_repo.find_one("v2_review_metadata", {"run_id": run_id})
             return self._objectid_to_str(review_metadata) if review_metadata else {}
         except Exception as e:
             print(f"❌ V2 REVIEW: Error getting review metadata - {e}")

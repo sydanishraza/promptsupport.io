@@ -238,7 +238,20 @@ During KE-PR4, only **V2MultiDimensionalAnalyzer** was fully migrated. The remai
    - Word count analysis, granularity validation, and readability scoring
    - Comprehensive adjustment priority determination and application
 
-11. **✅ KE-M13: V2PublishingSystem** - `/engine/v2/publish.py` (Already Complete)
+11. **✅ KE-M9: V2ArticleGenerator** - `/engine/v2/generator.py`
+   - Migrated final article generation with strict format and audience-aware styling
+   - LLM-based and rule-based fallback article generation with comprehensive structure
+   - Audience-specific styling (developer, business, admin, end_user) and tone adaptation
+   - Article storage integration with repository pattern and comprehensive HTML/Markdown conversion
+
+12. **✅ KE-M10: V2ValidationSystem** - `/engine/v2/validate.py`
+   - Migrated comprehensive validation system for fidelity, coverage, placeholders, and style
+   - LLM-based fidelity and coverage validation with robust fallback mechanisms
+   - Style guard validation with H1 prohibition and structural compliance checking
+   - Evidence tagging validation for fidelity enforcement and TICKET-3 compliance
+   - Cross-document link validation and bookmark registry backfill functionality
+
+13. **✅ KE-M13: V2PublishingSystem** - `/engine/v2/publish.py` (Already Complete)
    - Publishing system was already fully migrated in earlier work
    - V2-only content validation and 100% coverage requirement verification
    - Content library structure preparation with comprehensive V2 metadata

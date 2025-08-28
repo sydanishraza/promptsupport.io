@@ -228,10 +228,9 @@ class V2ValidationSystem:
                     if "related_links" not in article:
                         update_data["related_links"] = []
                     
-                    await db.content_library.update_one(
-                        {"_id": article_id},
-                        {"$set": update_data}
-                    )
+                    # Use repository pattern for update
+                    content_repo = RepositoryFactory.get_content_library()
+                    await content_repo.update_by_id(article_id, update_data)
                     
                     processed_count += 1
                     print(f"📖 TICKET 3: Backfilled article '{title[:50]}...' - doc_uid: {doc_uid}, {len(headings)} headings")

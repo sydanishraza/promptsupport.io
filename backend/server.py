@@ -3534,15 +3534,8 @@ Return ONLY JSON in this exact format:
 # Global V2 Per-Article Outline Planner instance
 v2_per_article_outline_planner = V2PerArticleOutlinePlanner()
 
-class V2PrewriteSystem:
-    """V2 Engine: Section-Grounded Prewrite Pass - Facts extraction before article generation"""
-    
-    def __init__(self):
-        self.prewrite_storage_path = "/app/backend/static/prewrite_data"
-        os.makedirs(self.prewrite_storage_path, exist_ok=True)
-        
-    async def execute_prewrite_pass(self, content: str, content_type: str, articles: list, 
-                                  per_article_outlines: dict, global_analysis: dict, run_id: str) -> dict:
+# V2PrewriteSystem class implementation moved to /app/engine/v2/prewrite.py (KE-M3)
+# Global instance below uses the imported migrated class
         """Execute section-grounded prewrite pass for all articles"""
         try:
             print(f"🔍 V2 PREWRITE: Starting section-grounded prewrite pass - {len(articles)} articles - engine=v2")

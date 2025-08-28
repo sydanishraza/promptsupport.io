@@ -470,134 +470,83 @@ class V2EngineMigrationTester:
     def test_repository_integration(self):
         """Test 5: Verify classes properly use centralized MongoDB repository pattern"""
         try:
-            test_content = """
-            # Complete Workflow Testing Guide
-            
-            ## Introduction
-            This comprehensive guide tests the complete V2 processing workflow to ensure all stages work together seamlessly.
-            
-            ## Processing Stages Overview
-            The V2 pipeline consists of 17 distinct stages:
-            1. Content Analysis
-            2. Outline Planning
-            3. Prewrite Extraction
-            4. Gap Filling
-            5. Evidence Tagging
-            6. Code Normalization
-            7. Article Generation
-            8. Style Processing
-            9. Related Links
-            10. Validation
-            11. Publishing
-            12. Cross-Article QA
-            13. Adaptive Adjustment
-            14. Media Processing
-            15. Content Extraction
-            16. Versioning
-            17. Review
-            
-            ## Quality Assurance
-            Each stage contributes to the overall quality and completeness of the final articles.
-            
-            ### Technical Implementation
-            ```javascript
-            // Example workflow monitoring
-            const workflowMonitor = {
-                trackStage: (stageNumber, stageName) => {
-                    console.log(`Stage ${stageNumber}: ${stageName} - Processing...`);
-                },
-                
-                validateOutput: (stageOutput) => {
-                    return stageOutput && stageOutput.status === 'completed';
-                },
-                
-                reportProgress: (completedStages, totalStages) => {
-                    const percentage = (completedStages / totalStages) * 100;
-                    console.log(`Workflow Progress: ${percentage.toFixed(1)}%`);
-                }
-            };
-            ```
-            
-            ## Expected Outcomes
-            - All 17 stages complete successfully
-            - Articles are fully processed and formatted
-            - Metadata includes complete processing information
-            - No critical errors or missing components
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "markdown",
-                "processing_mode": "v2_only"
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=120)
+            # Test repository availability endpoint
+            response = requests.get(f"{self.backend_url}/api/engine/repository/status", timeout=10)
             
             if response.status_code != 200:
-                self.log_test("Full Processing Workflow Integrity", False, f"HTTP {response.status_code}")
+                self.log_test("Repository Integration", False, f"Repository status endpoint HTTP {response.status_code}")
                 return False
                 
             data = response.json()
             
-            if data.get("status") != "success":
-                self.log_test("Full Processing Workflow Integrity", False, f"Processing failed: {data.get('message')}")
+            # Check repository status
+            repo_status = data.get("status", "")
+            if repo_status not in ["operational", "active", "available"]:
+                self.log_test("Repository Integration", False, f"Repository status: {repo_status}")
                 return False
-                
-            # Verify complete processing
-            processing_info = data.get("processing_info", {})
-            stages_completed = processing_info.get("stages_completed", 0)
             
-            # Must be 100% complete (17/17 stages)
-            if stages_completed != 17:
-                self.log_test("Full Processing Workflow Integrity", False, f"Incomplete workflow: {stages_completed}/17 stages")
-                return False
-                
-            # Verify articles are fully processed
-            articles = data.get("articles", [])
-            if not articles:
-                self.log_test("Full Processing Workflow Integrity", False, "No articles generated")
-                return False
-                
-            article = articles[0]
+            # Check available repositories
+            repositories = data.get("repositories", {})
+            expected_repos = [
+                "content_library", "qa_results", "v2_analysis", 
+                "v2_outline", "v2_validation", "assets", "media_library"
+            ]
             
-            # Check article completeness
-            required_fields = ["id", "title", "content", "metadata", "created_at"]
-            missing_fields = [field for field in required_fields if field not in article]
+            missing_repos = []
+            for repo in expected_repos:
+                if repo not in repositories:
+                    missing_repos.append(repo)
             
-            if missing_fields:
-                self.log_test("Full Processing Workflow Integrity", False, f"Incomplete article: missing {missing_fields}")
+            if missing_repos:
+                self.log_test("Repository Integration", False, f"Missing repositories: {missing_repos}")
                 return False
-                
-            # Check content quality
-            content = article.get("content", "")
-            if len(content) < 1000:  # Should have substantial processed content
-                self.log_test("Full Processing Workflow Integrity", False, f"Content too short: {len(content)} chars")
-                return False
-                
-            # Check metadata completeness
-            metadata = article.get("metadata", {})
-            expected_metadata = ["engine", "processing_stages", "content_length"]
             
-            # Verify V2 processing
-            if metadata.get("engine") != "v2":
-                self.log_test("Full Processing Workflow Integrity", False, f"Wrong engine: {metadata.get('engine')}")
-                return False
-                
-            # Check for processing errors
-            stage_errors = processing_info.get("stage_errors", [])
-            critical_errors = [err for err in stage_errors if err.get("severity") == "critical"]
+            # Test repository factory availability
+            factory_response = requests.get(f"{self.backend_url}/api/engine/repository/factory", timeout=10)
             
-            if critical_errors:
-                self.log_test("Full Processing Workflow Integrity", False, f"Critical processing errors: {len(critical_errors)}")
+            if factory_response.status_code != 200:
+                self.log_test("Repository Integration", False, f"Repository factory HTTP {factory_response.status_code}")
                 return False
-                
-            self.log_test("Full Processing Workflow Integrity", True, 
-                         f"Complete workflow integrity verified: 17/17 stages, {len(content)} chars content, V2 engine")
+            
+            factory_data = factory_response.json()
+            
+            # Check factory status
+            factory_status = factory_data.get("status", "")
+            if factory_status not in ["operational", "active"]:
+                self.log_test("Repository Integration", False, f"Repository factory status: {factory_status}")
+                return False
+            
+            # Test a simple repository operation
+            test_payload = {
+                "operation": "test_connection",
+                "repository": "content_library"
+            }
+            
+            test_response = requests.post(f"{self.backend_url}/api/engine/repository/test", 
+                                        json=test_payload, timeout=30)
+            
+            if test_response.status_code != 200:
+                self.log_test("Repository Integration", False, f"Repository test operation HTTP {test_response.status_code}")
+                return False
+            
+            test_data = test_response.json()
+            
+            if test_data.get("status") != "success":
+                self.log_test("Repository Integration", False, f"Repository test failed: {test_data.get('message')}")
+                return False
+            
+            # Check MongoDB connection
+            mongo_status = test_data.get("mongodb_status", "")
+            if mongo_status not in ["connected", "operational"]:
+                self.log_test("Repository Integration", False, f"MongoDB status: {mongo_status}")
+                return False
+            
+            self.log_test("Repository Integration", True, 
+                         f"Repository pattern integration verified: {len(repositories)} repositories available, MongoDB connected")
             return True
             
         except Exception as e:
-            self.log_test("Full Processing Workflow Integrity", False, f"Exception: {str(e)}")
+            self.log_test("Repository Integration", False, f"Exception: {str(e)}")
             return False
     
     def test_no_attribute_errors_or_missing_methods(self):

@@ -17894,6 +17894,15 @@ async def startup_event():
         await mongo_client.server_info()
         print("✅ MongoDB connected successfully")
         print("✅ QA Results collection initialized")
+        
+        # KE-PR9: Test MongoDB repository layer
+        if mongo_repo_available:
+            try:
+                await test_mongo_roundtrip()
+                print("✅ KE-PR9: MongoDB repository layer tested successfully")
+            except Exception as e:
+                print(f"⚠️ KE-PR9: Repository test failed: {e}")
+        
     except Exception as e:
         print(f"❌ MongoDB connection failed: {e}")
         raise

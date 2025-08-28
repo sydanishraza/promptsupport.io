@@ -6,12 +6,10 @@ Migrated from server.py - Final article generation with strict format and audien
 import json
 import re
 import uuid
-from typing import Dict, Any, List
 from datetime import datetime
 from bs4 import BeautifulSoup
 from ..llm.client import get_llm_client
 from ..stores.mongo import RepositoryFactory
-from ._utils import create_processing_metadata
 
 class V2ArticleGenerator:
     """V2 Engine: Final article generation with strict format and audience-aware styling"""
@@ -53,7 +51,7 @@ class V2ArticleGenerator:
     async def run(self, evidenced_content: dict, **kwargs) -> dict:
         """Generate articles using centralized LLM client (new interface)"""
         try:
-            print(f"📝 V2 ARTICLE GEN: Starting article generation with LLM client - engine=v2")
+            print("📝 V2 ARTICLE GEN: Starting article generation with LLM client - engine=v2")
             
             # Extract parameters from kwargs  
             normalized_doc = kwargs.get('normalized_doc')
@@ -80,7 +78,7 @@ class V2ArticleGenerator:
     async def generate_final_articles(self, normalized_doc, per_article_outlines: list, analysis: dict, run_id: str) -> dict:
         """V2 Engine: Generate final articles with strict format and audience-aware styling"""
         try:
-            print(f"📝 V2 ARTICLE GEN: Generating final articles with strict format - engine=v2")
+            print("📝 V2 ARTICLE GEN: Generating final articles with strict format - engine=v2")
             
             generated_articles = []
             audience = analysis.get('audience', 'end_user')
@@ -378,16 +376,16 @@ CRITICAL REQUIREMENTS:
                             print(f"🎯 V2 ARTICLE GEN: LLM article generation successful - {html_length} chars HTML - engine=v2")
                             return article_data
                         else:
-                            print(f"⚠️ V2 ARTICLE GEN: Missing required fields in LLM response - engine=v2")
+                            print("⚠️ V2 ARTICLE GEN: Missing required fields in LLM response - engine=v2")
                             return None
                     except json.JSONDecodeError as json_error:
                         print(f"⚠️ V2 ARTICLE GEN: JSON parsing error - {json_error}")
                         return None
                 else:
-                    print(f"⚠️ V2 ARTICLE GEN: No JSON found in LLM article response - engine=v2")
+                    print("⚠️ V2 ARTICLE GEN: No JSON found in LLM article response - engine=v2")
                     return None
             else:
-                print(f"❌ V2 ARTICLE GEN: No response from LLM for article generation - engine=v2")
+                print("❌ V2 ARTICLE GEN: No response from LLM for article generation - engine=v2")
                 return None
                 
         except Exception as e:
@@ -413,7 +411,7 @@ CRITICAL REQUIREMENTS:
             
             # Ensure Mini-TOC has anchor links
             if '<ul>' in html_content and 'href="#' not in html_content:
-                print(f"⚠️ V2 ARTICLE GEN: Mini-TOC missing anchor links - engine=v2")
+                print("⚠️ V2 ARTICLE GEN: Mini-TOC missing anchor links - engine=v2")
             
             # Validate block coverage (basic check)
             block_ids = [item['block_id'] for item in article_blocks]

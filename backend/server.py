@@ -14108,7 +14108,10 @@ async def original_intelligent_content_processing_pipeline(content: str, metadat
             
             unified_article = await enhanced_generate_unified_article(content, metadata, analysis)
             if unified_article:
-                await db.content_library.insert_one(unified_article)
+                # KE-PR9.3: Use repository pattern for article insertion
+                from engine.stores.mongo import RepositoryFactory
+                content_repo = RepositoryFactory.get_content_library()
+                await content_repo.insert_article(unified_article)
                 generated_articles.append(unified_article)
                 print(f"💾 SAVED UNIFIED ARTICLE: {unified_article['title']}")
             

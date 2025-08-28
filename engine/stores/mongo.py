@@ -721,6 +721,17 @@ async def update_article_by_id(article_id: str, updates: Dict[str, Any]) -> bool
     repo = RepositoryFactory.get_content_library()
     return await repo.update_by_id(article_id, updates)
 
+# KE-PR9.5: Processing jobs convenience functions
+async def insert_processing_job(job_data: Dict[str, Any]) -> str:
+    """Convenience function for inserting processing job (KE-PR9.5)"""
+    repo = RepositoryFactory.get_processing_jobs()
+    return await repo.insert_job(job_data)
+
+async def update_processing_job_status(job_id: str, status: str, details: Optional[Dict] = None) -> bool:
+    """Convenience function for updating processing job status (KE-PR9.5)"""
+    repo = RepositoryFactory.get_processing_jobs()
+    return await repo.update_job_status(job_id, status, details)
+
 
 
 # ========================================

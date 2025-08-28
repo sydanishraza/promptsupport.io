@@ -637,95 +637,227 @@ class V2EngineMigrationTester:
     def test_cross_module_dependencies(self):
         """Test 7: Verify migrated classes interact properly with each other"""
         try:
-            # Test multiple requests to verify consistency
+            # Test cross-module interaction through a comprehensive processing request
             test_content = """
-            # Production Readiness Verification
+            # Cross-Module Integration Test
             
-            ## System Reliability
-            This test verifies that the 17-stage pipeline is ready for production deployment with consistent performance and reliability.
+            ## Overview
+            This test validates that all migrated V2 classes work together seamlessly in the processing pipeline.
             
-            ## Performance Metrics
-            - Processing time consistency
-            - Memory usage stability
-            - Error rate minimization
-            - Output quality consistency
+            ## Test Scenarios
+            - Outline planning feeds into prewrite system
+            - Style processing coordinates with code normalization
+            - Evidence tagging works with validation system
+            - Related links integrate with cross-article QA
+            - Publishing coordinates with versioning and review
             
-            ## Reliability Indicators
-            - All stages complete successfully
-            - No critical errors or failures
-            - Consistent article generation
-            - Proper metadata handling
+            ### Code Example
+            ```python
+            def integration_test():
+                # This code block tests code normalization
+                return "Cross-module integration working"
+            ```
+            
+            ## Expected Interactions
+            1. V2GlobalOutlinePlanner → V2PrewriteSystem
+            2. V2StyleProcessor → V2CodeNormalizationSystem
+            3. V2EvidenceTaggingSystem → V2ValidationSystem
+            4. V2RelatedLinksSystem → V2CrossArticleQASystem
+            5. V2PublishingSystem → V2VersioningSystem → V2ReviewSystem
             """
             
             payload = {
                 "content": test_content,
                 "content_type": "markdown",
-                "processing_mode": "v2_only"
+                "processing_mode": "v2_only",
+                "enable_cross_module_tracking": True
             }
             
-            # Test multiple requests for consistency
-            results = []
-            for i in range(3):
-                start_time = time.time()
-                response = requests.post(f"{self.backend_url}/content/process", 
-                                       json=payload, timeout=90)
-                processing_time = time.time() - start_time
-                
-                if response.status_code != 200:
-                    self.log_test("Production Readiness Verification", False, f"Request {i+1} failed: HTTP {response.status_code}")
-                    return False
-                    
-                data = response.json()
-                
-                if data.get("status") != "success":
-                    self.log_test("Production Readiness Verification", False, f"Request {i+1} processing failed")
-                    return False
-                    
-                processing_info = data.get("processing_info", {})
-                stages_completed = processing_info.get("stages_completed", 0)
-                articles = data.get("articles", [])
-                
-                results.append({
-                    "stages_completed": stages_completed,
-                    "articles_count": len(articles),
-                    "processing_time": processing_time,
-                    "has_errors": len(processing_info.get("stage_errors", [])) > 0
-                })
-                
-                # Small delay between requests
-                time.sleep(2)
+            response = requests.post(f"{self.backend_url}/api/content/process", 
+                                   json=payload, timeout=120)
             
-            # Analyze consistency
-            stages_consistent = all(r["stages_completed"] == 17 for r in results)
-            articles_consistent = all(r["articles_count"] > 0 for r in results)
-            no_critical_errors = all(not r["has_errors"] for r in results)
-            
-            # Check performance consistency (processing times should be reasonable)
-            processing_times = [r["processing_time"] for r in results]
-            avg_time = sum(processing_times) / len(processing_times)
-            max_time = max(processing_times)
-            
-            # Performance should be consistent (max time shouldn't be more than 2x average)
-            performance_consistent = max_time <= (avg_time * 2) and avg_time < 120  # Under 2 minutes average
-            
-            if not stages_consistent:
-                self.log_test("Production Readiness Verification", False, "Inconsistent stage completion across requests")
+            if response.status_code != 200:
+                self.log_test("Cross-Module Dependencies", False, f"HTTP {response.status_code}")
                 return False
                 
-            if not articles_consistent:
-                self.log_test("Production Readiness Verification", False, "Inconsistent article generation across requests")
+            data = response.json()
+            
+            if data.get("status") != "success":
+                self.log_test("Cross-Module Dependencies", False, f"Processing failed: {data.get('message')}")
                 return False
-                
-            if not performance_consistent:
-                self.log_test("Production Readiness Verification", False, f"Inconsistent performance: avg {avg_time:.1f}s, max {max_time:.1f}s")
+            
+            # Check processing info for cross-module interactions
+            processing_info = data.get("processing_info", {})
+            
+            # Check stage execution order and dependencies
+            stage_execution = processing_info.get("stage_execution", [])
+            
+            if not stage_execution:
+                self.log_test("Cross-Module Dependencies", False, "No stage execution information available")
                 return False
+            
+            # Verify key stage interactions occurred
+            expected_interactions = [
+                ("outline", "prewrite"),
+                ("style", "code_norm"),
+                ("evidence", "validation"),
+                ("related", "crossqa"),
+                ("publishing", "versioning")
+            ]
+            
+            interaction_found = []
+            for stage1, stage2 in expected_interactions:
+                stage1_found = any(stage1 in stage.get("stage_name", "").lower() for stage in stage_execution)
+                stage2_found = any(stage2 in stage.get("stage_name", "").lower() for stage in stage_execution)
                 
-            self.log_test("Production Readiness Verification", True, 
-                         f"Production ready: 3/3 requests successful, avg {avg_time:.1f}s, all 17 stages consistent")
+                if stage1_found and stage2_found:
+                    interaction_found.append((stage1, stage2))
+            
+            interaction_rate = len(interaction_found) / len(expected_interactions) * 100
+            
+            if interaction_rate < 60:  # At least 60% of expected interactions should occur
+                self.log_test("Cross-Module Dependencies", False, f"Low interaction rate: {interaction_rate:.1f}%")
+                return False
+            
+            # Check for cross-module data flow
+            articles = data.get("articles", [])
+            if not articles:
+                self.log_test("Cross-Module Dependencies", False, "No articles generated to check cross-module data flow")
+                return False
+            
+            article = articles[0]
+            
+            # Check for evidence of cross-module processing
+            content = article.get("content", "")
+            metadata = article.get("metadata", {})
+            
+            # Look for signs of multiple module processing
+            processing_indicators = [
+                "outline" in str(metadata).lower(),
+                "style" in str(metadata).lower(),
+                "validation" in str(metadata).lower(),
+                len(content) > 500,  # Content was processed and enhanced
+                "v2" in str(metadata).lower()  # V2 engine was used
+            ]
+            
+            processing_evidence = sum(processing_indicators)
+            
+            if processing_evidence < 3:  # At least 3 indicators should be present
+                self.log_test("Cross-Module Dependencies", False, f"Insufficient cross-module processing evidence: {processing_evidence}/5")
+                return False
+            
+            self.log_test("Cross-Module Dependencies", True, 
+                         f"Cross-module dependencies verified: {interaction_rate:.1f}% interaction rate, {processing_evidence}/5 processing indicators")
             return True
             
         except Exception as e:
-            self.log_test("Production Readiness Verification", False, f"Exception: {str(e)}")
+            self.log_test("Cross-Module Dependencies", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_system_stability_no_regressions(self):
+        """Test 8: Verify no regressions in core functionality"""
+        try:
+            # Test basic system health
+            health_response = requests.get(f"{self.backend_url}/api/health", timeout=10)
+            
+            if health_response.status_code != 200:
+                self.log_test("System Stability No Regressions", False, f"Health check HTTP {health_response.status_code}")
+                return False
+            
+            health_data = health_response.json()
+            
+            if health_data.get("status") not in ["healthy", "ok", "operational"]:
+                self.log_test("System Stability No Regressions", False, f"System health: {health_data.get('status')}")
+                return False
+            
+            # Test core API endpoints still work
+            core_endpoints = [
+                "/api/engine",
+                "/api/content-library",
+                "/api/engine/v2/pipeline"
+            ]
+            
+            endpoint_results = []
+            for endpoint in core_endpoints:
+                try:
+                    endpoint_response = requests.get(f"{self.backend_url}{endpoint}", timeout=15)
+                    endpoint_results.append({
+                        "endpoint": endpoint,
+                        "status_code": endpoint_response.status_code,
+                        "success": endpoint_response.status_code == 200
+                    })
+                except Exception as e:
+                    endpoint_results.append({
+                        "endpoint": endpoint,
+                        "error": str(e),
+                        "success": False
+                    })
+            
+            failed_endpoints = [r for r in endpoint_results if not r.get("success")]
+            
+            if failed_endpoints:
+                self.log_test("System Stability No Regressions", False, f"Failed endpoints: {[e['endpoint'] for e in failed_endpoints]}")
+                return False
+            
+            # Test a simple processing request to ensure no regressions
+            simple_test_content = """
+            # Simple Regression Test
+            
+            This is a basic test to ensure the V2 engine migration hasn't introduced regressions.
+            
+            ## Features to Test
+            - Basic content processing
+            - Article generation
+            - Metadata handling
+            """
+            
+            regression_payload = {
+                "content": simple_test_content,
+                "content_type": "markdown",
+                "processing_mode": "v2_only"
+            }
+            
+            regression_response = requests.post(f"{self.backend_url}/api/content/process", 
+                                              json=regression_payload, timeout=60)
+            
+            if regression_response.status_code != 200:
+                self.log_test("System Stability No Regressions", False, f"Regression test HTTP {regression_response.status_code}")
+                return False
+            
+            regression_data = regression_response.json()
+            
+            if regression_data.get("status") != "success":
+                self.log_test("System Stability No Regressions", False, f"Regression test failed: {regression_data.get('message')}")
+                return False
+            
+            # Check basic functionality still works
+            articles = regression_data.get("articles", [])
+            if not articles:
+                self.log_test("System Stability No Regressions", False, "No articles generated in regression test")
+                return False
+            
+            article = articles[0]
+            
+            # Basic article validation
+            required_fields = ["id", "title", "content"]
+            missing_fields = [field for field in required_fields if field not in article]
+            
+            if missing_fields:
+                self.log_test("System Stability No Regressions", False, f"Article missing fields: {missing_fields}")
+                return False
+            
+            # Check content quality hasn't regressed
+            content = article.get("content", "")
+            if len(content) < 100:
+                self.log_test("System Stability No Regressions", False, f"Content quality regression: {len(content)} chars")
+                return False
+            
+            self.log_test("System Stability No Regressions", True, 
+                         f"System stability verified: {len(core_endpoints)} endpoints working, regression test passed")
+            return True
+            
+        except Exception as e:
+            self.log_test("System Stability No Regressions", False, f"Exception: {str(e)}")
             return False
     
     def run_all_tests(self):

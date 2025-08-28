@@ -3608,7 +3608,7 @@ async def v2_prewrite_system_process(articles: List[Dict[str, Any]], metadata: D
         return prewrite_summary
             
     except Exception as e:
-            print(f"❌ V2 PREWRITE: Error in prewrite pass - {e} - engine=v2")
+        print(f"❌ V2 PREWRITE: Error in prewrite pass - {e} - engine=v2")
             return {
                 "prewrite_id": f"prewrite_error_{run_id}_{int(datetime.utcnow().timestamp())}",
                 "run_id": run_id,

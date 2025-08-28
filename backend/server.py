@@ -3604,8 +3604,8 @@ async def v2_prewrite_system_process(articles: List[Dict[str, Any]], metadata: D
                 }
             }
             
-            print(f"✅ V2 PREWRITE: Prewrite pass complete - {successful_prewrites}/{total_articles} successful - engine=v2")
-            return prewrite_summary
+        print(f"✅ V2 PREWRITE: Prewrite pass complete - {successful_prewrites}/{total_articles} successful - engine=v2")
+        return prewrite_summary
             
         except Exception as e:
             print(f"❌ V2 PREWRITE: Error in prewrite pass - {e} - engine=v2")

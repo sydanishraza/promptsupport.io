@@ -176,22 +176,8 @@ class V2ValidationSystem:
                     if needs_backfill:
                         articles.append(article)
             except Exception as repo_error:
-                print(f"⚠️ KE-PR9: Backfill query fallback to direct DB: {repo_error}")
-                # Final fallback to direct database query
-                query = {
-                    "$or": [
-                        {"metadata.engine": "v2", "doc_uid": {"$exists": False}},
-                        {"metadata.engine": "v2", "headings": {"$exists": False}},
-                        {"metadata.engine": "v2", "headings": []}  # Empty headings array
-                    ]
-                }
-                
-                if limit:
-                    articles_cursor = db.content_library.find(query).limit(limit)
-                else:
-                    articles_cursor = db.content_library.find(query)
-                
-                articles = await articles_cursor.to_list(None)
+                print(f"❌ KE-PR9.3: Repository query failed for backfill - {repo_error}")
+                articles = []  # Return empty list instead of falling back to direct DB
                 
             total_articles = len(articles)
             

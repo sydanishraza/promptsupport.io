@@ -29284,16 +29284,16 @@ async def inject_real_images_into_articles():
                 enhanced_content = inject_images_contextually(content, matching_images)
                 
                 if enhanced_content != content and len(enhanced_content) > len(content):
-                    # Update article in database
-                    await db.content_library.update_one(
-                        {"_id": article_id},
-                        {"$set": {
-                            "content": enhanced_content, 
-                            "has_images": True, 
-                            "image_injection_timestamp": datetime.utcnow(),
-                            "injected_image_count": len(matching_images)
-                        }}
-                    )
+                    # Update article in database using repository pattern (KE-PR9.5)
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    update_data = {
+                        "content": enhanced_content, 
+                        "has_images": True, 
+                        "image_injection_timestamp": datetime.utcnow(),
+                        "injected_image_count": len(matching_images)
+                    }
+                    await content_repo.update_by_object_id(str(article_id), update_data)
                     
                     injection_count += 1
                     print(f"✅ Injected {len(matching_images)} images into: '{title[:50]}...'")

@@ -675,6 +675,11 @@ class RepositoryFactory:
     def get_media_library() -> MediaLibraryRepository:
         """Get media library repository"""
         return MediaLibraryRepository()
+    
+    @staticmethod
+    def get_processing_jobs() -> ProcessingJobsRepository:
+        """Get processing jobs repository (KE-PR9.5)"""
+        return ProcessingJobsRepository()
 
 # ========================================
 # CONVENIENCE FUNCTIONS

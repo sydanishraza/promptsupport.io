@@ -178,7 +178,7 @@ class V2ReviewSystem:
             badges = self._calculate_quality_badges(validation_result, qa_result, adjustment_result)
             
             # Determine overall review status
-            review_status = await self._determine_review_status(run_id, publishing_result, db)
+            review_status = await self._determine_review_status(run_id, publishing_result)
             
             # Compile media references
             media_references = await self._compile_media_references(run_id)

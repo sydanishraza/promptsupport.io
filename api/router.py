@@ -165,28 +165,42 @@ async def process_url_v2_route(
 
 @router.get("/api/content/library")
 async def get_content_library():
-    """Get all articles from content library"""
+    """Get all articles from content library using repository layer"""
     import sys
     import os
     backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
     if backend_path not in sys.path:
         sys.path.append(backend_path)
     
-    from server import db
-    
     try:
-        cursor = db.content_library.find().sort("created_at", -1).limit(100)
-        articles = await cursor.to_list(length=100)
+        # Try to use repository layer first
+        from server import mongo_repo_available, RepositoryFactory
         
-        # Convert ObjectId to string
-        for article in articles:
-            if '_id' in article:
-                article['_id'] = str(article['_id'])
-        
-        return {
-            "articles": articles,
-            "count": len(articles)
-        }
+        if mongo_repo_available:
+            content_repo = RepositoryFactory.get_content_library()
+            articles = await content_repo.find_recent(limit=100)
+            
+            return {
+                "articles": articles,
+                "count": len(articles),
+                "source": "repository_layer"
+            }
+        else:
+            # Fallback to direct database access
+            from server import db
+            cursor = db.content_library.find().sort("created_at", -1).limit(100)
+            articles = await cursor.to_list(length=100)
+            
+            # Convert ObjectId to string
+            for article in articles:
+                if '_id' in article:
+                    article['_id'] = str(article['_id'])
+            
+            return {
+                "articles": articles,
+                "count": len(articles),
+                "source": "direct_database"
+            }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching library: {str(e)}")

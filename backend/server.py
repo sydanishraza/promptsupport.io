@@ -236,7 +236,22 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# KE-PR8: Include API Router
+# KE-PR9: Import MongoDB Repository Layer
+try:
+    from app.engine.stores.mongo import (
+        RepositoryFactory, 
+        upsert_content, 
+        fetch_article_by_slug, 
+        fetch_article_by_uid,
+        update_article_headings, 
+        update_article_xrefs,
+        test_mongo_roundtrip
+    )
+    print("✅ KE-PR9: MongoDB repository layer imported successfully")
+    mongo_repo_available = True
+except ImportError as e:
+    print(f"⚠️ KE-PR9: MongoDB repository layer import failed: {e}")
+    mongo_repo_available = False
 try:
     # Import and include the organized API router
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -14053,10 +14053,10 @@ async def intelligent_content_processing_pipeline(content: str, metadata: Dict[s
             print(f"🔗 STEP 4: Updating cross-references in database")
             for article in generated_articles:
                 try:
-                    await db.content_library.update_one(
-                        {"id": article["id"]},
-                        {"$set": {"content": article["content"]}}
-                    )
+                    # KE-PR9.5: Use repository pattern for content updates
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    await content_repo.update_by_id(article["id"], {"content": article["content"]})
                 except Exception as update_error:
                     print(f"⚠️ Error updating cross-references for {article['title']}: {update_error}")
         

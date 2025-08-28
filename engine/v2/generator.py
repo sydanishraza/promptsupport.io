@@ -491,100 +491,331 @@ CRITICAL REQUIREMENTS:
         except Exception as e:
             print(f"❌ V2 ARTICLE GEN: Error converting HTML to Markdown - {e}")
             return html_content  # Return original HTML if conversion fails
-
-print("✅ KE-M9: V2 Article Generator migrated from server.py")
-            print(f"❌ V2 GENERATOR: Error in article generation - {e}")
-            return {"articles": [], "error": str(e)}
     
-    async def _generate_single_article(self, article_data: dict) -> dict:
-        """Generate a single article using centralized LLM client"""
+    async def _rule_based_article_generation(self, outline: dict, article_blocks: list, audience: str) -> dict:
+        """Fallback rule-based article generation"""
         try:
-            title = article_data.get('title', 'Generated Article')
-            outline = article_data.get('outline', {})
-            source_blocks = article_data.get('source_blocks', [])
+            print(f"🔧 V2 ARTICLE GEN: Creating rule-based article for {audience} audience - engine=v2")
             
-            # Create article input for LLM
-            article_input = self._prepare_article_input(title, outline, source_blocks)
+            title = outline.get('title', 'Article Title')
+            sections = outline.get('sections', [])
+            faqs = outline.get('faq_suggestions', [])
+            related_links = outline.get('related_link_suggestions', [])
             
-            # Generate article content using centralized LLM client
-            system_message = """You are a professional technical writer. Generate a full article based on the outline and source blocks.
-
-REQUIREMENTS:
-1. Follow the provided outline structure exactly
-2. Use all relevant information from source blocks
-3. Apply Woolf/PromptSupport style guidelines:
-   - Clear, scannable headings (H2, H3 hierarchy)
-   - Concise, actionable language
-   - Technical accuracy with accessibility
-   - Logical flow and smooth transitions
-4. Include code examples, tables, and technical details from source
-5. Add evidence tags where appropriate
-6. Ensure completeness and technical depth
-7. Use markdown formatting for structure
-
-Generate a comprehensive, well-structured article."""
-
-            user_message = f"Generate an article based on this input:\n\n{article_input}"
+            html_parts = []
             
-            # Use centralized LLM client
-            generated_content = await self.llm_client.complete(
-                system_message=system_message,
-                user_message=user_message,
-                temperature=0.3,
-                max_tokens=6000
-            )
+            # 1. H1 Title - REMOVED (frontend will handle title as H1)
+            # html_parts.append(f'<h1>{title}</h1>')
             
-            if generated_content:
-                # Process and format the generated content
-                processed_article = {
-                    "id": f"article_{article_data.get('id', 'generated')}",
-                    "title": title,
-                    "content": generated_content,
-                    "outline": outline,
-                    "metadata": {
-                        "generated_by": "v2_generator",
-                        "llm_provider": self.llm_client.provider,
-                        "source_blocks": len(source_blocks),
-                        "generation_timestamp": "2024-01-01T00:00:00Z"  # Placeholder
-                    }
+            # 2. Intro paragraph
+            audience_intro = {
+                'developer': f'This technical guide provides comprehensive implementation details for {title.lower()}.',
+                'business': f'This strategic overview covers the business implications and value of {title.lower()}.',
+                'admin': f'This administrative guide provides step-by-step procedures for {title.lower()}.',
+                'end_user': f'This user-friendly guide helps you understand and use {title.lower()}.'
+            }
+            intro = audience_intro.get(audience, f'This comprehensive guide covers {title.lower()}.')
+            html_parts.append(f'<p>{intro}</p>')
+            
+            # 3. Mini-TOC with clickable anchor links
+            if sections:
+                html_parts.append('<ul>')
+                for i, section in enumerate(sections, 1):
+                    section_anchor = f"section{i}"  # Match existing ID format
+                    section_heading = section.get('heading', f'Section {i}')
+                    html_parts.append(f'<li><a href="#{section_anchor}" class="toc-link">{section_heading}</a></li>')
+                html_parts.append('</ul>')
+            
+            # 4. Main Body
+            for i, section in enumerate(sections, 1):
+                section_anchor = f"section{i}"  # Match TOC anchor format
+                section_heading = section.get('heading', f'Section {i}')
+                html_parts.append(f'<h2 id="{section_anchor}">{section_heading}</h2>')
+                
+                # Add subsections
+                subsections = section.get('subsections', [])
+                for j, subsection in enumerate(subsections, 1):
+                    subsection_heading = subsection.get('heading', f'Subsection {j}')
+                    html_parts.append(f'<h3>{subsection_heading}</h3>')
+                    
+                    # Add content from blocks
+                    block_ids = subsection.get('block_ids', [])
+                    for item in article_blocks:
+                        if item['block_id'] in block_ids:
+                            block = item['block']
+                            block_type = getattr(block, 'block_type', 'paragraph')
+                            block_content = getattr(block, 'content', str(block))
+                            
+                            if block_type == 'paragraph':
+                                html_parts.append(f'<p>{block_content}</p>')
+                            elif block_type == 'code':
+                                html_parts.append(f'<pre><code>{block_content}</code></pre>')
+                            elif block_type == 'list':
+                                # Detect if this should be an ordered list
+                                is_procedural = any(word in block_content.lower() for word in [
+                                    'step', 'create', 'add', 'use', 'open', 'save', 'click',
+                                    'go to', 'select', 'copy', 'replace', 'locate', 'generate',
+                                    'first', 'second', 'third', 'next', 'then', 'finally'
+                                ])
+                                
+                                list_tag = 'ol' if is_procedural else 'ul'
+                                html_parts.append(f'<{list_tag}>')
+                                for line in block_content.split('\n'):
+                                    if line.strip():
+                                        html_parts.append(f'<li>{line.strip()}</li>')
+                                html_parts.append(f'</{list_tag}>')
+                            else:
+                                html_parts.append(f'<p>{block_content}</p>')
+            
+            # 5. FAQs
+            if faqs:
+                html_parts.append('<h2 id="faqs">Frequently Asked Questions</h2>')
+                for faq in faqs:
+                    question = faq.get('q', 'Question')
+                    answer = faq.get('a', 'Answer')
+                    html_parts.append(f'<h3>Q: {question}</h3>')
+                    html_parts.append(f'<p>A: {answer}</p>')
+            
+            # 6. Related Links
+            if related_links:
+                html_parts.append('<h2 id="related-links">Related Links</h2>')
+                html_parts.append('<ul>')
+                for link in related_links:
+                    label = link.get('label', 'Link')
+                    url = link.get('url', '#')
+                    html_parts.append(f'<li><a href="{url}">{label}</a></li>')
+                html_parts.append('</ul>')
+            
+            html_content = '\n'.join(html_parts)
+            
+            # Apply code block consolidation and cleanup
+            html_content = await self._consolidate_code_blocks(html_content)
+            
+            # Convert to Markdown
+            markdown_content = await self._convert_html_to_markdown(html_content)
+            
+            article_data = {
+                'html': html_content,
+                'summary': f'A comprehensive {audience}-focused guide covering {title.lower()} with detailed sections, FAQs, and related resources.',
+                'markdown': markdown_content,
+                'validation_metadata': {
+                    'total_blocks': len(article_blocks),
+                    'html_length': len(html_content),
+                    'has_faqs': len(faqs) > 0,
+                    'has_toc': len(sections) > 0,
+                    'has_sections': len(sections) > 0,
+                    'analysis_method': 'rule_based_fallback',
+                    'engine': 'v2'
                 }
-                
-                print(f"✅ V2 GENERATOR: Generated article '{title}' ({len(generated_content)} chars)")
-                return processed_article
-            else:
-                print(f"⚠️ V2 GENERATOR: No content generated for '{title}'")
-                return None
-                
+            }
+            
+            print(f"🎯 V2 ARTICLE GEN: Rule-based article complete - {len(html_content)} chars HTML - engine=v2")
+            return article_data
+            
         except Exception as e:
-            print(f"❌ V2 GENERATOR: Error generating article - {e}")
+            print(f"❌ V2 ARTICLE GEN: Error in rule-based generation - {e} - engine=v2")
+            return {
+                'html': f'<h2>{outline.get("title", "Error")}</h2><p>Error generating article content.</p>',
+                'summary': 'Error occurred during article generation.',
+                'markdown': f'# {outline.get("title", "Error")}\n\nError generating article content.'
+            }
+    
+    async def _store_generated_articles(self, generated_articles: list, run_id: str, doc_id: str) -> dict:
+        """Store generated articles with processing run using repository pattern"""
+        try:
+            # Create comprehensive articles record
+            articles_record = {
+                "articles_id": str(uuid.uuid4()),
+                "run_id": run_id,
+                "doc_id": doc_id,
+                "generated_articles": generated_articles,
+                "total_articles": len(generated_articles),
+                "created_at": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                "version": "2.0"
+            }
+            
+            # Store using repository pattern with fallback to direct DB access
+            try:
+                repository = RepositoryFactory.get_content_library()
+                # Note: This might need a dedicated repository for generated articles
+                # For now using a direct DB approach
+                from pymongo import MongoClient
+                import os
+                
+                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
+                client = MongoClient(mongo_url)
+                db = client.get_default_database()
+                
+                # Store in generated articles collection
+                await db.v2_generated_articles.insert_one(articles_record)
+                
+            except Exception as repo_error:
+                print(f"⚠️ V2 ARTICLE GEN: Repository error, using direct DB access - {repo_error}")
+                # Direct database fallback
+                from pymongo import MongoClient
+                import os
+                
+                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
+                client = MongoClient(mongo_url)
+                db = client.get_default_database()
+                
+                db.v2_generated_articles.insert_one(articles_record)
+            
+            print(f"📊 V2 ARTICLE GEN: Generated articles stored with run {run_id} - engine=v2")
+            return articles_record
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE GEN: Error storing generated articles - {e} - engine=v2")
+            return {"generated_articles": generated_articles, "run_id": run_id, "doc_id": doc_id}
+    
+    async def get_generated_articles_for_run(self, run_id: str) -> dict:
+        """Retrieve stored generated articles for a processing run"""
+        try:
+            # Try using repository pattern first
+            try:
+                from pymongo import MongoClient
+                import os
+                
+                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
+                client = MongoClient(mongo_url)
+                db = client.get_default_database()
+                
+                articles_record = db.v2_generated_articles.find_one({"run_id": run_id})
+                
+            except Exception as repo_error:
+                print(f"⚠️ V2 ARTICLE GEN: Repository error, using direct DB access - {repo_error}")
+                # Direct database fallback
+                from pymongo import MongoClient
+                import os
+                
+                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
+                client = MongoClient(mongo_url)
+                db = client.get_default_database()
+                
+                articles_record = db.v2_generated_articles.find_one({"run_id": run_id})
+            
+            if articles_record:
+                return articles_record
+            else:
+                print(f"⚠️ V2 ARTICLE GEN: No generated articles found for run {run_id} - engine=v2")
+                return None
+        except Exception as e:
+            print(f"❌ V2 ARTICLE GEN: Error retrieving generated articles - {e} - engine=v2")
             return None
     
-    def _prepare_article_input(self, title: str, outline: dict, source_blocks: list) -> str:
-        """Prepare structured input for article generation"""
+    def _extract_title_from_html(self, html_content: str, fallback_title: str = 'Generated Article') -> str:
+        """Extract title from HTML content, with fallback to provided title"""
         try:
-            input_parts = [f"ARTICLE TITLE: {title}"]
+            # Try to extract from h1 tag first
+            h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', html_content, re.IGNORECASE | re.DOTALL)
+            if h1_match:
+                title_text = re.sub(r'<[^>]+>', '', h1_match.group(1)).strip()
+                if 5 < len(title_text) < 120:
+                    return title_text
             
-            # Add outline structure
-            if outline:
-                input_parts.append("\nARTICLE OUTLINE:")
-                sections = outline.get('sections', [])
-                for section in sections:
-                    section_title = section.get('title', 'Section')
-                    input_parts.append(f"- {section_title}")
-                    
-                    subsections = section.get('subsections', [])
-                    for subsection in subsections:
-                        input_parts.append(f"  - {subsection.get('title', 'Subsection')}")
+            # Try to extract from h2 tag as fallback
+            h2_match = re.search(r'<h2[^>]*>(.*?)</h2>', html_content, re.IGNORECASE | re.DOTALL)
+            if h2_match:
+                title_text = re.sub(r'<[^>]+>', '', h2_match.group(1)).strip()
+                if 5 < len(title_text) < 120:
+                    return title_text
             
-            # Add source content
-            if source_blocks:
-                input_parts.append("\nSOURCE CONTENT BLOCKS:")
-                for i, block in enumerate(source_blocks[:10]):  # Limit to first 10 blocks
-                    block_content = block.get('content', '')[:500]  # Limit block size
-                    input_parts.append(f"Block {i+1}: {block_content}")
+            # Try to extract from title tag
+            title_match = re.search(r'<title[^>]*>(.*?)</title>', html_content, re.IGNORECASE | re.DOTALL)
+            if title_match:
+                title_text = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+                if 5 < len(title_text) < 120:
+                    return title_text
             
-            return "\n".join(input_parts)
+            # If no suitable title found, return fallback
+            return fallback_title
             
         except Exception as e:
-            print(f"⚠️ V2 GENERATOR: Error preparing article input - {e}")
-            return f"ARTICLE TITLE: {title}\nERROR: Could not prepare full input"
+            print(f"⚠️ V2 ARTICLE GEN: Error extracting title from HTML - {e}")
+            return fallback_title
+    
+    async def _consolidate_code_blocks(self, html_content: str) -> str:
+        """Consolidate fragmented code blocks in generated HTML"""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Find consecutive pre elements and consolidate them
+            pre_elements = soup.find_all('pre')
+            consolidated_count = 0
+            
+            i = 0
+            while i < len(pre_elements):
+                current_pre = pre_elements[i]
+                consecutive_pres = [current_pre]
+                
+                # Look for consecutive pre elements
+                j = i + 1
+                while j < len(pre_elements):
+                    next_pre = pre_elements[j]
+                    # Check if elements are consecutive in the DOM
+                    if self._are_consecutive_elements(current_pre, next_pre):
+                        consecutive_pres.append(next_pre)
+                        current_pre = next_pre
+                        j += 1
+                    else:
+                        break
+                
+                # If we have multiple consecutive pres, consolidate them
+                if len(consecutive_pres) > 1:
+                    # Combine all code content
+                    combined_lines = []
+                    for pre in consecutive_pres:
+                        code_elem = pre.find('code')
+                        if code_elem:
+                            combined_lines.append(code_elem.get_text())
+                    
+                    # Create consolidated pre element with Prism classes
+                    new_pre = soup.new_tag('pre', **{
+                        'class': 'line-numbers',
+                        'data-lang': 'HTML',
+                        'data-start': '1'
+                    })
+                    
+                    new_code = soup.new_tag('code', **{'class': 'language-html'})
+                    new_code.string = '\n'.join(combined_lines)
+                    new_pre.append(new_code)
+                    
+                    # Replace first pre with consolidated version
+                    consecutive_pres[0].replace_with(new_pre)
+                    
+                    # Remove the other pres
+                    for pre in consecutive_pres[1:]:
+                        pre.decompose()
+                    
+                    consolidated_count += len(consecutive_pres) - 1
+                
+                i = j if j > i else i + 1
+            
+            if consolidated_count > 0:
+                print(f"🔧 V2 ARTICLE GEN: Consolidated {consolidated_count} code blocks")
+            
+            return str(soup)
+            
+        except Exception as e:
+            print(f"❌ V2 ARTICLE GEN: Error consolidating code blocks - {e}")
+            return html_content
+    
+    def _are_consecutive_elements(self, elem1, elem2) -> bool:
+        """Check if two elements are consecutive in the DOM"""
+        try:
+            # Simple check: if they have the same parent and elem2 follows elem1
+            if elem1.parent == elem2.parent:
+                siblings = list(elem1.parent.children)
+                try:
+                    idx1 = siblings.index(elem1)
+                    idx2 = siblings.index(elem2)
+                    # Allow some gap for whitespace/text nodes
+                    return 0 < (idx2 - idx1) <= 3
+                except ValueError:
+                    return False
+            return False
+        except:
+            return False
+
+print("✅ KE-M9: V2 Article Generator migrated from server.py")

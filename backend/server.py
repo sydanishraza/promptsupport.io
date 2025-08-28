@@ -848,8 +848,9 @@ CRITICAL OUTPUT FORMAT:
                             content_repo = RepositoryFactory.get_content_library()
                             await content_repo.insert_article(article)
                         else:
-                            # Fallback to direct database access if repository unavailable
-                            await db.content_library.insert_one(article)
+                            # KE-PR9.3: Repository unavailable - skip article instead of fallback
+                            print("❌ KE-PR9.3: Repository unavailable, skipping article creation")
+                            continue
                         articles.append(article)
                         print(f"✅ Article created and saved: {article['title']} ({len(content_text)} chars)")
                     else:

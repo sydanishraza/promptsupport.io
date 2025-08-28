@@ -165,13 +165,14 @@ class V2ReviewSystem:
             publishing_result = self._objectid_to_str(publishing_result) if publishing_result else None
             versioning_result = self._objectid_to_str(versioning_result) if versioning_result else None
             
-            # Get articles from content library
-            articles = []
-            articles_cursor = db.content_library.find({"metadata.run_id": run_id, "engine": "v2"})
-            for article in articles_cursor:
-                # Convert ObjectId to string for serialization
-                article = self._objectid_to_str(article)
-                articles.append(article)
+            # Get articles from content library using repository
+            content_repo = RepositoryFactory.get_content_library()
+            articles = await content_repo.find_many(
+                collection="content_library",
+                query={"metadata.run_id": run_id, "engine": "v2"}
+            )
+            # Convert ObjectIds to strings for serialization
+            articles = [self._objectid_to_str(article) for article in articles]
             
             # Calculate quality badges
             badges = self._calculate_quality_badges(validation_result, qa_result, adjustment_result)

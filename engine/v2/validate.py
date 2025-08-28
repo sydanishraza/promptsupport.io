@@ -18,17 +18,32 @@ from ..linking.links import build_href, get_default_route_map
 from ._utils import create_processing_metadata
 
 class V2ValidationSystem:
-    """V2 Engine: Comprehensive validation with fidelity checking, coverage validation, and placeholder detection"""
+    """V2 Engine: Comprehensive validation system for fidelity, coverage, placeholders, and style"""
     
     def __init__(self, llm_client=None):
         self.llm_client = llm_client or get_llm_client()
-        self.validation_checks = [
-            'technical_accuracy', 'completeness', 'clarity', 'consistency',
-            'format_compliance', 'placeholder_detection'
+        self.required_sections = [
+            "h1_title",
+            "intro_paragraph",
+            "mini_toc", 
+            "main_body",
+            "faqs",
+            "related_links"
         ]
-        self.placeholder_patterns = [
-            '[MISSING]', '[TODO]', '[TBD]', '[PLACEHOLDER]', 'TODO:', 'FIXME:'
-        ]
+        
+        self.quality_thresholds = {
+            "coverage_percent": 100,
+            "fidelity_score": 0.9,
+            "redundancy_score": 0.3,  # Lower is better
+            "max_placeholders": 0
+        }
+        
+        # TICKET 1 FIX: Style validation rules including H1 prohibition
+        self.style_validation_rules = {
+            "no_h1_in_body": True,
+            "require_mini_toc": True,
+            "require_structured_headings": True
+        }
     
     async def validate_content(self, styled_content: dict, raw_source: dict = None, **kwargs) -> dict:
         """Perform comprehensive content validation"""

@@ -269,85 +269,76 @@ class V2EngineMigrationTester:
     def test_v2_pipeline_integration(self):
         """Test 3: Verify V2 Pipeline orchestrator works with all migrated classes"""
         try:
-            test_content = """
-            # API Versioning Guide
-            
-            ## Introduction
-            This guide covers API versioning strategies and implementation approaches for maintaining backward compatibility while evolving your API.
-            
-            ## Versioning Strategies
-            - Semantic versioning (v1.0.0, v1.1.0, v2.0.0)
-            - URL path versioning (/api/v1/, /api/v2/)
-            - Header-based versioning (Accept: application/vnd.api+json;version=1)
-            - Query parameter versioning (?version=1)
-            
-            ## Implementation Examples
-            Each versioning strategy has its own benefits and trade-offs for API evolution.
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "markdown",
-                "processing_mode": "v2_only"
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=90)
+            # Test V2 pipeline orchestrator endpoint
+            response = requests.get(f"{self.backend_url}/api/engine/v2/pipeline", timeout=10)
             
             if response.status_code != 200:
-                self.log_test("Stage 16 Versioning System", False, f"HTTP {response.status_code}")
+                self.log_test("V2 Pipeline Integration", False, f"Pipeline endpoint HTTP {response.status_code}")
                 return False
                 
             data = response.json()
             
-            if data.get("status") != "success":
-                self.log_test("Stage 16 Versioning System", False, f"Processing failed: {data.get('message')}")
+            # Check pipeline status
+            if data.get("status") not in ["operational", "active", "ready"]:
+                self.log_test("V2 Pipeline Integration", False, f"Pipeline status: {data.get('status')}")
                 return False
-                
-            # Check that Stage 16 was executed
-            processing_info = data.get("processing_info", {})
-            stages_completed = processing_info.get("stages_completed", 0)
             
-            if stages_completed < 16:
-                self.log_test("Stage 16 Versioning System", False, f"Stage 16 not reached: only {stages_completed} stages completed")
-                return False
-                
-            # Check for versioning metadata in articles
-            articles = data.get("articles", [])
-            if not articles:
-                self.log_test("Stage 16 Versioning System", False, "No articles generated to check versioning")
-                return False
-                
-            article = articles[0]
-            metadata = article.get("metadata", {})
+            # Check if pipeline can access all migrated classes
+            pipeline_info = data.get("pipeline_info", {})
+            available_stages = pipeline_info.get("available_stages", [])
             
-            # Check for version-related metadata
-            version_indicators = [
-                "version", "v2_version", "content_version", "pipeline_version", 
-                "processing_version", "engine_version"
+            # Map class names to expected stage names
+            expected_stages = [
+                "outline_planning", "prewrite_system", "style_processing", 
+                "related_links", "gap_filling", "evidence_tagging", 
+                "code_normalization", "article_generation", "validation",
+                "cross_article_qa", "adaptive_adjustment", "versioning",
+                "review_system", "publishing"
             ]
             
-            has_version_metadata = any(key in metadata for key in version_indicators)
+            missing_stages = []
+            for stage in expected_stages:
+                if not any(stage in available_stage.lower() for available_stage in available_stages):
+                    missing_stages.append(stage)
             
-            if not has_version_metadata:
-                # Check if versioning info is in processing_info
-                versioning_info = processing_info.get("versioning", {})
-                if not versioning_info:
-                    self.log_test("Stage 16 Versioning System", False, "No versioning metadata found in article or processing info")
-                    return False
-                    
-            # Check for V2 engine version tracking
-            engine_version = metadata.get("engine") or processing_info.get("engine")
-            if engine_version != "v2":
-                self.log_test("Stage 16 Versioning System", False, f"Wrong engine version: {engine_version}")
+            if missing_stages:
+                self.log_test("V2 Pipeline Integration", False, f"Missing pipeline stages: {missing_stages}")
                 return False
-                
-            self.log_test("Stage 16 Versioning System", True, 
-                         f"Versioning metadata created successfully, engine: {engine_version}")
+            
+            # Test a simple pipeline execution
+            test_payload = {
+                "content": "# Test Content\n\nThis is a test for pipeline integration with migrated V2 classes.",
+                "content_type": "markdown",
+                "processing_mode": "v2_only"
+            }
+            
+            pipeline_response = requests.post(f"{self.backend_url}/api/content/process", 
+                                            json=test_payload, timeout=60)
+            
+            if pipeline_response.status_code != 200:
+                self.log_test("V2 Pipeline Integration", False, f"Pipeline execution HTTP {pipeline_response.status_code}")
+                return False
+            
+            pipeline_data = pipeline_response.json()
+            
+            if pipeline_data.get("status") != "success":
+                self.log_test("V2 Pipeline Integration", False, f"Pipeline execution failed: {pipeline_data.get('message')}")
+                return False
+            
+            # Check that pipeline used V2 engine
+            processing_info = pipeline_data.get("processing_info", {})
+            engine_used = processing_info.get("engine", "")
+            
+            if engine_used != "v2":
+                self.log_test("V2 Pipeline Integration", False, f"Wrong engine used: {engine_used}")
+                return False
+            
+            self.log_test("V2 Pipeline Integration", True, 
+                         f"V2 Pipeline orchestrator working with all migrated classes, {len(available_stages)} stages available")
             return True
             
         except Exception as e:
-            self.log_test("Stage 16 Versioning System", False, f"Exception: {str(e)}")
+            self.log_test("V2 Pipeline Integration", False, f"Exception: {str(e)}")
             return False
     
     def test_stage_17_review_system(self):

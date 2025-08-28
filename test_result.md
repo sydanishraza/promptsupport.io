@@ -251,7 +251,14 @@ During KE-PR4, only **V2MultiDimensionalAnalyzer** was fully migrated. The remai
    - Evidence tagging validation for fidelity enforcement and TICKET-3 compliance
    - Cross-document link validation and bookmark registry backfill functionality
 
-13. **✅ KE-M13: V2PublishingSystem** - `/engine/v2/publish.py` (Already Complete)
+13. **✅ KE-M11: V2CrossArticleQASystem** - `/engine/v2/crossqa.py`
+   - Migrated comprehensive cross-article quality assurance for coherence, deduplication, and consistency
+   - LLM-based and programmatic cross-article analysis with duplicate detection and validation
+   - Related link validation with section anchor resolution and internal link checking
+   - FAQ deduplication and terminology consistency checking with standardization recommendations
+   - Automated consolidation pass for QA issue resolution with comprehensive action tracking
+
+14. **✅ KE-M13: V2PublishingSystem** - `/engine/v2/publish.py` (Already Complete)
    - Publishing system was already fully migrated in earlier work
    - V2-only content validation and 100% coverage requirement verification
    - Content library structure preparation with comprehensive V2 metadata

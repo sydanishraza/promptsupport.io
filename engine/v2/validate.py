@@ -781,3 +781,513 @@ class V2ValidationSystem:
             recommendations.append('Content quality is good - ready for publication')
         
         return recommendations
+    
+    # Core validation methods from server.py migration
+    
+    async def _validate_fidelity_and_coverage(self, normalized_doc, generated_articles: list, run_id: str) -> dict:
+        """V2 Engine: Validate fidelity and coverage using LLM"""
+        try:
+            print(f"🔍 V2 VALIDATION: Fidelity & Coverage validation - run {run_id} - engine=v2")
+            
+            # Prepare source blocks for validation
+            source_blocks = []
+            for i, block in enumerate(normalized_doc.blocks):
+                source_blocks.append({
+                    "block_id": f"block_{i+1}",
+                    "block_type": block.block_type,
+                    "content": block.content[:500],  # Truncate for LLM input
+                    "full_length": len(block.content)
+                })
+            
+            # Prepare generated articles with mapped block_ids
+            article_summaries = []
+            for generated_article in generated_articles:
+                article_data = generated_article.get('article_data', {})
+                validation_metadata = article_data.get('validation_metadata', {})
+                
+                article_summaries.append({
+                    "article_id": generated_article.get('article_id', 'unknown'),
+                    "title": article_data.get('title', 'Unknown'),
+                    "html_content": article_data.get('html', '')[:1000],  # Truncate for LLM
+                    "mapped_block_ids": validation_metadata.get('block_ids_assigned', []),
+                    "content_length": len(article_data.get('html', ''))
+                })
+            
+            # Create LLM prompt for fidelity and coverage validation
+            system_message = """You are a validation agent. Check fidelity and coverage vs. source.
+
+Your task is to:
+1. Compute fidelity_score (0-1): How well do the generated articles stick to the source content without hallucinating?
+2. Compute coverage_percent (0-100): What percentage of source blocks are covered in the generated articles?
+3. Identify hallucinated_claims: Content in articles that doesn't appear in the source blocks
+4. Identify uncovered_blocks: Source blocks that weren't used in any generated article
+
+Return ONLY JSON in the exact format specified."""
+
+            user_message = f"""Validate these generated articles against their source blocks.
+
+SOURCE BLOCKS:
+{json.dumps(source_blocks, indent=2)}
+
+GENERATED ARTICLES:
+{json.dumps(article_summaries, indent=2)}
+
+Return ONLY JSON in this exact format:
+{{
+  "fidelity_score": 0.95,
+  "coverage_percent": 100,
+  "hallucinated_claims": [],
+  "uncovered_blocks": []
+}}"""
+
+            # Call LLM for validation
+            print(f"🤖 V2 VALIDATION: Sending fidelity & coverage request to LLM - run {run_id} - engine=v2")
+            try:
+                ai_response = await self.llm_client.generate_response(system_message, user_message)
+            except Exception as llm_error:
+                print(f"⚠️ V2 VALIDATION: LLM client error, using fallback - {llm_error}")
+                return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+            
+            if ai_response:
+                # Parse JSON response
+                json_match = re.search(r'\{.*\}', ai_response, re.DOTALL)
+                if json_match:
+                    validation_data = json.loads(json_match.group(0))
+                    
+                    # Validate required fields
+                    required_fields = ['fidelity_score', 'coverage_percent', 'hallucinated_claims', 'uncovered_blocks']
+                    if all(field in validation_data for field in required_fields):
+                        print(f"✅ V2 VALIDATION: Fidelity={validation_data['fidelity_score']}, Coverage={validation_data['coverage_percent']}% - run {run_id} - engine=v2")
+                        return validation_data
+                    else:
+                        print(f"⚠️ V2 VALIDATION: Missing fields in LLM response - run {run_id} - engine=v2")
+                        return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+                else:
+                    print(f"⚠️ V2 VALIDATION: No JSON found in LLM response - run {run_id} - engine=v2")
+                    return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+            else:
+                print(f"❌ V2 VALIDATION: No LLM response for fidelity validation - run {run_id} - engine=v2")
+                return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+                
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in fidelity & coverage validation - {e} - run {run_id} - engine=v2")
+            return self._create_fallback_fidelity_coverage(normalized_doc, generated_articles)
+    
+    def _create_fallback_fidelity_coverage(self, normalized_doc, generated_articles: list) -> dict:
+        """Create fallback fidelity and coverage scores"""
+        try:
+            # Basic coverage calculation
+            total_blocks = len(normalized_doc.blocks)
+            covered_blocks = set()
+            
+            for generated_article in generated_articles:
+                article_data = generated_article.get('article_data', {})
+                validation_metadata = article_data.get('validation_metadata', {})
+                mapped_blocks = validation_metadata.get('block_ids_assigned', [])
+                
+                for block_id in mapped_blocks:
+                    covered_blocks.add(block_id)
+            
+            coverage_percent = (len(covered_blocks) / total_blocks * 100) if total_blocks > 0 else 0
+            
+            # Conservative fidelity score for fallback
+            fidelity_score = 0.85 if len(generated_articles) > 0 else 0.0
+            
+            # Identify uncovered blocks
+            all_block_ids = set(f"block_{i+1}" for i in range(total_blocks))
+            uncovered_blocks = list(all_block_ids - covered_blocks)
+            
+            return {
+                "fidelity_score": fidelity_score,
+                "coverage_percent": coverage_percent,
+                "hallucinated_claims": [],  # Can't detect without LLM
+                "uncovered_blocks": uncovered_blocks
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in fallback fidelity calculation - {e}")
+            return {
+                "fidelity_score": 0.0,
+                "coverage_percent": 0.0,
+                "hallucinated_claims": [],
+                "uncovered_blocks": []
+            }
+    
+    async def _detect_placeholders(self, generated_articles: list, run_id: str) -> dict:
+        """V2 Engine: Detect placeholders and incomplete content"""
+        try:
+            placeholder_patterns = [
+                r'\[MISSING\]',
+                r'TODO',
+                r'lorem ipsum',
+                r'Lorem Ipsum',
+                r'placeholder',
+                r'INSERT_\w+',
+                r'ADD_\w+',
+                r'\[.*PLACEHOLDER.*\]'
+            ]
+            
+            placeholders = []
+            
+            for generated_article in generated_articles:
+                article_id = generated_article.get('article_id', 'unknown')
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                for pattern in placeholder_patterns:
+                    matches = re.finditer(pattern, html_content, re.IGNORECASE)
+                    for match in matches:
+                        placeholders.append({
+                            "article_id": article_id,
+                            "location": "Content scan",
+                            "text": match.group(0)
+                        })
+            
+            print(f"🔍 V2 VALIDATION: Found {len(placeholders)} placeholders - run {run_id} - engine=v2")
+            return {"placeholders": placeholders}
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in placeholder detection - {e}")
+            return {"placeholders": []}
+    
+    async def _validate_style_guard(self, generated_articles: list, run_id: str) -> dict:
+        """V2 Engine: Validate article structure and style compliance"""
+        try:
+            print(f"🔍 V2 VALIDATION: Style guard validation - run {run_id} - engine=v2")
+            
+            style_results = []
+            
+            for generated_article in generated_articles:
+                article_id = generated_article.get('article_id', 'unknown')
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                # TICKET 1 & 2 FIX: Check for structural elements, H1 prohibition, and anchor validation
+                structure_check = {
+                    "no_h1_in_body": self.validate_no_h1_in_body(html_content),  # HARD FAIL if H1 found
+                    "intro_paragraph": bool(re.search(r'<p[^>]*>.*?</p>', html_content, re.IGNORECASE | re.DOTALL)),
+                    "mini_toc": bool(re.search(r'<ul[^>]*class="mini-toc"', html_content, re.IGNORECASE)),
+                    "main_body": bool(re.search(r'<h2[^>]*>.*?</h2>', html_content, re.IGNORECASE | re.DOTALL)),
+                    "faqs": bool(re.search(r'FAQ|Q:|Question', html_content, re.IGNORECASE)),
+                    "related_links": bool(re.search(r'<ul[^>]*>.*?<li[^>]*>.*?<a[^>]*href=', html_content, re.IGNORECASE | re.DOTALL))
+                }
+                
+                # TICKET 2 FIX: Add anchor validation
+                anchor_validation = {
+                    "heading_ladder": self.validate_heading_ladder_structure(html_content),
+                    "anchors_resolve": self.validate_anchor_resolution(html_content)
+                }
+                
+                # Combine structural and anchor validation
+                structure_check.update(anchor_validation)
+                
+                # Calculate compliance score
+                total_elements = len(structure_check)
+                passed_elements = sum(structure_check.values())
+                compliance_score = passed_elements / total_elements if total_elements > 0 else 0
+                
+                # Identify missing elements
+                missing_elements = [element for element, present in structure_check.items() if not present]
+                
+                style_results.append({
+                    "article_id": article_id,
+                    "structure_check": structure_check,
+                    "compliance_score": compliance_score,
+                    "missing_elements": missing_elements,
+                    "content_length": len(html_content)
+                })
+            
+            # Overall style compliance
+            overall_compliance = sum(result['compliance_score'] for result in style_results) / len(style_results) if style_results else 0
+            
+            print(f"🎯 V2 VALIDATION: Style guard compliance: {overall_compliance:.2f} - run {run_id} - engine=v2")
+            
+            return {
+                "overall_compliance": overall_compliance,
+                "article_results": style_results,
+                "validation_method": "programmatic_style_guard"
+            }
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error in style guard validation - {e} - run {run_id} - engine=v2")
+            return {
+                "overall_compliance": 0.0,
+                "article_results": [],
+                "validation_method": "error"
+            }
+    
+    def validate_no_h1_in_body(self, html: str) -> bool:
+        """TICKET 1 FIX: Hard gate validation - no H1 tags allowed in body content"""
+        h1_matches = re.findall(r'<h1\b[^>]*>', html, re.IGNORECASE)
+        return len(h1_matches) == 0
+    
+    def validate_heading_ladder_structure(self, html: str) -> bool:
+        """TICKET 2: Validate proper heading hierarchy (H2->H3->H4)"""
+        soup = BeautifulSoup(html, 'html.parser')
+        levels = []
+        
+        for tag in soup.find_all(["h2", "h3", "h4"]):
+            level = int(tag.name[1])
+            levels.append(level)
+            
+            # Check for proper progression
+            if len(levels) > 1:
+                prev_level = levels[-2]
+                # H3 should not appear without H2, and levels shouldn't skip
+                if (level == 3 and 2 not in levels) or (level - prev_level > 1):
+                    return False
+        
+        return True
+    
+    def validate_anchor_resolution(self, html: str) -> bool:
+        """TICKET 2: Validate that all TOC links resolve to actual heading IDs"""
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Get all existing IDs in the document
+        existing_ids = {tag.get("id") for tag in soup.find_all(attrs={"id": True}) if tag.get("id")}
+        
+        # Check all Mini-TOC links
+        broken_links = []
+        for link in soup.select(".mini-toc a[href^='#']"):
+            target_id = link.get("href", "")[1:]  # Remove the #
+            if target_id not in existing_ids:
+                broken_links.append(target_id)
+        
+        return len(broken_links) == 0
+    
+    async def _validate_evidence_tagging(self, generated_articles: list, normalized_doc, run_id: str) -> dict:
+        """Validate that paragraphs have proper evidence tagging for fidelity enforcement"""
+        try:
+            print(f"🏷️ V2 VALIDATION: Validating evidence tagging - run {run_id} - engine=v2")
+            
+            total_paragraphs = 0
+            total_tagged_paragraphs = 0
+            
+            for generated_article in generated_articles:
+                article_data = generated_article.get('article_data', {})
+                html_content = article_data.get('html', '')
+                
+                if not html_content:
+                    continue
+                
+                # Parse paragraphs from content
+                paragraphs = self._parse_validation_paragraphs(html_content)
+                
+                # Check evidence tagging for each paragraph
+                for paragraph in paragraphs:
+                    if paragraph.get('is_faq', False):
+                        continue  # Skip FAQ paragraphs
+                    
+                    total_paragraphs += 1
+                    
+                    # Check for evidence attributes
+                    has_evidence = self._check_paragraph_evidence(paragraph)
+                    
+                    if has_evidence:
+                        total_tagged_paragraphs += 1
+            
+            # Calculate overall evidence validation metrics
+            overall_tagging_rate = (total_tagged_paragraphs / total_paragraphs * 100) if total_paragraphs > 0 else 100
+            validation_passed = overall_tagging_rate >= 95.0
+            
+            # Check if source blocks are available for evidence
+            source_blocks_available = len(normalized_doc.blocks) > 0
+            
+            evidence_validation_result = {
+                "validation_type": "evidence_tagging",
+                "validation_passed": validation_passed,
+                "total_paragraphs": total_paragraphs,
+                "tagged_paragraphs": total_tagged_paragraphs,
+                "untagged_paragraphs": total_paragraphs - total_tagged_paragraphs,
+                "overall_tagging_rate": overall_tagging_rate,
+                "target_threshold": 95.0,
+                "source_blocks_available": source_blocks_available,
+                "source_blocks_count": len(normalized_doc.blocks),
+                "summary": f"Evidence tagging: {total_tagged_paragraphs}/{total_paragraphs} paragraphs tagged ({overall_tagging_rate:.1f}%)"
+            }
+            
+            return evidence_validation_result
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error validating evidence tagging - {e} - run {run_id} - engine=v2")
+            return {
+                "validation_type": "evidence_tagging",
+                "validation_passed": False,
+                "error": str(e),
+                "summary": "Evidence tagging validation failed due to error"
+            }
+    
+    def _parse_validation_paragraphs(self, html_content: str) -> list:
+        """Parse paragraphs from HTML content for validation"""
+        try:
+            paragraphs = []
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Find all paragraph elements
+            p_tags = soup.find_all('p')
+            
+            for i, p_tag in enumerate(p_tags):
+                paragraph_text = p_tag.get_text().strip()
+                
+                if len(paragraph_text) < 20:  # Skip very short paragraphs
+                    continue
+                
+                # Check if this is a FAQ paragraph
+                is_faq = any(indicator in paragraph_text.lower() for indicator in 
+                           ['faq', 'q:', 'question:', 'a:', 'answer:'])
+                
+                paragraphs.append({
+                    "index": i,
+                    "text": paragraph_text,
+                    "html": str(p_tag),
+                    "is_faq": is_faq,
+                    "position": html_content.find(str(p_tag))
+                })
+            
+            return paragraphs
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error parsing paragraphs for validation - {e}")
+            return []
+    
+    def _check_paragraph_evidence(self, paragraph: dict) -> bool:
+        """Check if a paragraph has proper evidence attribution"""
+        try:
+            paragraph_html = paragraph.get('html', '')
+            
+            # Check for data-evidence attribute
+            if 'data-evidence=' in paragraph_html:
+                return True
+            
+            # Check for HTML comment with evidence
+            if '<!-- data-evidence=' in paragraph_html:
+                return True
+            
+            # Check for any block ID references
+            if re.search(r'data-evidence="\[.*?\]"', paragraph_html):
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error checking paragraph evidence - {e}")
+            return False
+    
+    async def _calculate_validation_metrics(self, normalized_doc, generated_articles: list, analysis: dict, run_id: str) -> dict:
+        """V2 Engine: Calculate validation metrics"""
+        try:
+            redundancy_score = 0.2  # Basic fallback
+            granularity_alignment = 0.8  # Basic fallback
+            complexity_alignment = 0.7  # Basic fallback
+            
+            metrics = {
+                "redundancy_score": redundancy_score,
+                "granularity_alignment_score": granularity_alignment,
+                "complexity_alignment_score": complexity_alignment,
+                "total_articles": len(generated_articles),
+                "total_source_blocks": len(normalized_doc.blocks),
+                "average_article_length": sum(
+                    len(gen_article.get('article_data', {}).get('html', ''))
+                    for gen_article in generated_articles
+                ) // len(generated_articles) if generated_articles else 0
+            }
+            
+            return metrics
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error calculating validation metrics - {e} - run {run_id} - engine=v2")
+            return {
+                "redundancy_score": 0.5,
+                "granularity_alignment_score": 0.5,
+                "complexity_alignment_score": 0.5,
+                "total_articles": len(generated_articles),
+                "total_source_blocks": len(normalized_doc.blocks) if normalized_doc else 0,
+                "average_article_length": 0
+            }
+    
+    def _consolidate_validation_results(self, fidelity_coverage: dict, placeholder: dict, style: dict, evidence: dict, metrics: dict, run_id: str) -> dict:
+        """Consolidate all validation results into final validation decision"""
+        try:
+            # Extract key metrics
+            fidelity_score = fidelity_coverage.get('fidelity_score', 0.0)
+            coverage_percent = fidelity_coverage.get('coverage_percent', 0.0)
+            placeholder_count = len(placeholder.get('placeholders', []))
+            style_compliance = style.get('overall_compliance', 0.0)
+            evidence_tagging_rate = evidence.get('overall_tagging_rate', 0.0)
+            
+            # Apply quality thresholds
+            fidelity_passed = fidelity_score >= self.quality_thresholds['fidelity_score']
+            coverage_passed = coverage_percent >= self.quality_thresholds['coverage_percent']
+            placeholder_passed = placeholder_count <= self.quality_thresholds['max_placeholders']
+            style_passed = style_compliance >= 0.8  # 80% structural compliance required
+            evidence_passed = evidence.get('validation_passed', True)  # ≥95% evidence tagging required
+            
+            # Overall validation status
+            all_passed = all([fidelity_passed, coverage_passed, placeholder_passed, style_passed, evidence_passed])
+            
+            if all_passed:
+                validation_status = "passed"
+                status_message = "All validation checks passed"
+            else:
+                validation_status = "partial"
+                failed_checks = []
+                if not fidelity_passed:
+                    failed_checks.append(f"fidelity_score ({fidelity_score:.2f} < {self.quality_thresholds['fidelity_score']})")
+                if not coverage_passed:
+                    failed_checks.append(f"coverage_percent ({coverage_percent:.1f}% < {self.quality_thresholds['coverage_percent']}%)")
+                if not placeholder_passed:
+                    failed_checks.append(f"placeholder_count ({placeholder_count} > {self.quality_thresholds['max_placeholders']})")
+                if not style_passed:
+                    failed_checks.append(f"style_compliance ({style_compliance:.2f} < 0.8)")
+                if not evidence_passed:
+                    failed_checks.append(f"evidence_tagging ({evidence_tagging_rate:.1f}% < 95%)")
+                
+                status_message = f"Failed checks: {', '.join(failed_checks)}"
+            
+            # Create comprehensive validation result
+            validation_result = {
+                "validation_id": f"validation_{run_id}_{int(datetime.utcnow().timestamp())}",
+                "run_id": run_id,
+                "validation_status": validation_status,
+                "status_message": status_message,
+                "timestamp": datetime.utcnow().isoformat(),
+                "engine": "v2",
+                
+                # Detailed validation results
+                "fidelity_coverage": fidelity_coverage,
+                "placeholder_detection": placeholder,
+                "style_guard": style,
+                "evidence_tagging": evidence,
+                "validation_metrics": metrics,
+                
+                # Summary scores
+                "summary_scores": {
+                    "fidelity_score": fidelity_score,
+                    "coverage_percent": coverage_percent,  
+                    "placeholder_count": placeholder_count,
+                    "style_compliance": style_compliance,
+                    "evidence_tagging_rate": evidence_tagging_rate,
+                    "redundancy_score": metrics.get('redundancy_score', 0.0),
+                    "granularity_alignment": metrics.get('granularity_alignment_score', 0.0),
+                    "complexity_alignment": metrics.get('complexity_alignment_score', 0.0)
+                }
+            }
+            
+            return validation_result
+            
+        except Exception as e:
+            print(f"❌ V2 VALIDATION: Error consolidating validation results - {e} - run {run_id} - engine=v2")
+            return self._create_validation_result("error", run_id, {"consolidation_error": str(e)})
+    
+    def _create_validation_result(self, status: str, run_id: str, additional_data: dict) -> dict:
+        """Create a standard validation result structure"""
+        return {
+            "validation_id": f"validation_{run_id}_{int(datetime.utcnow().timestamp())}",
+            "run_id": run_id,
+            "validation_status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine": "v2",
+            **additional_data
+        }
+
+print("✅ KE-M10: V2 Validation System migrated from server.py")

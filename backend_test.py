@@ -552,104 +552,87 @@ class V2EngineMigrationTester:
     def test_llm_client_integration(self):
         """Test 6: Verify classes correctly use centralized LLM client"""
         try:
-            # Test with content that might trigger various code paths
-            test_content = """
-            # Error-Free Pipeline Testing
-            
-            ## Comprehensive Testing Scenarios
-            This content is designed to test various pipeline components and ensure no AttributeError or missing method issues occur.
-            
-            ### Code Processing Test
-            ```python
-            def test_function():
-                return "Testing code processing"
-            ```
-            
-            ### List Processing Test
-            - Item 1: Basic list processing
-            - Item 2: Advanced list handling
-            - Item 3: Complex list structures
-            
-            ### Table Processing Test
-            | Feature | Status | Notes |
-            |---------|--------|-------|
-            | Stage 1 | ✅ | Working |
-            | Stage 2 | ✅ | Working |
-            | Stage 3 | ✅ | Working |
-            
-            ### Link Processing Test
-            [Example Link](https://example.com)
-            
-            ### Image Processing Test
-            ![Test Image](https://example.com/image.jpg)
-            """
-            
-            payload = {
-                "content": test_content,
-                "content_type": "markdown",
-                "processing_mode": "v2_only"
-            }
-            
-            response = requests.post(f"{self.backend_url}/content/process", 
-                                   json=payload, timeout=90)
+            # Test LLM client availability endpoint
+            response = requests.get(f"{self.backend_url}/api/engine/llm/status", timeout=10)
             
             if response.status_code != 200:
-                self.log_test("No AttributeError or Missing Methods", False, f"HTTP {response.status_code}")
+                self.log_test("LLM Client Integration", False, f"LLM client status endpoint HTTP {response.status_code}")
                 return False
                 
             data = response.json()
             
-            # Check for processing success (no exceptions should occur)
-            if data.get("status") != "success":
-                error_message = data.get("message", "Unknown error")
-                
-                # Check specifically for AttributeError or missing method issues
-                error_indicators = [
-                    "AttributeError", "has no attribute", "missing method", 
-                    "method not found", "NoneType", "object has no attribute"
-                ]
-                
-                has_attribute_error = any(indicator in error_message for indicator in error_indicators)
-                
-                if has_attribute_error:
-                    self.log_test("No AttributeError or Missing Methods", False, f"AttributeError detected: {error_message}")
-                    return False
-                else:
-                    # Other types of errors are acceptable for this test
-                    self.log_test("No AttributeError or Missing Methods", True, f"No AttributeError (other error: {error_message})")
-                    return True
-                    
-            # Check processing info for method-related errors
-            processing_info = data.get("processing_info", {})
-            stage_errors = processing_info.get("stage_errors", [])
-            
-            # Look for AttributeError in stage errors
-            attribute_errors = []
-            for error in stage_errors:
-                error_msg = error.get("message", "")
-                if any(indicator in error_msg for indicator in ["AttributeError", "has no attribute", "missing method"]):
-                    attribute_errors.append(error)
-                    
-            if attribute_errors:
-                self.log_test("No AttributeError or Missing Methods", False, f"AttributeErrors in stages: {len(attribute_errors)}")
+            # Check LLM client status
+            llm_status = data.get("status", "")
+            if llm_status not in ["operational", "active", "available"]:
+                self.log_test("LLM Client Integration", False, f"LLM client status: {llm_status}")
                 return False
-                
-            # Verify articles were generated (indicates no critical method issues)
-            articles = data.get("articles", [])
-            stages_completed = processing_info.get("stages_completed", 0)
             
-            self.log_test("No AttributeError or Missing Methods", True, 
-                         f"No AttributeError detected, {stages_completed} stages completed, {len(articles)} articles generated")
+            # Check available providers
+            providers = data.get("providers", [])
+            expected_providers = ["openai", "anthropic", "local_llm"]
+            
+            available_providers = [p for p in expected_providers if p in providers]
+            
+            if not available_providers:
+                self.log_test("LLM Client Integration", False, f"No expected providers available: {providers}")
+                return False
+            
+            # Test LLM client factory
+            factory_response = requests.get(f"{self.backend_url}/api/engine/llm/factory", timeout=10)
+            
+            if factory_response.status_code != 200:
+                self.log_test("LLM Client Integration", False, f"LLM factory HTTP {factory_response.status_code}")
+                return False
+            
+            factory_data = factory_response.json()
+            
+            # Check factory status
+            factory_status = factory_data.get("status", "")
+            if factory_status not in ["operational", "active"]:
+                self.log_test("LLM Client Integration", False, f"LLM factory status: {factory_status}")
+                return False
+            
+            # Test a simple LLM operation
+            test_payload = {
+                "operation": "test_completion",
+                "provider": available_providers[0],
+                "prompt": "Test prompt for V2 engine integration"
+            }
+            
+            test_response = requests.post(f"{self.backend_url}/api/engine/llm/test", 
+                                        json=test_payload, timeout=30)
+            
+            if test_response.status_code != 200:
+                self.log_test("LLM Client Integration", False, f"LLM test operation HTTP {test_response.status_code}")
+                return False
+            
+            test_data = test_response.json()
+            
+            if test_data.get("status") != "success":
+                self.log_test("LLM Client Integration", False, f"LLM test failed: {test_data.get('message')}")
+                return False
+            
+            # Check response quality
+            response_text = test_data.get("response", "")
+            if len(response_text) < 10:
+                self.log_test("LLM Client Integration", False, f"LLM response too short: {len(response_text)} chars")
+                return False
+            
+            # Check centralized client usage
+            client_info = test_data.get("client_info", {})
+            is_centralized = client_info.get("centralized", False)
+            
+            if not is_centralized:
+                self.log_test("LLM Client Integration", False, "LLM client not using centralized pattern")
+                return False
+            
+            self.log_test("LLM Client Integration", True, 
+                         f"Centralized LLM client integration verified: {len(available_providers)} providers, centralized pattern")
             return True
             
         except Exception as e:
-            # Check if the exception itself is an AttributeError
-            if "AttributeError" in str(e) or "has no attribute" in str(e):
-                self.log_test("No AttributeError or Missing Methods", False, f"AttributeError exception: {str(e)}")
-                return False
-            else:
-                self.log_test("No AttributeError or Missing Methods", True, f"No AttributeError (other exception: {str(e)})")
-                return True
+            self.log_test("LLM Client Integration", False, f"Exception: {str(e)}")
+            return False
     
     def test_production_readiness_verification(self):
         """Test 7: Verify pipeline is production-ready with consistent performance"""

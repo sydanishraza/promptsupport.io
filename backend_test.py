@@ -549,8 +549,8 @@ class V2EngineMigrationTester:
             self.log_test("Repository Integration", False, f"Exception: {str(e)}")
             return False
     
-    def test_no_attribute_errors_or_missing_methods(self):
-        """Test 6: Verify no AttributeError or missing method issues in pipeline"""
+    def test_llm_client_integration(self):
+        """Test 6: Verify classes correctly use centralized LLM client"""
         try:
             # Test with content that might trigger various code paths
             test_content = """

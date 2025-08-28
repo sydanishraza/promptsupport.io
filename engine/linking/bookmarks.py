@@ -195,20 +195,9 @@ async def get_registry(doc_uid: str) -> Dict[str, Any]:
                 projection={"headings": 1, "doc_slug": 1, "title": 1, "_id": 0}
             )
         except Exception as repo_error:
-            print(f"⚠️ KE-PR9: Registry lookup fallback to direct DB: {repo_error}")
-            # Fallback to direct database access
-            from motor.motor_asyncio import AsyncIOMotorClient
-            import os
-            
-            # Connect to database
-            mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/')
-            client = AsyncIOMotorClient(mongo_url)
-            db = client.promptsupport_db
-            
-            doc = await db.content_library.find_one(
-                {"doc_uid": doc_uid},
-                {"headings": 1, "doc_slug": 1, "title": 1, "_id": 0}
-            )
+            print(f"❌ KE-PR9.3: Repository error for registry lookup - {repo_error}")
+            # Return empty result instead of falling back to direct DB
+            doc = None
         
         if not doc:
             return {}

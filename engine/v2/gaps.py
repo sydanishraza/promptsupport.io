@@ -9,7 +9,7 @@ import re
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from ..llm.client import get_llm_client
-from ..stores.mongo import get_repository
+from ..stores.mongo import RepositoryFactory
 from ._utils import create_processing_metadata
 
 class V2GapFillingSystem:

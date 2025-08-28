@@ -30271,9 +30271,11 @@ File Information:
                     chunk['qa_status'] = 'issues_found'
                     chunk['qa_issues_count'] = issues_found
             
-            # Store QA result separately for analysis
+            # Store QA result separately for analysis using repository (KE-PR9.4)
             try:
-                await db.v2_qa_results.insert_one(qa_result)
+                from engine.stores.mongo import RepositoryFactory
+                qa_repo = RepositoryFactory.get_qa_results()
+                await qa_repo.insert_qa_report(qa_result)
                 print(f"💾 V2 ENGINE: Stored file QA result for analysis - qa_id: {qa_result.get('qa_id')} - engine=v2")
             except Exception as qa_storage_error:
                 print(f"❌ V2 ENGINE: Error storing file QA result - {qa_storage_error} - engine=v2")

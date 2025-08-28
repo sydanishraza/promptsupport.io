@@ -500,15 +500,15 @@ class KE_PR9_RepositoryTester:
             More content for testing.
             """
             
-            payload = {
+            # Use form data as expected by the API
+            form_data = {
                 "content": test_content,
-                "content_type": "markdown",
-                "processing_mode": "v2_only"
+                "content_type": "markdown"
             }
             
             # Create article
             response = requests.post(f"{self.backend_url}/api/content/process", 
-                                   json=payload, timeout=60)
+                                   data=form_data, timeout=60)
             
             if response.status_code != 200:
                 self.log_test("TICKET-3 Fields Preservation", False, f"Article creation failed: HTTP {response.status_code}")

@@ -144,26 +144,27 @@ class V2VersioningSystem:
             existing_versions = []
             content_library_versions = []
             
-            # Use repository pattern with fallback to direct DB access
+            # Use repository pattern only - no direct database access
             try:
-                from pymongo import MongoClient
-                import os
-                
-                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-                client = MongoClient(mongo_url)
-                db = client.get_default_database()
-                
-                # Search version records
-                async for version_record in db.v2_version_records.find({"source_hash": source_hash}).sort("version", -1):
-                    existing_versions.append(version_record)
+                # Search version records using V2 processing repository
+                v2_repo = RepositoryFactory.get_v2_processing()
+                existing_versions = await v2_repo.find_many(
+                    collection="v2_version_records",
+                    query={"source_hash": source_hash},
+                    sort=[("version", -1)]
+                )
                 
                 # Search content library for articles with same source hash
-                async for article in db.content_library.find({"version_metadata.source_hash": source_hash}).sort("version_metadata.version", -1):
-                    if article.get('engine') == 'v2':  # Only V2 articles
-                        content_library_versions.append(article)
+                content_repo = RepositoryFactory.get_content_library()
+                content_library_versions = await content_repo.find_many(
+                    query={"version_metadata.source_hash": source_hash, "engine": "v2"},
+                    sort=[("version_metadata.version", -1)]
+                )
                 
-            except Exception as db_error:
-                print(f"⚠️ V2 VERSIONING: Database access error - {db_error}")
+            except Exception as repo_error:
+                print(f"❌ V2 VERSIONING: Repository access error - {repo_error}")
+                existing_versions = []
+                content_library_versions = []
             
             existing_version_info = {
                 "has_existing_versions": len(existing_versions) > 0 or len(content_library_versions) > 0,

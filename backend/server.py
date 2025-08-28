@@ -17772,14 +17772,39 @@ async def call_built_in_local_llm(system_message: str, user_message: str) -> Opt
 
 async def persist_qa_report(qa_report, job_id: str = None):
     """
-    KE-PR7: Persist QA report to database
+    KE-PR7 + KE-PR9: Persist QA report to database using repository layer
     """
     try:
-        global qa_results_collection
+        if not mongo_repo_available:
+            print("⚠️ KE-PR9: MongoDB repository not available, falling back to direct access")
+            # Fallback to direct database access
+            global qa_results_collection
+            
+            if not qa_results_collection:
+                print("⚠️ KE-PR7: QA Results collection not initialized")
+                return None
+            
+            # Convert QA report to dict for storage
+            if hasattr(qa_report, 'model_dump'):
+                qa_dict = qa_report.model_dump()
+            elif hasattr(qa_report, 'dict'):
+                qa_dict = qa_report.dict()
+            else:
+                qa_dict = dict(qa_report)
+            
+            # Add metadata
+            qa_dict['created_at'] = datetime.utcnow()
+            qa_dict['engine'] = 'v2'
+            qa_dict['stored_job_id'] = job_id or qa_dict.get('job_id', 'unknown')
+            
+            # Store in database
+            result = await qa_results_collection.insert_one(qa_dict)
+            
+            print(f"✅ KE-PR7: QA report persisted (fallback) - ID: {result.inserted_id}")
+            return result.inserted_id
         
-        if not qa_results_collection:
-            print("⚠️ KE-PR7: QA Results collection not initialized")
-            return None
+        # Use KE-PR9 repository layer
+        qa_repo = RepositoryFactory.get_qa_results()
         
         # Convert QA report to dict for storage
         if hasattr(qa_report, 'model_dump'):
@@ -17790,18 +17815,16 @@ async def persist_qa_report(qa_report, job_id: str = None):
             qa_dict = dict(qa_report)
         
         # Add metadata
-        qa_dict['created_at'] = datetime.utcnow()
-        qa_dict['engine'] = 'v2'
         qa_dict['stored_job_id'] = job_id or qa_dict.get('job_id', 'unknown')
         
-        # Store in database
-        result = await qa_results_collection.insert_one(qa_dict)
+        # Store using repository
+        result_id = await qa_repo.insert_qa_report(qa_dict)
         
-        print(f"✅ KE-PR7: QA report persisted - ID: {result.inserted_id}")
-        return result.inserted_id
+        print(f"✅ KE-PR9: QA report persisted via repository - ID: {result_id}")
+        return result_id
         
     except Exception as e:
-        print(f"❌ KE-PR7: Error persisting QA report - {e}")
+        print(f"❌ KE-PR9: Error persisting QA report - {e}")
         return None
 
 async def get_recent_qa_summaries(limit: int = 10):

@@ -488,21 +488,35 @@ async def get_validation_diagnostics(run_id: str = None, validation_id: str = No
                 "message": "Database not initialized"
             }
         
-        if not query_filter:
-            try:
-                validation_results = await db.v2_validation_results.find().sort("timestamp", -1).limit(10).to_list(10)
-            except Exception as db_error:
-                # Collection might not exist yet
-                validation_results = []
-        else:
-            try:
-                validation_results = await db.v2_validation_results.find(query_filter).sort("timestamp", -1).to_list(100)
-            except Exception as db_error:
-                validation_results = []
-        
-        # Convert ObjectId to string
-        for result in validation_results:
-            if '_id' in result:
+        # KE-PR9: Use repository pattern for validation results
+        try:
+            from app.engine.stores.mongo import RepositoryFactory
+            validation_repo = RepositoryFactory.get_v2_validation()
+            
+            if not query_filter:
+                validation_results = await validation_repo.find_validations(limit=10)
+            else:
+                validation_results = await validation_repo.find_validations(query_filter, limit=100)
+                
+        except Exception as repo_error:
+            print(f"⚠️ KE-PR9: Validation repo fallback to direct DB access: {repo_error}")
+            # Fallback to direct database access
+            if not query_filter:
+                try:
+                    validation_results = await db.v2_validation_results.find().sort("timestamp", -1).limit(10).to_list(10)
+                except Exception as db_error:
+                    # Collection might not exist yet
+                    validation_results = []
+            else:
+                try:
+                    validation_results = await db.v2_validation_results.find(query_filter).sort("timestamp", -1).to_list(100)
+                except Exception as db_error:
+                    validation_results = []
+            
+            # Convert ObjectId to string for fallback case
+            for result in validation_results:
+                if '_id' in result:
+                    result['_id'] = str(result['_id'])
                 result['_id'] = str(result['_id'])
         
         return {

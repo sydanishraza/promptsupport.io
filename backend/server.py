@@ -8234,21 +8234,58 @@ class V2ValidationSystem:
             
             print(f"🔄 TICKET 3: Starting bookmark registry backfill for existing v2 articles")
             
-            # Find v2 articles that need backfilling (missing doc_uid or headings)
-            query = {
-                "$or": [
-                    {"metadata.engine": "v2", "doc_uid": {"$exists": False}},
-                    {"metadata.engine": "v2", "headings": {"$exists": False}},
-                    {"metadata.engine": "v2", "headings": []}  # Empty headings array
-                ]
-            }
-            
-            if limit:
-                articles_cursor = db.content_library.find(query).limit(limit)
-            else:
-                articles_cursor = db.content_library.find(query)
-            
-            articles = await articles_cursor.to_list(None)
+            # KE-PR9: Use repository pattern to find articles needing backfill
+            try:
+                if mongo_repo_available:
+                    content_repo = RepositoryFactory.get_content_library()
+                    # Get all V2 articles and filter those needing backfill
+                    all_articles = await content_repo.find_by_engine("v2", limit=limit)
+                    
+                    # Filter articles that need backfilling
+                    articles = []
+                    for article in all_articles:
+                        needs_backfill = (
+                            not article.get("doc_uid") or 
+                            not article.get("headings") or 
+                            (isinstance(article.get("headings"), list) and len(article.get("headings")) == 0)
+                        )
+                        if needs_backfill:
+                            articles.append(article)
+                else:
+                    # Fallback to direct database query
+                    query = {
+                        "$or": [
+                            {"metadata.engine": "v2", "doc_uid": {"$exists": False}},
+                            {"metadata.engine": "v2", "headings": {"$exists": False}},
+                            {"metadata.engine": "v2", "headings": []}  # Empty headings array
+                        ]
+                    }
+                    
+                    if limit:
+                        articles_cursor = db.content_library.find(query).limit(limit)
+                    else:
+                        articles_cursor = db.content_library.find(query)
+                    
+                    articles = await articles_cursor.to_list(None)
+                    
+            except Exception as repo_error:
+                print(f"⚠️ KE-PR9: Backfill query fallback to direct DB: {repo_error}")
+                # Final fallback to direct database query
+                query = {
+                    "$or": [
+                        {"metadata.engine": "v2", "doc_uid": {"$exists": False}},
+                        {"metadata.engine": "v2", "headings": {"$exists": False}},
+                        {"metadata.engine": "v2", "headings": []}  # Empty headings array
+                    ]
+                }
+                
+                if limit:
+                    articles_cursor = db.content_library.find(query).limit(limit)
+                else:
+                    articles_cursor = db.content_library.find(query)
+                
+                articles = await articles_cursor.to_list(None)
+                
             total_articles = len(articles)
             
             if total_articles == 0:

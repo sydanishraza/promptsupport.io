@@ -933,7 +933,7 @@ class V2EngineMigrationTester:
         return success_rate
 
 if __name__ == "__main__":
-    tester = Complete17StagePipelineTester()
+    tester = V2EngineMigrationTester()
     success_rate = tester.run_all_tests()
     
     # Exit with appropriate code

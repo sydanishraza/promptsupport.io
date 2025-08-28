@@ -233,22 +233,34 @@ async def update_article(article_id: str):
 
 @router.delete("/api/content/library/{article_id}")
 async def delete_article(article_id: str):
-    """Delete article from content library"""
+    """Delete article from content library using repository layer"""
     import sys
     import os
     backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
     if backend_path not in sys.path:
         sys.path.append(backend_path)
     
-    from server import db
-    
     try:
-        result = await db.content_library.delete_one({"id": article_id})
+        # Try to use repository layer first
+        from server import mongo_repo_available, RepositoryFactory
         
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Article not found")
-        
-        return {"message": "Article deleted successfully"}
+        if mongo_repo_available:
+            content_repo = RepositoryFactory.get_content_library()
+            success = await content_repo.delete_by_id(article_id)
+            
+            if not success:
+                raise HTTPException(status_code=404, detail="Article not found")
+            
+            return {"message": "Article deleted successfully", "source": "repository_layer"}
+        else:
+            # Fallback to direct database access
+            from server import db
+            result = await db.content_library.delete_one({"id": article_id})
+            
+            if result.deleted_count == 0:
+                raise HTTPException(status_code=404, detail="Article not found")
+            
+            return {"message": "Article deleted successfully", "source": "direct_database"}
         
     except HTTPException:
         raise

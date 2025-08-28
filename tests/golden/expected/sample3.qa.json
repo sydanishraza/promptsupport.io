@@ -1,0 +1,33 @@
+{
+  "coverage_percent": 87.5,
+  "total_issues": 2,
+  "critical_issues": 0,
+  "processing_timestamp": "2024-01-15T10:30:00Z",
+  "metrics": {
+    "headings_count": 15,
+    "code_blocks": 4,
+    "links_count": 8,
+    "content_length": 12450,
+    "processing_time_ms": 1250
+  },
+  "issues": [
+    {
+      "type": "formatting",
+      "severity": "minor",
+      "message": "Inconsistent heading spacing detected",
+      "location": "section-implementation"
+    },
+    {
+      "type": "content",
+      "severity": "minor", 
+      "message": "Long paragraph could be split for readability",
+      "location": "section-best-practices"
+    }
+  ],
+  "validation_checks": {
+    "ticket3_fields": "passed",
+    "anchor_stability": "passed", 
+    "cross_references": "passed",
+    "html_structure": "passed"
+  }
+}

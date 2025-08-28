@@ -24443,8 +24443,10 @@ async def process_content(request: ContentProcessRequest):
             status="processing"
         )
         
-        # Store job in database
-        await db.processing_jobs.insert_one(job.dict())
+        # Store job in database using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        processing_jobs_repo = RepositoryFactory.get_processing_jobs()
+        await processing_jobs_repo.insert_job(job.dict())
         print(f"📊 V2 ENGINE: Job created - {job.job_id} - engine=v2")
         
         # V2 PROCESSING: Route to V2 text processor with timeout protection

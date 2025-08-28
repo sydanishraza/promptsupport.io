@@ -1868,7 +1868,7 @@ backend:
 
 ## test_plan:
   current_focus:
-    - "V2 ENGINE STEP 12 IMPLEMENTATION - Versioning & Diff (reprocessing support)"
+    - "KE-PR9 MONGODB REPOSITORY PATTERN COMPLETION ASSESSMENT"
   stuck_tasks: []
   test_all: false
   test_priority: "critical_first"

@@ -3549,8 +3549,8 @@ async def v2_prewrite_system_process(articles: List[Dict[str, Any]], metadata: D
         prewrite_results = []
         successful_prewrites = 0
         failed_prewrites = 0
-            
-            for i, article in enumerate(articles):
+        
+        for i, article in enumerate(articles):
                 try:
                     article_prewrite = await self._process_article_prewrite(
                         article, content, per_article_outlines, global_analysis, run_id, i

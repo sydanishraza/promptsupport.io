@@ -11202,6 +11202,9 @@ class V2PublishingSystem:
                 "takeaways": article.get('takeaways', [])
             }
             
+            # KE-PR9: Ensure TICKET-3 fields are present before publishing
+            content_library_article = ensure_ticket3_fields(content_library_article)
+            
             return content_library_article
             
         except Exception as e:

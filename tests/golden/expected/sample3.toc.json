@@ -1,0 +1,104 @@
+[
+  {
+    "title": "MongoDB Repository Pattern Integration Guide",
+    "anchor": "#mongodb-repository-pattern-integration-guide", 
+    "level": 1,
+    "children": [
+      {
+        "title": "Overview",
+        "anchor": "#overview",
+        "level": 2,
+        "children": []
+      },
+      {
+        "title": "Key Features", 
+        "anchor": "#key-features",
+        "level": 2,
+        "children": [
+          {
+            "title": "Repository Pattern Benefits",
+            "anchor": "#repository-pattern-benefits",
+            "level": 3,
+            "children": []
+          },
+          {
+            "title": "TICKET-3 Field Support",
+            "anchor": "#ticket-3-field-support", 
+            "level": 3,
+            "children": []
+          }
+        ]
+      },
+      {
+        "title": "Implementation Details",
+        "anchor": "#implementation-details",
+        "level": 2,
+        "children": [
+          {
+            "title": "Repository Classes",
+            "anchor": "#repository-classes",
+            "level": 3,
+            "children": [
+              {
+                "title": "ContentLibraryRepository",
+                "anchor": "#contentlibraryrepository",
+                "level": 4,
+                "children": []
+              },
+              {
+                "title": "QA Results Repository",
+                "anchor": "#qa-results-repository",
+                "level": 4, 
+                "children": []
+              }
+            ]
+          },
+          {
+            "title": "Error Handling Strategy",
+            "anchor": "#error-handling-strategy",
+            "level": 3,
+            "children": []
+          }
+        ]
+      },
+      {
+        "title": "Code Examples",
+        "anchor": "#code-examples",
+        "level": 2,
+        "children": [
+          {
+            "title": "Basic Article Creation",
+            "anchor": "#basic-article-creation", 
+            "level": 3,
+            "children": []
+          },
+          {
+            "title": "Cross-Document Operations",
+            "anchor": "#cross-document-operations",
+            "level": 3,
+            "children": []
+          }
+        ]
+      },
+      {
+        "title": "Testing & Validation",
+        "anchor": "#testing-validation",
+        "level": 2,
+        "children": [
+          {
+            "title": "Golden Test Suite",
+            "anchor": "#golden-test-suite",
+            "level": 3,
+            "children": []
+          },
+          {
+            "title": "Success Metrics", 
+            "anchor": "#success-metrics",
+            "level": 3,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+]

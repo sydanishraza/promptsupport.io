@@ -929,7 +929,7 @@ CRITICAL OUTPUT FORMAT:
                                 content_repo = RepositoryFactory.get_content_library()
                                 await content_repo.insert_article(faq_article)
                             else:
-                                await db.content_library.insert_one(faq_article)
+                                await content_repo.insert_article(faq_article)
                             enhanced_articles.append(faq_article)
                             print(f"✅ FAQ/Troubleshooting article created and saved: {faq_article['title']} ({len(faq_content_text)} chars)")
                         else:

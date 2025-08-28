@@ -35663,7 +35663,6 @@ async def create_seed_articles():
             content_repo = RepositoryFactory.get_content_library()
             await content_repo.insert_article(article)
             
-            article['_id'] = str(result.inserted_id)
             created_articles.append(article)
             
             print(f"✅ Created seed article: {article_data['title']}")

@@ -25820,9 +25820,12 @@ async def process_text_content_v2_pipeline(content: str, metadata: Dict[str, Any
         if articles:
             try:
                 for article in articles:
-                    # Only store if not already in database
-                    if not await db.content_library.find_one({"id": article["id"]}):
-                        await db.content_library.insert_one(article)
+                    # Only store if not already in database (KE-PR9.4)
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    existing_article = await content_repo.find_by_id(article["id"])
+                    if not existing_article:
+                        await content_repo.insert_article(article)
                         print(f"📚 KE-PR5: Stored article in content library - {article['title']}")
             except Exception as storage_error:
                 print(f"⚠️ KE-PR5: Error storing articles in content library - {storage_error}")

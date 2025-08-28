@@ -150,12 +150,10 @@ async def backfill_registry(limit: int = None) -> Dict[str, Any]:
                         raise Exception("Repository update failed")
                         
                 except Exception as repo_error:
-                    print(f"⚠️ KE-PR9: Bookmark update fallback to direct DB: {repo_error}")
-                    # Fallback to direct database update
-                    await db.content_library.update_one(
-                        {"_id": article["_id"]}, 
-                        {"$set": update_data}
-                    )
+                    print(f"❌ KE-PR9.3: Repository error updating bookmark - {repo_error}")
+                    # Skip this article instead of falling back to direct DB
+                    processed_count -= 1  # Don't count this as processed
+                    continue
                 
                 processed_count += 1
                 print(f"✅ TICKET 3: Updated article '{title}' with {len(headings)} bookmarks - doc_uid: {doc_uid}")

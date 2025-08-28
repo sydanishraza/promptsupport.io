@@ -881,7 +881,7 @@ CRITICAL OUTPUT FORMAT:
                     else:
                         # KE-PR9.3: Repository unavailable - skip intro article
                         print("❌ KE-PR9.3: Repository unavailable, skipping intro article creation")
-                        continue
+                        pass
                     articles.insert(0, intro_article)  # Add as first article
                     print(f"✅ Introductory TOC article created and saved: {intro_article['title']}")
             

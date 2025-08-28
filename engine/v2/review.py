@@ -75,6 +75,10 @@ class V2ReviewSystem:
                         if run_data:
                             runs_data.append(run_data)
             
+            except Exception as repo_error:
+                print(f"❌ V2 REVIEW: Repository error - {repo_error}")
+                # Continue with empty runs_data
+            
             # Sort by timestamp
             runs_data.sort(key=lambda x: x.get('processing_timestamp', ''), reverse=True)
             

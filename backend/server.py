@@ -14973,9 +14973,11 @@ class DocumentPreprocessor:
                     
                 if hasattr(self, 'pending_assets') and self.pending_assets:
                     try:
-                        # Batch insert PDF images into Asset Library
-                        result = await db.assets.insert_many(self.pending_assets)
-                        print(f"📚 FIXED: Successfully inserted {len(result.inserted_ids)} PDF images into Asset Library")
+                        # Batch insert PDF images into Asset Library using repository pattern (KE-PR9.5)
+                        from engine.stores.mongo import RepositoryFactory
+                        assets_repo = RepositoryFactory.get_assets()
+                        await assets_repo.insert_assets(self.pending_assets)
+                        print(f"📚 FIXED: Successfully inserted {len(self.pending_assets)} PDF images into Asset Library")
                         print(f"🔍 DEBUG: Inserted IDs: {result.inserted_ids[:3]}...")  # Show first 3 IDs
                         
                         # Clear pending assets after successful insertion

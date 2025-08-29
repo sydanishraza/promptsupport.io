@@ -31661,7 +31661,10 @@ async def update_content_library_article(
         metadata_dict = json.loads(metadata) if metadata else {}
         
         # Get existing article for version history
-        existing_article = await db.content_library.find_one({"id": article_id})
+        # Get existing article using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        existing_article = await content_repo.find_by_id(article_id)
         if not existing_article:
             raise HTTPException(status_code=404, detail="Article not found")
         

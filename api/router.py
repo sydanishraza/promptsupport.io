@@ -100,8 +100,13 @@ async def process_content_v2_route(
     content_type: str = Form("text")
 ):
     """V2 Engine: Process text content through complete V2 pipeline"""
+    # KE-PR10.5: Validate V2-only pipeline exclusivity
+    validate_v2_pipeline_exclusivity()
+    
     try:
         print(f"🚀 V2 ENGINE: Processing content via API router - {len(content)} chars - engine=v2")
+        if FORCE_V2_ONLY:
+            print("✅ KE-PR10.5: Processing exclusively through V2 engine modules")
         
         # Import here to avoid circular imports
         import sys
@@ -117,7 +122,8 @@ async def process_content_v2_route(
         metadata = {
             "content_type": content_type,
             "source": "api_router",
-            "engine": "v2"
+            "engine": "v2",
+            "ke_pr10_5_v2_only": FORCE_V2_ONLY
         }
         
         articles = await process_text_content_v2_pipeline(content, metadata)
@@ -128,6 +134,7 @@ async def process_content_v2_route(
                 "articles": articles,
                 "article_count": len(articles),
                 "engine": "v2",
+                "v2_only_mode": FORCE_V2_ONLY,
                 "message": "Content processed successfully through V2 pipeline"
             }
         else:
@@ -136,6 +143,7 @@ async def process_content_v2_route(
                 "articles": [],
                 "article_count": 0,
                 "engine": "v2",
+                "v2_only_mode": FORCE_V2_ONLY,
                 "message": "Content processed but no articles generated"
             }
             

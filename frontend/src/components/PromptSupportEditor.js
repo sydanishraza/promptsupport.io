@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { html as beautifyHtml } from 'js-beautify';
 import { HTMLContent } from './PrismCodeBlock';

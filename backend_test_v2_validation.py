@@ -367,15 +367,14 @@ class V2OnlyValidationTester:
             
             for size_test in content_sizes:
                 try:
-                    payload = {
+                    form_data = {
                         "content": f"# Performance Test\n\n{size_test['content']}\n\n## Conclusion\nTesting V2 pipeline performance.",
-                        "content_type": "markdown",
-                        "processing_mode": "v2_only"
+                        "content_type": "markdown"
                     }
                     
                     start_time = time.time()
                     response = requests.post(f"{self.backend_url}/api/content/process", 
-                                           json=payload, timeout=90)
+                                           data=form_data, timeout=90)
                     processing_time = time.time() - start_time
                     
                     if response.status_code == 200:

@@ -30472,6 +30472,10 @@ File Information:
             await update_job_progress("finalizing", f"Created {len(chunks)} articles successfully")
             print(f"✅ Content processing completed: {len(chunks)} chunks created")
             
+            # Clean chunks to remove ObjectId for JSON serialization
+            if chunks:
+                chunks = [objectid_to_str(chunk) for chunk in chunks]
+            
         except asyncio.TimeoutError:
             print("❌ Content processing timed out after 10 minutes")
             # Create fallback response

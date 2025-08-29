@@ -31739,7 +31739,10 @@ async def create_content_library_article(
             "updated_by": "user"
         }
         
-        await db.content_library.insert_one(new_article)
+        # Insert article using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        await content_repo.insert_article(new_article)
         
         return {
             "success": True,

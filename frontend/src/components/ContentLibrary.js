@@ -445,7 +445,7 @@ const ContentLibrary = () => {
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${backendUrl}/api/content-library`);
+      const response = await fetch(`${backendUrl}/api/content/library`);
       if (response.ok) {
         const data = await response.json();
         setArticles(data.articles || []);

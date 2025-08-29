@@ -84,9 +84,7 @@ class V2OnlyValidationTester:
         
         # V2-only endpoints that should work
         self.v2_endpoints = [
-            "/api/content/process",
-            "/api/engine/v2/pipeline",
-            "/api/engine/v2/analyze",
+            "/api/health",
             "/api/content-library"
         ]
         

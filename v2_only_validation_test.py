@@ -461,12 +461,11 @@ class V2OnlyValidationTester:
             # Test V2 processing with repository pattern
             test_content = {
                 "content": "# Repository Pattern Test\n\nTesting repository compliance in V2 processing.",
-                "content_type": "markdown",
-                "processing_mode": "v2_only"
+                "content_type": "text"
             }
             
             process_response = requests.post(f"{self.backend_url}/api/content/process", 
-                                           json=test_content, timeout=60)
+                                           data=test_content, timeout=60)
             
             if process_response.status_code == 200:
                 process_data = process_response.json()

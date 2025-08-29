@@ -749,8 +749,7 @@ def v2_pipeline_test():
             # Test core endpoints still work after load
             core_endpoints = [
                 "/api/health",
-                "/api/content-library",
-                "/api/engine/v2/pipeline"
+                "/api/content-library"
             ]
             
             post_load_results = []

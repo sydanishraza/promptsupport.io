@@ -33190,23 +33190,22 @@ async def fix_google_maps_content_defects():
                 # 5. Apply final quality improvements
                 anchor_links = 0
                 
-                # Update article if any changes were made
+                # Update article if any changes were made using repository pattern (KE-PR9.5)
                 if changes_made or anchor_links > 0:
-                    update_result = await db.content_library.update_one(
-                        {"_id": article["_id"]},
-                        {
-                            "$set": {
-                                "content": fixed_content,
-                                "html": fixed_content,
-                                "formatting_fixes": {
-                                    "processed_at": datetime.now().isoformat(),
-                                    "changes_made": changes_made,
-                                    "anchor_links_generated": anchor_links,
-                                    "engine": "v2"
-                                }
-                            }
+                    from engine.stores.mongo import RepositoryFactory
+                    content_repo = RepositoryFactory.get_content_library()
+                    
+                    update_data = {
+                        "content": fixed_content,
+                        "html": fixed_content,
+                        "formatting_fixes": {
+                            "processed_at": datetime.now().isoformat(),
+                            "changes_made": changes_made,
+                            "anchor_links_generated": anchor_links,
+                            "engine": "v2"
                         }
-                    )
+                    }
+                    await content_repo.update_by_object_id(str(article["_id"]), update_data)
                     
                     if update_result.modified_count > 0:
                         processed_count += 1

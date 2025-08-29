@@ -31829,10 +31829,10 @@ async def restore_article_version(article_id: str, version: int):
             "restored_from_version": version
         }
         
-        await db.content_library.update_one(
-            {"id": article_id},
-            {"$set": restored_article}
-        )
+        # Update article using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        await content_repo.update_by_id(article_id, restored_article)
         
         return {
             "success": True,

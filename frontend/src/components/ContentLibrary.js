@@ -353,7 +353,7 @@ const ContentLibrary = () => {
         metadata: article.metadata || {}
       };
 
-      const response = await fetch(`${backendUrl}/api/content-library/${articleId}`, {
+      const response = await fetch(`${backendUrl}/api/content/library/${articleId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

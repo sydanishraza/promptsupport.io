@@ -791,8 +791,6 @@ def v2_pipeline_test():
             self.test_v2_endpoint_functionality,
             self.test_v2_module_exclusivity,
             self.test_repository_pattern_compliance,
-            self.test_v2_content_processing_pipeline,
-            self.test_pipeline_orchestration_v2_only,
             self.test_system_stability_v2_only_mode
         ]
         

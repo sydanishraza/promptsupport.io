@@ -19427,7 +19427,7 @@ class V2ContentExtractor:
                 extraction_metadata={"error": str(e), "status": "failed"}
             )
     
-    async def extract_raw_text(self, text_content: str, title: str = "Raw Text") -> NormalizedDocument:
+    async def extract_raw_text(self, text_content: str, title: str = "Raw Text", job_id: str = None) -> NormalizedDocument:
         """V2 Engine: Extract content from raw text input"""
         print(f"📝 V2 EXTRACTOR: Extracting raw text content - {len(text_content)} chars - engine=v2")
         

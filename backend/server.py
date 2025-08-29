@@ -31596,10 +31596,11 @@ async def process_recording(
         job.status = "completed" 
         job.completed_at = datetime.utcnow()
         
-        await db.processing_jobs.update_one(
-            {"job_id": job.job_id},
-            {"$set": job.dict()}
-        )
+        # Update job completion using ProcessingJobsRepository (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        processing_jobs_repo = RepositoryFactory.get_processing_jobs()
+        await processing_jobs_repo.update_job_status(job.job_id, "completed", 
+                                                   {"completed_at": job.completed_at, "chunks": chunks})
         
         print(f"✅ V2 ENGINE: Recording processing complete - {len(chunks)} chunks created - engine=v2")
         return {

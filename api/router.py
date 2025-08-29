@@ -160,9 +160,11 @@ async def process_content_v2_route(
         articles = await process_text_content_v2_pipeline(content, metadata)
         
         if articles:
+            # Clean articles to remove ObjectId and other non-serializable objects
+            cleaned_articles = clean_articles_for_api(articles)
             return {
                 "status": "completed",
-                "articles": articles,
+                "articles": cleaned_articles,
                 "article_count": len(articles),
                 "engine": "v2",
                 "v2_only_mode": FORCE_V2_ONLY,

@@ -324,20 +324,15 @@ async def get_content_library():
 async def create_article_v2(title: str = "", content: str = "", status: str = "draft"):
     """Create new article - V2 route with repository pattern"""
     try:
-        # Simple direct import without path manipulation
-        import sys
-        import os
+        # Import MongoDB client
+        import motor.motor_asyncio
         
-        # Add backend to Python path if not already there
-        backend_dir = '/app/backend'
-        if backend_dir not in sys.path:
-            sys.path.insert(0, backend_dir)
+        # Use same connection pattern as server.py
+        MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
+        DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport")
         
-        # Direct imports
-        from server import get_database
-        
-        # Use direct database access for simplicity
-        db = get_database()
+        mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
+        db = mongo_client[DATABASE_NAME]
         collection = db["content_library"]
         
         article_data = {

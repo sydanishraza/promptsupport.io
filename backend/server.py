@@ -34520,16 +34520,17 @@ async def approve_and_publish_run(
         # Get articles and ensure they're published
         articles_published = 0
         async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
-            # Update article status to published
-            await db.content_library.update_one(
-                {"id": article["id"]},
-                {"$set": {
-                    "status": "published",
-                    "published_at": datetime.utcnow().isoformat(),
-                    "reviewed_by": reviewer_name,
-                    "review_approved": True
-                }}
-            )
+            # Update article status to published using repository pattern (KE-PR9.5)
+            from engine.stores.mongo import RepositoryFactory
+            content_repo = RepositoryFactory.get_content_library()
+            
+            update_data = {
+                "status": "published",
+                "published_at": datetime.utcnow().isoformat(),
+                "reviewed_by": reviewer_name,
+                "review_approved": True
+            }
+            await content_repo.update_by_id(article["id"], update_data)
             articles_published += 1
         
         # Update any existing publishing result

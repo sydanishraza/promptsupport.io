@@ -423,13 +423,12 @@ class V2OnlyValidationTester:
                 
                 def make_request():
                     try:
-                        payload = {
+                        form_data = {
                             "content": "# Concurrent Test\n\nTesting concurrent V2 processing capability.",
-                            "content_type": "markdown", 
-                            "processing_mode": "v2_only"
+                            "content_type": "markdown"
                         }
                         response = requests.post(f"{self.backend_url}/api/content/process", 
-                                               json=payload, timeout=60)
+                                               data=form_data, timeout=60)
                         results_queue.put(response.status_code == 200)
                     except:
                         results_queue.put(False)

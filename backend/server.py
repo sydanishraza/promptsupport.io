@@ -206,7 +206,10 @@ import shutil
 import subprocess
 
 # Load environment variables
-load_dotenv()
+import os
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(env_path)
+print(f"🔧 Environment loaded from: {env_path}")
 
 # Helper function to convert ObjectId to string for JSON serialization
 def objectid_to_str(data):

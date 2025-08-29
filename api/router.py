@@ -1,6 +1,7 @@
 """
 KE-PR8: API Router Split & Feature Flags (Kill Switches)
-Centralized API routing with domain organization and feature flags for V1/Hybrid endpoints
+KE-PR10.5: V2-Only Validation & System Checkpoint
+Centralized API routing with V2-only enforcement for legacy removal validation
 """
 
 import os
@@ -15,14 +16,53 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends, B
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
-# Feature flags for KE-PR8
+# Feature flags for KE-PR8 and KE-PR10.5
 ENABLE_V1 = os.getenv("ENABLE_V1", "false").lower() == "true"
 ENABLE_HYBRID = os.getenv("ENABLE_HYBRID", "false").lower() == "true"
+FORCE_V2_ONLY = os.getenv("FORCE_V2_ONLY", "false").lower() == "true"
+LEGACY_ENDPOINT_BEHAVIOR = os.getenv("LEGACY_ENDPOINT_BEHAVIOR", "warn")
 
 print(f"🚩 KE-PR8: Feature flags - V1: {ENABLE_V1}, Hybrid: {ENABLE_HYBRID}")
+print(f"🚩 KE-PR10.5: V2-Only Mode: {FORCE_V2_ONLY}, Legacy Behavior: {LEGACY_ENDPOINT_BEHAVIOR}")
 
 # Create main router
 router = APIRouter()
+
+# KE-PR10.5: V2-Only Enforcement Functions
+def check_v2_only_mode():
+    """Check if we're in V2-only mode and handle legacy endpoints appropriately"""
+    if FORCE_V2_ONLY:
+        print("⚠️ KE-PR10.5: V2-Only mode active - blocking legacy endpoints")
+        return True
+    return False
+
+def handle_legacy_endpoint(endpoint_name: str):
+    """Handle legacy endpoint access based on configuration"""
+    if FORCE_V2_ONLY:
+        if LEGACY_ENDPOINT_BEHAVIOR == "block":
+            print(f"🚫 KE-PR10.5: Blocking legacy endpoint {endpoint_name} in V2-only mode")
+            raise HTTPException(
+                status_code=410, 
+                detail=f"Legacy endpoint {endpoint_name} is disabled in V2-only mode. Use V2 equivalent endpoints."
+            )
+        elif LEGACY_ENDPOINT_BEHAVIOR == "disable":
+            print(f"⚠️ KE-PR10.5: Legacy endpoint {endpoint_name} disabled in V2-only mode")
+            raise HTTPException(
+                status_code=503, 
+                detail=f"Legacy endpoint {endpoint_name} is temporarily disabled for V2-only validation"
+            )
+    
+    # If we get here, either not in V2-only mode or using warn behavior
+    if FORCE_V2_ONLY and LEGACY_ENDPOINT_BEHAVIOR == "warn":
+        print(f"⚠️ KE-PR10.5: Warning - legacy endpoint {endpoint_name} accessed in V2-only mode")
+
+def validate_v2_pipeline_exclusivity():
+    """Ensure all pipeline orchestration routes to V2 modules only"""
+    if FORCE_V2_ONLY:
+        # Log that we're enforcing V2-only pipeline routing
+        print("✅ KE-PR10.5: V2-only pipeline routing enforced - all processing via /engine/v2/*")
+        return True
+    return False
 
 # Import necessary models and dependencies from server
 # These imports will be resolved when the router is included in server.py

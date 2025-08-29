@@ -633,6 +633,15 @@ class ProcessingJobsRepository:
         except Exception as e:
             print(f"❌ ProcessingJobs: Error finding recent jobs - {e}")
             return []
+    
+    async def count_jobs(self) -> int:
+        """Count total number of processing jobs (KE-PR9.5)"""
+        try:
+            count = await self.collection.count_documents({})
+            return count
+        except Exception as e:
+            print(f"❌ ProcessingJobs: Error counting jobs - {e}")
+            return 0
 
 # ========================================
 # REPOSITORY FACTORY

@@ -176,7 +176,7 @@ const ContentLibrary = () => {
     setBulkActionLoading(true);
     try {
       const deletePromises = Array.from(selectedItems).map(id => 
-        fetch(`${backendUrl}/api/content-library/${id}`, { method: 'DELETE' })
+        fetch(`${backendUrl}/api/content/library/${id}`, { method: 'DELETE' })
       );
       
       await Promise.all(deletePromises);

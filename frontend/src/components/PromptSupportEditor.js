@@ -3971,6 +3971,8 @@ const PromptSupportEditor = ({
             type="text"
             value={title}
             onChange={handleTitleChange}
+            onInput={handleTitleChange}
+            onKeyUp={handleTitleChange}
             className="w-full text-2xl font-bold text-gray-900 border-none outline-none focus:ring-0 p-0 bg-transparent"
             placeholder="Article title..."
           />

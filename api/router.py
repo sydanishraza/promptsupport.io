@@ -221,6 +221,7 @@ async def upload_content_v2_route(
                 "result": result,
                 "articles": cleaned_articles,
                 "article_count": len(articles),
+                "chunks_created": len(articles),  # Add this field for frontend compatibility
                 "engine": "v2",
                 "filename": file.filename,
                 "v2_only_mode": FORCE_V2_ONLY,
@@ -232,6 +233,7 @@ async def upload_content_v2_route(
                 "result": result,
                 "articles": [],
                 "article_count": 0,
+                "chunks_created": 0,  # Add this field for frontend compatibility
                 "engine": "v2", 
                 "filename": file.filename,
                 "v2_only_mode": FORCE_V2_ONLY,

@@ -2517,7 +2517,10 @@ Return ONLY a JSON object in this exact format:
     async def get_analysis_for_run(self, run_id: str) -> dict:
         """Retrieve stored analysis for a processing run"""
         try:
-            analysis_record = await db.v2_analysis.find_one({"run_id": run_id})
+            # Get analysis using V2AnalysisRepository (KE-PR9.5)
+            from engine.stores.mongo import RepositoryFactory
+            analysis_repo = RepositoryFactory.get_v2_analysis()
+            analysis_record = await analysis_repo.get_analysis(run_id)
             if analysis_record:
                 return analysis_record
             else:

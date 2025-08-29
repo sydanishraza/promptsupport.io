@@ -262,16 +262,15 @@ class V2OnlyValidationTester:
                 except requests.exceptions.RequestException as e:
                     failed_endpoints.append(f"{endpoint}:connection_error")
             
-            # Test V2 content processing endpoint with actual content
+            # Test V2 content processing endpoint with actual content (using form data)
             test_content = {
                 "content": "# V2-Only Test Content\n\nThis tests V2-only processing pipeline.\n\n## Features\n- V2 engine validation\n- Repository pattern compliance\n- Module exclusivity",
-                "content_type": "markdown",
-                "processing_mode": "v2_only"
+                "content_type": "text"
             }
             
             try:
                 process_response = requests.post(f"{self.backend_url}/api/content/process", 
-                                               json=test_content, timeout=60)
+                                               data=test_content, timeout=60)
                 
                 if process_response.status_code == 200:
                     process_data = process_response.json()

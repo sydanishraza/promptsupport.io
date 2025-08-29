@@ -196,12 +196,21 @@ async def upload_content_v2_route(
     if backend_path not in sys.path:
         sys.path.append(backend_path)
     
-    from server import process_file_upload_v2
+    from server import upload_file
     
     try:
         print(f"📁 V2 ENGINE: File upload via API router - {file.filename} - engine=v2")
         
-        result = await process_file_upload_v2(file, enable_audio_processing)
+        # Create metadata dictionary
+        import json
+        metadata = {
+            "source": "api_router_upload",
+            "engine": "v2", 
+            "enable_audio_processing": enable_audio_processing,
+            "ke_pr10_5_v2_only": FORCE_V2_ONLY
+        }
+        
+        result = await upload_file(file, json.dumps(metadata))
         
         return {
             "status": "completed",

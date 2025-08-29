@@ -34600,19 +34600,20 @@ async def reject_run(
         # Store review metadata
         await db.v2_review_metadata.insert_one(review_metadata)
         
-        # Update articles to partial status
+        # Update articles to partial status using repository pattern (KE-PR9.5)
         articles_updated = 0
         async for article in db.content_library.find({"metadata.run_id": run_id, "engine": "v2"}):
-            await db.content_library.update_one(
-                {"id": article["id"]},
-                {"$set": {
-                    "status": "partial",
-                    "rejection_reason": rejection_reason,
-                    "reviewed_by": reviewer_name,
-                    "review_rejected": True,
-                    "rejection_timestamp": datetime.utcnow().isoformat()
-                }}
-            )
+            from engine.stores.mongo import RepositoryFactory
+            content_repo = RepositoryFactory.get_content_library()
+            
+            update_data = {
+                "status": "partial",
+                "rejection_reason": rejection_reason,
+                "reviewed_by": reviewer_name,
+                "review_rejected": True,
+                "rejection_timestamp": datetime.utcnow().isoformat()
+            }
+            await content_repo.update_by_id(article["id"], update_data)
             articles_updated += 1
         
         # Update publishing result if exists

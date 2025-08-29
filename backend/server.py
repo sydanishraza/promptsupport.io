@@ -17875,6 +17875,27 @@ class ContentBlock(BaseModel):
     metadata: Dict[str, Any] = {}
     source_pointer: SourcePointer
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    def get(self, key: str, default=None):
+        """Dictionary-like get method for compatibility with evidence tagging"""
+        if hasattr(self, key):
+            return getattr(self, key)
+        return self.metadata.get(key, default)
+    
+    def __getitem__(self, key):
+        """Dictionary-like access for compatibility"""
+        if hasattr(self, key):
+            return getattr(self, key)
+        if key in self.metadata:
+            return self.metadata[key]
+        raise KeyError(f"Key '{key}' not found in ContentBlock")
+    
+    def __setitem__(self, key, value):
+        """Dictionary-like assignment for compatibility"""
+        if hasattr(self, key):
+            setattr(self, key, value)
+        else:
+            self.metadata[key] = value
 
 class MediaRecord(BaseModel):
     """V2 Schema: Represents extracted media with metadata"""

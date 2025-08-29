@@ -741,6 +741,11 @@ async def update_processing_job_status(job_id: str, status: str, details: Option
     repo = RepositoryFactory.get_processing_jobs()
     return await repo.update_job_status(job_id, status, details)
 
+async def count_processing_jobs() -> int:
+    """Convenience function for counting processing jobs (KE-PR9.5)"""
+    repo = RepositoryFactory.get_processing_jobs()
+    return await repo.count_jobs()
+
 
 
 # ========================================

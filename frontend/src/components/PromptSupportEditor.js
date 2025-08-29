@@ -463,14 +463,13 @@ const PromptSupportEditor = ({
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
   // TITLE FIELD FLICKER FIX: Debounced title change handler
-  const debouncedTitleChange = useCallback(
-    debounce((newTitle) => {
-      console.log('🔥 DEBOUNCED TITLE UPDATE:', newTitle, 'Current title state:', title);
+  const debouncedTitleChange = useMemo(
+    () => debounce((newTitle) => {
+      console.log('🔥 DEBOUNCED TITLE UPDATE:', newTitle);
       setTitle(newTitle);
-      console.log('🔥 After setTitle, title should be:', newTitle);
       setHasUnsavedChanges(true);
     }, 100),
-    [title]  // Add title to dependencies to track current state
+    [] // Only create the debounced function once
   );
 
   const handleTitleChange = useCallback((e) => {

@@ -335,8 +335,81 @@ async def create_article():
     return {"message": "V1 article creation (deprecated)"}
 
 @router.put("/api/content-library/{article_id}")
-async def update_article(article_id: str):
-    """Update article - V1 route with feature flag"""
+async def update_article_v2(article_id: str, request: dict):
+    """Update article - V2 route with repository pattern"""
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    try:
+        # Use repository layer for V2 compatibility
+        from server import mongo_repo_available, RepositoryFactory
+        
+        if mongo_repo_available:
+            content_repo = RepositoryFactory.get_content_library()
+            
+            # Update article data
+            update_data = {
+                "title": request.get("title", ""),
+                "content": request.get("content", ""),
+                "status": request.get("status", "draft"),
+                "metadata": request.get("metadata", {}),
+                "updated_at": datetime.utcnow()
+            }
+            
+            success = await content_repo.update_by_id(article_id, update_data)
+            
+            if not success:
+                raise HTTPException(status_code=404, detail="Article not found")
+            
+            return {
+                "message": "Article updated successfully", 
+                "source": "repository_layer",
+                "engine": "v2",
+                "article_id": article_id
+            }
+        else:
+            # Fallback to direct database access
+            import sys
+            backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+            if backend_path not in sys.path:
+                sys.path.append(backend_path)
+            
+            from server import get_database
+            db = get_database()
+            collection = db["content_library"]
+            
+            update_data = {
+                "title": request.get("title", ""),
+                "content": request.get("content", ""),
+                "status": request.get("status", "draft"),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            result = await collection.update_one(
+                {"_id": ObjectId(article_id)},
+                {"$set": update_data}
+            )
+            
+            if result.matched_count == 0:
+                raise HTTPException(status_code=404, detail="Article not found")
+            
+            return {
+                "message": "Article updated successfully",
+                "source": "direct_database", 
+                "engine": "v2",
+                "article_id": article_id
+            }
+            
+    except Exception as e:
+        print(f"❌ Error updating article {article_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating article: {str(e)}")
+
+@router.put("/api/content-library/{article_id}/legacy")
+async def update_article_legacy(article_id: str):
+    """Update article - V1 route with feature flag (deprecated)"""
     if not ENABLE_V1:
         raise HTTPException(
             status_code=410,

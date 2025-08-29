@@ -127,6 +127,9 @@ const EnhancedAssetManager = ({
                 let imageSource = '';
                 if (asset.url) {
                   imageSource = asset.url.startsWith('/') ? `${backendUrl}${asset.url}` : asset.url;
+                } else if (asset.filename) {
+                  // Backend assets use filename, construct URL to static uploads
+                  imageSource = `${backendUrl}/static/uploads/${asset.filename}`;
                 } else if (asset.data?.startsWith('data:image')) {
                   imageSource = asset.data;
                 }

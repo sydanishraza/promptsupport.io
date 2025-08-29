@@ -31763,7 +31763,10 @@ async def create_content_library_article(
 async def get_article_version_history(article_id: str):
     """Get version history for an article"""
     try:
-        article = await db.content_library.find_one({"id": article_id})
+        # Get existing article using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        article = await content_repo.find_by_id(article_id)
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
         

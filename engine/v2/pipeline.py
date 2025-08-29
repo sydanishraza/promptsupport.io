@@ -170,14 +170,14 @@ class Pipeline:
             return [], empty_qa, f"error_{job_id}"
 
     @stage_log("extract_content")
-    async def _stage_extract_content(self, content: str, metadata: Dict[str, Any], run_id: str):
+    async def _stage_extract_content(self, content: str, metadata: Dict[str, Any], run_id: str, job_id: str):
         """Stage 1: Content Extraction & Normalization"""
-        print(f"📄 KE-PR5: Stage 1 - Content extraction - {len(content)} chars")
+        print(f"📄 KE-PR5: Stage 1 - Content extraction - {len(content)} chars - job_id: {job_id}")
         
         title = metadata.get('title', metadata.get('original_filename', 'Text Content'))
-        normalized_doc = await self.extractor.extract_raw_text(content, title)
+        normalized_doc = await self.extractor.extract_raw_text(content, title, job_id)
         
-        print(f"✅ KE-PR5: Stage 1 complete - {len(normalized_doc.blocks)} blocks extracted")
+        print(f"✅ KE-PR5: Stage 1 complete - {len(normalized_doc.blocks)} blocks extracted - job_id: {job_id}")
         return normalized_doc
 
     @stage_log("analyze")

@@ -714,7 +714,7 @@ def v2_pipeline_test():
             def make_request():
                 try:
                     response = requests.post(f"{self.backend_url}/api/content/process", 
-                                           json=test_payload, timeout=60)
+                                           data=test_payload, timeout=60)
                     results.append({
                         "status_code": response.status_code,
                         "success": response.status_code == 200,

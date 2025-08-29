@@ -33205,9 +33205,10 @@ async def fix_google_maps_content_defects():
                             "engine": "v2"
                         }
                     }
-                    await content_repo.update_by_object_id(str(article["_id"]), update_data)
+                    update_result = await content_repo.update_by_object_id(str(article["_id"]), update_data)
                     
-                    if update_result.modified_count > 0:
+                    # Repository pattern returns success boolean, so we check if update was successful
+                    if update_result:
                         processed_count += 1
                         updated_articles.append({
                             "article_id": article_id,

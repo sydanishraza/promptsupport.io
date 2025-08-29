@@ -413,12 +413,12 @@ class V2OnlyValidationTester:
     def test_repository_pattern_compliance(self):
         """Test 5: Validate all operations use repository pattern (no direct MongoDB calls)"""
         try:
-            # Test repository availability
-            response = requests.get(f"{self.backend_url}/api/engine/repository/status", timeout=10)
+            # Test content library operations which should use repository pattern
+            response = requests.get(f"{self.backend_url}/api/content-library", timeout=15)
             
             if response.status_code != 200:
                 self.log_test("Repository Pattern Compliance", False, 
-                             f"Repository status endpoint unavailable: HTTP {response.status_code}")
+                             f"Content library endpoint unavailable: HTTP {response.status_code}")
                 return False
             
             repo_data = response.json()

@@ -323,68 +323,47 @@ async def get_content_library():
 @router.post("/api/content-library")
 async def create_article_v2(title: str = "", content: str = "", status: str = "draft"):
     """Create new article - V2 route with repository pattern"""
-    import sys
-    import os
-    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
-    if backend_path not in sys.path:
-        sys.path.append(backend_path)
-    
     try:
-        # Use repository layer for V2 compatibility
-        from server import mongo_repo_available, RepositoryFactory
+        # Simple direct import without path manipulation
+        import sys
+        import os
         
-        if mongo_repo_available:
-            content_repo = RepositoryFactory.get_content_library()
-            
-            # Create new article data
-            article_data = {
-                "id": str(uuid.uuid4()),
-                "title": title or "Untitled Article",
-                "content": content,
-                "status": status,
-                "metadata": {},
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
-                "engine": "v2"
-            }
-            
-            article_id = await content_repo.insert_article(article_data)
-            
-            return {
-                "message": "Article created successfully",
-                "source": "repository_layer", 
-                "engine": "v2",
-                "article_id": article_id,
-                "article": article_data
-            }
-        else:
-            # Fallback to direct database access
-            from server import get_database
-            db = get_database()
-            collection = db["content_library"]
-            
-            article_data = {
-                "_id": ObjectId(),
-                "id": str(uuid.uuid4()),
-                "title": title or "Untitled Article",
-                "content": content,
-                "status": status,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
-                "engine": "v2"
-            }
-            
-            result = await collection.insert_one(article_data)
-            
-            return {
-                "message": "Article created successfully",
-                "source": "direct_database",
-                "engine": "v2", 
-                "article_id": str(result.inserted_id)
-            }
-            
+        # Add backend to Python path if not already there
+        backend_dir = '/app/backend'
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        
+        # Direct imports
+        from server import get_database
+        
+        # Use direct database access for simplicity
+        db = get_database()
+        collection = db["content_library"]
+        
+        article_data = {
+            "_id": ObjectId(),
+            "id": str(uuid.uuid4()),
+            "title": title or "Untitled Article",
+            "content": content,
+            "status": status,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "engine": "v2"
+        }
+        
+        result = await collection.insert_one(article_data)
+        
+        return {
+            "message": "Article created successfully",
+            "source": "v2_api",
+            "engine": "v2", 
+            "article_id": str(result.inserted_id)
+        }
+        
     except Exception as e:
         print(f"❌ Error creating article: {e}")
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error creating article: {str(e)}")
 
 @router.post("/api/content-library/legacy")

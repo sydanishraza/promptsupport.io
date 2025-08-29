@@ -458,9 +458,9 @@ backend:
 
   - task: "KE-PR9.5: MongoDB Final Sweep Progress Validation"
     implemented: true
-    working: true
+    working: false
     file: "backend/server.py, engine/stores/mongo.py, api/router.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "critical"
     needs_retesting: false
     status_history:

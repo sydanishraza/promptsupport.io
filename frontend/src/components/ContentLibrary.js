@@ -553,7 +553,7 @@ const ContentLibrary = () => {
     if (!confirm('Are you sure you want to delete this article?')) return;
 
     try {
-      const response = await fetch(`${backendUrl}/api/content-library/${articleId}`, {
+      const response = await fetch(`${backendUrl}/api/content/library/${articleId}`, {
         method: 'DELETE'
       });
 

@@ -212,12 +212,31 @@ async def upload_content_v2_route(
         
         result = await upload_file(file, json.dumps(metadata))
         
-        return {
-            "status": "completed",
-            "result": result,
-            "engine": "v2",
-            "filename": file.filename
-        }
+        # Extract and clean articles if they exist
+        articles = result.get("chunks", [])
+        if articles:
+            cleaned_articles = clean_articles_for_api(articles)
+            return {
+                "status": "completed",
+                "result": result,
+                "articles": cleaned_articles,
+                "article_count": len(articles),
+                "engine": "v2",
+                "filename": file.filename,
+                "v2_only_mode": FORCE_V2_ONLY,
+                "message": "File uploaded and processed successfully through V2 pipeline"
+            }
+        else:
+            return {
+                "status": "completed",
+                "result": result,
+                "articles": [],
+                "article_count": 0,
+                "engine": "v2", 
+                "filename": file.filename,
+                "v2_only_mode": FORCE_V2_ONLY,
+                "message": "File processed but no articles generated"
+            }
         
     except Exception as e:
         print(f"❌ V2 ENGINE: Error in file upload processing - {e}")

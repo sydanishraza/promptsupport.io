@@ -490,7 +490,7 @@ class V2OnlyValidationTester:
                 return False
             
             self.log_test("Repository Pattern Compliance", True, 
-                         f"Repository pattern compliance verified: {len(repositories)} repositories available, {repo_compliance:.1f}% compliance")
+                         f"Repository pattern compliance verified: content library operational, {repo_compliance:.1f}% compliance")
             return True
             
         except Exception as e:

@@ -31691,10 +31691,10 @@ async def update_content_library_article(
             "updated_by": "user"
         }
         
-        await db.content_library.update_one(
-            {"id": article_id},
-            {"$set": updated_article}
-        )
+        # Update article using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        await content_repo.update_by_id(article_id, updated_article)
         
         return {
             "success": True,

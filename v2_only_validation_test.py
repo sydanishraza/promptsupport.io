@@ -531,7 +531,7 @@ def v2_pipeline_test():
             }
             
             response = requests.post(f"{self.backend_url}/api/content/process", 
-                                   json=test_content, timeout=120)
+                                   data=test_content, timeout=120)
             
             if response.status_code != 200:
                 self.log_test("V2 Content Processing Pipeline", False, 

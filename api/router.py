@@ -376,76 +376,57 @@ async def create_article_legacy():
     return {"message": "V1 article creation (deprecated)"}
 
 @router.put("/api/content-library/{article_id}")
-async def update_article_v2(article_id: str, title: str = "", content: str = "", status: str = "draft"):
+async def update_article_v2(article_id: str, request: Request):
     """Update article - V2 route with repository pattern"""
-    import sys
-    import os
-    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
-    if backend_path not in sys.path:
-        sys.path.append(backend_path)
-    
     try:
-        # Use repository layer for V2 compatibility
-        from server import mongo_repo_available, RepositoryFactory
+        # Parse JSON request body
+        body = await request.json()
+        title = body.get("title", "")
+        content = body.get("content", "") 
+        status = body.get("status", "draft")
         
-        if mongo_repo_available:
-            content_repo = RepositoryFactory.get_content_library()
-            
-            # Update article data
-            update_data = {
-                "title": title,
-                "content": content,
-                "status": status,
-                "metadata": {},
-                "updated_at": datetime.utcnow()
-            }
-            
-            success = await content_repo.update_by_id(article_id, update_data)
-            
-            if not success:
-                raise HTTPException(status_code=404, detail="Article not found")
-            
-            return {
-                "message": "Article updated successfully", 
-                "source": "repository_layer",
-                "engine": "v2",
-                "article_id": article_id
-            }
-        else:
-            # Fallback to direct database access
-            import sys
-            backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
-            if backend_path not in sys.path:
-                sys.path.append(backend_path)
-            
-            from server import get_database
-            db = get_database()
-            collection = db["content_library"]
-            
-            update_data = {
-                "title": title,
-                "content": content,
-                "status": status,
-                "updated_at": datetime.utcnow().isoformat()
-            }
-            
-            result = await collection.update_one(
-                {"_id": ObjectId(article_id)},
-                {"$set": update_data}
-            )
-            
-            if result.matched_count == 0:
-                raise HTTPException(status_code=404, detail="Article not found")
-            
-            return {
-                "message": "Article updated successfully",
-                "source": "direct_database", 
-                "engine": "v2",
-                "article_id": article_id
-            }
-            
+        print(f"🔧 V2 UPDATE: Updating article {article_id} - Title: '{title[:50]}...' Content: {len(content)} chars")
+        
+        # Import MongoDB client
+        import motor.motor_asyncio
+        
+        # Use same connection pattern as server.py
+        MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
+        DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport")
+        
+        mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
+        db = mongo_client[DATABASE_NAME]
+        collection = db["content_library"]
+        
+        update_data = {
+            "title": title,
+            "content": content,
+            "status": status,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        result = await collection.update_one(
+            {"_id": ObjectId(article_id)},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Article not found")
+        
+        print(f"✅ V2 UPDATE: Successfully updated article {article_id}")
+        
+        return {
+            "message": "Article updated successfully",
+            "source": "v2_api",
+            "engine": "v2", 
+            "article_id": article_id,
+            "id": article_id  # Include id field for frontend compatibility
+        }
+        
     except Exception as e:
         print(f"❌ Error updating article {article_id}: {e}")
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error updating article: {str(e)}")
 
 @router.put("/api/content-library/{article_id}/legacy")

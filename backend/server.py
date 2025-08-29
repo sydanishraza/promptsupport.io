@@ -19498,6 +19498,7 @@ class V2ContentExtractor:
                 mime_type="text/plain",
                 word_count=len(text_content.split()),
                 blocks=blocks,
+                job_id=job_id,
                 extraction_metadata={
                     "status": "success",
                     "blocks_extracted": len(blocks),

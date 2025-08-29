@@ -14978,7 +14978,6 @@ class DocumentPreprocessor:
                         assets_repo = RepositoryFactory.get_assets()
                         await assets_repo.insert_assets(self.pending_assets)
                         print(f"📚 FIXED: Successfully inserted {len(self.pending_assets)} PDF images into Asset Library")
-                        print(f"🔍 DEBUG: Inserted IDs: {result.inserted_ids[:3]}...")  # Show first 3 IDs
                         
                         # Clear pending assets after successful insertion
                         self.pending_assets.clear()

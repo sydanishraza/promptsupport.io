@@ -81,6 +81,11 @@ def health():
         "feature_flags": {
             "v1_enabled": ENABLE_V1,
             "hybrid_enabled": ENABLE_HYBRID
+        },
+        "ke_pr10_5": {
+            "force_v2_only": FORCE_V2_ONLY,
+            "legacy_endpoint_behavior": LEGACY_ENDPOINT_BEHAVIOR,
+            "v2_pipeline_exclusive": validate_v2_pipeline_exclusivity()
         }
     }
 

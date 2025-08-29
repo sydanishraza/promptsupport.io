@@ -168,6 +168,26 @@ class V2StyleProcessor:
                 article_title, article_content, prewrite_data, global_analysis
             )
             
+            # Ensure formatted_result is a dictionary
+            if isinstance(formatted_result, str):
+                print(f"⚠️ V2 STYLE: formatted_result is string, converting to dict - engine=v2")
+                formatted_result = {
+                    "formatted_content": formatted_result,
+                    "method": "string_conversion",
+                    "structural_changes": [],
+                    "original_length": len(article_content),
+                    "formatted_length": len(formatted_result)
+                }
+            elif not isinstance(formatted_result, dict):
+                print(f"⚠️ V2 STYLE: formatted_result is {type(formatted_result)}, using fallback - engine=v2")
+                formatted_result = {
+                    "formatted_content": article_content,
+                    "method": "type_error_fallback",
+                    "structural_changes": [],
+                    "original_length": len(article_content),
+                    "formatted_length": len(article_content)
+                }
+            
             # Apply comprehensive post-processing for the three key issues
             post_processed_content = await self._apply_comprehensive_post_processing(
                 formatted_result.get('formatted_content', article_content), article_title

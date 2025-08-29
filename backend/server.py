@@ -11642,7 +11642,7 @@ class V2PublishingSystem:
                         published_articles.append({
                             "article_id": article['id'],
                             "title": article['title'],
-                            "inserted_id": str(result.inserted_id),
+                            "inserted_id": str(result_id),
                             "status": "published"
                         })
                         print(f"📚 V2 PUBLISHING: Published article '{article['title']}' - ID: {article['id']} - engine=v2")

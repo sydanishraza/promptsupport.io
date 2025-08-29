@@ -51,7 +51,8 @@ class NormalizedDocument:
     def __init__(self, doc_id: str = None, title: str = "Text Content", original_filename: str = None,
                  file_id: str = None, mime_type: str = "text/plain", word_count: int = 0,
                  blocks: List[ContentBlock] = None, media: List[MediaRecord] = None,
-                 metadata: Dict[str, Any] = None, extraction_metadata: Dict[str, Any] = None):
+                 metadata: Dict[str, Any] = None, extraction_metadata: Dict[str, Any] = None,
+                 job_id: str = None):
         self.doc_id = doc_id or str(uuid.uuid4())
         self.title = title
         self.original_filename = original_filename
@@ -62,8 +63,30 @@ class NormalizedDocument:
         self.media = media or []
         self.metadata = metadata or {}
         self.extraction_metadata = extraction_metadata or {}
+        self.job_id = job_id or f"job_{uuid.uuid4().hex[:12]}"  # Add missing job_id
         self.created_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
+    
+    def get(self, key: str, default=None):
+        """Dictionary-like get method for compatibility"""
+        if hasattr(self, key):
+            return getattr(self, key)
+        return self.metadata.get(key, default)
+    
+    def __getitem__(self, key):
+        """Dictionary-like access for compatibility"""
+        if hasattr(self, key):
+            return getattr(self, key)
+        if key in self.metadata:
+            return self.metadata[key]
+        raise KeyError(f"Key '{key}' not found in NormalizedDocument")
+    
+    def __setitem__(self, key, value):
+        """Dictionary-like assignment for compatibility"""
+        if hasattr(self, key):
+            setattr(self, key, value)
+        else:
+            self.metadata[key] = value
 
 class V2ContentExtractor:
     """V2 Engine: Advanced content extraction with 100% capture and provenance tracking"""

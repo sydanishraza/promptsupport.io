@@ -29528,12 +29528,14 @@ async def upload_file(
                 
                 await update_job_progress("extracting", f"Extracted content and {len(pdf_images)} images from PDF")
                 
-                # FIXED: Save PDF images to Asset Library
+                # FIXED: Save PDF images to Asset Library using repository pattern (KE-PR9.5)
                 if hasattr(doc_processor, 'pending_assets') and doc_processor.pending_assets:
                     try:
-                        result = await db.assets.insert_many(doc_processor.pending_assets)
-                        print(f"📚 FIXED: Successfully inserted {len(result.inserted_ids)} PDF images into Asset Library")
-                        await update_job_progress("extracting", f"Saved {len(result.inserted_ids)} images to Asset Library")
+                        from engine.stores.mongo import RepositoryFactory
+                        assets_repo = RepositoryFactory.get_assets()
+                        await assets_repo.insert_assets(doc_processor.pending_assets)
+                        print(f"📚 FIXED: Successfully inserted {len(doc_processor.pending_assets)} PDF images into Asset Library")
+                        await update_job_progress("extracting", f"Saved {len(doc_processor.pending_assets)} images to Asset Library")
                     except Exception as db_error:
                         print(f"❌ Failed to save PDF images to Asset Library: {db_error}")
                 

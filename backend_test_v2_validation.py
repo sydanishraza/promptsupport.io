@@ -379,12 +379,11 @@ class V2OnlyValidationTester:
                     
                     if response.status_code == 200:
                         data = response.json()
-                        if data.get("status") == "success":
+                        if data.get("status") == "completed":
                             articles = data.get("articles", [])
-                            processing_info = data.get("processing_info", {})
                             
                             # Check V2 engine markers
-                            engine_used = processing_info.get("engine", "")
+                            engine_used = data.get("engine", "")
                             v2_markers = engine_used == "v2"
                             
                             performance_results.append({

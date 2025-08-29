@@ -30632,7 +30632,10 @@ If the context doesn't contain relevant information, provide general assistance.
 async def get_job_status(job_id: str):
     """Get the status of a processing job"""
     try:
-        job = await db.processing_jobs.find_one({"job_id": job_id})
+        # Get job using ProcessingJobsRepository (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        processing_jobs_repo = RepositoryFactory.get_processing_jobs()
+        job = await processing_jobs_repo.find_job(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         

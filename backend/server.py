@@ -14949,9 +14949,11 @@ class DocumentPreprocessor:
                         # Use global database connection instead of creating new one
                         global db
                         
-                        # Insert all pending assets
-                        if self.pending_assets and db is not None:
-                            await db.assets.insert_many(self.pending_assets)
+                        # Insert all pending assets using repository pattern (KE-PR9.5)
+                        if self.pending_assets:
+                            from engine.stores.mongo import RepositoryFactory
+                            assets_repo = RepositoryFactory.get_assets()
+                            await assets_repo.insert_assets(self.pending_assets)
                             print(f"📚 Successfully added {len(self.pending_assets)} assets to Asset Library")
                             
                         # Clear pending assets

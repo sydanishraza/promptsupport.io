@@ -175,7 +175,7 @@ class Pipeline:
         print(f"📄 KE-PR5: Stage 1 - Content extraction - {len(content)} chars - job_id: {job_id}")
         
         title = metadata.get('title', metadata.get('original_filename', 'Text Content'))
-        normalized_doc = await self.extractor.extract_raw_text(content, title, job_id)
+        normalized_doc = await self.extractor.extract_raw_text(content, title=title, job_id=job_id)
         
         print(f"✅ KE-PR5: Stage 1 complete - {len(normalized_doc.blocks)} blocks extracted - job_id: {job_id}")
         return normalized_doc

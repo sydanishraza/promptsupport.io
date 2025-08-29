@@ -9,7 +9,7 @@ import time
 import json
 from datetime import datetime
 
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com"
 
 def log(message):
     timestamp = datetime.now().strftime("%H:%M:%S")

@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com/api"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com/api"
 
 class V2RelatedLinksFixesTester:
     def __init__(self):

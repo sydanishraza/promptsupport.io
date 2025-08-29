@@ -23,7 +23,7 @@ import os
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com"
 
 class V2PipelineBugFixValidator:
     def __init__(self):

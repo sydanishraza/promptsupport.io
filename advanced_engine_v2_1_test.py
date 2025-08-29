@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Any
 
 # Backend URL from environment
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com/api"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com/api"
 
 class AdvancedEngineV21Tester:
     def __init__(self):

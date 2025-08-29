@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://happy-buck.preview.emergentagent.com') + '/api'
 
 def test_asset_management_endpoints():
     """Test the new asset management endpoints: DELETE, PUT, GET, POST"""

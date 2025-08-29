@@ -9,7 +9,7 @@ import json
 import sys
 
 # Backend URL from environment
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com/api"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com/api"
 
 def test_engine_status():
     """Test engine status endpoint"""

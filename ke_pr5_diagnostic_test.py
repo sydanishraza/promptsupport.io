@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com/api"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com/api"
 
 class KE_PR5_DiagnosticTester:
     def __init__(self):

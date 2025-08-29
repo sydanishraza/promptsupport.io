@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 
 # Test Configuration
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 class KE_PR9_5_FinalAssessment:

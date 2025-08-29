@@ -22,7 +22,7 @@ from datetime import datetime
 from collections import defaultdict, Counter
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://mongo-repo-refactor.preview.emergentagent.com"
+BACKEND_URL = "https://happy-buck.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_analysis(message, level="INFO"):

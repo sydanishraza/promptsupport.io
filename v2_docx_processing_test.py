@@ -17,7 +17,7 @@ import tempfile
 import requests
 
 # Configuration
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://happy-buck.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 # DOCX file URL from the review request

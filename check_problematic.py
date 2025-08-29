@@ -2,7 +2,7 @@
 import requests
 import json
 
-response = requests.get("https://mongo-repo-refactor.preview.emergentagent.com/api/content-library")
+response = requests.get("https://happy-buck.preview.emergentagent.com/api/content-library")
 data = response.json()
 
 for article in data['articles']:

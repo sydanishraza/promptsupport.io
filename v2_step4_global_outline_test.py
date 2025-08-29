@@ -15,7 +15,7 @@ import uuid
 class V2Step4GlobalOutlinePlanningTester:
     def __init__(self):
         # Use environment variable for backend URL
-        self.backend_url = os.getenv('REACT_APP_BACKEND_URL', 'https://mongo-repo-refactor.preview.emergentagent.com')
+        self.backend_url = os.getenv('REACT_APP_BACKEND_URL', 'https://happy-buck.preview.emergentagent.com')
         self.api_base = f"{self.backend_url}/api"
         self.test_results = []
         self.failed_tests = []

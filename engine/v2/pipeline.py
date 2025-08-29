@@ -101,7 +101,7 @@ class Pipeline:
             print(f"🚀 KE-PR5: Starting V2 pipeline - job_id: {job_id}, run_id: {run_id}")
             
             # Stage 1: Content Extraction & Normalization
-            normalized_doc = await self._stage_extract_content(content, metadata, run_id)
+            normalized_doc = await self._stage_extract_content(content, metadata, run_id, job_id)
             
             # Stage 2: Multi-dimensional Analysis
             analysis_result = await self._stage_analyze(normalized_doc, run_id)

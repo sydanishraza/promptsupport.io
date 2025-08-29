@@ -94,7 +94,7 @@ class V2ContentExtractor:
     def __init__(self):
         pass
     
-    async def extract_raw_text(self, content: str, title: str = "Text Content") -> NormalizedDocument:
+    async def extract_raw_text(self, content: str, title: str = "Text Content", job_id: str = None) -> NormalizedDocument:
         """Extract and normalize raw text content into NormalizedDocument format"""
         try:
             print(f"📝 V2 EXTRACTOR: Extracting raw text content - {len(content)} chars - engine=v2")
@@ -146,7 +146,7 @@ class V2ContentExtractor:
                 )
                 blocks.append(block)
             
-            # Create normalized document
+            # Create normalized document with job_id
             normalized_doc = NormalizedDocument(
                 title=title,
                 original_filename=title,
@@ -156,15 +156,16 @@ class V2ContentExtractor:
                 blocks=blocks,
                 media=[],  # No media in text extraction
                 metadata={"content_length": len(content), "block_count": len(blocks)},
-                extraction_metadata={"extraction_method": "v2_text_extractor", "engine": "v2"}
+                extraction_metadata={"extraction_method": "v2_text_extractor", "engine": "v2"},
+                job_id=job_id  # Pass job_id to NormalizedDocument
             )
             
-            print(f"✅ V2 EXTRACTOR: Extracted {len(blocks)} blocks, {word_count} words - engine=v2")
+            print(f"✅ V2 EXTRACTOR: Extracted {len(blocks)} blocks, {word_count} words - job_id: {job_id} - engine=v2")
             return normalized_doc
             
         except Exception as e:
             print(f"❌ V2 EXTRACTOR: Error extracting content - {e}")
-            # Return minimal document
+            # Return minimal document with job_id
             fallback_block = ContentBlock(
                 block_type="paragraph",
                 content=content[:1000] if content else "No content",
@@ -176,5 +177,6 @@ class V2ContentExtractor:
                 file_id=f"error_{int(datetime.utcnow().timestamp())}",
                 word_count=len(content.split()) if content else 0,
                 blocks=[fallback_block],
-                extraction_metadata={"extraction_method": "v2_text_extractor_fallback", "error": str(e)}
+                extraction_metadata={"extraction_method": "v2_text_extractor_fallback", "error": str(e)},
+                job_id=job_id  # Pass job_id to fallback document too
             )

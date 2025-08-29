@@ -472,6 +472,7 @@ const PromptSupportEditor = ({
   );
 
   const handleTitleChange = useCallback((e) => {
+    console.log('🔥 TITLE CHANGE EVENT:', e.target.value, 'Event type:', e.type);
     debouncedTitleChange(e.target.value);
   }, [debouncedTitleChange]);
   useEffect(() => {

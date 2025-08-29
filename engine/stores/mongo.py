@@ -513,6 +513,53 @@ class MediaLibraryRepository:
             raise
 
 # ========================================
+# V2 PROCESSING REPOSITORY
+# ========================================
+
+class V2ProcessingRepository:
+    """Repository for general V2 processing operations"""
+    
+    def __init__(self):
+        self.collection = get_collection("v2_processing")
+    
+    async def store_processing_result(self, processing_record: Dict[str, Any]) -> str:
+        """Store V2 processing result"""
+        try:
+            processing_record['created_at'] = datetime.utcnow()
+            result = await self.collection.insert_one(processing_record)
+            return str(result.inserted_id)
+        except Exception as e:
+            print(f"❌ KE-PR9: Error storing processing result: {e}")
+            raise
+    
+    async def get_processing_result(self, run_id: str) -> Optional[Dict]:
+        """Get processing result by run_id"""
+        try:
+            result = await self.collection.find_one({"run_id": run_id})
+            if result and '_id' in result:
+                result['_id'] = str(result['_id'])
+            return result
+        except Exception as e:
+            print(f"❌ KE-PR9: Error getting processing result: {e}")
+            return None
+    
+    async def find_recent_processing(self, limit: int = 10) -> List[Dict]:
+        """Find recent processing results"""
+        try:
+            cursor = self.collection.find().sort("created_at", -1).limit(limit)
+            results = await cursor.to_list(length=limit)
+            
+            # Convert ObjectId to string
+            for result in results:
+                if '_id' in result:
+                    result['_id'] = str(result['_id'])
+            
+            return results
+        except Exception as e:
+            print(f"❌ KE-PR9: Error finding recent processing results: {e}")
+            return []
+
+# ========================================
 # KE-PR9.5: PROCESSING JOBS REPOSITORY
 # ========================================
 

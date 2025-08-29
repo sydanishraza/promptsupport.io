@@ -33460,24 +33460,23 @@ async def process_toc_links():
                 
                 print(f"🔧 TICKET 2: Processing results for '{article_title}' - {anchor_links_generated} links, anchors resolve: {anchors_resolve_result}")
                 
-                # Always update articles to ensure processing is applied (even if no changes detected)
-                update_result = await db.content_library.update_one(
-                    {"_id": article["_id"]},
-                    {
-                        "$set": {
-                            "content": processed_content,
-                            "html": processed_content,
-                            "toc_processing": {
-                                "processed_at": datetime.now().isoformat(),
-                                "anchor_links_generated": anchor_links_generated,
-                                "structural_changes": structural_changes,
-                                "toc_broken_links": toc_broken_links,
-                                "engine": "v2",
-                                "force_processed": True
-                            }
-                        }
+                # Always update articles to ensure processing is applied using repository pattern (KE-PR9.5)
+                from engine.stores.mongo import RepositoryFactory
+                content_repo = RepositoryFactory.get_content_library()
+                
+                update_data = {
+                    "content": processed_content,
+                    "html": processed_content,
+                    "toc_processing": {
+                        "processed_at": datetime.now().isoformat(),
+                        "anchor_links_generated": anchor_links_generated,
+                        "structural_changes": structural_changes,
+                        "toc_broken_links": toc_broken_links,
+                        "engine": "v2",
+                        "force_processed": True
                     }
-                )
+                }
+                update_result = await content_repo.update_by_object_id(str(article["_id"]), update_data)
                 
                 if update_result.modified_count > 0:
                     processed_count += 1

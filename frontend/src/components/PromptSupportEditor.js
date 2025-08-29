@@ -465,11 +465,12 @@ const PromptSupportEditor = ({
   // TITLE FIELD FLICKER FIX: Debounced title change handler
   const debouncedTitleChange = useCallback(
     debounce((newTitle) => {
-      console.log('🔥 DEBOUNCED TITLE UPDATE:', newTitle);
+      console.log('🔥 DEBOUNCED TITLE UPDATE:', newTitle, 'Current title state:', title);
       setTitle(newTitle);
+      console.log('🔥 After setTitle, title should be:', newTitle);
       setHasUnsavedChanges(true);
     }, 100),
-    []
+    [title]  // Add title to dependencies to track current state
   );
 
   const handleTitleChange = useCallback((e) => {

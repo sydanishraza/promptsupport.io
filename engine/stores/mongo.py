@@ -278,8 +278,17 @@ class ContentLibraryRepository:
     async def find_recent(self, limit: int = 100) -> List[Dict]:
         """Find recent articles"""
         try:
+            print(f"🔍 DEBUG: find_recent called with limit={limit}")
+            print(f"🔍 DEBUG: Collection name: {self.collection.name}")
+            print(f"🔍 DEBUG: Database name: {self.collection.database.name}")
+            
+            # Count total documents first
+            total_count = await self.collection.count_documents({})
+            print(f"🔍 DEBUG: Total documents in collection: {total_count}")
+            
             cursor = self.collection.find().sort("created_at", -1).limit(limit)
             articles = await cursor.to_list(length=limit)
+            print(f"🔍 DEBUG: Retrieved {len(articles)} articles from cursor")
             
             # Convert ObjectId to string
             for article in articles:
@@ -289,6 +298,8 @@ class ContentLibraryRepository:
             return articles
         except Exception as e:
             print(f"❌ KE-PR9: Error finding recent articles: {e}")
+            import traceback
+            print(f"❌ KE-PR9: Traceback: {traceback.format_exc()}")
             return []
 
 # ========================================

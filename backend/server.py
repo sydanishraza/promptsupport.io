@@ -17905,6 +17905,7 @@ class NormalizedDocument(BaseModel):
     blocks: List[ContentBlock] = []
     media: List[MediaRecord] = []
     extraction_metadata: Dict[str, Any] = {}
+    job_id: Optional[str] = Field(default_factory=lambda: f"job_{uuid.uuid4().hex[:12]}")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

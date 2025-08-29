@@ -48,7 +48,7 @@ const Dashboard = () => {
         
         // Fetch Content Library count (primary source of truth for documents)
         console.log('🔧 Dashboard: Fetching content library...');
-        const contentLibraryResponse = await fetch(`${backendUrl}/api/content-library`);
+        const contentLibraryResponse = await fetch(`${backendUrl}/api/content/library`);
         let totalDocuments = 0;
         let contentLibraryCount = 0;
         if (contentLibraryResponse.ok && isActive) {

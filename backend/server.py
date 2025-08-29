@@ -11638,7 +11638,7 @@ class V2PublishingSystem:
                     content_repo = RepositoryFactory.get_content_library()
                     result_id = await content_repo.insert_article(article)
                     
-                    if result.inserted_id:
+                    if result_id:
                         published_articles.append({
                             "article_id": article['id'],
                             "title": article['title'],

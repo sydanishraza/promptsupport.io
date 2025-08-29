@@ -31796,7 +31796,10 @@ async def get_article_version_history(article_id: str):
 async def restore_article_version(article_id: str, version: int):
     """Restore an article to a specific version"""
     try:
-        article = await db.content_library.find_one({"id": article_id})
+        # Get existing article using repository pattern (KE-PR9.5)
+        from engine.stores.mongo import RepositoryFactory
+        content_repo = RepositoryFactory.get_content_library()
+        article = await content_repo.find_by_id(article_id)
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
         

@@ -138,22 +138,22 @@ class TestV2OnlyValidation:
         """Test that pipeline orchestration routes exclusively to /engine/v2/* modules"""
         try:
             # Import V2 pipeline modules
-            from engine.v2.pipeline import V2Pipeline
-            from engine.v2.analyzer import V2AnalysisSystem
+            from engine.v2.pipeline import Pipeline
+            from engine.v2.analyzer import V2MultiDimensionalAnalyzer
             from engine.v2.generator import V2ArticleGenerator
             from engine.v2.outline import V2GlobalOutlinePlanner
             
             # Validate V2 modules are available
-            assert V2Pipeline is not None, "V2Pipeline module not available"
-            assert V2AnalysisSystem is not None, "V2AnalysisSystem module not available" 
+            assert Pipeline is not None, "Pipeline module not available"
+            assert V2MultiDimensionalAnalyzer is not None, "V2MultiDimensionalAnalyzer module not available" 
             assert V2ArticleGenerator is not None, "V2ArticleGenerator module not available"
             assert V2GlobalOutlinePlanner is not None, "V2GlobalOutlinePlanner module not available"
             
             print("✅ KE-PR10.5: V2 engine modules validated and available")
             
             # Test V2 pipeline instantiation
-            v2_pipeline = V2Pipeline()
-            assert v2_pipeline is not None, "V2Pipeline instantiation failed"
+            v2_pipeline = Pipeline()
+            assert v2_pipeline is not None, "Pipeline instantiation failed"
             
             print("✅ KE-PR10.5: V2 pipeline instantiation successful")
             

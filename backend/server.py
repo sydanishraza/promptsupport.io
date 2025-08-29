@@ -19513,6 +19513,7 @@ class V2ContentExtractor:
                 title=title,
                 file_id=file_id,
                 mime_type="text/plain",
+                job_id=job_id,
                 extraction_metadata={"error": str(e), "status": "failed"}
             )
 

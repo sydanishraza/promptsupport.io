@@ -384,7 +384,7 @@ class V2OnlyValidationTester:
             }
             
             response = requests.post(f"{self.backend_url}/api/content/process", 
-                                   json=test_payload, timeout=60)
+                                   data=test_payload, timeout=60)
             
             if response.status_code == 200:
                 data = response.json()

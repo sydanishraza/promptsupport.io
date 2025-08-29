@@ -321,7 +321,7 @@ async def get_content_library():
         raise HTTPException(status_code=500, detail=f"Error fetching library: {str(e)}")
 
 @router.post("/api/content-library")
-async def create_article_v2(request: dict):
+async def create_article_v2(title: str = "", content: str = "", status: str = "draft"):
     """Create new article - V2 route with repository pattern"""
     import sys
     import os
@@ -339,10 +339,10 @@ async def create_article_v2(request: dict):
             # Create new article data
             article_data = {
                 "id": str(uuid.uuid4()),
-                "title": request.get("title", "Untitled Article"),
-                "content": request.get("content", ""),
-                "status": request.get("status", "draft"),
-                "metadata": request.get("metadata", {}),
+                "title": title or "Untitled Article",
+                "content": content,
+                "status": status,
+                "metadata": {},
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow(),
                 "engine": "v2"
@@ -366,9 +366,9 @@ async def create_article_v2(request: dict):
             article_data = {
                 "_id": ObjectId(),
                 "id": str(uuid.uuid4()),
-                "title": request.get("title", "Untitled Article"),
-                "content": request.get("content", ""),
-                "status": request.get("status", "draft"),
+                "title": title or "Untitled Article",
+                "content": content,
+                "status": status,
                 "created_at": datetime.utcnow().isoformat(),
                 "updated_at": datetime.utcnow().isoformat(),
                 "engine": "v2"

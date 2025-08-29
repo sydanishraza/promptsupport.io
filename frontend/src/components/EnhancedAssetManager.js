@@ -123,7 +123,7 @@ const EnhancedAssetManager = ({
             const realAssets = data.assets || [];
             
             realAssets.forEach(asset => {
-              if (asset.type === 'image') {
+              if (asset.type && asset.type.startsWith('image/')) {
                 let imageSource = '';
                 if (asset.url) {
                   imageSource = asset.url.startsWith('/') ? `${backendUrl}${asset.url}` : asset.url;

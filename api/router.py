@@ -321,9 +321,17 @@ async def get_content_library():
         raise HTTPException(status_code=500, detail=f"Error fetching library: {str(e)}")
 
 @router.post("/api/content-library")
-async def create_article_v2(title: str = "", content: str = "", status: str = "draft"):
+async def create_article_v2(request: Request):
     """Create new article - V2 route with repository pattern"""
     try:
+        # Parse JSON request body
+        body = await request.json()
+        title = body.get("title", "Untitled Article")
+        content = body.get("content", "")
+        status = body.get("status", "draft")
+        
+        print(f"🔧 V2 CREATE: Creating new article - Title: '{title[:50]}...' Content: {len(content)} chars")
+        
         # Import MongoDB client
         import motor.motor_asyncio
         
@@ -338,7 +346,7 @@ async def create_article_v2(title: str = "", content: str = "", status: str = "d
         article_data = {
             "_id": ObjectId(),
             "id": str(uuid.uuid4()),
-            "title": title or "Untitled Article",
+            "title": title,
             "content": content,
             "status": status,
             "created_at": datetime.utcnow().isoformat(),
@@ -348,11 +356,14 @@ async def create_article_v2(title: str = "", content: str = "", status: str = "d
         
         result = await collection.insert_one(article_data)
         
+        print(f"✅ V2 CREATE: Successfully created article {result.inserted_id}")
+        
         return {
             "message": "Article created successfully",
             "source": "v2_api",
             "engine": "v2", 
-            "article_id": str(result.inserted_id)
+            "article_id": str(result.inserted_id),
+            "id": str(result.inserted_id)  # Include id field for frontend compatibility
         }
         
     except Exception as e:

@@ -402,7 +402,7 @@ async def create_article_legacy():
     return {"message": "V1 article creation (deprecated)"}
 
 @router.put("/api/content-library/{article_id}")
-async def update_article_v2(article_id: str, request: dict):
+async def update_article_v2(article_id: str, title: str = "", content: str = "", status: str = "draft"):
     """Update article - V2 route with repository pattern"""
     import sys
     import os
@@ -419,10 +419,10 @@ async def update_article_v2(article_id: str, request: dict):
             
             # Update article data
             update_data = {
-                "title": request.get("title", ""),
-                "content": request.get("content", ""),
-                "status": request.get("status", "draft"),
-                "metadata": request.get("metadata", {}),
+                "title": title,
+                "content": content,
+                "status": status,
+                "metadata": {},
                 "updated_at": datetime.utcnow()
             }
             
@@ -449,9 +449,9 @@ async def update_article_v2(article_id: str, request: dict):
             collection = db["content_library"]
             
             update_data = {
-                "title": request.get("title", ""),
-                "content": request.get("content", ""),
-                "status": request.get("status", "draft"),
+                "title": title,
+                "content": content,
+                "status": status,
                 "updated_at": datetime.utcnow().isoformat()
             }
             

@@ -149,14 +149,26 @@ class V2OnlyValidationTester:
             
             health_data = response.json()
             
-            # Check if system reports V2-only mode
-            v2_mode = health_data.get("v2_only_mode", False)
-            if not v2_mode:
-                self.log_test("V2-Only Environment Validation", False, "System not reporting V2-only mode")
+            # Check if system reports V2-only mode correctly
+            ke_pr10_5 = health_data.get("ke_pr10_5", {})
+            force_v2_reported = ke_pr10_5.get("force_v2_only", False)
+            legacy_behavior_reported = ke_pr10_5.get("legacy_endpoint_behavior", "")
+            v2_pipeline_exclusive = ke_pr10_5.get("v2_pipeline_exclusive", False)
+            
+            if not force_v2_reported:
+                self.log_test("V2-Only Environment Validation", False, "System not reporting force_v2_only=true")
+                return False
+                
+            if legacy_behavior_reported != "block":
+                self.log_test("V2-Only Environment Validation", False, f"System reporting legacy_endpoint_behavior={legacy_behavior_reported}, expected 'block'")
+                return False
+                
+            if not v2_pipeline_exclusive:
+                self.log_test("V2-Only Environment Validation", False, "System not reporting V2 pipeline exclusivity")
                 return False
             
             self.log_test("V2-Only Environment Validation", True, 
-                         f"FORCE_V2_ONLY=true, LEGACY_ENDPOINT_BEHAVIOR=block, system health confirms V2-only mode")
+                         f"FORCE_V2_ONLY=true, LEGACY_ENDPOINT_BEHAVIOR=block, V2 pipeline exclusive mode confirmed")
             return True
             
         except Exception as e:

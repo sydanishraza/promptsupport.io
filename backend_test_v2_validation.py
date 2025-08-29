@@ -271,14 +271,13 @@ class V2OnlyValidationTester:
             
             # Test CREATE operations via V2 processing
             try:
-                test_content = {
+                form_data = {
                     "content": "# Repository Test Article\n\nThis article tests repository pattern CRUD operations.\n\n## Features\n- Repository pattern validation\n- CRUD operation testing\n- V2 engine integration",
-                    "content_type": "markdown",
-                    "processing_mode": "v2_only"
+                    "content_type": "markdown"
                 }
                 
                 response = requests.post(f"{self.backend_url}/api/content/process", 
-                                       json=test_content, timeout=60)
+                                       data=form_data, timeout=60)
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("status") == "success":

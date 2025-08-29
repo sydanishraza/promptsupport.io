@@ -2992,8 +2992,10 @@ Return ONLY JSON in this exact format:
                 "version": "2.0"
             }
             
-            # Store in global outlines collection
-            await db.v2_global_outlines.insert_one(outline_record)
+            # Store in global outlines collection using repository (KE-PR9.5)
+            from engine.stores.mongo import RepositoryFactory
+            outline_repo = RepositoryFactory.get_v2_outlines()
+            await outline_repo.store_global_outline(outline_record)
             
             print(f"📊 V2 OUTLINE: Global outline stored with run {run_id} - engine=v2")
             return outline_record

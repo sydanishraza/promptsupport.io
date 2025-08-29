@@ -321,8 +321,75 @@ async def get_content_library():
         raise HTTPException(status_code=500, detail=f"Error fetching library: {str(e)}")
 
 @router.post("/api/content-library")
-async def create_article():
-    """Create new article - V1 route with feature flag"""
+async def create_article_v2(request: dict):
+    """Create new article - V2 route with repository pattern"""
+    import sys
+    import os
+    backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend')
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+    
+    try:
+        # Use repository layer for V2 compatibility
+        from server import mongo_repo_available, RepositoryFactory
+        
+        if mongo_repo_available:
+            content_repo = RepositoryFactory.get_content_library()
+            
+            # Create new article data
+            article_data = {
+                "id": str(uuid.uuid4()),
+                "title": request.get("title", "Untitled Article"),
+                "content": request.get("content", ""),
+                "status": request.get("status", "draft"),
+                "metadata": request.get("metadata", {}),
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "engine": "v2"
+            }
+            
+            article_id = await content_repo.insert_article(article_data)
+            
+            return {
+                "message": "Article created successfully",
+                "source": "repository_layer", 
+                "engine": "v2",
+                "article_id": article_id,
+                "article": article_data
+            }
+        else:
+            # Fallback to direct database access
+            from server import get_database
+            db = get_database()
+            collection = db["content_library"]
+            
+            article_data = {
+                "_id": ObjectId(),
+                "id": str(uuid.uuid4()),
+                "title": request.get("title", "Untitled Article"),
+                "content": request.get("content", ""),
+                "status": request.get("status", "draft"),
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat(),
+                "engine": "v2"
+            }
+            
+            result = await collection.insert_one(article_data)
+            
+            return {
+                "message": "Article created successfully",
+                "source": "direct_database",
+                "engine": "v2", 
+                "article_id": str(result.inserted_id)
+            }
+            
+    except Exception as e:
+        print(f"❌ Error creating article: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating article: {str(e)}")
+
+@router.post("/api/content-library/legacy")
+async def create_article_legacy():
+    """Create new article - V1 route with feature flag (deprecated)"""
     if not ENABLE_V1:
         raise HTTPException(
             status_code=410, 

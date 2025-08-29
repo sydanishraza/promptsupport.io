@@ -294,16 +294,7 @@ async def get_content_library():
         
         if mongo_repo_available:
             content_repo = RepositoryFactory.get_content_library()
-            print(f"🔍 DEBUG: About to call content_repo.find_recent(limit=100)")
             articles = await content_repo.find_recent(limit=100)
-            print(f"🔍 DEBUG: content_repo.find_recent returned {len(articles)} articles")
-            
-            # Debug: show first article if available
-            if articles:
-                first_article = articles[0]
-                print(f"🔍 DEBUG: First article - Title: {first_article.get('title', 'No title')}, ID: {str(first_article.get('_id', 'No ID'))[:12]}...")
-            else:
-                print(f"🔍 DEBUG: No articles returned from repository")
             
             return {
                 "articles": articles,

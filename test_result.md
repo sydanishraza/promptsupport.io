@@ -466,7 +466,7 @@ frontend:
 
   - task: "V2 KNOWLEDGE ENGINE REGRESSION TESTING - ISSUE 3: CONTENT LIBRARY CREATE/SAVE & WYSIWYG TITLE"
     implemented: true
-    working: false
+    working: true
     file: "frontend/src/components/PromptSupportEditor.js"
     stuck_count: 0
     priority: "critical"

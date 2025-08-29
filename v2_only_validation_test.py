@@ -651,7 +651,7 @@ def v2_pipeline_test():
             }
             
             execution_response = requests.post(f"{self.backend_url}/api/content/process", 
-                                             json=test_payload, timeout=90)
+                                             data=test_payload, timeout=90)
             
             if execution_response.status_code == 200:
                 execution_data = execution_response.json()

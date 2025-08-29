@@ -115,10 +115,9 @@ class V2OnlyValidationTester:
                         if data.get("status") == "success":
                             successful_tests += 1
                             
-                            # Validate V2 engine metadata
-                            processing_info = data.get("processing_info", {})
-                            engine_used = processing_info.get("engine", "")
-                            v2_only_mode = processing_info.get("v2_only_mode", False)
+                            # Check V2 engine metadata
+                            engine_used = data.get("engine", "")
+                            v2_only_mode = data.get("v2_only_mode", False)
                             
                             if engine_used == "v2" and v2_only_mode:
                                 # Check articles generated

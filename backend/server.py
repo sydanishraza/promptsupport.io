@@ -31540,12 +31540,12 @@ Source Information:
             )
         raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
     except Exception as e:
-        # Update job with error
+        # Update job with error using ProcessingJobsRepository (KE-PR9.5)
         if 'job' in locals():
-            await db.processing_jobs.update_one(
-                {"job_id": job.job_id},
-                {"$set": {"status": "failed", "error_message": str(e)}}
-            )
+            from engine.stores.mongo import RepositoryFactory
+            processing_jobs_repo = RepositoryFactory.get_processing_jobs()
+            await processing_jobs_repo.update_job_status(job.job_id, "failed", 
+                                                       {"error_message": str(e)})
         raise HTTPException(status_code=500, detail=str(e))
 
 # Recording processing endpoint

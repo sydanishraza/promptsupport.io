@@ -20080,7 +20080,9 @@ async def get_status():
     try:
         # Get document count from MongoDB
         doc_count = await db.documents.count_documents({})
-        job_count = await db.processing_jobs.count_documents({})
+        # Get job count using ProcessingJobsRepository (KE-PR9.5)
+        from engine.stores.mongo import count_processing_jobs
+        job_count = await count_processing_jobs()
         
         return {
             "status": "operational",

@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     # Engine Flags
     ENABLE_V1: bool = False
     ENABLE_HYBRID: bool = False
+    
+    # KE-PR10.5: V2-Only Validation Flag
+    FORCE_V2_ONLY: bool = Field(default=False, description="Force system to run exclusively on V2 engine modules")
+    
+    # KE-PR10.5: Legacy endpoint behavior
+    LEGACY_ENDPOINT_BEHAVIOR: str = Field(default="warn", description="How to handle legacy endpoints: 'warn', 'block', 'disable'")
 
     class Config:
         env_file = ".env"

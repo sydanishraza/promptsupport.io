@@ -29471,15 +29471,17 @@ async def upload_file(
         # OPTIMIZED: Add progress tracking for better UI feedback
         async def update_job_progress(stage: str, details: str = ""):
             """Update job progress to prevent UI timeout"""
-            await db.processing_jobs.update_one(
-                {"job_id": job.job_id},
-                {"$set": {
-                    "status": "processing", 
-                    "current_stage": stage,
-                    "stage_details": details,
-                    "last_updated": datetime.utcnow().isoformat()
-                }}
-            )
+            # Use ProcessingJobsRepository (KE-PR9.5)
+            from engine.stores.mongo import RepositoryFactory
+            processing_jobs_repo = RepositoryFactory.get_processing_jobs()
+            
+            update_data = {
+                "status": "processing", 
+                "current_stage": stage,
+                "stage_details": details,
+                "last_updated": datetime.utcnow().isoformat()
+            }
+            await processing_jobs_repo.update_job_status(job.job_id, "processing", update_data)
             print(f"📊 PROGRESS: {stage} - {details}")
         
         await update_job_progress("initializing", "Reading file content...")

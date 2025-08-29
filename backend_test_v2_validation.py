@@ -96,15 +96,15 @@ class V2OnlyValidationTester:
             
             for test_case in test_cases:
                 try:
-                    payload = {
+                    # Use Form data format as expected by API router
+                    form_data = {
                         "content": test_case["content"],
-                        "content_type": test_case["content_type"],
-                        "processing_mode": "v2_only"
+                        "content_type": test_case["content_type"]
                     }
                     
                     start_time = time.time()
                     response = requests.post(f"{self.backend_url}/api/content/process", 
-                                           json=payload, timeout=120)
+                                           data=form_data, timeout=120)
                     processing_time = time.time() - start_time
                     total_processing_time += processing_time
                     

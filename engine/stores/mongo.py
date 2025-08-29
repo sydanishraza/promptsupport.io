@@ -736,6 +736,11 @@ class RepositoryFactory:
     def get_processing_jobs() -> ProcessingJobsRepository:
         """Get processing jobs repository (KE-PR9.5)"""
         return ProcessingJobsRepository()
+    
+    @staticmethod
+    def get_v2_processing():
+        """Get V2 processing repository for general V2 operations"""
+        return V2ProcessingRepository()
 
 # ========================================
 # CONVENIENCE FUNCTIONS

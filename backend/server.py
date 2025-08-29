@@ -30529,6 +30529,7 @@ File Information:
             "file_type": file_extension,
             "extracted_content_length": len(extracted_content),
             "chunks_created": len(chunks),
+            "chunks": chunks,  # Include the actual articles
             "message": "V2 Engine: File processed successfully with optimized pipeline",
             "engine": "v2"
         }

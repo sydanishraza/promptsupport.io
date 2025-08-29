@@ -520,13 +520,26 @@ class V2ProcessingRepository:
     """Repository for general V2 processing operations"""
     
     def __init__(self):
-        self.collection = get_collection("v2_processing")
+        self.db = get_database()
+    
+    async def create(self, collection: str, document: Dict[str, Any]) -> str:
+        """Generic create method for V2 processing collections"""
+        try:
+            document['created_at'] = datetime.utcnow()
+            collection_obj = self.db[collection]
+            result = await collection_obj.insert_one(document)
+            print(f"✅ V2Processing: Document stored in {collection}")
+            return str(result.inserted_id)
+        except Exception as e:
+            print(f"❌ V2Processing: Error storing in {collection}: {e}")
+            raise
     
     async def store_processing_result(self, processing_record: Dict[str, Any]) -> str:
         """Store V2 processing result"""
         try:
             processing_record['created_at'] = datetime.utcnow()
-            result = await self.collection.insert_one(processing_record)
+            collection = self.db["v2_processing"]
+            result = await collection.insert_one(processing_record)
             return str(result.inserted_id)
         except Exception as e:
             print(f"❌ KE-PR9: Error storing processing result: {e}")
@@ -535,7 +548,8 @@ class V2ProcessingRepository:
     async def get_processing_result(self, run_id: str) -> Optional[Dict]:
         """Get processing result by run_id"""
         try:
-            result = await self.collection.find_one({"run_id": run_id})
+            collection = self.db["v2_processing"]
+            result = await collection.find_one({"run_id": run_id})
             if result and '_id' in result:
                 result['_id'] = str(result['_id'])
             return result
@@ -546,7 +560,8 @@ class V2ProcessingRepository:
     async def find_recent_processing(self, limit: int = 10) -> List[Dict]:
         """Find recent processing results"""
         try:
-            cursor = self.collection.find().sort("created_at", -1).limit(limit)
+            collection = self.db["v2_processing"]
+            cursor = collection.find().sort("created_at", -1).limit(limit)
             results = await cursor.to_list(length=limit)
             
             # Convert ObjectId to string

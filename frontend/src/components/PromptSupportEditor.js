@@ -3971,8 +3971,12 @@ const PromptSupportEditor = ({
             onChange={handleTitleChange}
             onInput={handleTitleChange}
             onKeyUp={handleTitleChange}
+            onFocus={() => console.log('🔥 TITLE INPUT FOCUSED')}
+            onBlur={() => console.log('🔥 TITLE INPUT BLURRED')}
+            autoFocus={editorMode === 'wysiwyg'}
             className="w-full text-2xl font-bold text-gray-900 border-none outline-none focus:ring-0 p-0 bg-transparent"
             placeholder="Article title..."
+            style={{zIndex: 1000, position: 'relative'}}
           />
         ) : (
           <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>

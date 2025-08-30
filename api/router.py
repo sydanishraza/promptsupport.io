@@ -345,7 +345,7 @@ async def create_article_v2(request: Request):
         
         # Use same connection pattern as server.py
         MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-        DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport")
+        DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport_db")
         
         mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
         db = mongo_client[DATABASE_NAME]

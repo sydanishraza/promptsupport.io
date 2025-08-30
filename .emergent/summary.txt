@@ -1,66 +1,91 @@
 <analysis>
-The previous AI engineer systematically refactored and enhanced the PromptSupport application. Initial efforts focused on , modularizing V2 engine classes from  into . Subsequently, , , and  centralized MongoDB operations via a repository pattern, meticulously replacing direct database calls across , V2 modules, and other components. This involved adding missing repository methods, handling conversion issues, and implementing CI guardrails. The most recent focus, , introduced a  flag to validate exclusive V2 engine reliance before legacy removal. This phase included implementing middleware, adding new tests, and fixing critical V2 pipeline processing bugs related to , , and missing repository methods, culminating in debugging  argument mismatch.
+The AI engineer's work trajectory involved methodically addressing a series of regressions and feature enhancements for the PromptSupport V2 Knowledge Engine. Initial tasks focused on resolving pipeline argument mismatches ( metadata,  job_id), class naming inconsistencies, and missing repository implementations, culminating in fixing JSON serialization errors for MongoDB ObjectIds across API responses. A significant recurring challenge was frontend-backend communication, specifically incorrect API endpoint paths (e.g.,  vs ) and environment variable mismatches ( vs external preview URL). Persistent UI issues, such as the WYSIWYG title field not being editable, were tackled with React state management fixes ( for debounced handlers). The latest efforts focused on resolving 500 errors during article save/upload due to deep ObjectId serialization, and debugging a focus/flickering issue in the WYSIWYG editor. Current work involves debugging a 500 error in the V2 PUT endpoint caused by a  condition.
 </analysis>
 
 <product_requirements>
-The PromptSupport application processes various document types (DOCX, PDF, HTML, URLs) into structured HTML using a V2 Engine. This engine incorporates advanced features like Woolf-aligned style processing, related links, LLM-driven gap filling, evidence tagging, and code block normalization. Key architectural refactoring initiatives completed include:
--   **T1, T2, T3**: HTML canonicalization, deterministic Mini-TOCs, and durable links/bookmarks.
--   **KE-PR1-KE-PR8**: Modularization of  with a  orchestrator, centralized LLM calls,  validation, and API router split.
--   **KE-PR9 (KE-PR9.3, KE-PR9.4, KE-PR9.5)**: Centralization of MongoDB and asset operations using a repository pattern, with specific attention to preserving TICKET-3 fields, and the elimination of all direct database calls.
--   **KE-PR10**: Establishment of a Golden Tests & Non-Regression Suite.
--   **KE-Migrate-Stages**: Extraction of 17 V2 engine classes from  into  modules.
--   **KE-PR10.5**: Validation that the system operates exclusively on V2 engine modules with a  feature flag, ensuring no reliance on V1 or hybrid fallbacks before legacy code removal. This involves running golden tests and end-to-end flows, verifying repository and LLM client usage, and adding CI jobs for enforcement.
+The PromptSupport application processes documents (DOCX, PDF, HTML, URLs) using a V2 Engine into structured HTML. This engine features Woolf-aligned style processing, related links, LLM-driven gap filling, evidence tagging, and code block normalization. Core requirements included:
+- HTML canonicalization, deterministic Mini-TOCs, and durable links/bookmarks.
+- Modularization of  into a  orchestrator and  modules.
+- Centralized LLM calls,  validation, and an API router split.
+- Centralization of MongoDB and asset operations via a repository pattern, eliminating direct database calls.
+- Establishment of Golden Tests and a Non-Regression Suite, with a  feature flag to ensure exclusive V2 engine reliance.
+- User-facing functionality requires successful standalone content uploads, correct article generation (not 0 articles), proper image extraction and display in the Content Library, editable article titles across all editor modes (WYSIWYG, Markdown, HTML), and reliable saving/updating of articles without errors or data loss. Processing status in the UI should accurately reflect success/failure with analytics.
 </product_requirements>
 
 <key_technical_concepts>
--   **Backend**: FastAPI, MongoDB (Repository Pattern), , LLM integration, Pytest.
--   **V2 Engine**: Multi-tiered chunking, Outline-First, Multi-Dimensional Analysis, Adaptive Granularity, Woolf-aligned style, LLM-driven Gap Filling, Evidence Tagging.
--   **Core Concepts**: Repository pattern, Golden Tests, CI/CD, HTML canonicalization, bookmark registry, Feature Flags, Middleware.
+-   **Backend**: FastAPI, MongoDB (Repository Pattern), , LLM integration (OpenAI, Anthropic, Google via ), Pytest.
+-   **V2 Engine**: Multi-tiered chunking, Outline-First, Multi-Dimensional Analysis, Adaptive Granularity, Woolf-aligned style, LLM-driven Gap Filling, Evidence Tagging, , .
+-   **Core Concepts**: Repository pattern, Golden Tests, CI/CD, HTML canonicalization, Feature Flags (), Middleware, JSON serialization/deserialization, UUIDs vs. ObjectIds, React state management (, , ), Frontend-Backend connectivity (CORS, environment variables).
 </key_technical_concepts>
 
 <code_architecture>
 
--   ****: The core FastAPI application. Initially monolithic, now largely refactored. Extensive work involved replacing direct MongoDB calls with repository methods for content, processing jobs, V2 analysis, and other collections. Indentation and syntax issues were addressed.
+-   ****: The core FastAPI application. Contains legacy and V2 related logic.
+    -   **Importance**: Orchestrates backend operations, integrates V2 pipeline, handles file uploads, and acts as a central point for many API endpoints.
+    -   **Changes**: Updated  constructor to include ; added  and  methods to  class to resolve ; modified calls to  to remove  argument; included  field in the  function's return to match frontend expectations; moved duplicate PUT  endpoints to legacy paths () to prevent conflicts with .
 -   ****: Centralizes MongoDB operations.
-    -   **Changes**: Added  methods (, , ),  (with  method), and a generic . These are integrated into a .
--   ****: Defines FastAPI routes.
-    -   **Changes**: Implemented  feature flag logic with middleware to return  for V1/hybrid endpoints when enabled, and updated health and V2 processing endpoints for V2-only validation.
--   ****: Handles content extraction.
-    -   **Changes**:  class enhanced with  and  methods for dictionary-like access.  schema updated to include .  method modified to accept  and pass it to .
+    -   **Importance**: Implements the repository pattern for various collections (, , ).
+    -   **Changes**: Debug logging was added to the  method to help identify database connection issues.
+-   ****: Defines FastAPI routes, specifically for V2 operations.
+    -   **Importance**: Ensures API routes adhere to V2-only validation, manages feature flags, and processes content. It acts as the primary API interface for V2 functionality.
+    -   **Changes**: Corrected class imports in  (e.g.,  instead of ,  instead of ); fixed  to pass  as keyword argument; implemented a recursive  function to convert all nested ObjectIds to strings in API responses, applied to the  object from ; updated  import from  to  for the  endpoint; extracted  from  result and returned them as  in the  response; created V2-compatible POST () and PUT () endpoints configured to handle JSON requests (using an  Pydantic model) and to query articles by both UUID-style uid=0(root) gid=0(root) groups=0(root) and MongoDB  formats, with improved error handling for debugging.
+-   ****: Handles content extraction for V2.
+    -   **Importance**: Defines  and  schemas critical for the V2 pipeline's internal data representation.
+    -   **Changes**: Added  and  methods to the  class for dictionary-like access; the  schema was updated to include a  attribute.
 -   ****: Orchestrates the V2 processing pipeline.
-    -   **Changes**: Updated calls to  and  to pass .
--   ****: Generates articles. Relies on the .
--   ****: Application settings.
-    -   **Changes**: Added  boolean setting.
+    -   **Importance**: Manages the sequence of all 17 V2 stages.
+    -   **Changes**: Updated calls to  and  to correctly pass  and  as keyword arguments.
+-   ****: Performs multi-dimensional analysis within the V2 pipeline.
+    -   **Importance**: Processes  to generate analysis data, including granularity and structure detection.
+    -   **Changes**: The  method signature was corrected to expect only , and the  argument was removed from calls to this method in .
+-   ****: Applies Woolf-aligned style processing and post-processing in V2.
+    -   **Importance**: Ensures articles conform to specific stylistic guidelines and includes features like stable anchor IDs.
+    -   **Changes**: Added protective code (type checking and error handling) around  calls within the  method to prevent str object has no attribute get errors.
 -   ****: Backend environment variables.
-    -   **Changes**: Added .
--   ****: New CI workflow.
-    -   **Purpose**: Blocks direct MongoDB client usage () outside the repository layer, enforcing the repository pattern.
--   ****: New CI workflow.
-    -   **Purpose**: Enforces golden tests to run in V2-only mode.
--   ****: New test file.
-    -   **Purpose**: Contains tests specifically for V2-only mode, including API health, V2 engine module exclusivity, and golden test compatibility.
+    -   **Importance**: Critical for backend configuration, including database connection URI and API keys.
+    -   **Changes**:  was changed from  to  to ensure consistency with the database where articles were actually being stored. LLM API keys (, ) were also configured here.
+-   ****: Frontend environment variables.
+    -   **Importance**: Configures the backend URL for all frontend API calls.
+    -   **Changes**:  was repeatedly toggled between  and , ultimately being set back to the external preview URL () to resolve  issues in the containerized environment.
+-   ****: Frontend dashboard component.
+    -   **Importance**: Displays aggregate statistics and a summary of the content library.
+    -   **Changes**: Corrected the API endpoint for fetching content library data from  (with a dash) to  (with a slash).
+-   ****: Frontend content library component.
+    -   **Importance**: Displays, manages, and allows deletion of articles.
+    -   **Changes**: Corrected the API endpoint for fetching articles and for DELETE operations from  to  to match backend routes.
+-   ****: Frontend component for content upload.
+    -   **Importance**: Handles the user interface for uploading documents and displaying their processing status.
+    -   **Changes**: Explicitly set a 300-second timeout for the upload  request using  to mitigate frontend timeouts for long-running backend processing.
+-   ****: Frontend component for managing and displaying assets (images).
+    -   **Importance**: Shows extracted images associated with articles.
+    -   **Changes**: Fixed MIME type filtering (from  to ) to correctly identify various image types; updated asset URL construction to use the  prefix and  field; mapped asset  to .
+-   ****: Frontend rich-text editor for articles.
+    -   **Importance**: Enables users to create and edit article content and titles in WYSIWYG, Markdown, and HTML modes.
+    -   **Changes**: Changed  to  for the  handler and imported  to resolve a stale closure issue preventing title input; added multiple event handlers (, , , ) to the title input field for robust text capture; removed the  attribute from the title input to prevent flickering; explicitly set  and  on the title input to ensure editability.
 </code_architecture>
 
 <pending_tasks>
--   Complete : Resolve  argument mismatch.
--   Run full golden suite under .
--   Run CRUD + publishing flows end-to-end under .
--   Verify repository pattern + LLM client usage in logs.
--   Eliminate remaining direct MongoDB calls in V2 operations (81 calls in v2_* collections).
+-   **Issue 3 (WYSIWYG Title Not Editable)**: The title field still flickers and doesn't allow text input using the mouse in WYSIWYG mode.
+-   **Issue 4 (Save Fails with 500)**: Debugging a 500 error in the V2 PUT endpoint, specifically an empty error message and  during article updates.
+-   **New Article Creation Not Appearing**: When creating a new article and saving it, the save operation completes but the new article does not appear in the Content Library.
+-   **Issue 1 (Upload Processing Status Incorrect)**: Frontend UI still shows Upload failed despite articles being created. The frontend needs to handle asynchronous processing and update the status more effectively (e.g., polling for job status).
 </pending_tasks>
 
 <current_work>
-Immediately before this summary request, the AI engineer was engaged in fixing critical V2 pipeline processing issues as part of **KE-PR10.5: V2-Only Validation & System Checkpoint**. Several issues were identified and addressed:
-1.  **ContentBlock Interface**: Added  and  methods to  in  to allow dictionary-like access.
-2.  **NormalizedDocument Schema**: Added a  attribute to  in .
-3.  **V2 Content Extraction**: Updated  to accept  and pass it to , and modified the  method in  to correctly pass this .
-4.  **V2 Article Generation**: Discovered a missing  which was causing silent failures in article generation. This repository was added to  and integrated into the . The  method was also fixed, and  was corrected to .
+Immediately before this summary request, the AI engineer was addressing several critical regressions reported by the user, focusing on editor functionality and persistent 500 errors.
 
-After these fixes, individual component tests () passed, confirming the method signatures and attributes were corrected. However, a full end-to-end test of the  () revealed a new blocking issue:  is missing a required positional argument: 'metadata'. This indicates a mismatch in the arguments expected by the  method and how it's currently being called. This is the precise state of work before this summary.
+**Specifically:**
+1.  **Title Field Flickering (WYSIWYG)**: The user reported that the title field in WYSIWYG mode flickers and cannot be entered using the mouse. The AI engineer diagnosed this as a potential focus/blur event loop and removed the  attribute from the title input in  (CM919-CM920) in an attempt to resolve it.
+2.  **Editing/Saving Existing Article Throws 500**: The user reported that editing and saving existing articles still results in a 500 Internal Server Error, while creating new articles works but they don't appear in the Content Library.
+    *   The AI engineer confirmed that  requests for UUID-formatted article IDs were still failing with 500 errors.
+    *   The root cause was identified as **duplicate PUT endpoints** in  () which were inadvertently overriding the correct V2 endpoints defined in . These duplicate endpoints were moved to legacy paths () in  to ensure the V2 router endpoints are used (CM936-CM941).
+    *   However, a subsequent test for saving still resulted in a 500 error, albeit with an empty message (CM948).
+    *   To get more detailed diagnostics, the AI engineer improved error handling in the V2 PUT endpoint ( in ) by adding  to exception logging (CM953-CM954).
+    *   Further testing revealed an  with an empty message, suggesting a 404, even though the article was confirmed to exist (CM959-CM961). This pointed to a potential issue in the query logic () within the V2 PUT endpoint incorrectly triggering a not found error.
+    *   The **current work involves adding more debug logging to the V2 PUT endpoint's query logic** in  to precisely identify why  is 0, which is currently preventing successful updates (CM962-CM965).
+3.  **Frontend Upload Processing Time**: The user requested increasing the frontend processing time. The AI engineer addressed this by adding an  and  with a 300-second timeout to the upload  request in  (CM942-CM944). This aimed to prevent the frontend UI from displaying Upload failed due to premature timeouts, given that backend article generation was successfully completing in the background.
 </current_work>
 
 <optional_next_step>
-Investigate the  method signature in  and determine how to correctly provide the missing 'metadata' argument.
+The next step is to analyze the debug logs from the V2 PUT endpoint's query logic to understand why  is 0 and resolve the 500 error during article saving.
 </optional_next_step>
-

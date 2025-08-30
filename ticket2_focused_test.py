@@ -10,7 +10,7 @@ import time
 import re
 
 # Use configured backend URL
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://happy-buck.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://knowledge-engine-6.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 print(f"🧪 TICKET 2 Focused Test - V2 Processing Pipeline")

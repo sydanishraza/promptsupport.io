@@ -11,7 +11,7 @@ import re
 from datetime import datetime
 
 # Backend URL
-BACKEND_URL = "https://happy-buck.preview.emergentagent.com"
+BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test(message, status="INFO"):

@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://happy-buck.preview.emergentagent.com/api"
+BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com/api"
 
 def test_simple_text_processing():
     """Test simple text processing through V2 pipeline"""

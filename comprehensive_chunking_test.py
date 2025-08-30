@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://happy-buck.preview.emergentagent.com') + '/api'
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://knowledge-engine-6.preview.emergentagent.com') + '/api'
 
 def test_force_chunking_with_docx():
     """Test force chunking with DOCX content around 4,000-5,000 characters"""

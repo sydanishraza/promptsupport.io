@@ -9,7 +9,7 @@ import json
 import time
 
 # Backend URL from frontend environment
-BACKEND_URL = "https://happy-buck.preview.emergentagent.com/api"
+BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com/api"
 
 def test_gap_filling_comprehensive():
     """Comprehensive Gap Filling System Testing"""

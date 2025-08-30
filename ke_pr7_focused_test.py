@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 
 # Test configuration
-BACKEND_URL = "https://happy-buck.preview.emergentagent.com/api"
+BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com/api"
 
 class KE_PR7_FocusedTester:
     def __init__(self):

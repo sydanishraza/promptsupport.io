@@ -19807,9 +19807,9 @@ def ensure_no_media_embedding(content: str) -> str:
         print(f"⚠️ V2 MEDIA: Error in ensure_no_media_embedding - {e}")
         return content
 
-@app.put("/api/content-library/{article_id}")
-async def update_article(article_id: str, request: SaveArticleRequest):
-    """Update an existing article"""
+@app.put("/api/content-library-legacy/{article_id}")
+async def update_article_legacy_server(article_id: str, request: SaveArticleRequest):
+    """Update an existing article - LEGACY endpoint disabled in V2-only mode"""
     try:
         collection = db["content_library"]
         

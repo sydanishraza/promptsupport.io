@@ -212,13 +212,16 @@ async def upload_content_v2_route(
         
         result = await upload_file(file, json.dumps(metadata))
         
+        # Clean the entire result object to avoid ObjectId serialization issues
+        cleaned_result = clean_articles_for_api([result])[0] if isinstance(result, dict) else result
+        
         # Extract and clean articles if they exist
         articles = result.get("chunks", [])
         if articles:
             cleaned_articles = clean_articles_for_api(articles)
             return {
                 "status": "completed",
-                "result": result,
+                "result": cleaned_result,
                 "articles": cleaned_articles,
                 "article_count": len(articles),
                 "chunks_created": len(articles),  # Add this field for frontend compatibility
@@ -229,8 +232,8 @@ async def upload_content_v2_route(
             }
         else:
             return {
-                "status": "completed",
-                "result": result,
+                "status": "completed", 
+                "result": cleaned_result,
                 "articles": [],
                 "article_count": 0,
                 "chunks_created": 0,  # Add this field for frontend compatibility

@@ -461,9 +461,12 @@ async def update_article_v2(article_id: str, request: Request):
         
     except Exception as e:
         print(f"❌ Error updating article {article_id}: {e}")
+        print(f"❌ Exception type: {type(e).__name__}")
+        print(f"❌ Exception args: {e.args}")
         import traceback
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Error updating article: {str(e)}")
+        print(f"❌ Full traceback:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error updating article: {str(e)} (Type: {type(e).__name__})")
 
 @router.put("/api/content-library/{article_id}/legacy")
 async def update_article_legacy(article_id: str):

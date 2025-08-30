@@ -3974,12 +3974,26 @@ const PromptSupportEditor = ({
             onKeyDown={(e) => {
               console.log('🔥 TITLE KEYDOWN:', e.key, 'Target value:', e.target.value);
             }}
-            onFocus={() => console.log('🔥 TITLE INPUT FOCUSED')}
-            onBlur={() => console.log('🔥 TITLE INPUT BLURRED')}
+            onFocus={(e) => {
+              console.log('🔥 TITLE INPUT FOCUSED');
+              e.stopPropagation();
+            }}
+            onBlur={(e) => {
+              console.log('🔥 TITLE INPUT BLURRED');  
+              e.stopPropagation();
+            }}
+            onMouseDown={(e) => {
+              console.log('🔥 TITLE MOUSEDOWN');
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              console.log('🔥 TITLE CLICKED');
+              e.stopPropagation();
+              e.target.focus();
+            }}
             disabled={false}
             readOnly={false}
-            autoFocus={editorMode === 'wysiwyg'}
-            className="w-full text-2xl font-bold text-gray-900 border-none outline-none focus:ring-0 p-0 bg-transparent"
+            className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
             placeholder="Article title..."
             style={{zIndex: 1000, position: 'relative'}}
           />

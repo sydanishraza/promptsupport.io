@@ -31694,8 +31694,8 @@ async def list_documents():
         raise HTTPException(status_code=500, detail=str(e))
 
 # Update Content Library article
-@app.put("/api/content-library/{article_id}")
-async def update_content_library_article(
+@app.put("/api/content-library-legacy-2/{article_id}")
+async def update_content_library_article_legacy(
     article_id: str,
     title: str = Form(...),
     content: str = Form(...),

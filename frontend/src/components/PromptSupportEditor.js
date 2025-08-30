@@ -3971,8 +3971,13 @@ const PromptSupportEditor = ({
             onChange={handleTitleChange}
             onInput={handleTitleChange}
             onKeyUp={handleTitleChange}
+            onKeyDown={(e) => {
+              console.log('🔥 TITLE KEYDOWN:', e.key, 'Target value:', e.target.value);
+            }}
             onFocus={() => console.log('🔥 TITLE INPUT FOCUSED')}
             onBlur={() => console.log('🔥 TITLE INPUT BLURRED')}
+            disabled={false}
+            readOnly={false}
             autoFocus={editorMode === 'wysiwyg'}
             className="w-full text-2xl font-bold text-gray-900 border-none outline-none focus:ring-0 p-0 bg-transparent"
             placeholder="Article title..."

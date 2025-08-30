@@ -465,6 +465,7 @@ const PromptSupportEditor = ({
   // TITLE FIELD FLICKER FIX: Debounced title change handler
   const debouncedTitleChange = useMemo(
     () => debounce((newTitle) => {
+      console.log('🔥 Debounced title change:', newTitle);
       setTitle(newTitle);
       setHasUnsavedChanges(true);
     }, 100),

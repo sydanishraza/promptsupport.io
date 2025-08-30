@@ -30552,12 +30552,12 @@ File Information:
             })
         
         return {
-            "job_id": job.job_id,
+            "job_id": str(job.job_id),  # Ensure job_id is string
             "status": job.status,
             "file_type": file_extension,
             "extracted_content_length": len(extracted_content),
             "chunks_created": len(chunks),
-            "chunks": chunks,  # Include the actual articles
+            "chunks": chunks,  # Include the actual articles (cleaned)
             "message": "V2 Engine: File processed successfully with optimized pipeline",
             "engine": "v2"
         }

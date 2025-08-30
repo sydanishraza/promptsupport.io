@@ -441,8 +441,16 @@ async def update_article_v2(article_id: str, request: Request):
         
         print(f"🔍 Executing update with query: {query}")
         print(f"🔍 Update data: {update_data}")
+        
+        # Execute the update and capture the result
         result = await collection.update_one(query, {"$set": update_data})
         print(f"🔍 Update result - matched: {result.matched_count}, modified: {result.modified_count}")
+        
+        # Debug: Check if the document still exists after update
+        check_doc = await collection.find_one(query)
+        print(f"🔍 Document verification after update: {'Found' if check_doc else 'Not Found'}")
+        if check_doc:
+            print(f"🔍 Updated document title: {check_doc.get('title', 'No title')}")
         
         # If no match with id, try _id
         if result.matched_count == 0 and "id" in query:
@@ -457,6 +465,7 @@ async def update_article_v2(article_id: str, request: Request):
                 pass
         
         if result.matched_count == 0:
+            print(f"🔍 CRITICAL: No documents matched the query. Raising 404...")
             raise HTTPException(status_code=404, detail="Article not found")
         
         print(f"✅ V2 UPDATE: Successfully updated article {article_id}")

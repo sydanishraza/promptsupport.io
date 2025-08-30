@@ -156,7 +156,9 @@ const KnowledgeEngine = ({ activeModule = "upload" }) => {
 
         const response = await fetch(`${backendUrl}/api/content/upload`, {
           method: 'POST',
-          body: formData
+          body: formData,
+          // Increase timeout to 5 minutes for V2 processing
+          signal: AbortSignal.timeout(300000) // 5 minutes timeout
         });
 
         if (response.ok) {

@@ -419,10 +419,27 @@ async def update_article_v2(article_id: str, request: Request):
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        result = await collection.update_one(
-            {"_id": ObjectId(article_id)},
-            {"$set": update_data}
-        )
+        # Try to find the article by either id or _id field
+        query = {}
+        if len(article_id) == 24 and all(c in '0123456789abcdef' for c in article_id):
+            # Looks like a MongoDB ObjectId
+            try:
+                query = {"_id": ObjectId(article_id)}
+            except:
+                query = {"id": article_id}
+        else:
+            # Try UUID format first, then ObjectId as fallback  
+            query = {"id": article_id}
+        
+        result = await collection.update_one(query, {"$set": update_data})
+        
+        # If no match with id, try _id
+        if result.matched_count == 0 and "id" in query:
+            try:
+                query = {"_id": ObjectId(article_id)}
+                result = await collection.update_one(query, {"$set": update_data})
+            except:
+                pass
         
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Article not found")

@@ -430,20 +430,30 @@ async def update_article_v2(article_id: str, request: Request):
             # Looks like a MongoDB ObjectId
             try:
                 query = {"_id": ObjectId(article_id)}
+                print(f"🔍 Using ObjectId query: {query}")
             except:
                 query = {"id": article_id}
+                print(f"🔍 ObjectId failed, using UUID query: {query}")
         else:
             # Try UUID format first, then ObjectId as fallback  
             query = {"id": article_id}
+            print(f"🔍 Using UUID query: {query}")
         
+        print(f"🔍 Executing update with query: {query}")
+        print(f"🔍 Update data: {update_data}")
         result = await collection.update_one(query, {"$set": update_data})
+        print(f"🔍 Update result - matched: {result.matched_count}, modified: {result.modified_count}")
         
         # If no match with id, try _id
         if result.matched_count == 0 and "id" in query:
+            print(f"🔍 No match with UUID, trying ObjectId...")
             try:
                 query = {"_id": ObjectId(article_id)}
+                print(f"🔍 Fallback ObjectId query: {query}")
                 result = await collection.update_one(query, {"$set": update_data})
-            except:
+                print(f"🔍 Fallback result - matched: {result.matched_count}, modified: {result.modified_count}")
+            except Exception as fallback_error:
+                print(f"🔍 Fallback ObjectId failed: {fallback_error}")
                 pass
         
         if result.matched_count == 0:

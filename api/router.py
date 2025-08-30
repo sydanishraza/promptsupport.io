@@ -29,30 +29,35 @@ print(f"🚩 KE-PR8: Feature flags - V1: {ENABLE_V1}, Hybrid: {ENABLE_HYBRID}")
 print(f"🚩 KE-PR10.5: V2-Only Mode: {FORCE_V2_ONLY}, Legacy Behavior: {LEGACY_ENDPOINT_BEHAVIOR}")
 
 def clean_articles_for_api(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Clean articles data to remove ObjectId and other non-serializable objects for API response"""
-    cleaned_articles = []
+    """Recursively clean articles data to remove ObjectId and other non-serializable objects for API response"""
     
+    def clean_value(value):
+        """Recursively clean any value"""
+        if isinstance(value, ObjectId):
+            return str(value)
+        elif isinstance(value, datetime):
+            return value.isoformat()
+        elif isinstance(value, dict):
+            return {k: clean_value(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [clean_value(item) for item in value]
+        elif hasattr(value, '__dict__'):
+            # Handle objects with __dict__ (like Pydantic models)
+            try:
+                return clean_value(value.__dict__)
+            except:
+                return str(value)
+        else:
+            return value
+    
+    cleaned_articles = []
     for article in articles:
-        cleaned_article = {}
-        for key, value in article.items():
-            if isinstance(value, ObjectId):
-                cleaned_article[key] = str(value)
-            elif isinstance(value, datetime):
-                cleaned_article[key] = value.isoformat()
-            elif isinstance(value, dict):
-                # Recursively clean nested dictionaries
-                cleaned_nested = {}
-                for nested_key, nested_value in value.items():
-                    if isinstance(nested_value, ObjectId):
-                        cleaned_nested[nested_key] = str(nested_value)
-                    elif isinstance(nested_value, datetime):
-                        cleaned_nested[nested_key] = nested_value.isoformat()
-                    else:
-                        cleaned_nested[nested_key] = nested_value
-                cleaned_article[key] = cleaned_nested
-            else:
-                cleaned_article[key] = value
-        cleaned_articles.append(cleaned_article)
+        if isinstance(article, dict):
+            cleaned_article = clean_value(article)
+            cleaned_articles.append(cleaned_article)
+        else:
+            # Handle non-dict objects
+            cleaned_articles.append(clean_value(article))
     
     return cleaned_articles
 

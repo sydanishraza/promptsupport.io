@@ -547,6 +547,7 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
 
   return (
     <div style={{ marginBottom: '20px', isolation: 'isolate' }}>
+      <EmergencyDebugTest />
       <SimpleTestInput />
       <p style={{ color: 'green', fontSize: '14px', marginBottom: '10px' }}>
         TITLE INPUT: Current value = "{localTitle}"

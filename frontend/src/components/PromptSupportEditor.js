@@ -462,6 +462,38 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
+// EMERGENCY DEBUG: Check if React is working at all
+const EmergencyDebugTest = () => {
+  const [clickCount, setClickCount] = React.useState(0);
+  
+  return (
+    <div style={{ 
+      padding: '20px', 
+      border: '5px solid red', 
+      margin: '20px', 
+      backgroundColor: 'yellow',
+      fontSize: '20px',
+      fontWeight: 'bold'
+    }}>
+      <p>EMERGENCY DEBUG TEST</p>
+      <p>Click count: {clickCount}</p>
+      <button 
+        onClick={() => setClickCount(clickCount + 1)}
+        style={{
+          padding: '10px 20px',
+          fontSize: '16px',
+          backgroundColor: 'blue',
+          color: 'white',
+          border: 'none',
+          cursor: 'pointer'
+        }}
+      >
+        Click me (should increase count)
+      </button>
+    </div>
+  );
+};
+
 // MINIMAL TEST: Simple input field to debug the issue
 const SimpleTestInput = () => {
   const [testValue, setTestValue] = React.useState('');

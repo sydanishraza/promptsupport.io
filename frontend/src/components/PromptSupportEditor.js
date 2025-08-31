@@ -391,11 +391,14 @@ const PromptSupportEditor = ({
   
   // === EDITOR STABILITY FIX: STABLE CONTENT REF CALLBACK ===  
   const contentRef = useCallback((element) => {
+    console.log('🔍 contentRef callback called - element:', !!element, 'isEditing:', isEditing, 'editorMode:', editorMode);
+    
     if (element) {
       editorRef.current = element;
       
-      // FLICKER FIX: Only update content if it's actually different and we're in editing mode
-      if (isEditing && content && element.innerHTML !== content) {
+      // CRITICAL FIX: Only update content in WYSIWYG mode and prevent infinite loops
+      if (isEditing && editorMode === 'wysiwyg' && content && element.innerHTML !== content) {
+        console.log('🔧 Updating element innerHTML in WYSIWYG mode');
         element.innerHTML = content;
         
         // IMMEDIATE ACTIVATION FIX: Make editor ready immediately without delays
@@ -415,11 +418,13 @@ const PromptSupportEditor = ({
             console.log('✅ Editor activated and focused');
           }
         }, 100);
+      } else {
+        console.log('🔍 Skipping innerHTML update - conditions not met');
       }
     } else {
       editorRef.current = null;
     }
-  }, [isEditing, content]);
+  }, [isEditing, content, editorMode]); // Add missing dependencies
 
   // === INITIALIZE CONTENT ===
   useEffect(() => {

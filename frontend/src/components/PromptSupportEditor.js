@@ -463,6 +463,7 @@ const PromptSupportEditor = ({
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
   const handleTitleChange = (e) => {
+    console.log('Title changing to:', e.target.value);
     setTitle(e.target.value);
     setHasUnsavedChanges(true);
   };

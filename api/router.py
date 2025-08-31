@@ -17,7 +17,14 @@ from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from bson import ObjectId
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+
+# Working model from original implementation
+class SaveArticleRequest(BaseModel):
+    id: Optional[str] = None
+    title: str
+    content: str
+    status: str = "draft"  # draft, published
 
 # Feature flags for KE-PR8 and KE-PR10.5
 ENABLE_V1 = os.getenv("ENABLE_V1", "false").lower() == "true"

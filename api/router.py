@@ -336,21 +336,13 @@ async def get_content_library():
         raise HTTPException(status_code=500, detail=f"Error fetching library: {str(e)}")
 
 @router.post("/api/content-library")
-async def create_article_v2(request: Request):
-    """Create new article - V2 route with repository pattern"""
+async def create_article_simple(request: SaveArticleRequest):
+    """Create article - Simple working implementation restored"""
     try:
-        # Parse JSON request body
-        body = await request.json()
-        title = body.get("title", "Untitled Article")
-        content = body.get("content", "")
-        status = body.get("status", "draft")
-        
-        print(f"🔧 V2 CREATE: Creating new article - Title: '{title[:50]}...' Content: {len(content)} chars")
-        
-        # Import MongoDB client
+        # Import required modules
         import motor.motor_asyncio
+        import uuid
         
-        # Use same connection pattern as server.py
         MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
         DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport_db")
         
@@ -359,33 +351,24 @@ async def create_article_v2(request: Request):
         collection = db["content_library"]
         
         article_data = {
-            "_id": ObjectId(),
             "id": str(uuid.uuid4()),
-            "title": title,
-            "content": content,
-            "status": status,
+            "title": request.title,
+            "content": request.content,
+            "status": request.status,
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat(),
-            "engine": "v2"
+            "type": "article"
         }
         
-        result = await collection.insert_one(article_data)
+        await collection.insert_one(article_data)
         
-        print(f"✅ V2 CREATE: Successfully created article {result.inserted_id}")
+        print(f"✅ SIMPLE CREATE: Successfully created article {article_data['id']}")
         
-        return {
-            "message": "Article created successfully",
-            "source": "v2_api",
-            "engine": "v2", 
-            "article_id": str(result.inserted_id),
-            "id": str(result.inserted_id)  # Include id field for frontend compatibility
-        }
+        return {"success": True, "id": article_data["id"], "message": f"Article {request.status}"}
         
     except Exception as e:
         print(f"❌ Error creating article: {e}")
-        import traceback
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Error creating article: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/content-library/legacy")
 async def create_article_legacy():

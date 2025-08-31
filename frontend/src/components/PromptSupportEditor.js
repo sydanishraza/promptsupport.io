@@ -397,48 +397,13 @@ const handleTitleChange = (e) => {
 
   // === EDITOR STABILITY FIX: STABLE CONTENT REF CALLBACK ===  
   const contentRef = useCallback((element) => {
-    if (isDebugMode) {
-      console.log('🔍 contentRef callback called - DISABLED IN DEBUG MODE');
-      if (element) {
-        editorRef.current = element;
-      }
-      return; // Skip all content updates
-    }
-    
-    console.log('🔍 contentRef callback called - element:', !!element, 'isEditing:', isEditing, 'editorMode:', editorMode);
-    
+    // EMERGENCY FIX: Completely disable contentRef processing to prevent loops
     if (element) {
       editorRef.current = element;
-      
-      // CRITICAL FIX: Only update content in WYSIWYG mode and prevent infinite loops
-      if (isEditing && editorMode === 'wysiwyg' && content && element.innerHTML !== content) {
-        console.log('🔧 Updating element innerHTML in WYSIWYG mode');
-        element.innerHTML = content;
-        
-        // IMMEDIATE ACTIVATION FIX: Make editor ready immediately without delays
-        element.contentEditable = true;
-        element.style.backgroundColor = '#fefefe';
-        element.style.minHeight = '400px';
-        
-        // WYSIWYG FEATURES INITIALIZATION: Re-initialize interactive features after content load
-        setTimeout(() => {
-          initializeWYSIWYGFeatures(element);
-        }, 50);
-        
-        // FOCUS FIX: Set focus without interfering with mouse interactions
-        setTimeout(() => {
-          if (element && element.isContentEditable) {
-            element.focus();
-            console.log('✅ Editor activated and focused');
-          }
-        }, 100);
-      } else {
-        console.log('🔍 Skipping innerHTML update - conditions not met');
-      }
     } else {
       editorRef.current = null;
     }
-  }, [isEditing, content, editorMode]); // Add missing dependencies
+  }, []);
 
   // === INITIALIZE CONTENT ===
   useEffect(() => {

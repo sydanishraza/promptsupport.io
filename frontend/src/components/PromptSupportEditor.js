@@ -3268,7 +3268,10 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
    * Render modern, responsive asset library modal with enhanced UI/UX
    */
   const renderAssetLibraryModal = () => {
+    console.log('🔍 Asset modal check - showImageModal:', showImageModal, 'editorMode:', editorMode);
     if (!showImageModal) return null;
+    
+    console.log('🚨 RENDERING FULL SCREEN MODAL - THIS BLOCKS ALL INTERACTION!');
     
     // Filter assets based on search term
     const filteredAssets = assets.filter(asset => 

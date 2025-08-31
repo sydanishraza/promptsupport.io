@@ -3979,12 +3979,10 @@ const PromptSupportEditor = ({
         {/* Title Editor */}
         {isEditing ? (
           <input
+            ref={titleInputRef}
             type="text"
             value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setHasUnsavedChanges(true);
-            }}
+            onChange={handleTitleChange}
             className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
             placeholder="Article title..."
           />

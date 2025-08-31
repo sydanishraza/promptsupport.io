@@ -446,11 +446,6 @@ const handleTitleChange = (e) => {
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
-// Simple title change handler
-const handleTitleChange = (e) => {
-  setTitle(e.target.value);
-  setHasUnsavedChanges(true);
-};
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showColorPicker && !event.target.closest('[title="Text Color"]')) {

@@ -3972,7 +3972,7 @@ const PromptSupportEditor = ({
             type="text"
             value={title}
             onChange={handleTitleChange}
-            onInput={handleTitleChange}
+            onInput={handleTitleInput}
             onKeyDown={(e) => {
               console.log('🔥 TITLE KEYDOWN:', e.key, 'Target value:', e.target.value);
               // Prevent interference from global keydown handler

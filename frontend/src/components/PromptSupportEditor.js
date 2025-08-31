@@ -3961,24 +3961,35 @@ const PromptSupportEditor = ({
           </div>
         </div>
 
-        {/* Title Editor - DEBUG VERSION */}
+        {/* Title Editor - PLAIN HTML TEST */}
         {isEditing ? (
           <div>
             <p style={{fontSize: '12px', color: 'red', marginBottom: '5px'}}>
-              DEBUG: Title value = "{title}" | Input should work now
+              DEBUG: Title value = "{title}" | Testing plain HTML vs React
             </p>
+            {/* Plain HTML input for testing */}
+            <input
+              type="text"
+              className="w-full text-xl font-bold text-green-900 border-2 border-green-500 outline-none p-2 bg-white mb-2"
+              placeholder="Plain HTML input test..."
+              style={{zIndex: 9999, position: 'relative'}}
+              onInput={(e) => console.log('🟢 PLAIN HTML onInput:', e.target.value)}
+              onChange={(e) => console.log('🟢 PLAIN HTML onChange:', e.target.value)}
+            />
+            {/* React controlled input */}
             <input
               type="text"
               defaultValue={title}
               onChange={(e) => {
-                console.log('🔥 DIRECT onChange fired:', e.target.value);
+                console.log('🔥 REACT onChange fired:', e.target.value);
                 setTitle(e.target.value);
                 setHasUnsavedChanges(true);
               }}
               className="w-full text-2xl font-bold text-gray-900 border-2 border-red-500 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
-              placeholder="Article title..."
-              style={{zIndex: 9999, position: 'relative'}}
+              placeholder="React input test..."
+              style={{zIndex: 9998, position: 'relative'}}
             />
+          </div>
           </div>
         ) : (
           <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>

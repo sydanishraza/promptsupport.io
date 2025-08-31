@@ -402,21 +402,12 @@ async def create_article_legacy():
     return {"message": "V1 article creation (deprecated)"}
 
 @router.put("/api/content-library/{article_id}")
-async def update_article_v2(article_id: str, request: Request):
-    """Update article - V2 route with repository pattern"""
+async def update_article_simple(article_id: str, request: SaveArticleRequest):
+    """Update article - Simple working implementation restored"""
     try:
-        # Parse JSON request body
-        body = await request.json()
-        title = body.get("title", "")
-        content = body.get("content", "") 
-        status = body.get("status", "draft")
-        
-        print(f"🔧 V2 UPDATE: Updating article {article_id} - Title: '{title[:50]}...' Content: {len(content)} chars")
-        
         # Import MongoDB client
         import motor.motor_asyncio
         
-        # Use same connection pattern as server.py
         MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
         DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport_db")
         
@@ -425,74 +416,40 @@ async def update_article_v2(article_id: str, request: Request):
         collection = db["content_library"]
         
         update_data = {
-            "title": title,
-            "content": content,
-            "status": status,
+            "title": request.title,
+            "content": request.content,
+            "status": request.status,
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        # Try to find the article by either id or _id field
-        query = {}
-        if len(article_id) == 24 and all(c in '0123456789abcdef' for c in article_id):
-            # Looks like a MongoDB ObjectId
+        # Try UUID first, then ObjectId as fallback
+        result = await collection.update_one(
+            {"id": article_id},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            # Try ObjectId format
             try:
-                query = {"_id": ObjectId(article_id)}
-                print(f"🔍 Using ObjectId query: {query}")
+                result = await collection.update_one(
+                    {"_id": ObjectId(article_id)},
+                    {"$set": update_data}
+                )
             except:
-                query = {"id": article_id}
-                print(f"🔍 ObjectId failed, using UUID query: {query}")
-        else:
-            # Try UUID format first, then ObjectId as fallback  
-            query = {"id": article_id}
-            print(f"🔍 Using UUID query: {query}")
-        
-        print(f"🔍 Executing update with query: {query}")
-        print(f"🔍 Update data: {update_data}")
-        
-        # Execute the update and capture the result
-        result = await collection.update_one(query, {"$set": update_data})
-        print(f"🔍 Update result - matched: {result.matched_count}, modified: {result.modified_count}")
-        
-        # Debug: Check if the document still exists after update
-        check_doc = await collection.find_one(query)
-        print(f"🔍 Document verification after update: {'Found' if check_doc else 'Not Found'}")
-        if check_doc:
-            print(f"🔍 Updated document title: {check_doc.get('title', 'No title')}")
-        
-        # If no match with id, try _id
-        if result.matched_count == 0 and "id" in query:
-            print(f"🔍 No match with UUID, trying ObjectId...")
-            try:
-                query = {"_id": ObjectId(article_id)}
-                print(f"🔍 Fallback ObjectId query: {query}")
-                result = await collection.update_one(query, {"$set": update_data})
-                print(f"🔍 Fallback result - matched: {result.matched_count}, modified: {result.modified_count}")
-            except Exception as fallback_error:
-                print(f"🔍 Fallback ObjectId failed: {fallback_error}")
                 pass
         
         if result.matched_count == 0:
-            print(f"🔍 CRITICAL: No documents matched the query. Raising 404...")
             raise HTTPException(status_code=404, detail="Article not found")
+            
+        print(f"✅ SIMPLE UPDATE: Successfully updated article {article_id}")
         
-        print(f"✅ V2 UPDATE: Successfully updated article {article_id}")
+        return {"success": True, "message": f"Article {request.status}", "id": article_id}
         
-        return {
-            "message": "Article updated successfully",
-            "source": "v2_api",
-            "engine": "v2", 
-            "article_id": article_id,
-            "id": article_id  # Include id field for frontend compatibility
-        }
-        
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Error updating article {article_id}: {e}")
-        print(f"❌ Exception type: {type(e).__name__}")
-        print(f"❌ Exception args: {e.args}")
-        import traceback
-        print(f"❌ Full traceback:")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error updating article: {str(e)} (Type: {type(e).__name__})")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/api/content-library/{article_id}/legacy")
 async def update_article_legacy(article_id: str):

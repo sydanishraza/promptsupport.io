@@ -554,15 +554,28 @@ const SimpleTestInput = () => {
   );
 };
 
-// FIXED: Simple title component without local state to prevent loops
+// COMPLETELY ISOLATED: No React state at all to prevent any loops
 const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
-  // Direct event handler without local state - prevents re-render loops
+  const titleInputRef = React.useRef(null);
+  
+  // Use direct DOM updates to avoid React re-render loops
   const handleInput = (e) => {
     const newValue = e.target.value;
     console.log('TITLE INPUT onChange:', newValue);
-    setTitle(newValue);
-    setHasUnsavedChanges(true);
+    
+    // Use setTimeout to break the render cycle
+    setTimeout(() => {
+      setTitle(newValue);
+      setHasUnsavedChanges(true);
+    }, 0);
   };
+
+  // Initialize input value only once without causing re-renders
+  React.useEffect(() => {
+    if (titleInputRef.current && titleInputRef.current.value !== title) {
+      titleInputRef.current.value = title || '';
+    }
+  }, []); // Empty dependency array - only run once
 
   if (!isEditing) {
     return <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>;
@@ -576,8 +589,9 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
         TITLE INPUT: Current value = "{title}"
       </p>
       <input
+        ref={titleInputRef}
         type="text"
-        value={title || ''}
+        defaultValue={title || ''}
         onChange={handleInput}
         className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
         placeholder="Article title..."
@@ -587,7 +601,6 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
           backgroundColor: '#ffffff',
           isolation: 'isolate'
         }}
-        // Prevent any event bubbling or capturing
         onKeyDown={(e) => e.stopPropagation()}
         onKeyUp={(e) => e.stopPropagation()}
         onFocus={(e) => e.stopPropagation()}

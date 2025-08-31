@@ -462,21 +462,10 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
-  const handleTitleInput = useCallback((e) => {
-    const newTitle = e.target.value || e.currentTarget.value;
-    console.log('🔥 Title INPUT event triggered:', newTitle);
-    setTitle(newTitle);
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
     setHasUnsavedChanges(true);
-    e.stopPropagation();
-  }, []);
-
-  const handleTitleChange = useCallback((e) => {
-    const newTitle = e.target.value || e.currentTarget.value;
-    console.log('🔥 Title CHANGE event triggered:', newTitle);
-    setTitle(newTitle);
-    setHasUnsavedChanges(true);
-    e.stopPropagation();
-  }, []);
+  };
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showColorPicker && !event.target.closest('[title="Text Color"]')) {

@@ -462,11 +462,31 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
+  // Title field ref for direct DOM access if needed
+  const titleInputRef = useRef(null);
+
+  // Simple title change handler
   const handleTitleChange = (e) => {
-    console.log('Title changing to:', e.target.value);
-    setTitle(e.target.value);
+    const newValue = e.target.value;
+    console.log('Title changing to:', newValue);
+    setTitle(newValue);
     setHasUnsavedChanges(true);
   };
+
+  // Fallback: Use direct DOM event if React events fail
+  useEffect(() => {
+    const titleInput = titleInputRef.current;
+    if (titleInput && isEditing) {
+      const handleDirectInput = (e) => {
+        console.log('Direct DOM input event:', e.target.value);
+        setTitle(e.target.value);
+        setHasUnsavedChanges(true);
+      };
+
+      titleInput.addEventListener('input', handleDirectInput);
+      return () => titleInput.removeEventListener('input', handleDirectInput);
+    }
+  }, [isEditing]);
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showColorPicker && !event.target.closest('[title="Text Color"]')) {

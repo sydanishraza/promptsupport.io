@@ -3037,8 +3037,9 @@ backend:
 
 ## test_plan:
   current_focus:
-    - "Knowledge Engine Three Critical Fixes Testing COMPLETED - All 3 Critical Issues Resolved"
-  stuck_tasks: []
+    - "WYSIWYG TITLE FIELD EVENT PROPAGATION FIX VALIDATION - DUAL EVENT HANDLERS & STOPPAGE"
+  stuck_tasks:
+    - "WYSIWYG TITLE FIELD EVENT PROPAGATION FIX VALIDATION - DUAL EVENT HANDLERS & STOPPAGE"
   test_all: false
   test_priority: "critical_first"
 

@@ -4002,28 +4002,13 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
           </div>
         </div>
 
-        {/* Title Editor - Isolated from WYSIWYG interference */}
-        {isEditing ? (
-          <input
-            type="text"
-            value={title}
-            onChange={handleTitleChange}
-            onKeyDown={(e) => {
-              // Prevent event bubbling to WYSIWYG handlers
-              e.stopPropagation();
-            }}
-            className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
-            placeholder="Article title..."
-            style={{
-              // Ensure title field is above any potential interference
-              position: 'relative',
-              zIndex: 1000,
-              backgroundColor: '#ffffff'
-            }}
-          />
-        ) : (
-          <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>
-        )}
+        {/* Isolated Title Editor - Completely separate from WYSIWYG */}
+        <TitleEditor 
+          title={title}
+          setTitle={setTitle}
+          setHasUnsavedChanges={setHasUnsavedChanges}
+          isEditing={isEditing}
+        />
       </div>
 
       {/* Toolbar - Only show in WYSIWYG editing mode */}

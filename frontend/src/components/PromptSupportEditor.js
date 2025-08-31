@@ -462,20 +462,12 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
-  // TITLE FIELD FLICKER FIX: Debounced title change handler
-  const debouncedTitleChange = useMemo(
-    () => debounce((newTitle) => {
-      console.log('🔥 Debounced title change:', newTitle);
-      setTitle(newTitle);
-      setHasUnsavedChanges(true);
-    }, 100),
-    [] // Only create the debounced function once
-  );
-
   const handleTitleChange = useCallback((e) => {
-    console.log('🔥 Title change triggered:', e.target.value);
-    debouncedTitleChange(e.target.value);
-  }, [debouncedTitleChange]);
+    const newTitle = e.target.value;
+    console.log('🔥 Title change triggered:', newTitle);
+    setTitle(newTitle);
+    setHasUnsavedChanges(true);
+  }, []);
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showColorPicker && !event.target.closest('[title="Text Color"]')) {

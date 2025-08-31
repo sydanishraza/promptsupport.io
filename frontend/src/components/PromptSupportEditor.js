@@ -4107,13 +4107,28 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
           </div>
         </div>
 
-        {/* Isolated Title Editor - Completely separate from WYSIWYG */}
-        <TitleEditor 
-          title={title}
-          setTitle={setTitle}
-          setHasUnsavedChanges={setHasUnsavedChanges}
-          isEditing={isEditing}
-        />
+        {/* EMERGENCY FIX: Use the exact same title implementation that works in Markdown/HTML */}
+        <EmergencyDebugTest />
+        <SimpleTestInput />
+        {isEditing ? (
+          <input
+            type="text"
+            defaultValue={title || ''}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              console.log('DIRECT TITLE onChange:', newValue);
+              // Use setTimeout to prevent render loops
+              setTimeout(() => {
+                setTitle(newValue);
+                setHasUnsavedChanges(true);
+              }, 0);
+            }}
+            className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white mb-4"
+            placeholder="Article title..."
+          />
+        ) : (
+          <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>
+        )}
       </div>
 
       {/* Toolbar - Only show in WYSIWYG editing mode */}

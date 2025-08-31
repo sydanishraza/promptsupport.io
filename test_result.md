@@ -469,9 +469,9 @@ frontend:
 
   - task: "WYSIWYG TITLE FIELD EVENT PROPAGATION FIX VALIDATION - DUAL EVENT HANDLERS & STOPPAGE"
     implemented: true
-    working: true
+    working: false
     file: "frontend/src/components/PromptSupportEditor.js"
-    stuck_count: 3
+    stuck_count: 4
     priority: "critical"
     needs_retesting: false
     status_history:

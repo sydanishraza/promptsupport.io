@@ -446,6 +446,8 @@ const handleTitleChange = (e) => {
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
+  // DISABLE FOR DEBUGGING
+  /*
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showColorPicker && !event.target.closest('[title="Text Color"]')) {
@@ -472,6 +474,7 @@ const handleTitleChange = (e) => {
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showColorPicker, showSlashMenu, showAiPanel, showAiDropdown, showImageDropdown]);
+  */
 
   // Phase 4: Auto-save functionality
   useEffect(() => {

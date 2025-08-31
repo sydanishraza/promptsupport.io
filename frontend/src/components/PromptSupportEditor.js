@@ -3965,6 +3965,8 @@ const PromptSupportEditor = ({
             onChange={handleTitleChange}
             onKeyDown={(e) => {
               console.log('🔥 TITLE KEYDOWN:', e.key, 'Target value:', e.target.value);
+              // Prevent interference from global keydown handler
+              e.stopPropagation();
             }}
             onFocus={(e) => {
               console.log('🔥 TITLE INPUT FOCUSED');

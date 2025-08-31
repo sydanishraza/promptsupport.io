@@ -81,7 +81,7 @@ class ContentLibrarySaveTester:
     def test_database_investigation(self):
         """Test: Investigate database structure and article ID formats"""
         try:
-            if not self.db:
+            if self.db is None:
                 self.log_test("Database Investigation", False, "MongoDB connection not available")
                 return False
                 

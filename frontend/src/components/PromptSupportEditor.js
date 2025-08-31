@@ -466,6 +466,8 @@ const PromptSupportEditor = ({
 const EmergencyDebugTest = () => {
   const [clickCount, setClickCount] = React.useState(0);
   
+  console.log('🔍 EmergencyDebugTest render - clickCount:', clickCount);
+  
   return (
     <div style={{ 
       padding: '20px', 
@@ -478,7 +480,10 @@ const EmergencyDebugTest = () => {
       <p>EMERGENCY DEBUG TEST</p>
       <p>Click count: {clickCount}</p>
       <button 
-        onClick={() => setClickCount(clickCount + 1)}
+        onClick={() => {
+          console.log('🔥 BUTTON CLICKED! Increasing count from', clickCount, 'to', clickCount + 1);
+          setClickCount(clickCount + 1);
+        }}
         style={{
           padding: '10px 20px',
           fontSize: '16px',

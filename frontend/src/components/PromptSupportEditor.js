@@ -465,8 +465,13 @@ const PromptSupportEditor = ({
   const handleTitleChange = useCallback((e) => {
     const newTitle = e.target.value;
     console.log('🔥 Title change triggered:', newTitle);
+    
+    // Ensure we always update the title state
     setTitle(newTitle);
     setHasUnsavedChanges(true);
+    
+    // Prevent event bubbling
+    e.stopPropagation();
   }, []);
   useEffect(() => {
     const handleClickOutside = (event) => {

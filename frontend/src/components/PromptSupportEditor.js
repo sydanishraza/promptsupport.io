@@ -462,6 +462,35 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
+// MINIMAL TEST: Simple input field to debug the issue
+const SimpleTestInput = () => {
+  const [testValue, setTestValue] = React.useState('');
+  
+  return (
+    <div style={{ padding: '20px', border: '2px solid red', margin: '10px', backgroundColor: 'white' }}>
+      <p style={{ color: 'red', fontSize: '14px', marginBottom: '10px' }}>
+        TEST INPUT (should work): Current value = "{testValue}"
+      </p>
+      <input
+        type="text"
+        value={testValue}
+        onChange={(e) => {
+          console.log('TEST INPUT onChange:', e.target.value);
+          setTestValue(e.target.value);
+        }}
+        placeholder="Test input - type here"
+        style={{
+          width: '100%',
+          padding: '10px',
+          fontSize: '16px',
+          border: '2px solid blue',
+          backgroundColor: 'white'
+        }}
+      />
+    </div>
+  );
+};
+
 // Isolated title component - completely separate from WYSIWYG
 const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
   const [localTitle, setLocalTitle] = React.useState(title);
@@ -469,6 +498,7 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
   // Simple input handler with direct state updates
   const handleInput = (e) => {
     const newValue = e.target.value;
+    console.log('TITLE INPUT onChange:', newValue);
     setLocalTitle(newValue);
     setTitle(newValue);
     setHasUnsavedChanges(true);
@@ -485,6 +515,10 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
 
   return (
     <div style={{ marginBottom: '20px', isolation: 'isolate' }}>
+      <SimpleTestInput />
+      <p style={{ color: 'green', fontSize: '14px', marginBottom: '10px' }}>
+        TITLE INPUT: Current value = "{localTitle}"
+      </p>
       <input
         type="text"
         value={localTitle}

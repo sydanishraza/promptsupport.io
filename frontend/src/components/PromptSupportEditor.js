@@ -3965,8 +3965,8 @@ const handleTitleChange = (e) => {
       </div>
 
       {/* Toolbar - Only show in WYSIWYG editing mode */}
-      {/* DISABLE TOOLBAR FOR DEBUGGING */}
-      {/* {isEditing && editorMode === 'wysiwyg' && renderToolbar()} */}
+      {/* Toolbar - Re-enabling for testing */}
+      {isEditing && editorMode === 'wysiwyg' && renderToolbar()}
 
       {/* Content Area */}
       <div className="flex-1 overflow-hidden" style={{

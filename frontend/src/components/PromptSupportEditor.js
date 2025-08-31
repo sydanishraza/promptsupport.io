@@ -462,15 +462,19 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
-  const handleTitleChange = useCallback((e) => {
-    const newTitle = e.target.value;
-    console.log('🔥 Title change triggered:', newTitle);
-    
-    // Ensure we always update the title state
+  const handleTitleInput = useCallback((e) => {
+    const newTitle = e.target.value || e.currentTarget.value;
+    console.log('🔥 Title INPUT event triggered:', newTitle);
     setTitle(newTitle);
     setHasUnsavedChanges(true);
-    
-    // Prevent event bubbling
+    e.stopPropagation();
+  }, []);
+
+  const handleTitleChange = useCallback((e) => {
+    const newTitle = e.target.value || e.currentTarget.value;
+    console.log('🔥 Title CHANGE event triggered:', newTitle);
+    setTitle(newTitle);
+    setHasUnsavedChanges(true);
     e.stopPropagation();
   }, []);
   useEffect(() => {

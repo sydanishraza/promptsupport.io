@@ -3959,7 +3959,6 @@ const PromptSupportEditor = ({
         {/* Title Editor */}
         {isEditing ? (
           <input
-            ref={titleInputRef}
             type="text"
             value={title}
             onChange={handleTitleChange}

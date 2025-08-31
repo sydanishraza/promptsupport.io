@@ -3964,7 +3964,6 @@ const PromptSupportEditor = ({
             className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
             placeholder="Article title..."
           />
-          />
         ) : (
           <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>
         )}

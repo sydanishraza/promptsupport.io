@@ -3961,15 +3961,25 @@ const PromptSupportEditor = ({
           </div>
         </div>
 
-        {/* Title Editor */}
+        {/* Title Editor - DEBUG VERSION */}
         {isEditing ? (
-          <input
-            type="text"
-            value={title}
-            onChange={handleTitleChange}
-            className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
-            placeholder="Article title..."
-          />
+          <div>
+            <p style={{fontSize: '12px', color: 'red', marginBottom: '5px'}}>
+              DEBUG: Title value = "{title}" | Input should work now
+            </p>
+            <input
+              type="text"
+              defaultValue={title}
+              onChange={(e) => {
+                console.log('🔥 DIRECT onChange fired:', e.target.value);
+                setTitle(e.target.value);
+                setHasUnsavedChanges(true);
+              }}
+              className="w-full text-2xl font-bold text-gray-900 border-2 border-red-500 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
+              placeholder="Article title..."
+              style={{zIndex: 9999, position: 'relative'}}
+            />
+          </div>
         ) : (
           <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>
         )}

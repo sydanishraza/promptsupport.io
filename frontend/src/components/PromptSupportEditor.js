@@ -389,8 +389,11 @@ const PromptSupportEditor = ({
     // TODO: Implement custom context menu modal
   }, []);
   
-  // EMERGENCY: Disable ALL WYSIWYG-specific effects to isolate the loop source
-  const isDebugMode = true;
+  // Simple title change handler
+const handleTitleChange = (e) => {
+  setTitle(e.target.value);
+  setHasUnsavedChanges(true);
+};
 
   // === EDITOR STABILITY FIX: STABLE CONTENT REF CALLBACK ===  
   const contentRef = useCallback((element) => {

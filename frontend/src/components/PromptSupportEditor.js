@@ -476,6 +476,8 @@ const handleTitleChange = (e) => {
   }, [showColorPicker, showSlashMenu, showAiPanel, showAiDropdown, showImageDropdown]);
   */
 
+  // DISABLE FOR DEBUGGING
+  /*
   // Phase 4: Auto-save functionality
   useEffect(() => {
     if (!hasUnsavedChanges || !isEditing) return;
@@ -543,6 +545,7 @@ const handleTitleChange = (e) => {
       return () => clearInterval(presenceInterval);
     }
   }, [isEditing]);
+  */
 
   // === PHASE 1: CORE EDITABLE SURFACE ===
   

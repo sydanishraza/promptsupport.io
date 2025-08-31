@@ -3990,7 +3990,6 @@ const PromptSupportEditor = ({
               style={{zIndex: 9998, position: 'relative'}}
             />
           </div>
-          </div>
         ) : (
           <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>
         )}

@@ -344,7 +344,12 @@ async def create_article_simple(request: SaveArticleRequest):
         import uuid
         
         MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017/promptsupport')
-        DATABASE_NAME = os.getenv("DATABASE_NAME", "promptsupport_db")
+        
+        # Extract database name from MONGO_URL to match repository behavior
+        if '/' in MONGO_URL.split('://')[-1]:
+            DATABASE_NAME = MONGO_URL.split('://')[-1].split('/')[1].split('?')[0]
+        else:
+            DATABASE_NAME = "promptsupport"
         
         mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
         db = mongo_client[DATABASE_NAME]

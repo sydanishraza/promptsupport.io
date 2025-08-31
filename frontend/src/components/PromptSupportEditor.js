@@ -389,8 +389,19 @@ const PromptSupportEditor = ({
     // TODO: Implement custom context menu modal
   }, []);
   
+  // EMERGENCY: Disable ALL WYSIWYG-specific effects to isolate the loop source
+  const isDebugMode = true;
+
   // === EDITOR STABILITY FIX: STABLE CONTENT REF CALLBACK ===  
   const contentRef = useCallback((element) => {
+    if (isDebugMode) {
+      console.log('🔍 contentRef callback called - DISABLED IN DEBUG MODE');
+      if (element) {
+        editorRef.current = element;
+      }
+      return; // Skip all content updates
+    }
+    
     console.log('🔍 contentRef callback called - element:', !!element, 'isEditing:', isEditing, 'editorMode:', editorMode);
     
     if (element) {

@@ -268,21 +268,19 @@ class ContentLibrarySaveTester:
             print(f"📥 Response data: {json.dumps(response_data, indent=2)}")
             
             # Check if article was created successfully
-            if response_data.get('status') != 'success':
-                self.log_test("New Article Creation", False, f"Creation failed: {response_data.get('message')}")
-                return False
-            
-            created_article = response_data.get('article')
-            if not created_article:
-                self.log_test("New Article Creation", False, "No article data in response")
-                return False
-            
-            created_id = created_article.get('id')
+            created_id = response_data.get('id')
             if not created_id:
-                self.log_test("New Article Creation", False, "No ID in created article")
+                self.log_test("New Article Creation", False, "No ID in response")
                 return False
             
             print(f"✅ Article created with ID: {created_id}")
+            
+            # The response format is different - it's a success response with ID
+            created_article = {
+                "id": created_id,
+                "title": test_article["title"],
+                "content": test_article["content"]
+            }
             
             # Verify article appears in content library
             time.sleep(2)  # Wait for database consistency

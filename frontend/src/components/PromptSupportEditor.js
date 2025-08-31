@@ -462,11 +462,51 @@ const PromptSupportEditor = ({
     }
   }, [isEditing]); // Only depend on isEditing, not content to prevent flicker
 
-  // Simple title change handler - same as works in Markdown/HTML
-  const handleTitleChange = (e) => {
-    setTitle(e.target.value);
+// Isolated title component - completely separate from WYSIWYG
+const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
+  const [localTitle, setLocalTitle] = React.useState(title);
+
+  // Simple input handler with direct state updates
+  const handleInput = (e) => {
+    const newValue = e.target.value;
+    setLocalTitle(newValue);
+    setTitle(newValue);
     setHasUnsavedChanges(true);
   };
+
+  // Sync with parent title changes
+  React.useEffect(() => {
+    setLocalTitle(title);
+  }, [title]);
+
+  if (!isEditing) {
+    return <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>;
+  }
+
+  return (
+    <div style={{ marginBottom: '20px', isolation: 'isolate' }}>
+      <input
+        type="text"
+        value={localTitle}
+        onInput={handleInput}
+        onChange={handleInput}
+        className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
+        placeholder="Article title..."
+        style={{
+          position: 'relative',
+          zIndex: 10000,
+          backgroundColor: '#ffffff',
+          isolation: 'isolate'
+        }}
+        // Prevent any event bubbling or capturing
+        onKeyDown={(e) => e.stopPropagation()}
+        onKeyUp={(e) => e.stopPropagation()}
+        onFocus={(e) => e.stopPropagation()}
+        onBlur={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+};
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showColorPicker && !event.target.closest('[title="Text Color"]')) {

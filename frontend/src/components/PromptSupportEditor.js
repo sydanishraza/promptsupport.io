@@ -858,6 +858,11 @@ const PromptSupportEditor = ({
    * Handle keyboard shortcuts for formatting and navigation (Enhanced)
    */
   const handleKeyDown = (e) => {
+    // Skip processing if we're in the title field
+    if (e.target.placeholder === 'Article title...' || e.target.type === 'text') {
+      return;
+    }
+
     // Prevent backspace/delete from exiting edit mode
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.stopPropagation();

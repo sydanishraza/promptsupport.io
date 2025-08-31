@@ -544,23 +544,15 @@ const SimpleTestInput = () => {
   );
 };
 
-// Isolated title component - completely separate from WYSIWYG
+// FIXED: Simple title component without local state to prevent loops
 const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
-  const [localTitle, setLocalTitle] = React.useState(title);
-
-  // Simple input handler with direct state updates
+  // Direct event handler without local state - prevents re-render loops
   const handleInput = (e) => {
     const newValue = e.target.value;
     console.log('TITLE INPUT onChange:', newValue);
-    setLocalTitle(newValue);
     setTitle(newValue);
     setHasUnsavedChanges(true);
   };
-
-  // Sync with parent title changes
-  React.useEffect(() => {
-    setLocalTitle(title);
-  }, [title]);
 
   if (!isEditing) {
     return <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">{title || 'Untitled Article'}</h1>;
@@ -571,12 +563,11 @@ const TitleEditor = ({ title, setTitle, setHasUnsavedChanges, isEditing }) => {
       <EmergencyDebugTest />
       <SimpleTestInput />
       <p style={{ color: 'green', fontSize: '14px', marginBottom: '10px' }}>
-        TITLE INPUT: Current value = "{localTitle}"
+        TITLE INPUT: Current value = "{title}"
       </p>
       <input
         type="text"
-        value={localTitle}
-        onInput={handleInput}
+        value={title || ''}
         onChange={handleInput}
         className="w-full text-2xl font-bold text-gray-900 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 p-2 bg-white"
         placeholder="Article title..."

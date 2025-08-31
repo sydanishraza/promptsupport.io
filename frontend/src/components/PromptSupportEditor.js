@@ -515,22 +515,32 @@ const EmergencyDebugTest = () => {
   );
 };
 
-// MINIMAL TEST: Simple input field to debug the issue
+// FIXED: Simple input without local state to prevent loops
 const SimpleTestInput = () => {
-  const [testValue, setTestValue] = React.useState('');
+  // No local state - use a ref or direct DOM manipulation for testing
+  const inputRef = React.useRef(null);
+  
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    console.log('TEST INPUT onChange:', value);
+    
+    // Update the display text directly in DOM to avoid React state loops
+    const displayText = inputRef.current?.parentElement?.querySelector('p');
+    if (displayText) {
+      displayText.innerHTML = `TEST INPUT (should work): Current value = "${value}"`;
+    }
+  };
   
   return (
     <div style={{ padding: '20px', border: '2px solid red', margin: '10px', backgroundColor: 'white' }}>
       <p style={{ color: 'red', fontSize: '14px', marginBottom: '10px' }}>
-        TEST INPUT (should work): Current value = "{testValue}"
+        TEST INPUT (should work): Current value = ""
       </p>
       <input
+        ref={inputRef}
         type="text"
-        value={testValue}
-        onChange={(e) => {
-          console.log('TEST INPUT onChange:', e.target.value);
-          setTestValue(e.target.value);
-        }}
+        defaultValue=""
+        onChange={handleInputChange}
         placeholder="Test input - type here"
         style={{
           width: '100%',

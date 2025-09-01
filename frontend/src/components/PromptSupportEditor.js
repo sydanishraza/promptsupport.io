@@ -473,9 +473,7 @@ const handleTitleChange = (e) => {
     }
   }, [showColorPicker, showSlashMenu, showAiPanel, showAiDropdown, showImageDropdown]);
 
-  // DISABLE FOR DEBUGGING - Keep other useEffects commented
-  /*
-  // Phase 4: Auto-save functionality
+  // Phase 4: Auto-save functionality - RE-ENABLED FOR TESTING
   useEffect(() => {
     if (!hasUnsavedChanges || !isEditing) return;
     
@@ -485,6 +483,9 @@ const handleTitleChange = (e) => {
     
     return () => clearTimeout(autoSaveTimer);
   }, [hasUnsavedChanges, content, title, isEditing]);
+
+  // DISABLE FOR DEBUGGING - Keep other useEffects commented
+  /*
 
   // Phase 4: Content analytics and selection tracking with debouncing to prevent excessive calls
   useEffect(() => {

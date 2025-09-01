@@ -878,6 +878,29 @@ const handleTitleChange = (e) => {
 
     // Enhanced keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
+      switch (e.key) {
+        case 'b':
+          e.preventDefault();
+          executeCommand('bold');
+          break;
+        case 'i':
+          e.preventDefault();
+          executeCommand('italic');
+          break;
+        case 'u':
+          e.preventDefault();
+          executeCommand('underline');
+          break;
+        default:
+          break;
+      }
+    }
+
+    // FIX: Force paragraph creation instead of divs
+    if (e.key === 'Enter' && editorMode === 'wysiwyg') {
+      e.preventDefault();
+      executeCommand('insertHTML', '<p><br></p>');
+    }
       switch (e.key.toLowerCase()) {
         case 'z':
           e.preventDefault();

@@ -508,7 +508,7 @@ const handleTitleChange = (e) => {
       }
       
       // Update collaborator activity
-      updateCollaboratorActivity();
+      // updateCollaboratorActivity(); // COMMENTED OUT - FUNCTION NOT DEFINED
     };
 
     if (isEditing) {

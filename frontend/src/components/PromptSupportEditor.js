@@ -903,24 +903,6 @@ const handleTitleChange = (e) => {
           e.preventDefault();
           document.execCommand('redo');
           break;
-        default:
-          break;
-      }
-    }
-
-    // FIX: Force paragraph creation instead of divs
-    if (e.key === 'Enter' && editorMode === 'wysiwyg') {
-      e.preventDefault();
-      executeCommand('insertHTML', '<p><br></p>');
-    }
-        case 'i':
-          e.preventDefault();
-          executeCommand('italic');
-          break;
-        case 'u':
-          e.preventDefault();
-          executeCommand('underline');
-          break;
         case 'k':
           e.preventDefault();
           insertLink();
@@ -964,6 +946,12 @@ const handleTitleChange = (e) => {
         default:
           break;
       }
+    }
+
+    // FIX: Force paragraph creation instead of divs
+    if (e.key === 'Enter' && editorMode === 'wysiwyg') {
+      e.preventDefault();
+      executeCommand('insertHTML', '<p><br></p>');
     }
 
     // Tab handling for indentation

@@ -891,17 +891,6 @@ const handleTitleChange = (e) => {
           e.preventDefault();
           executeCommand('underline');
           break;
-        default:
-          break;
-      }
-    }
-
-    // FIX: Force paragraph creation instead of divs
-    if (e.key === 'Enter' && editorMode === 'wysiwyg') {
-      e.preventDefault();
-      executeCommand('insertHTML', '<p><br></p>');
-    }
-      switch (e.key.toLowerCase()) {
         case 'z':
           e.preventDefault();
           if (e.shiftKey) {
@@ -914,10 +903,16 @@ const handleTitleChange = (e) => {
           e.preventDefault();
           document.execCommand('redo');
           break;
-        case 'b':
-          e.preventDefault();
-          executeCommand('bold');
+        default:
           break;
+      }
+    }
+
+    // FIX: Force paragraph creation instead of divs
+    if (e.key === 'Enter' && editorMode === 'wysiwyg') {
+      e.preventDefault();
+      executeCommand('insertHTML', '<p><br></p>');
+    }
         case 'i':
           e.preventDefault();
           executeCommand('italic');

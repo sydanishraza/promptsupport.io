@@ -484,10 +484,7 @@ const handleTitleChange = (e) => {
     return () => clearTimeout(autoSaveTimer);
   }, [hasUnsavedChanges, content, title, isEditing]);
 
-  // DISABLE FOR DEBUGGING - Keep other useEffects commented
-  /*
-
-  // Phase 4: Content analytics and selection tracking with debouncing to prevent excessive calls
+  // Phase 4: Content analytics and selection tracking with debouncing to prevent excessive calls - RE-ENABLED FOR TESTING
   useEffect(() => {
     if (content && isEditing && autoContentAnalysis) {
       // PERFORMANCE FIX: Debounce content analysis to prevent excessive calls
@@ -499,6 +496,9 @@ const handleTitleChange = (e) => {
       return () => clearTimeout(analysisTimer);
     }
   }, [content, isEditing, autoContentAnalysis]);
+
+  // DISABLE FOR DEBUGGING - Keep selection tracking commented
+  /*
 
   // Phase 4: Track text selection for commenting and format detection
   useEffect(() => {

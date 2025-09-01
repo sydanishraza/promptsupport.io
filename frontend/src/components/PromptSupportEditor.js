@@ -497,10 +497,7 @@ const handleTitleChange = (e) => {
     }
   }, [content, isEditing, autoContentAnalysis]);
 
-  // DISABLE FOR DEBUGGING - Keep selection tracking commented
-  /*
-
-  // Phase 4: Track text selection for commenting and format detection
+  // Phase 4: Track text selection for commenting and format detection - RE-ENABLED FOR TESTING
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
@@ -533,7 +530,6 @@ const handleTitleChange = (e) => {
       };
     }
   }, [isEditing]);
-  */
 
   // Phase 4: Collaboration presence simulation - RE-ENABLED FOR TESTING
   useEffect(() => {

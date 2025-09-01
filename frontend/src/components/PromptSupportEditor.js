@@ -395,15 +395,36 @@ const handleTitleChange = (e) => {
   setHasUnsavedChanges(true);
 };
 
-  // === EDITOR STABILITY FIX: STABLE CONTENT REF CALLBACK ===  
+  // === EDITOR STABILITY FIX: FIXED CONTENT REF CALLBACK ===  
   const contentRef = useCallback((element) => {
-    // EMERGENCY FIX: Completely disable contentRef processing to prevent loops
+    console.log('🔍 contentRef callback - element:', !!element, 'editorMode:', editorMode);
+    
     if (element) {
       editorRef.current = element;
+      
+      // CRITICAL FIX: Only initialize WYSIWYG content once to prevent infinite loops
+      if (editorMode === 'wysiwyg' && isEditing) {
+        console.log('🔧 Initializing WYSIWYG content');
+        
+        // Set content only if different and not empty
+        if (content && element.innerHTML !== content) {
+          element.innerHTML = content;
+        }
+        
+        // Make editor ready
+        element.contentEditable = true;
+        element.style.backgroundColor = '#fefefe';
+        element.style.minHeight = '400px';
+        
+        // Initialize features only once
+        setTimeout(() => {
+          initializeWYSIWYGFeatures(element);
+        }, 50);
+      }
     } else {
       editorRef.current = null;
     }
-  }, []);
+  }, [editorMode, isEditing]); // Only depend on mode and editing state, NOT content
 
   // === INITIALIZE CONTENT ===
   useEffect(() => {

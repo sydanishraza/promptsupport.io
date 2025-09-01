@@ -542,7 +542,6 @@ const handleTitleChange = (e) => {
       return () => clearInterval(presenceInterval);
     }
   }, [isEditing]);
-  */
 
   // === PHASE 1: CORE EDITABLE SURFACE ===
   

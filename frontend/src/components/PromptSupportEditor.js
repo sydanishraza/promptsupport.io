@@ -4034,19 +4034,18 @@ const handleTitleChange = (e) => {
                   key={`editor-${isEditing}-${article?.id}`}
                   ref={contentRef}
                   contentEditable={true}
-                  // DISABLE EVENT HANDLERS FOR DEBUGGING
-                  // onInput={handleEditorInput}
-                  // onMouseUp={handleEditorMouseUp}
-                  // onKeyDown={handleKeyDown}
-                  // onPaste={handlePaste}
-                  // onDragOver={handleDragOver}
-                  // onDragLeave={handleDragLeave}
-                  // onDrop={handleDrop}
-                  // onMouseOver={handleLinkHover}
-                  // onMouseOut={handleLinkMouseOut}
-                  // onClick={handleLinkClick}
-                  // onContextMenu={handleEditorContextMenu}
-                  // onFocus={handleEditorFocus}
+                  onInput={handleEditorInput}
+                  onMouseUp={handleEditorMouseUp}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onMouseOver={handleLinkHover}
+                  onMouseOut={handleLinkMouseOut}
+                  onClick={handleLinkClick}
+                  onContextMenu={handleEditorContextMenu}
+                  onFocus={handleEditorFocus}
                   className="wysiwyg-content wysiwyg-editor h-full p-6 focus:outline-none"
                   style={{
                     // SCROLLING FIX: Simplified height management for consistent scrolling

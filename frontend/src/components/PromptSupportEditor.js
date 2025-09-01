@@ -473,7 +473,7 @@ const handleTitleChange = (e) => {
     }
   }, [showColorPicker, showSlashMenu, showAiPanel, showAiDropdown, showImageDropdown]);
 
-  // DISABLE FOR DEBUGGING
+  // DISABLE FOR DEBUGGING - Keep other useEffects commented
   /*
   // Phase 4: Auto-save functionality
   useEffect(() => {
@@ -509,32 +509,32 @@ const handleTitleChange = (e) => {
         setSelectedText('');
       }
       
-      // Detect active formats when selection changes
-      if (isEditing) {
-        detectActiveFormats();
-      }
+      // Update collaborator activity
+      updateCollaboratorActivity();
     };
 
     if (isEditing) {
       document.addEventListener('selectionchange', handleSelectionChange);
-      // Also trigger on click in editor
+      
+      // Add event listeners to the editor for more responsive selection tracking
       const editorElement = editorRef.current;
       if (editorElement) {
-        editorElement.addEventListener('click', handleSelectionChange);
+        editorElement.addEventListener('mouseup', handleSelectionChange);
         editorElement.addEventListener('keyup', handleSelectionChange);
       }
       
       return () => {
         document.removeEventListener('selectionchange', handleSelectionChange);
         if (editorElement) {
-          editorElement.removeEventListener('click', handleSelectionChange);
+          editorElement.removeEventListener('mouseup', handleSelectionChange);
           editorElement.removeEventListener('keyup', handleSelectionChange);
         }
       };
     }
   }, [isEditing]);
+  */
 
-  // Phase 4: Collaboration presence simulation
+  // Phase 4: Collaboration presence simulation - RE-ENABLED FOR TESTING
   useEffect(() => {
     if (isEditing) {
       updateCollaboratorPresence();

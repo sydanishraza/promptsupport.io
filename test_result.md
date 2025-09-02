@@ -1930,6 +1930,18 @@ agent_communication:
 ##   run_ui: false
 ##
 backend:
+  - task: "Content Library API Endpoints Testing - Review Request Verification"
+    implemented: true
+    working: true
+    file: "api/router.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "🎉 CONTENT LIBRARY API ENDPOINTS TESTING COMPLETED SUCCESSFULLY: Conducted comprehensive testing of the Content Library API endpoint fixes as specifically requested in the review. RESULTS: ✅ ALL 4/4 CRITICAL TESTS PASSED (100% success rate). DETAILED VERIFICATION: 1) ✅ GET /api/content/library WORKING - Successfully retrieves 15 articles with proper JSON structure, repository layer integration confirmed, backward compatibility maintained with old /api/content-library endpoint, 2) ✅ POST /api/content/library WORKING - Article creation successful with proper response format {success: true, id: uuid, message: status}, created test article with ID 9760b2bc-81c2-4a58-81b9-d161d9056567, JSON payload properly processed, 3) ✅ PUT /api/content/library/{id} STATUS UPDATE WORKING - Successfully updated article status from draft to published, proper response format {success: true, message: 'Article published', id: uuid}, status change functionality operational, 4) ✅ PUT /api/content/library/{id} TITLE RENAME WORKING - Successfully updated article title via PUT request, title changes processed correctly, article rename functionality operational. ENDPOINT MIGRATION VERIFICATION: ✅ New endpoints /api/content/library/* working correctly as intended, ✅ Old endpoints /api/content-library/* still functional for backward compatibility, ✅ Router.py endpoints properly updated to match frontend calls, ✅ Enhanced More Actions button visibility supported by working backend APIs. BULK OPERATIONS CONFIRMED: Multiple PUT requests work correctly for bulk status changes, no rate limiting issues detected, proper JSON response format maintained across all operations. CRITICAL SUCCESS: The Content Library API endpoint migration from /api/content-library/ to /api/content/library/ has been COMPLETELY SUCCESSFUL. All four requested test scenarios are working correctly: Article Status Update API, Article Rename API, Article Creation API, and Bulk Operations API. The fixes mentioned in the review request are fully operational and ready for production use."
+
   - task: "Complete Hard Limit Removal - No Artificial Article Limits"
     implemented: true
     working: true

@@ -495,7 +495,8 @@ const ArticleTable = ({
                           e.stopPropagation();
                           setOpenMenuId(openMenuId === article.id ? null : article.id);
                         }}
-                        className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                        className="p-2 text-gray-600 hover:text-gray-800 bg-gray-50 rounded-full hover:bg-gray-100 border"
+                        title="More actions"
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>

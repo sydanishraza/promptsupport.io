@@ -511,8 +511,8 @@ const ContentLibrary = () => {
   const handleSaveArticle = async (articleData) => {
     try {
       const url = articleData.id 
-        ? `${backendUrl}/api/content-library/${articleData.id}`
-        : `${backendUrl}/api/content-library`;
+        ? `${backendUrl}/api/content/library/${articleData.id}`
+        : `${backendUrl}/api/content/library`;
       
       const method = articleData.id ? 'PUT' : 'POST';
       

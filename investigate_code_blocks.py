@@ -8,7 +8,7 @@ import json
 from bs4 import BeautifulSoup
 
 # Backend URL
-BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com"
+BACKEND_URL = "https://knowledge-engine-7.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def investigate_empty_code_blocks():

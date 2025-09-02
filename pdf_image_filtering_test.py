@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com/api"
+BACKEND_URL = "https://knowledge-engine-7.preview.emergentagent.com/api"
 
 class PDFImageFilteringTester:
     def __init__(self):

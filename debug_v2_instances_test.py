@@ -9,7 +9,7 @@ import json
 import sys
 
 # Backend URL from environment
-BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com/api"
+BACKEND_URL = "https://knowledge-engine-7.preview.emergentagent.com/api"
 
 def test_engine_status():
     """Test engine status endpoint"""

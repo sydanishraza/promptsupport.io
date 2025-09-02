@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com"
+BACKEND_URL = "https://knowledge-engine-7.preview.emergentagent.com"
 
 def test_code_normalization_system_health():
     """Test 1: Code Normalization System Health Check"""

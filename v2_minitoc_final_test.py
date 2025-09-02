@@ -13,7 +13,7 @@ import re
 from bs4 import BeautifulSoup
 
 # Backend URL from environment
-BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com/api"
+BACKEND_URL = "https://knowledge-engine-7.preview.emergentagent.com/api"
 
 def print_test_header(test_name):
     """Print formatted test header"""

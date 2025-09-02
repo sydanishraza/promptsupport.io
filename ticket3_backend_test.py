@@ -13,7 +13,7 @@ from datetime import datetime
 
 # Use configured backend URL from environment
 import os
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://knowledge-engine-6.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://knowledge-engine-7.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 print(f"🧪 TICKET 3 TESTING: Universal Bookmarks & Durable Links System")

@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import List, Dict, Any
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com"
+BACKEND_URL = "https://knowledge-engine-7.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 def log_test_result(message, status="INFO"):

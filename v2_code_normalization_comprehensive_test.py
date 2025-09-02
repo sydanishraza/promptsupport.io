@@ -12,7 +12,7 @@ import re
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://knowledge-engine-6.preview.emergentagent.com"
+BACKEND_URL = "https://knowledge-engine-7.preview.emergentagent.com"
 
 def test_v2_engine_code_normalization_system():
     """

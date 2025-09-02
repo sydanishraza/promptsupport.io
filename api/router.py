@@ -389,7 +389,7 @@ async def create_article_legacy():
     # V1 implementation would go here
     return {"message": "V1 article creation (deprecated)"}
 
-@router.put("/api/content-library/{article_id}")
+@router.put("/api/content/library/{article_id}")
 async def update_article_simple(article_id: str, request: SaveArticleRequest):
     """Update article - Simple working implementation restored"""
     try:

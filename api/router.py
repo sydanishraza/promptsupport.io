@@ -335,7 +335,7 @@ async def get_content_library():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching library: {str(e)}")
 
-@router.post("/api/content-library")
+@router.post("/api/content/library")
 async def create_article_simple(request: SaveArticleRequest):
     """Create article - Simple working implementation restored"""
     try:

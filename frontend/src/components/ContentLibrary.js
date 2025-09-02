@@ -304,7 +304,7 @@ const ContentLibrary = () => {
         }
       };
 
-      const response = await fetch(`${backendUrl}/api/content-library`, {
+      const response = await fetch(`${backendUrl}/api/content/library`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
